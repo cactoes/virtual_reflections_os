@@ -1,0 +1,7 @@
+Write-Host "starting qemu"
+qemu-system-x86_64.exe `
+    -cdrom build/VirtualReflectionsOS.iso `
+    -m 2G `
+    -drive format=raw,file=build/disk.vhd,id=disk,if=none `
+    -device ahci,id=ahci `
+    -device ide-hd,drive=disk,bus=ahci.0

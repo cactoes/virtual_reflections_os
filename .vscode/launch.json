@@ -1,0 +1,73 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "QEMU + GDB (NO COMPILE)",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/VirtualReflectionsOS.bin",
+            "args": [],
+            "stopAtEntry": true,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "MIMode": "gdb",
+            "miDebuggerPath": "E:/cygwin/bin/gdb-multiarch.exe",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                },
+                {
+                    "description": "Disable OS ABI detection",
+                    "text": "set osabi none"
+                },
+                {
+                    "description": "Show backtrace on crash",
+                    "text": "set confirm off"
+                },
+                {
+                    "description": "Show the backtrace when crash occurs",
+                    "text": "set pagination off"
+                }
+            ],
+            "miDebuggerServerAddress": "localhost:1234",
+            "showDisplayString": true,
+            "preLaunchTask": "Start QEMU"
+        },
+        {
+            "name": "QEMU + GDB + COMPILE",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/VirtualReflectionsOS.bin",
+            "args": [],
+            "stopAtEntry": true,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "MIMode": "gdb",
+            "miDebuggerPath": "E:/cygwin/bin/gdb-multiarch.exe",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                },
+                {
+                    "description": "Disable OS ABI detection",
+                    "text": "set osabi none"
+                },
+                {
+                    "description": "Show backtrace on crash",
+                    "text": "set confirm off"
+                },
+                {
+                    "description": "Show the backtrace when crash occurs",
+                    "text": "set pagination off"
+                }
+            ],
+            "miDebuggerServerAddress": "localhost:1234",
+            "showDisplayString": true,
+            "preLaunchTask": "Compile kernel and Start QEMU"
+        }
+    ]
+}
