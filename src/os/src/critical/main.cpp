@@ -6,6 +6,7 @@
 
 #include "driver/keyboard.hpp"
 #include "driver/pci.hpp"
+#include "driver/vga.hpp"
 
 #include "string.hpp"
 
@@ -163,15 +164,20 @@ extern "C" void kernel_main() {
     kernel_assert_status(KRESULT_IS_OK(pci_device_find_result), buffer, 0x4);
 
     /// =============
-    /// setup XXX
+    /// setup VGA graphics
     /// =============
     kernel_set_cursor(11, 10);
 
-    kernel_set_graphics_mode();
+    kernel::driver::vga::vga_buffer_t vga_back_buffer{};
+    (void)kernel::driver::vga::vga_buffer_create(&vga_back_buffer);
 
-    volatile uint8_t* vga_frame_buffer = (volatile uint8_t*)0xA0000;
-    for (int i = 0; i < 640 * 480; i++)
-        vga_frame_buffer[i] = 0x0F;
+    (void)kernel::driver::vga::startup_vga_graphics(&vga_back_buffer);
+
+    for (int i = 0; i < 640; i++)
+        for (int j = 0; j < 480; j++)
+            (void)kernel::driver::vga::back_buffer_set_pixel(i, j, 0xF);
+
+    (void)kernel::driver::vga::update_vga();
 
     // dont exit the kernel lol
     while (true) {}

@@ -179,37 +179,6 @@ void kernel_set_cursor(uint64_t y, uint64_t x) {
     kernel_move_cursor(y, x);
 }
 
-void kernel_set_graphics_mode() {
-    using namespace kernel::cpu;
-    
-    (void)out_port(PT_B, VGA_MISC_PORT, 0xE3);
-
-    (void)out_port(PT_B, VGA_SEQ_INDEX, 0x00); (void)out_port(PT_B, VGA_SEQ_DATA, 0x03); // Reset
-    (void)out_port(PT_B, VGA_SEQ_INDEX, 0x01); (void)out_port(PT_B, VGA_SEQ_DATA, 0x01); // Clocking Mode
-    (void)out_port(PT_B, VGA_SEQ_INDEX, 0x02); (void)out_port(PT_B, VGA_SEQ_DATA, 0x0F); // Map Mask
-    (void)out_port(PT_B, VGA_SEQ_INDEX, 0x03); (void)out_port(PT_B, VGA_SEQ_DATA, 0x00); // Character Map Select
-    (void)out_port(PT_B, VGA_SEQ_INDEX, 0x04); (void)out_port(PT_B, VGA_SEQ_DATA, 0x06); // Memory Mode
-    // (void)out_port(PT_B, VGA_SEQ_INDEX, 0x00); (void)out_port(PT_B, VGA_SEQ_DATA, 0x03); // End Reset
-    
-    // CRTC (Cathode Ray Tube Controller) registers
-    (void)out_port(PT_B, VGA_CRTC_INDEX, 0x11); (void)out_port(PT_B, VGA_CRTC_DATA, 0x00); // Unlock CRTC
-    uint8_t crtc_values[] = {
-        0x5F, 0x4F, 0x50, 0x82, 0x54, 0x80, 0xBF, 0x1F,
-        0x00, 0x41, 0x9C, 0x0E, 0x8F, 0x28, 0x40, 0x96,
-        0xB9, 0xA3, 0xFF
-    };
-
-    for (uint8_t i = 0; i < sizeof(crtc_values); i++) {
-        (void)out_port(PT_B, VGA_CRTC_INDEX, i);
-        (void)out_port(PT_B, VGA_CRTC_DATA, crtc_values[i]);
-    }
-
-    // Graphics Controller registers
-    (void)out_port(PT_B, VGA_GC_INDEX, 0x06); (void)out_port(PT_B, VGA_GC_DATA, 0x05); // Mode register
-    (void)out_port(PT_B, VGA_GC_INDEX, 0x05); (void)out_port(PT_B, VGA_GC_DATA, 0x40); // Miscellaneous
-    (void)out_port(PT_B, VGA_GC_INDEX, 0x04); (void)out_port(PT_B, VGA_GC_DATA, 0x00); // Read Map Select
-}
-
 void outb(uint16_t port, uint8_t value) {
     asm volatile ("outb %1, %0" : : "dN"(port), "a"(value));
 }

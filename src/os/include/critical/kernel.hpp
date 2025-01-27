@@ -57,7 +57,6 @@ void kernel_print(char ch);
 void kernel_print(const char* string, ...);
 [[noreturn]] void kernel_fatal(uint64_t code, uint64_t extra_code = 0);
 void kernel_set_cursor(uint64_t y, uint64_t x);
-void kernel_set_graphics_mode();
 
 namespace kernel {
 
