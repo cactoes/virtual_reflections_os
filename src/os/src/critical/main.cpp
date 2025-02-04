@@ -173,10 +173,6 @@ extern "C" void kernel_main() {
 
     (void)kernel::driver::vga::startup_vga_graphics(&vga_back_buffer);
 
-    for (int i = 0; i < 640; i++)
-        for (int j = 0; j < 480; j++)
-            (void)kernel::driver::vga::back_buffer_set_pixel(i, j, 0xF);
-
     (void)kernel::driver::vga::update_vga();
 
     // dont exit the kernel lol

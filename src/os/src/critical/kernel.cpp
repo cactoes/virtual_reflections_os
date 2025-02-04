@@ -70,7 +70,7 @@ void kernel_print(const char* string, ...) {
     if (string == nullptr || *string == 0)
         return;
 
-    char buffer[256] = { 0 };
+    char buffer[512] = { 0 };
 
     va_list args;
     va_start(args, string);
@@ -219,10 +219,10 @@ void kernel::cpu::halt() {
 kresult_t kernel::cpu::out_port(port_type_t type, uint16_t port, uint32_t value) {
     switch (type) {
         case port_type_t::PT_B:
-            outb(port, (uint8_t)value);
+            outb(port, (uint8_t)(value & 0xFF));
             return KRESULT(0);
         case port_type_t::PT_W:
-            outb(port, (uint16_t)value);
+            outw(port, (uint16_t)(value & 0xFFFF));
             return KRESULT(0);
         case port_type_t::PT_L:
             outl(port, value);
@@ -236,12 +236,14 @@ kresult_t kernel::cpu::in_port(port_type_t type, uint16_t port, uint32_t* value)
     if (value == nullptr)
         return KRESULT(2);
 
+    *value = 0;
+
     switch (type) {
         case port_type_t::PT_B:
-            *(uint8_t*)value = inb(port);
+            *(uint8_t*)value = inb(port) & 0xFF;
             return KRESULT(0);
         case port_type_t::PT_W:
-            *(uint16_t*)value = inw(port);
+            *(uint16_t*)value = inw(port) & 0xFFFF;
             return KRESULT(0);
         case port_type_t::PT_L:
             *value = inl(port);

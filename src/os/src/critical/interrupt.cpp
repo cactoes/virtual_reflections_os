@@ -23,25 +23,25 @@ void kernel::interrupt::init() {
     g_idtr.base = (uint64_t)&g_idt[0];
     g_idtr.limit = (uint16_t)(sizeof(idt_entry_t) * IDT_ENTRY_COUNT - 1);
 
-    for (uint8_t vector = 0; vector < 34; vector++)
+    for (uint8_t vector = 0; vector < 48; vector++)
         set_idt_entry(vector, isr_stub_table[vector], 0x8E);
 
     set_idt_entry(0x80, (void*)systemcall, 0x8E);
+    
+    (void)cpu::out_port(cpu::PT_B, PIC1, 0x11);
+    (void)cpu::out_port(cpu::PT_B, PIC2, 0x11);
 
-    (void)cpu::out_port(cpu::PT_B,PIC1, 0x11);
-    (void)cpu::out_port(cpu::PT_B,PIC2, 0x11);
+    (void)cpu::out_port(cpu::PT_B, PIC1_DATA, 0x20);
+    (void)cpu::out_port(cpu::PT_B, PIC2_DATA, 0x28);
 
-    (void)cpu::out_port(cpu::PT_B,PIC1_DATA, 0x20);
-    (void)cpu::out_port(cpu::PT_B,PIC2_DATA, 0x28);
+    (void)cpu::out_port(cpu::PT_B, PIC1_DATA, 4);
+    (void)cpu::out_port(cpu::PT_B, PIC2_DATA, 2);
 
-    (void)cpu::out_port(cpu::PT_B,PIC1_DATA, 4);
-    (void)cpu::out_port(cpu::PT_B,PIC2_DATA, 2);
+    (void)cpu::out_port(cpu::PT_B, PIC1_DATA, 1);
+    (void)cpu::out_port(cpu::PT_B, PIC2_DATA, 1);
 
-    (void)cpu::out_port(cpu::PT_B,PIC1_DATA, 1);
-    (void)cpu::out_port(cpu::PT_B,PIC2_DATA, 1);
-
-    (void)cpu::out_port(cpu::PT_B,PIC1_DATA, 0xFD);
-    (void)cpu::out_port(cpu::PT_B,PIC2_DATA, 0xFF);
+    (void)cpu::out_port(cpu::PT_B, PIC1_DATA, 0xFD);
+    (void)cpu::out_port(cpu::PT_B, PIC2_DATA, 0xFF);
 
     __flush_idt(g_idtr);
 
@@ -74,10 +74,42 @@ void kernel_interrupt_handler(uint32_t code) {
         case 0x15:
             kernel_fatal(KFATAL_UNHANDLED_INTERRUPT, code);
             break;
+        case 0x20: // PIT
+            // kernel_fatal(KFATAL_UNHANDLED_INTERRUPT, code);
+            break;
         case 0x21:
             kernel::driver::keyboard::handle_interrupt(&g_keyboard_state);
+            kernel_print("pressed key");
             (void)kernel::cpu::out_port(kernel::cpu::PT_B, PIC1, 0x20);
             break;
+        // case 0x2C:{ // mouse interrupt
+        //     kernel_print("mouse int");
+        //     uint32_t data;
+        //     (void)kernel::cpu::in_port(kernel::cpu::PT_B, 0x60, &data);
+
+        //     static uint8_t offset = 0;
+        //     static uint8_t buffer[3] = {};
+
+        //     if (offset == 0 && !(data & 0x08)) {
+        //         offset = 0;
+        //         break;
+        //     }
+
+        //     buffer[offset++] = data;
+
+        //     if (offset >= 3) {
+        //         offset = 0;
+        //         kernel_print("Mouse: X=%i, Y=%i, Buttons=0x%uh\n",
+        //             (int8_t)buffer[1],
+        //             -(int8_t)buffer[2],
+        //             buffer[0] & 0x07
+        //         );
+        //     }
+
+        //     (void)kernel::cpu::out_port(kernel::cpu::PT_B, PIC2, 0x20);
+        //     (void)kernel::cpu::out_port(kernel::cpu::PT_B, PIC1, 0x20);
+        //     break;
+        // }
         default:
             kernel_print("kernel_interrupt: %uh\n", code);
             kernel::cpu::halt();

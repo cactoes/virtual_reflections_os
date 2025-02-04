@@ -85,6 +85,7 @@ out_port(
 /// @param type         value type / size
 /// @param port         target port number
 /// @param[out] value   value gets dumped in here
+///                     this value HAS to be a 32 bits or bigger
 /// @return             KRESULT(0): success
 ///                     KRESULT(1): invalid port type
 ///                     KRESULT(2): value pointer was null
