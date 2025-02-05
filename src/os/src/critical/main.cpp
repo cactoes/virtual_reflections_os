@@ -28,25 +28,29 @@ void kernel_assert(bool status, uint64_t identifier) {
 void kernel_assert_status(bool status, const char* message, uint64_t identifier) {
     kernel_assert(status, identifier);
 
-    kernel_set_print_color(vga_color_t::VGAC_LIGHT_GRAY, vga_color_t::VGAC_BLACK);
-    kernel_print("[ ");
-    kernel_set_print_color(status ? vga_color_t::VGAC_GREEN : vga_color_t::VGAC_RED, vga_color_t::VGAC_BLACK);
-    kernel_print(status ? "OK" : "FAILED");
-    kernel_set_print_color(vga_color_t::VGAC_LIGHT_GRAY, vga_color_t::VGAC_BLACK);
-    kernel_print(" ] ");
-    kernel_print(message);
-    kernel_print("\n");
+    kernel::driver::vga::tm::vga_color_map_t color {
+        .foreground = status ? kernel::driver::vga::tm::VGAC_GREEN : kernel::driver::vga::tm::VGAC_RED,
+        .background = kernel::driver::vga::tm::VGAC_BLACK,
+    };
+
+    kernel::print::print("[ ");
+    kernel::print::print(&color, status ? "OK" : "FAILED");
+    kernel::print::print(" ] ");
+    kernel::print::print(message);
+    kernel::print::print("\n");
 }
 
 void kernel_wait_status(const char* message) {
-    kernel_set_print_color(vga_color_t::VGAC_LIGHT_GRAY, vga_color_t::VGAC_BLACK);
-    kernel_print("[ ");
-    kernel_set_print_color(vga_color_t::VGAC_YELLOW, vga_color_t::VGAC_BLACK);
-    kernel_print("WAITING");
-    kernel_set_print_color(vga_color_t::VGAC_LIGHT_GRAY, vga_color_t::VGAC_BLACK);
-    kernel_print(" ] ");
-    kernel_print(message);
-    kernel_print("\n");
+    kernel::driver::vga::tm::vga_color_map_t color {
+        .foreground = kernel::driver::vga::tm::VGAC_YELLOW,
+        .background = kernel::driver::vga::tm::VGAC_BLACK,
+    };
+
+    kernel::print::print("[ ");
+    kernel::print::print(&color, "WAITING");
+    kernel::print::print(" ] ");
+    kernel::print::print(message);
+    kernel::print::print("\n");
 }
 
 extern "C" uint64_t multiboot_magic;
@@ -55,65 +59,69 @@ extern "C" uint64_t multiboot_magic;
 // extern "C" uint64_t bss_start;
 
 void safe_draw_logo() {
-    kernel_set_cursor(5, 44);  kernel_print("         *  ..        \n");
-    kernel_set_cursor(6, 44);  kernel_print("        @@# @@.       \n");
-    kernel_set_cursor(7, 44);  kernel_print("       @@*@@ @@.      \n");
-    kernel_set_cursor(8, 44);  kernel_print("     .@@  #@@ @@:     \n");
-    kernel_set_cursor(9, 44);  kernel_print("     @@ *@ :@@ @@:    \n");
-    kernel_set_cursor(10, 44); kernel_print("   :@@ #@%  .@@ @@=   \n");
-    kernel_set_cursor(11, 44); kernel_print("  :@@ %@#    .@@ @@+  \n");
-    kernel_set_cursor(12, 44); kernel_print(" +@@ @@*       @@ %@* \n");
-    kernel_set_cursor(13, 44); kernel_print(" @@: @@.       @@ -@@ \n");
-    kernel_set_cursor(14, 44); kernel_print("  @@- @@:     @@ =@@  \n");
-    kernel_set_cursor(15, 44); kernel_print("   @@* @@:   @@ *@@   \n");
-    kernel_set_cursor(16, 44); kernel_print("    @@# @@. @@ *@@    \n");
-    kernel_set_cursor(17, 44); kernel_print("     #@@ . @@ %@#     \n");
-    kernel_set_cursor(18, 44); kernel_print("      +@@ @@ #@#      \n");
-    kernel_set_cursor(19, 44); kernel_print("       -@@@ @@+       \n");
-    kernel_set_cursor(20, 44); kernel_print("        :@  %=        \n");
+    kernel::print::set_cusor(44, 5);  kernel::print::print("         *  ..        \n");
+    kernel::print::set_cusor(44, 6);  kernel::print::print("        @@# @@.       \n");
+    kernel::print::set_cusor(44, 7);  kernel::print::print("       @@*@@ @@.      \n");
+    kernel::print::set_cusor(44, 8);  kernel::print::print("     .@@  #@@ @@:     \n");
+    kernel::print::set_cusor(44, 9);  kernel::print::print("     @@ *@ :@@ @@:    \n");
+    kernel::print::set_cusor(44, 10); kernel::print::print("   :@@ #@%  .@@ @@=   \n");
+    kernel::print::set_cusor(44, 11); kernel::print::print("  :@@ %@#    .@@ @@+  \n");
+    kernel::print::set_cusor(44, 12); kernel::print::print(" +@@ @@*       @@ %@* \n");
+    kernel::print::set_cusor(44, 13); kernel::print::print(" @@: @@.       @@ -@@ \n");
+    kernel::print::set_cusor(44, 14); kernel::print::print("  @@- @@:     @@ =@@  \n");
+    kernel::print::set_cusor(44, 15); kernel::print::print("   @@* @@:   @@ *@@   \n");
+    kernel::print::set_cusor(44, 16); kernel::print::print("    @@# @@. @@ *@@    \n");
+    kernel::print::set_cusor(44, 17); kernel::print::print("     #@@ . @@ %@#     \n");
+    kernel::print::set_cusor(44, 18); kernel::print::print("      +@@ @@ #@#      \n");
+    kernel::print::set_cusor(44, 19); kernel::print::print("       -@@@ @@+       \n");
+    kernel::print::set_cusor(44, 20); kernel::print::print("        :@  %=        \n");
 }
 
 extern "C" void kernel_main() {
     /// =============
     /// boot logo (VGA MODE)
     /// =============
-    kernel_set_print_color(vga_color_t::VGAC_LIGHT_GRAY, vga_color_t::VGAC_BLACK);
-    kernel_clear_screen();
+    kernel::driver::vga::tm::vga_color_map_t color {
+        .foreground = kernel::driver::vga::tm::VGAC_LIGHT_GRAY,
+        .background = kernel::driver::vga::tm::VGAC_BLACK,
+    };
+    kernel::print::set_color(&color);
+    kernel::print::clear_screen();
     safe_draw_logo();
-    kernel_set_cursor(6, 10);
-    kernel_print("VirtualReflectionsOS [AS 0]");
+    kernel::print::set_cusor(10, 6);
+    kernel::print::print("VirtualReflectionsOS [AS 0]");
 
     /// =============
     /// debug stage display
     /// =============
-    kernel_set_cursor(NUM_ROWS - 1, NUM_COLS - 7);
-    kernel_print("stage 0");
+    kernel::print::set_cusor(VGA_TM_NUM_COLS - 7, VGA_TM_NUM_ROWS - 1);
+    kernel::print::print("stage 0");
 
     /// =============
     /// check multiboot
     /// =============
-    kernel_set_cursor(7, 10);
+    kernel::print::set_cusor(10, 7);
     kernel_wait_status("multiboot");
-    kernel_clear_row(7);
+    kernel::print::clear_row(7);
     safe_draw_logo();
-    kernel_set_cursor(7, 10);
+    kernel::print::set_cusor(10, 7);
     kernel_assert_status(multiboot_magic == 0x2BADB002, "multiboot", 0x1);
 
     /// =============
     /// setup interrupts
     /// =============
-    kernel_set_cursor(8, 10);
+    kernel::print::set_cusor(10, 8);
     kernel_wait_status("interrupts");
     kernel::interrupt::init();
-    kernel_clear_row(8);
+    kernel::print::clear_row(8);
     safe_draw_logo();
-    kernel_set_cursor(8, 10);
+    kernel::print::set_cusor(10, 8);
     kernel_assert_status(true, "interrupts (0-32, keyboard)", 0x2);
 
     /// =============
     /// setup & test virtual memory
     /// =============
-    kernel_set_cursor(9, 10);
+    kernel::print::set_cusor(10, 9);
     kernel_wait_status("memory");
     kernel::memory::heap_t kheap = {};
     kernel::memory::vmem::init(&kheap, &KPML4T);
@@ -121,16 +129,16 @@ extern "C" void kernel_main() {
     int* test_ptr = (int*)kernel::memory::vmem::kalloc(sizeof(int));
     *test_ptr = 0x1234567;
 
-    kernel_clear_row(9);
+    kernel::print::clear_row(9);
     safe_draw_logo();
-    kernel_set_cursor(9, 10);
+    kernel::print::set_cusor(10, 9);
     kernel_assert_status(*test_ptr == 0x1234567, "memory", 0x3);
     kernel::memory::vmem::kfree((void*)test_ptr);
 
     /// =============
     /// setup PCI(e) & find basic devices
     /// =============
-    kernel_set_cursor(10, 10);
+    kernel::print::set_cusor(10, 10);
     kernel_wait_status("PCI");
 
     // get pci(e) device count
@@ -158,22 +166,32 @@ extern "C" void kernel_main() {
     char buffer[256];
     sprintf(buffer, 256, "PCI (%u - %u (%u devices))", requested_devices_size, device_count - requested_devices_size, device_count);
 
-    kernel_clear_row(10);
+    kernel::print::clear_row(10);
     safe_draw_logo();
-    kernel_set_cursor(10, 10);
+    kernel::print::set_cusor(10, 10);
     kernel_assert_status(KRESULT_IS_OK(pci_device_find_result), buffer, 0x4);
 
     /// =============
     /// setup VGA graphics
     /// =============
-    kernel_set_cursor(11, 10);
+    kernel::print::set_cusor(10, 11);
 
-    kernel::driver::vga::vga_buffer_t vga_back_buffer{};
-    (void)kernel::driver::vga::vga_buffer_create(&vga_back_buffer);
+    // (void)kernel::driver::vga::tm::clear_screen();
 
-    (void)kernel::driver::vga::startup_vga_graphics(&vga_back_buffer);
+    // kernel::driver::vga::tm::vga_color_map_t colormap {
+    //     .foreground = kernel::driver::vga::tm::VGAC_WHITE,
+    //     .background = kernel::driver::vga::tm::VGAC_BLUE,
+    // };
+    // (void)kernel::driver::vga::tm::print("pre");
+    // (void)kernel::driver::vga::tm::print(&colormap, "test %s", "yur");
+    // (void)kernel::driver::vga::tm::print("post");
 
-    (void)kernel::driver::vga::update_vga();
+    // kernel::driver::vga::vga_buffer_t vga_back_buffer{};
+    // (void)kernel::driver::vga::vga_buffer_create(&vga_back_buffer);
+
+    // (void)kernel::driver::vga::startup_vga_graphics(&vga_back_buffer);
+
+    // (void)kernel::driver::vga::update_vga();
 
     // dont exit the kernel lol
     while (true) {}
@@ -203,7 +221,7 @@ extern "C" void kernel_main() {
 
     uint64_t ahci_base = sata_device.bar5_address;
 
-    // kernel_print("0x%p < 0x%p\n", ahci_base, sata_device.bar5_address & ~0xF);
+    // kernel::print::print("0x%p < 0x%p\n", ahci_base, sata_device.bar5_address & ~0xF);
 
     typedef volatile struct __KD_PCI_HBA_PORT {
         uint32_t clb;
@@ -340,12 +358,12 @@ extern "C" void kernel_main() {
 
             hba_port->cmd |= ((1 << 0) | (1 << 4));
 
-            kernel_print("initialized device [%u]: ", i);
+            kernel::print::print("initialized device [%u]: ", i);
             switch (hba_port->sig) {
-                case 0x00000101: kernel_print("ATA device\n", i); break;
-                case 0xEB140101: kernel_print("ATAPI device\n", i); break;
-                case 0xC33C0101: kernel_print("Port Multiplier\n", i); break;
-                default: kernel_print("Unknown device type (sig=0x%uh)\n", i, hba_port->sig); return;
+                case 0x00000101: kernel::print::print("ATA device\n", i); break;
+                case 0xEB140101: kernel::print::print("ATAPI device\n", i); break;
+                case 0xC33C0101: kernel::print::print("Port Multiplier\n", i); break;
+                default: kernel::print::print("Unknown device type (sig=0x%uh)\n", i, hba_port->sig); return;
             }
 
             break;
@@ -410,7 +428,7 @@ extern "C" void kernel_main() {
 
     // Check if the IDENTIFY DEVICE command was successful
     if (hba_port->is & (1 << 30)) {
-        kernel_print("Error during IDENTIFY DEVICE command.\n");
+        kernel::print::print("Error during IDENTIFY DEVICE command.\n");
     } else {
         uint16_t* identify_data = (uint16_t*)identify_data_virtual;
 
@@ -418,7 +436,7 @@ extern "C" void kernel_main() {
         uint32_t total_sectors = (identify_data[100] | (identify_data[101] << 16));
         uint64_t disk_size_bytes = (uint64_t)total_sectors * 512;
 
-        kernel_print("Disk size: %ul bytes\n", disk_size_bytes);
+        kernel::print::print("Disk size: %ul bytes\n", disk_size_bytes);
 
         // Extract the model name from IDENTIFY DEVICE data
         char model_name[41]; // Model name is 40 characters + null terminator
@@ -428,7 +446,7 @@ extern "C" void kernel_main() {
         }
         model_name[40] = '\0'; // Null-terminate the string
 
-        kernel_print("Disk model: %s\n", model_name);
+        kernel::print::print("Disk model: %s\n", model_name);
     }
 
 
@@ -439,7 +457,7 @@ extern "C" void kernel_main() {
 
     // volatile HBA_CMD_HEADER* clb_cmd_headers = (volatile HBA_CMD_HEADER*)clb_base_virtual;
 
-    // // Send a simple command (e.g., a Read Status command) to the device and check the response
+    // // Send a simple command (e.g., a Read Status command) to the device & check the response
     // volatile HBA_PORT* hba_port = &hba->ports[0];  // Assume port 0 for this example
 
     // // Clear any existing interrupts
@@ -472,9 +490,9 @@ extern "C" void kernel_main() {
 
     // // Check the response
     // if (hba_port->is & (1 << 0)) {  // Check if the interrupt status bit is set (successful command)
-    //     kernel_print("Device successfully initialized and responded.\n");
+    //     kernel::print::print("Device successfully initialized & responded.\n");
     // } else {
-    //     kernel_print("Device failed to respond to the command.\n");
+    //     kernel::print::print("Device failed to respond to the command.\n");
     // }
 
 
@@ -507,7 +525,7 @@ extern "C" void kernel_main() {
 
     // for (int i = 0; i < 32; i++) {
     //     if (hba->PI & (1 << i)) {
-    //         kernel_print("Port %u is implemented\n", i);
+    //         kernel::print::print("Port %u is implemented\n", i);
     //         volatile HBA_PORT* port = &hba->ports[i];
 
     //         port->cmd &= ~((1 << 4) | (1 << 14));
@@ -536,16 +554,16 @@ extern "C" void kernel_main() {
 
     //         switch (port->sig) {
     //             case 0x00000101:  // ATA device
-    //                 kernel_print("port %u: ATA device\n", i);
+    //                 kernel::print::print("port %u: ATA device\n", i);
     //                 break;
     //             case 0xEB140101:  // ATAPI device (e.g., CD-ROM)
-    //                 kernel_print("port %u: ATAPI device\n", i);
+    //                 kernel::print::print("port %u: ATAPI device\n", i);
     //                 break;
     //             case 0xC33C0101:  // Enclosure management bridge
-    //                 kernel_print("port %u: Port Multiplier\n", i);
+    //                 kernel::print::print("port %u: Port Multiplier\n", i);
     //                 break;
     //             default:
-    //                 kernel_print("port %u: Unknown device type (sig=0x%uh)\n", i, port->sig);
+    //                 kernel::print::print("port %u: Unknown device type (sig=0x%uh)\n", i, port->sig);
     //                 return;
     //         }
 
@@ -608,9 +626,9 @@ extern "C" void kernel_main() {
     //     kernel_assert(false, 0x10002);
     // }
 
-    // kernel_print("Port status: 0x%08X\n", ata_device->ssts);
+    // kernel::print::print("Port status: 0x%08X\n", ata_device->ssts);
     // if ((ata_device->ssts & 0xF) != 0x3) {  // 0x3 means "Active" state
-    //     kernel_print("Port not ready, skipping command\n");
+    //     kernel::print::print("Port not ready, skipping command\n");
     // }
 
     // if ((ata_device->ssts & SSTS_DET_MASK) != SSTS_DET_PRESENT) {
@@ -622,31 +640,31 @@ extern "C" void kernel_main() {
 
 
     // while (ata_device->ci & (1 << 0)) {
-    //     kernel_print("Waiting for command completion...\n");
+    //     kernel::print::print("Waiting for command completion...\n");
     // }
 
     // if (ata_device->tfd & (1 << 0)) {
-    //     kernel_print("Error in command execution\n");
+    //     kernel::print::print("Error in command execution\n");
     // }
 
     // if (ata_device->is & 0xFFFFFFFF) {
-    //     kernel_print("Interrupt occurred: 0x%uh\n", ata_device->is);
+    //     kernel::print::print("Interrupt occurred: 0x%uh\n", ata_device->is);
     //     ata_device->is = 0xFFFFFFFF;  // Clear all interrupt status flags
     // }
 
-    // kernel_print("done\n");
+    // kernel::print::print("done\n");
 
     // uint16_t* identify_data = (uint16_t*)aligned_data_buffer;
-    // kernel_print("Model: ");
-    // kernel_print("%c", identify_data[0]);
-    // kernel_print("%c", identify_data[1]);
-    // kernel_print("-");
+    // kernel::print::print("Model: ");
+    // kernel::print::print("%c", identify_data[0]);
+    // kernel::print::print("%c", identify_data[1]);
+    // kernel::print::print("-");
     // for (int i = 27; i <= 46; i++) {
     //     char char1 = (identify_data[i] >> 8) & 0xFF; // High byte
     //     char char2 = identify_data[i] & 0xFF;        // Low byte
-    //     if (char1) kernel_print("%c", char1);
-    //     if (char2) kernel_print("%c", char2);
+    //     if (char1) kernel::print::print("%c", char1);
+    //     if (char2) kernel::print::print("%c", char2);
     // }
-    // kernel_print("\n");
+    // kernel::print::print("\n");
 
 */

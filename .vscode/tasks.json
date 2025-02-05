@@ -25,7 +25,7 @@
             ],
         },
         {
-            "label": "Compile kernel and Start QEMU",
+            "label": "Compile kernel & Start QEMU",
             "dependsOrder": "sequence",
             "dependsOn": [
                 "Compile kernel",

@@ -4,22 +4,7 @@
 #define __KERNEL_HPP__
 
 #include "common.hpp"
-
-#define NUM_COLS (uint64_t)80
-#define NUM_ROWS (uint64_t)25
-
-// #define VGA_PORT_COMMAND 0x3D4
-// #define VGA_PORT_DATA    0x3D5
-
-#define VGA_MISC_PORT 0x03C2
-#define VGA_SEQ_INDEX 0x03C4
-#define VGA_SEQ_DATA 0x03C5
-#define VGA_GC_INDEX 0x03CE
-#define VGA_GC_DATA 0x03CF
-#define VGA_CRTC_INDEX 0x03D4
-#define VGA_CRTC_DATA 0x03D5
-
-#define KMEM_VGA_BUFFER             0x000B8000
+#include "driver/vga.hpp"
 
 #define KFATAL_KERNEL_ASSERTION_FAILED              0xF00000000
 #define KFATAL_UNHANDLED_INTERRUPT                  0xF00000001
@@ -29,36 +14,56 @@
 #define KFATAL_MEMORY_ALIGNMENT_INCORRECT           0xF00000005
 #define KFATAL_MEMORY_OUT_OF_BOUNDS                 0xF00000006
 
-enum vga_color_t : uint8_t {
-    VGAC_BLACK = 0,
-    VGAC_BLUE = 1,
-    VGAC_GREEN = 2,
-    VGAC_CYAN = 3,
-    VGAC_RED = 4,
-    VGAC_MAGENTA = 5,
-    VGAC_BROWN = 6,
-    VGAC_LIGHT_GRAY = 7,
-    VGAC_DARK_GRAY = 8,
-    VGAC_LIGHT_BLUE = 9,
-    VGAC_LIGHT_GREEN = 10,
-    VGAC_LIGHT_CYAN = 11,
-    VGAC_LIGHT_RED = 12,
-    VGAC_PINK = 13,
-    VGAC_YELLOW = 14,
-    VGAC_WHITE = 15,
-};
-
-void kernel_set_print_color(vga_color_t fg, vga_color_t bg);
-void kernel_clear_row(uint64_t row);
-void kernel_clear_screen();
-void kernel_print_new_line();
-void kernel_move_cursor(uint64_t row, uint64_t col);
-void kernel_print(char ch);
-void kernel_print(const char* string, ...);
 [[noreturn]] void kernel_fatal(uint64_t code, uint64_t extra_code = 0);
-void kernel_set_cursor(uint64_t y, uint64_t x);
 
 namespace kernel {
+
+/// @brief namespace for kernel printing functions
+namespace print {
+
+/// @brief          prints string to the given kernel stdout
+/// @param fmt      string with format chars to print
+/// @param va_args  argument list
+void
+print(
+    const char* fmt,
+    ...);
+
+/// @brief              prints string to the given kernel stdout
+/// @param[in] color    print color for this text after it resets to before
+/// @param fmt          string with format chars to print
+/// @param va_args      argument list
+void
+print(
+    const driver::vga::tm::vga_color_map_t* color,
+    const char* fmt,
+    ...);
+
+/// @brief clears the stdio screen
+void
+clear_screen();
+
+/// @brief      clears the text on the current row & resets the cursor
+/// @param row  row index to clear
+void
+clear_row(
+    uint32_t row);
+
+/// @brief              sets the text color to the given color
+/// @param[in] color    pointer to color struct
+void
+set_color(
+    const driver::vga::tm::vga_color_map_t* color);
+
+/// @brief          sets the cursor to destination
+/// @param x        x pos
+/// @param y        y pos
+void
+set_cusor(
+    uint32_t x,
+    uint32_t y);
+
+} // namespace print
 
 /// @brief namespace for cpu generic asm functions
 namespace cpu {
@@ -95,7 +100,7 @@ in_port(
     uint16_t port,
     uint32_t* value);
 
-/// @brief disabled interrupts and halts the cpu
+/// @brief disabled interrupts & halts the cpu
 void
 halt();
 

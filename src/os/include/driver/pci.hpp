@@ -161,14 +161,14 @@ find_pci_devices(
 //     auto& dev = pci_entries.get()[i];
 //     const char* device_description = kernel::driver::pci::get_class_description(&dev);
 
-//     kernel_print("%s: PCI device %uh:%uh (id: %uh:%uh.%u)\n", device_description, dev.vendor_id, dev.device_id, dev.bus, dev.device, dev.function);
+//     kernel::print::print("%s: PCI device %uh:%uh (id: %uh:%uh.%u)\n", device_description, dev.vendor_id, dev.device_id, dev.bus, dev.device, dev.function);
 
-//     if (dev.bar0_address != 0) kernel_print("    BAR0: 0x%p [0x%p]\n", dev.bar0_address, PCI_BAR_ADDRESS_MASKED(dev.bar0_address));
-//     if (dev.bar1_address != 0) kernel_print("    BAR1: 0x%p [0x%p]\n", dev.bar1_address, PCI_BAR_ADDRESS_MASKED(dev.bar1_address));
-//     if (dev.bar2_address != 0) kernel_print("    BAR2: 0x%p [0x%p]\n", dev.bar2_address, PCI_BAR_ADDRESS_MASKED(dev.bar2_address));
-//     if (dev.bar3_address != 0) kernel_print("    BAR3: 0x%p [0x%p]\n", dev.bar3_address, PCI_BAR_ADDRESS_MASKED(dev.bar3_address));
-//     if (dev.bar4_address != 0) kernel_print("    BAR4: 0x%p [0x%p]\n", dev.bar4_address, PCI_BAR_ADDRESS_MASKED(dev.bar4_address));
-//     if (dev.bar5_address != 0) kernel_print("    BAR5: 0x%p [0x%p]\n", dev.bar5_address, PCI_BAR_ADDRESS_MASKED(dev.bar5_address));
+//     if (dev.bar0_address != 0) kernel::print::print("    BAR0: 0x%p [0x%p]\n", dev.bar0_address, PCI_BAR_ADDRESS_MASKED(dev.bar0_address));
+//     if (dev.bar1_address != 0) kernel::print::print("    BAR1: 0x%p [0x%p]\n", dev.bar1_address, PCI_BAR_ADDRESS_MASKED(dev.bar1_address));
+//     if (dev.bar2_address != 0) kernel::print::print("    BAR2: 0x%p [0x%p]\n", dev.bar2_address, PCI_BAR_ADDRESS_MASKED(dev.bar2_address));
+//     if (dev.bar3_address != 0) kernel::print::print("    BAR3: 0x%p [0x%p]\n", dev.bar3_address, PCI_BAR_ADDRESS_MASKED(dev.bar3_address));
+//     if (dev.bar4_address != 0) kernel::print::print("    BAR4: 0x%p [0x%p]\n", dev.bar4_address, PCI_BAR_ADDRESS_MASKED(dev.bar4_address));
+//     if (dev.bar5_address != 0) kernel::print::print("    BAR5: 0x%p [0x%p]\n", dev.bar5_address, PCI_BAR_ADDRESS_MASKED(dev.bar5_address));
 // }
 
 #endif // __PCI_HPP__

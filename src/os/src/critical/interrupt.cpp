@@ -15,7 +15,7 @@ kernel::interrupt::idt_register_t   g_idtr;
 kernel::driver::keyboard::keyboard_state_t g_keyboard_state {};
 
 void systemcall(uint64_t code) {
-    kernel_print("systemcall: %uh\n", code);
+    kernel::print::print("systemcall: %uh\n", code);
     kernel::cpu::halt();
 }
 
@@ -79,11 +79,11 @@ void kernel_interrupt_handler(uint32_t code) {
             break;
         case 0x21:
             kernel::driver::keyboard::handle_interrupt(&g_keyboard_state);
-            kernel_print("pressed key");
+            kernel::print::print("pressed key");
             (void)kernel::cpu::out_port(kernel::cpu::PT_B, PIC1, 0x20);
             break;
         // case 0x2C:{ // mouse interrupt
-        //     kernel_print("mouse int");
+        //     kernel::print::print("mouse int");
         //     uint32_t data;
         //     (void)kernel::cpu::in_port(kernel::cpu::PT_B, 0x60, &data);
 
@@ -99,7 +99,7 @@ void kernel_interrupt_handler(uint32_t code) {
 
         //     if (offset >= 3) {
         //         offset = 0;
-        //         kernel_print("Mouse: X=%i, Y=%i, Buttons=0x%uh\n",
+        //         kernel::print::print("Mouse: X=%i, Y=%i, Buttons=0x%uh\n",
         //             (int8_t)buffer[1],
         //             -(int8_t)buffer[2],
         //             buffer[0] & 0x07
@@ -111,7 +111,7 @@ void kernel_interrupt_handler(uint32_t code) {
         //     break;
         // }
         default:
-            kernel_print("kernel_interrupt: %uh\n", code);
+            kernel::print::print("kernel_interrupt: %uh\n", code);
             kernel::cpu::halt();
             break;
     }

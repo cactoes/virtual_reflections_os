@@ -3,8 +3,154 @@
 #include "driver/vga.hpp"
 #include "critical/kernel.hpp"
 #include "critical/memory.hpp"
+#include "string.hpp"
 
 kernel::driver::vga::vga_buffer_t* g_back_buffer = nullptr;
+
+kernel::driver::vga::tm::vga_color_map_t g_current_color_map {
+    .color = kernel::driver::vga::tm::VGAC_WHITE | (kernel::driver::vga::tm::VGAC_BLACK << 4)
+};
+
+uint32_t g_vga_tm_current_column = 0;
+uint32_t g_vga_tm_current_row = 0;
+
+void kd_vga_tm_print_new_line() {
+    g_vga_tm_current_column = 0;
+    if (g_vga_tm_current_row < VGA_TM_NUM_ROWS - 1) {
+        g_vga_tm_current_row++;
+        return;
+    }
+
+    volatile uint16_t* vga_tm_mem = (volatile uint16_t*)VGA_TM_BUFFER_ADDR;
+
+    for (uint64_t r = 1; r < VGA_TM_NUM_ROWS; r++)
+        for (uint64_t c = 0; c < VGA_TM_NUM_COLS; c++)
+            vga_tm_mem[c + VGA_TM_NUM_COLS * (r - 1)] = vga_tm_mem[c + VGA_TM_NUM_COLS * r];
+
+    (void)kernel::driver::vga::tm::clear_row(VGA_TM_NUM_COLS - 1);
+}
+
+kresult_t kernel::driver::vga::tm::print(char ch) {
+    if (g_vga_tm_current_column >= VGA_TM_NUM_COLS)
+        kd_vga_tm_print_new_line();
+
+    volatile uint16_t* vga_tm_mem = (volatile uint16_t*)VGA_TM_BUFFER_ADDR;
+
+    switch (ch) {
+        case '\n':
+            kd_vga_tm_print_new_line();
+            break;
+        default:
+            vga_tm_mem[g_vga_tm_current_column + VGA_TM_NUM_COLS * g_vga_tm_current_row] = ch | (g_current_color_map.color << 8);
+            g_vga_tm_current_column++;
+            break;
+    }
+
+    return KRESULT(0);
+}
+
+kresult_t kernel::driver::vga::tm::print(const char* fmt, ...) {
+    if (fmt == nullptr || *fmt == 0)
+        return KRESULT(1);
+
+    char buffer[512] = { 0 };
+
+    va_list args;
+    va_start(args, fmt);
+    size_t strlen = sprintf(buffer, sizeof(buffer), fmt, args);
+    va_end(args);
+
+    for (uint64_t i = 0; buffer[i] != '\0' && i < sizeof(buffer); i++)
+        (void)print(buffer[i]);
+
+    kresult_t result = set_cursor(g_vga_tm_current_column, g_vga_tm_current_row);
+    return KRESULT_IS_OK(result) ? KRESULT(0) : KRESULT(2);
+}
+
+kresult_t kernel::driver::vga::tm::print(const vga_color_map_t* color_map, const char* fmt, ...) {
+    if (fmt == nullptr || *fmt == 0 || color_map == nullptr)
+        return KRESULT(1);
+
+    char buffer[512] = { 0 };
+
+    va_list args;
+    va_start(args, fmt);
+    size_t strlen = sprintf(buffer, sizeof(buffer), fmt, args);
+    va_end(args);
+
+    vga_color_map_t old_color;
+    (void)get_color(&old_color);
+    (void)set_color(color_map);
+
+    for (uint64_t i = 0; buffer[i] != '\0' && i < sizeof(buffer); i++)
+        (void)print(buffer[i]);
+
+    (void)set_color(&old_color);
+
+    kresult_t result = set_cursor(g_vga_tm_current_column, g_vga_tm_current_row);
+    return KRESULT_IS_OK(result) ? KRESULT(0) : KRESULT(2);
+}
+
+kresult_t kernel::driver::vga::tm::set_cursor(uint32_t x, uint32_t y) {
+    int position = x + VGA_TM_NUM_COLS * y;
+
+    (void)kernel::cpu::out_port(kernel::cpu::PT_B, VGA_CRTC_INDEX, 14);
+    (void)kernel::cpu::out_port(kernel::cpu::PT_B, VGA_CRTC_DATA, (position >> 8) & 0xFF);
+    (void)kernel::cpu::out_port(kernel::cpu::PT_B, VGA_CRTC_INDEX, 15);
+    (void)kernel::cpu::out_port(kernel::cpu::PT_B, VGA_CRTC_DATA, position & 0xFF);
+
+    g_vga_tm_current_column = x;
+    g_vga_tm_current_row = y;
+
+    return KRESULT(0);
+}
+
+kresult_t kernel::driver::vga::tm::get_cursor(uint32_t* x, uint32_t* y) {
+    if (x == nullptr || y == nullptr)
+        return KRESULT(1);
+    
+    *x = g_vga_tm_current_column;
+    *y = g_vga_tm_current_row;
+
+    return KRESULT(0);
+}
+
+kresult_t kernel::driver::vga::tm::clear_row(uint32_t row) {
+    if (row >= VGA_TM_NUM_ROWS)
+        return KRESULT(1);
+
+    volatile uint16_t* vga_tm_mem = (volatile uint16_t*)VGA_TM_BUFFER_ADDR;
+    
+    for (uint32_t c = 0; c < VGA_TM_NUM_COLS; c++)
+        vga_tm_mem[c + VGA_TM_NUM_COLS * row] = ' ' | (g_current_color_map.color << 8);
+
+    kresult_t result = set_cursor(0, row);
+    return KRESULT_IS_OK(result) ? KRESULT(0) : KRESULT(2);
+}
+
+kresult_t kernel::driver::vga::tm::clear_screen() {
+    for (uint32_t r = 0; r < VGA_TM_NUM_ROWS; r++)
+        (void)clear_row(r);
+    
+    kresult_t result = set_cursor(0, 0);
+    return KRESULT_IS_OK(result) ? KRESULT(0) : KRESULT(1);
+}
+
+kresult_t kernel::driver::vga::tm::set_color(const vga_color_map_t* color_map) {
+    if (color_map == nullptr)
+        return KRESULT(1);
+
+    g_current_color_map = *color_map;
+    return KRESULT(0);
+}
+
+kresult_t kernel::driver::vga::tm::get_color(vga_color_map_t* color_map) {
+    if (color_map == nullptr)
+        return KRESULT(1);
+
+    *color_map = g_current_color_map;
+    return KRESULT(0);
+}
 
 kresult_t kernel::driver::vga::startup_vga_graphics(const vga_buffer_t* back_buffer) {
     // setup vga in 640x480

@@ -44,7 +44,7 @@ typedef struct __KD_KEYBOARD_KEY_STATE {
 } key_state_t;
 
 /// @brief                              checks if the keypress was a special key or a printable key
-/// @param[inout] keyboard_state        keyboard_state struct to update and compare
+/// @param[inout] keyboard_state        keyboard_state struct to update & compare
 /// @param[in] key_state                key_state struct to check
 /// @return                             true if the key was a special key & handled
 /// @remarks                            this is a very simple implementation & can
@@ -55,7 +55,7 @@ handle_special_key(
     key_state_t* key_state);
 
 /// @brief                  handles keyboard interrupts
-/// @param[inout] state     keyboard_state struct to update and compare
+/// @param[inout] state     keyboard_state struct to update & compare
 /// @remarks                still very incomplete
 void
 handle_interrupt(

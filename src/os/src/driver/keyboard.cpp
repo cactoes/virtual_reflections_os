@@ -100,7 +100,7 @@ void kernel::driver::keyboard::handle_interrupt(keyboard_state_t* state) {
     if (handle_special_key(state, &key_state))
         return;
 
-    // kernel_print("%c", key_state_to_char(state, &key_state));
+    // kernel::print::print("%c", key_state_to_char(state, &key_state));
 }
 
 kernel::driver::keyboard::key_state_t* kernel::driver::keyboard::get_key_state(uint64_t ch) {

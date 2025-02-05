@@ -67,7 +67,7 @@
             ],
             "miDebuggerServerAddress": "localhost:1234",
             "showDisplayString": true,
-            "preLaunchTask": "Compile kernel and Start QEMU"
+            "preLaunchTask": "Compile kernel & Start QEMU"
         }
     ]
 }
