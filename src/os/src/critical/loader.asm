@@ -21,14 +21,14 @@ loader:
     mov [multiboot_info], ebx    ; Save Multiboot info pointer
 
     mov esp, boot_stack
-    & esp, -16
+    and esp, -16
 
     call setup_page_tables
     call enable_paging
 
     mov eax, cr0
     or eax, 0x2    ; Set MP (Monitor Coprocessor) bit
-    & eax, ~0x4  ; Clear EM (Emulation) bit
+    and eax, ~0x4  ; Clear EM (Emulation) bit
     mov cr0, eax
 
     mov eax, cr4

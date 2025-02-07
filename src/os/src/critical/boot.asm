@@ -49,7 +49,7 @@ loader64:
 
     ; set kernel stack
     mov   rsp,    KSTACK_TOP
-    &   rsp,    -16
+    and   rsp,    -16
 
     ; setup basic new page table (KPML4T[0] -> KPDPT[0] -> KPDT)
     mov   rax,      KPDPT

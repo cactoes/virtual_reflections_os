@@ -48,7 +48,7 @@ void kernel::interrupt::init() {
     asm volatile ("sti");
 }
 
-void kernel_interrupt_handler(uint32_t code) {
+cpu_state_t* kernel_interrupt_handler(uint32_t code, cpu_state_t* rsp) {
     switch (code) {
         case 0x0:
         case 0x1:
@@ -115,6 +115,8 @@ void kernel_interrupt_handler(uint32_t code) {
             kernel::cpu::halt();
             break;
     }
+
+    return rsp;
 }
 
 void kernel::interrupt::set_idt_entry(uint8_t vector, void* handler, uint8_t flags) {

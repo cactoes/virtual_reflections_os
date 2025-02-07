@@ -176,16 +176,6 @@ extern "C" void kernel_main() {
     /// =============
     kernel::print::set_cusor(10, 11);
 
-    // (void)kernel::driver::vga::tm::clear_screen();
-
-    // kernel::driver::vga::tm::vga_color_map_t colormap {
-    //     .foreground = kernel::driver::vga::tm::VGAC_WHITE,
-    //     .background = kernel::driver::vga::tm::VGAC_BLUE,
-    // };
-    // (void)kernel::driver::vga::tm::print("pre");
-    // (void)kernel::driver::vga::tm::print(&colormap, "test %s", "yur");
-    // (void)kernel::driver::vga::tm::print("post");
-
     // kernel::driver::vga::vga_buffer_t vga_back_buffer{};
     // (void)kernel::driver::vga::vga_buffer_create(&vga_back_buffer);
 
