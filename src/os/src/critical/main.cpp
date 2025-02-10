@@ -176,6 +176,8 @@ extern "C" void kernel_main() {
     /// =============
     kernel::print::set_cusor(10, 11);
 
+    // kernel_fatal(0x1234);
+
     // kernel::driver::vga::vga_buffer_t vga_back_buffer{};
     // (void)kernel::driver::vga::vga_buffer_create(&vga_back_buffer);
 

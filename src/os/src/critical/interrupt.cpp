@@ -72,7 +72,7 @@ cpu_state_t* kernel_interrupt_handler(uint32_t code, cpu_state_t* rsp) {
         case 0x13:
         case 0x14:
         case 0x15:
-            kernel_fatal(KFATAL_UNHANDLED_INTERRUPT, code);
+            kernel_fatal_ex(KFATAL_UNHANDLED_INTERRUPT, code, rsp);
             break;
         case 0x20: // PIT
             // kernel_fatal(KFATAL_UNHANDLED_INTERRUPT, code);

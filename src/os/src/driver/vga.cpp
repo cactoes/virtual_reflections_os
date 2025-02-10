@@ -27,7 +27,7 @@ void kd_vga_tm_print_new_line() {
         for (uint64_t c = 0; c < VGA_TM_NUM_COLS; c++)
             vga_tm_mem[c + VGA_TM_NUM_COLS * (r - 1)] = vga_tm_mem[c + VGA_TM_NUM_COLS * r];
 
-    (void)kernel::driver::vga::tm::clear_row(VGA_TM_NUM_COLS - 1);
+    (void)kernel::driver::vga::tm::clear_row(VGA_TM_NUM_ROWS - 1);
 }
 
 kresult_t kernel::driver::vga::tm::print(char ch) {

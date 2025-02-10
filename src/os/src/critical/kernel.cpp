@@ -5,7 +5,7 @@
 
 #include <stdarg.h>
 
-void kernel_fatal(uint64_t code, uint64_t extra_code) {
+void kernel_fatal_ex(uint64_t code, uint64_t extra_code, cpu_state_t* cpu_state) {
     kernel::driver::vga::tm::vga_color_map_t color {
         .foreground = kernel::driver::vga::tm::VGAC_LIGHT_GRAY,
         .background = kernel::driver::vga::tm::VGAC_BLUE,
@@ -93,8 +93,58 @@ void kernel_fatal(uint64_t code, uint64_t extra_code) {
         }
     }
 
+    kernel::print::set_cusor(10, 10);
+    kernel::print::print("cf=%ul", (cpu_state->rflags >> 0) & 1);
+    kernel::print::set_cusor(10, 11);
+    kernel::print::print("pf=%ul", (cpu_state->rflags >> 2) & 1);
+    kernel::print::set_cusor(10, 12);
+    kernel::print::print("af=%ul", (cpu_state->rflags >> 4) & 1);
+    kernel::print::set_cusor(10, 13);
+    kernel::print::print("zf=%ul", (cpu_state->rflags >> 6) & 1);
+    kernel::print::set_cusor(10, 14);
+    kernel::print::print("sf=%ul", (cpu_state->rflags >> 7) & 1);
+    kernel::print::set_cusor(10, 15);
+    kernel::print::print("tf=%ul", (cpu_state->rflags >> 8) & 1);
+    kernel::print::set_cusor(10, 16);
+    kernel::print::print("if=%ul", (cpu_state->rflags >> 9) & 1);
+    kernel::print::set_cusor(10, 17);
+    kernel::print::print("df=%ul", (cpu_state->rflags >> 10) & 1);
+    kernel::print::set_cusor(10, 18);
+    kernel::print::print("of=%ul", (cpu_state->rflags >> 11) & 1);
+
+    kernel::print::set_cusor(25, 10);
+    kernel::print::print("r8= %ul", cpu_state->r8);
+    kernel::print::set_cusor(25, 11);
+    kernel::print::print("r9= %ul", cpu_state->r9);
+    kernel::print::set_cusor(25, 12);
+    kernel::print::print("r10=%ul", cpu_state->r10);
+    kernel::print::set_cusor(25, 13);
+    kernel::print::print("r11=%ul", cpu_state->r11);
+    kernel::print::set_cusor(25, 14);
+    kernel::print::print("r12=%ul", cpu_state->r12);
+    kernel::print::set_cusor(25, 15);
+    kernel::print::print("r13=%ul", cpu_state->r13);
+    kernel::print::set_cusor(25, 16);
+    kernel::print::print("r14=%ul", cpu_state->r14);
+    kernel::print::set_cusor(25, 17);
+    kernel::print::print("r15=%ul", cpu_state->r15);
+
+    kernel::print::set_cusor(40, 10);
+    kernel::print::print("rax=%ul", cpu_state->rax);
+    kernel::print::set_cusor(40, 11);
+    kernel::print::print("rcx=%ul", cpu_state->rcx);
+    kernel::print::set_cusor(40, 12);
+    kernel::print::print("rdx=%ul", cpu_state->rdx);
+    kernel::print::set_cusor(40, 13);
+    kernel::print::print("rbp=%ul", cpu_state->rbp);
+    kernel::print::set_cusor(40, 14);
+    kernel::print::print("rsi=%ul", cpu_state->rsi);
+    kernel::print::set_cusor(40, 15);
+    kernel::print::print("rdi=%ul", cpu_state->rdi);
+
     kernel::print::set_cusor(VGA_TM_NUM_COLS, VGA_TM_NUM_ROWS);
 
+    asm volatile("cli");
     while (true)
         kernel::cpu::halt();
 }

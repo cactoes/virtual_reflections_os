@@ -5,6 +5,7 @@
 
 #include "common.hpp"
 #include "driver/vga.hpp"
+#include "critical/interrupt.hpp"
 
 #define KFATAL_KERNEL_ASSERTION_FAILED              0xF00000000
 #define KFATAL_UNHANDLED_INTERRUPT                  0xF00000001
@@ -14,7 +15,27 @@
 #define KFATAL_MEMORY_ALIGNMENT_INCORRECT           0xF00000005
 #define KFATAL_MEMORY_OUT_OF_BOUNDS                 0xF00000006
 
-[[noreturn]] void kernel_fatal(uint64_t code, uint64_t extra_code = 0);
+extern "C" void __dump_cpu(cpu_state_t* buffer);
+
+extern "C" [[noreturn]] void kernel_fatal_ex(uint64_t code, uint64_t extra_code, cpu_state_t* cpu_state);
+
+__attribute__((naked)) [[noreturn]] inline void kernel_fatal(uint64_t code, uint64_t extra_code = 0) {
+    asm volatile (
+        "sub %0, %%rsp\n"      // reserve space for cpu_state_t
+        "and $-16, %%rsp\n"    // stack alignment
+
+        "mov %%rsp, %%rdi\n"   // cpu_state
+        "call __dump_cpu\n"
+
+        "mov %1, %%rdi\n"      // code
+        "mov %2, %%rsi\n"      // extra_code
+        "mov %%rsp, %%rdx\n"   // cpu_state
+        "call kernel_fatal_ex\n"
+        :
+        : "i"(sizeof(cpu_state_t)),"r" (code), "r" (extra_code)
+        : "memory", "rdi", "rsi", "rdx"
+    );
+}
 
 namespace kernel {
 
