@@ -164,7 +164,7 @@ extern "C" void kernel_main() {
 
     // print to kernel
     char buffer[256];
-    sprintf(buffer, 256, "PCI (%u - %u (%u devices))", requested_devices_size, device_count - requested_devices_size, device_count);
+    sprintf(buffer, 256, "PCI (r:%u - a:%u (t:%u devices))", requested_devices_size, device_count - requested_devices_size, device_count);
 
     kernel::print::clear_row(10);
     safe_draw_logo();
@@ -175,8 +175,6 @@ extern "C" void kernel_main() {
     /// setup VGA graphics
     /// =============
     kernel::print::set_cusor(10, 11);
-
-    // kernel_fatal(0x1234);
 
     // kernel::driver::vga::vga_buffer_t vga_back_buffer{};
     // (void)kernel::driver::vga::vga_buffer_create(&vga_back_buffer);
