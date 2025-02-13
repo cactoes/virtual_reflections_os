@@ -79,7 +79,7 @@ void safe_draw_logo() {
 
 extern "C" void kernel_main() {
     /// =============
-    /// boot logo (VGA MODE)
+    /// boot logo (VGA TEXT MODE)
     /// =============
     kernel::driver::vga::tm::vga_color_map_t color {
         .foreground = kernel::driver::vga::tm::VGAC_LIGHT_GRAY,
@@ -175,8 +175,6 @@ extern "C" void kernel_main() {
     /// setup VGA graphics
     /// =============
     kernel::print::set_cusor(10, 11);
-
-    // kernel_fatal(0x1234);
 
     // kernel::driver::vga::vga_buffer_t vga_back_buffer{};
     // (void)kernel::driver::vga::vga_buffer_create(&vga_back_buffer);

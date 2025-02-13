@@ -1,5 +1,2 @@
 # dont ships builds
 build/*
-
-# do ship the test vhd
-!build/disk.vhd

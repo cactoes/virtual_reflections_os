@@ -1,5 +1,12 @@
+/* ========================================== */
+/* @file    linker.ld                         */
+/* @brief   linker script for the kernel      */
+/* ========================================== */
+
+/* entrypoint subroutine name */
 ENTRY(loader)
 
+/* different code segments, offset at 2MB */
 SECTIONS {
     . = 2M;
 

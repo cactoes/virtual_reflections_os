@@ -4,17 +4,23 @@ A 64-bit custom made operating system, using grub as bootloader
 ## Setup build environment
 ### Windows host
 ```powershell
-PS> .\docker_start.ps1
+PS> docker build . -t virtual_reflections_os_buildenv
 ```
-### Used commands
-`docker build . -t virtual_reflections_os_buildenv` <br>
-`docker run --name VirtualReflectionsOS --rm -it -v "${PWD}:/root/env" virtual_reflections_os_buildenv`
 
 ### Usage
 When inside the build env. run the `build.sh` script to automatically `make clean && make build`.
 ```bash
 $ ./build.sh
 ```
+
+## Building the ISO
+### Windows host
+```powershell
+PS> .\docker_build.ps1
+```
+
+### Used commands
+`docker run --name VirtualReflectionsOS --rm -v "${PWD}:/root/env" virtual_reflections_os_buildenv`
 
 ## Running QEMU
 Start the QEMU environment with the required startup flags.
