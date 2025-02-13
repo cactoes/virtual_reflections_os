@@ -13,7 +13,6 @@
 typedef void (*constructor)();
 extern "C" constructor start_ctors;
 extern "C" constructor end_ctors;
-extern "C" uint64_t KPML4T;
 
 extern "C" void call_constructors() {
     for (constructor* i = &start_ctors; i != &end_ctors; i++)
@@ -53,7 +52,7 @@ void kernel_wait_status(const char* message) {
     kernel::print::print("\n");
 }
 
-extern "C" uint64_t multiboot_magic;
+// extern "C" uint64_t multiboot_magic;
 
 // extern "C" uint64_t bss_size;
 // extern "C" uint64_t bss_start;
@@ -77,7 +76,12 @@ void safe_draw_logo() {
     kernel::print::set_cusor(44, 20); kernel::print::print("        :@  %=        \n");
 }
 
-extern "C" void kernel_main() {
+typedef struct __MULTIBOOT {
+    uint64_t magic;
+    void* info;
+} multiboot_t;
+
+extern "C" void kernel_main(multiboot_t* multiboot_header, uint64_t* KPML4T) {
     /// =============
     /// boot logo (VGA TEXT MODE)
     /// =============
@@ -105,7 +109,7 @@ extern "C" void kernel_main() {
     kernel::print::clear_row(7);
     safe_draw_logo();
     kernel::print::set_cusor(10, 7);
-    kernel_assert_status(multiboot_magic == 0x2BADB002, "multiboot", 0x1);
+    kernel_assert_status(multiboot_header->magic == 0x2BADB002, "multiboot", 0x1);
 
     /// =============
     /// setup interrupts
@@ -124,7 +128,7 @@ extern "C" void kernel_main() {
     kernel::print::set_cusor(10, 9);
     kernel_wait_status("memory");
     kernel::memory::heap_t kheap = {};
-    kernel::memory::vmem::init(&kheap, &KPML4T);
+    kernel::memory::vmem::init(&kheap, KPML4T, multiboot_header->info);
 
     int* test_ptr = (int*)kernel::memory::vmem::kalloc(sizeof(int));
     *test_ptr = 0x1234567;

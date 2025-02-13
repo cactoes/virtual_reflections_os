@@ -7,6 +7,7 @@ section .text
     ; c functions
     extern kernel_main
     extern call_constructors
+    extern multiboot_magic
 
     ; loader variables
     extern bss_size
@@ -63,6 +64,10 @@ loader64:
     ; setup remaining c++ stuff
     call call_constructors
 
+    ; push multiboot struct to func
+    mov rdi, multiboot_magic
+    ; push kernel page table struct
+    mov rsi, KPML4T
     ; i hope everything has been setup, godspeed o7
     call kernel_main
 

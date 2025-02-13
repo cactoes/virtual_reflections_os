@@ -208,14 +208,14 @@ void __identity_map(uint64_t* pml4t) {
     }
 }
 
-typedef struct __MB_MMAP_ENTRY_T {
+typedef struct __MB_MMAP_ENTRY {
     uint32_t size;
     uint64_t addr;
     uint64_t len;
     uint32_t type;
 } __attribute__((packed)) multiboot_mmap_entry_t;
 
-typedef struct __MB_INFO_T {
+typedef struct __MB_INFO {
     uint32_t flags;
 
     // Memory info
@@ -270,7 +270,7 @@ enum mmap_type_t {
     MMAPT_ACPI_NVS
 };
 
-void kernel::memory::vmem::init(heap_t* heap, uint64_t* pml4t) {
+void kernel::memory::vmem::init(heap_t* heap, uint64_t* pml4t, void* multiboot_info) {
     // zero page
     memzero(0, PAGE_SIZE);
 

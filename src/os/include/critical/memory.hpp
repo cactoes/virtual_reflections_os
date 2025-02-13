@@ -182,15 +182,17 @@ virtual_to_physical(
 /// @brief namespace for virtual memory related functions
 namespace vmem {
 
-/// @brief                  initializes memory
-/// @param[inout] heap      pointer to a heap struct
-/// @param[inout] pml4t     pointer to a valid PML4 table
-/// @details                this function reassigns the pml4 that the cpu wants
-///                         it also sets the global heap & pml4 pointer for kalloc & kfree
+/// @brief                          initializes memory
+/// @param[inout] heap              pointer to a heap struct
+/// @param[inout] pml4t             pointer to a valid PML4 table
+/// @param[in]    multiboot_info    pointer to multiboot structure
+/// @details                        this function reassigns the pml4 that the cpu wants
+///                                 it also sets the global heap & pml4 pointer for kalloc & kfree
 void
 init(
     heap_t* heap,
-    uint64_t* pml4t);
+    uint64_t* pml4t,
+    void* multiboot_info);
 
 /// @brief                      initializes the kernel heap to a specific size
 /// @param[inout] heap          pointer to a heap struct

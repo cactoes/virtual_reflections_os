@@ -13,7 +13,6 @@ section .text
     extern loader64
     global loader
     global multiboot_magic
-    global multiboot_info
 
 bits 32
 loader:
@@ -113,8 +112,10 @@ boot_stack_bottom:
     resb 4096 * 4; 1 kb pre stack
 boot_stack:
 align 8
-multiboot_magic: resq 1
-multiboot_info: resq 1
+; muliboot struct
+multiboot_magic: resq 1 ; uint64_t
+multiboot_info:  resq 1 ; void*
+; uint64_t bss end ptr
 end_bss_keep: resq 1
 
 section .rodata
