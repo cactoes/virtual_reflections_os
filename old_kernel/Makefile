@@ -1,6 +1,5 @@
-SOURCE_FILES_PATH = src/kernel/src
-HEADER_FILES_PATH = src/kernel/include
-ASMMBLY_FILES_PATH = src/kernel/asm
+SOURCE_FILES_PATH = src/os/src
+HEADER_FILES_PATH = src/os/include
 
 # [!!!] -mno-sse2: SSE2 is disabled
 GPP_COMPILE_FLAGS = -nostdlib -m64 -mno-red-zone -mno-sse2 -fno-rtti -fno-exceptions -Werror -Wunused-result
@@ -8,16 +7,16 @@ GPP_COMPILE_FLAGS = -nostdlib -m64 -mno-red-zone -mno-sse2 -fno-rtti -fno-except
 source_files := $(shell find $(SOURCE_FILES_PATH) -name *.cpp)
 object_files := $(patsubst $(SOURCE_FILES_PATH)/%.cpp, build/objects/%.o, $(source_files))
 
-asm_files := $(shell find $(ASMMBLY_FILES_PATH) -name *.asm)
-asm_object_files := $(patsubst $(ASMMBLY_FILES_PATH)/%.asm, build/objects/%.o, $(asm_files))
+asm_files := $(shell find $(SOURCE_FILES_PATH) -name *.asm)
+asm_object_files := $(patsubst $(SOURCE_FILES_PATH)/%.asm, build/objects/%.o, $(asm_files))
 
 $(object_files): build/objects/%.o : $(SOURCE_FILES_PATH)/%.cpp
 	mkdir -p $(dir $@) && \
 	x86_64-elf-g++ -z max-page-size=0x1000 -g $(GPP_COMPILE_FLAGS) -c -I $(HEADER_FILES_PATH) -ffreestanding $(patsubst build/objects/%.o, $(SOURCE_FILES_PATH)/%.cpp, $@) -o $@
 
-$(asm_object_files): build/objects/%.o : $(ASMMBLY_FILES_PATH)/%.asm
+$(asm_object_files): build/objects/%.o : $(SOURCE_FILES_PATH)/%.asm
 	mkdir -p $(dir $@) && \
-	nasm -f elf64 $(patsubst build/objects/%.o, $(ASMMBLY_FILES_PATH)/%.asm, $@) -o $@
+	nasm -f elf64 $(patsubst build/objects/%.o, $(SOURCE_FILES_PATH)/%.asm, $@) -o $@
 
 .PHONY: build clean
 

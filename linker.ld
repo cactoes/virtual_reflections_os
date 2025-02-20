@@ -4,7 +4,7 @@
 /* ========================================== */
 
 /* entrypoint subroutine name */
-ENTRY(loader)
+ENTRY(entry)
 
 /* different code segments, offset at 2MB */
 SECTIONS {
@@ -20,21 +20,21 @@ SECTIONS {
     }
 
     .data : ALIGN(4K) {
-        start_ctors = .;
+        __lnk_start_ctors = .;
         KEEP(*( .init_array ));
         KEEP(*(SORT_BY_INIT_PRIORITY( .init_array.* )));
-        end_ctors = .;
+        __lnk_end_ctors = .;
         *(.data*)
     }
 
     .bss : ALIGN(4K) {
-        bss_start = ABSOLUTE(.);
+        __lnk_bss_start = ABSOLUTE(.);
         *(.bss)
         *(COMMON)
     }
-    bss_size = ABSOLUTE(.) - bss_start;
+    __lnk_bss_size = ABSOLUTE(.) - __lnk_bss_start;
 
-    end_kernel = .;
+    __lnk_end_kernel = .;
 
     /DISCARD/ : {
         *(.fini_array*)
