@@ -240,8 +240,8 @@ memory_map_entry_t* mb_get_next_entry(multiboot_t* multiboot_struct, memory_map_
 // variable placed at the end of the kernel
 extern "C" uint64_t __lnk_end_kernel;
 
-#define KERNEL_PAGE_CRITICAL_BITMAP_SIZE 0x20000
-#define KERNEL_PAGE_BITMAP_SIZE 0x40000
+#define KERNEL_PAGE_CRITICAL_BITMAP_SIZE 0x2000 // 1GB
+#define KERNEL_PAGE_BITMAP_SIZE          0x4000 // 2GB
 
 uint64_t kernel_page_critical_bitmap[KERNEL_PAGE_CRITICAL_BITMAP_SIZE] {};
 uint64_t kernel_page_bitmap[KERNEL_PAGE_BITMAP_SIZE] {};
@@ -280,14 +280,11 @@ bool vmem_paging_reserve_at_adress(uint64_t address, size_t count = 1) {
     constexpr uint64_t end_critical_memory_space = KERNEL_PAGE_CRITICAL_BITMAP_SIZE * PAGE_SIZE;
     constexpr uint64_t end_memory_space = end_critical_memory_space + KERNEL_PAGE_BITMAP_SIZE * PAGE_SIZE;
 
-    // uint64_t* bitmap = nullptr;
-    // size_t size = 0;
-
     if (address + (PAGE_SIZE * count) < end_critical_memory_space) {
         size_t page_start_index = address / PAGE_SIZE;
         size_t current_count = 0;
         for (size_t i = page_start_index; i < KERNEL_PAGE_CRITICAL_BITMAP_SIZE; i++) {
-            bitmap_get(kernel_page_critical_bitmap, i)
+            !bitmap_get(kernel_page_critical_bitmap, i)
                 ? current_count++
                 : current_count = 0;
 
@@ -309,7 +306,7 @@ bool vmem_paging_reserve_at_adress(uint64_t address, size_t count = 1) {
 
         size_t current_count = 0;
         for (size_t i = page_start_index; i < KERNEL_PAGE_BITMAP_SIZE; i++) {
-            bitmap_get(kernel_page_bitmap, i)
+            !bitmap_get(kernel_page_bitmap, i)
                 ? current_count++
                 : current_count = 0;
 
@@ -350,6 +347,99 @@ void vmem_identity_map(uint64_t* pml4) {
     }
 }
 
+bool vmem_map_2kb_page(void* pml4, void* virtual_addr, void* physical_addr) {
+    if (!check_alignment((uint64_t)virtual_addr, PAGE_SIZE) ||
+        !check_alignment((uint64_t)physical_addr, PAGE_SIZE)) {
+        return false;
+    }
+
+    const uint64_t pml4e =    KPAGING_GET_PE(virtual_addr, 39);
+    const uint64_t pdpe =     KPAGING_GET_PE(virtual_addr, 30);
+    const uint64_t pde =      KPAGING_GET_PE(virtual_addr, 21);
+    const uint64_t pte =      KPAGING_GET_PE(virtual_addr, 12);
+
+    if (!KPAGING_CHECK_ENTRY(pml4, pml4e)) {
+        auto page = vmem_get_page_critical();
+        ((uint64_t*)pml4)[pml4e] = (uint64_t)page | PF_PRESENT | PF_READ_WRITE;
+        memzero(page, PAGE_SIZE);
+    }
+
+    auto pdpt = KPAGING_GET_ENTRY(pml4, pml4e);
+    if (!KPAGING_CHECK_ENTRY(pdpt, pdpe)) {
+        auto page = vmem_get_page_critical();
+        pdpt[pdpe] = (uint64_t)page | PF_PRESENT | PF_READ_WRITE;
+        memzero(page, PAGE_SIZE);
+    }
+
+    auto pdt = KPAGING_GET_ENTRY(pdpt, pdpe);
+    if (!KPAGING_CHECK_ENTRY(pdt, pde)) {
+        auto page = vmem_get_page_critical();
+        pdt[pde] = (uint64_t)page | PF_PRESENT | PF_READ_WRITE;
+        memzero(page, PAGE_SIZE);
+    }
+
+    auto ptt = KPAGING_GET_ENTRY(pdt, pde);
+    ptt[pte] = ((uint64_t)physical_addr & ~0xFFF) | PF_PRESENT | PF_READ_WRITE;
+    __flush_tlb((uint64_t*)virtual_addr);
+
+    return true;
+}
+
+bool vmem_map_2mb_page(void* pml4, void* virtual_addr, void* physical_addr) {
+    if (!check_alignment((uint64_t)virtual_addr, PAGE_SIZE_LARGE) ||
+        !check_alignment((uint64_t)physical_addr, PAGE_SIZE_LARGE)) {
+        return false;
+    }
+
+    const uint64_t pml4e =    KPAGING_GET_PE(virtual_addr, 39);
+    const uint64_t pdpe =     KPAGING_GET_PE(virtual_addr, 30);
+    const uint64_t pde =      KPAGING_GET_PE(virtual_addr, 21);
+
+    if (!KPAGING_CHECK_ENTRY(pml4, pml4e)) {
+        auto page = vmem_get_page_critical();
+        ((uint64_t*)pml4)[pml4e] = (uint64_t)page | PF_PRESENT | PF_READ_WRITE;
+        memzero(page, PAGE_SIZE);
+    }
+
+    uint64_t* pdpt = KPAGING_GET_ENTRY(pml4, pml4e);
+    if (!KPAGING_CHECK_ENTRY(pdpt, pdpe)) {
+        auto page = vmem_get_page_critical();
+        pdpt[pdpe] = (uint64_t)page | PF_PRESENT | PF_READ_WRITE;
+        memzero(page, PAGE_SIZE);
+    }
+
+    uint64_t* pdt = KPAGING_GET_ENTRY(pdpt, pdpe);
+    pdt[pde] = ((uint64_t)physical_addr & ~0x1FFFFF) | PF_PRESENT | PF_READ_WRITE | PF_PAGE_SIZE;
+    __flush_tlb((uint64_t*)virtual_addr);
+
+    return true;
+}
+
+size_t vmem_smart_alloc_pages(void* pml4, void* virtual_addr, size_t size) {
+    size_t allocated = 0;
+    uint64_t current_virtual_address = (uint64_t)virtual_addr;
+
+    while (allocated < size) {
+        uint64_t target_physical_address = (uint64_t)vmem_get_page();
+
+        // force 2mb memory alignment
+        if (!check_alignment(target_physical_address, PAGE_SIZE_LARGE))
+            continue;
+
+        // reserve the remaining pages to complete 2MB
+        vmem_paging_reserve_at_adress(target_physical_address + PAGE_SIZE, (PAGE_SIZE_LARGE / PAGE_SIZE - 1));
+
+        // map the address
+        vmem_map_2mb_page(pml4, (void*)current_virtual_address, (void*)target_physical_address);
+
+        // update counters
+        allocated += PAGE_SIZE_LARGE;
+        current_virtual_address += PAGE_SIZE_LARGE;
+    }
+
+    return allocated;
+}
+
 void vmem_init(multiboot_t* multiboot_struct, void* pml4) {
     // TODO: check result vmem reserve
 
@@ -369,7 +459,7 @@ void vmem_init(multiboot_t* multiboot_struct, void* pml4) {
 
             // reserve as much as possible
             for (size_t i = 0; i < mm_entry->len; i += PAGE_SIZE) {
-                vmem_paging_reserve_at_adress(mm_entry->addr + i);
+                vmem_paging_reserve_at_adress(align_addr_down(mm_entry->addr, PAGE_SIZE) + i);
             }
         }
     }
@@ -379,10 +469,81 @@ void vmem_init(multiboot_t* multiboot_struct, void* pml4) {
     __set_pml4(pml4);
 }
 
-void heap_init() {}
+struct heap_block_t {
+    void* start_real_addr;
+    void* next;
+    void* prev;
+    size_t size;
+    bool free;
+} __attribute__((packed));
+
+struct heap_t {
+    heap_block_t* heap_block_array;
+    size_t heap_block_array_size;
+    heap_block_t* last;
+};
+
+void heap_init(heap_t* heap, void* pml4, void* virtual_address, size_t size) {
+    // TODO: check result vmem reserve
+
+    // the heap is just raw memory no data structures
+    uint64_t heap_size = vmem_smart_alloc_pages(pml4, virtual_address, size);
+
+    // heap struct (identity mapped memory)
+    void* p_page = vmem_get_page_critical();
+    vmem_paging_reserve_at_adress((uint64_t)p_page + PAGE_SIZE, (PAGE_SIZE_LARGE / PAGE_SIZE - 1));
+    vmem_map_2mb_page(pml4, p_page, p_page);
+
+    // setup heap stuct
+    heap->heap_block_array = (heap_block_t*)p_page;
+    heap->heap_block_array_size = 2000000 / sizeof(heap_block_t);
+    heap->last = heap->heap_block_array;
+
+    // first block is size of entire heap, but un allocated
+    heap->heap_block_array->start_real_addr = virtual_address;
+    heap->heap_block_array->next = nullptr;
+    heap->heap_block_array->prev = nullptr;
+    heap->heap_block_array->size = heap_size;
+    heap->heap_block_array->free = true;
+
+    /*
+        [heap_block]
+        size : number
+        free : bool
+        next : ptr
+        prev : ptr
+        start : addr
+    
+        allocator:
+        loops blocks for free block of matching size
+        allocates a block in heap struct
+
+        places heap struct in the rest of the heap structs
+
+        deallocator:
+        loops blocks for start addr + size -> contains ptr to free?
+        loops block for start addr == ptr to free
+
+        ->
+
+        check if blocks can be combined etc
+    */
+}
+
+void* malloc(heap_t* heap, size_t size) {
+    heap_block_t* heap_block_current = heap->heap_block_array;
+
+    // if (heap_block_last->size < size)
+    //     return nullptr;
+
+    // heap_block_t* heap_block(uint64_t)heap_block_last + sizeof(heap_block_t);
+}
 
 extern "C" void kernel_entry(multiboot_t* multiboot_struct, void* kpml4) {
     vmem_init(multiboot_struct, kpml4);
+
+    heap_t heap {};
+    heap_init(&heap, kpml4, (void*)0x40000000, 0x100000 * 32);
 
     while (true) {}
 }
