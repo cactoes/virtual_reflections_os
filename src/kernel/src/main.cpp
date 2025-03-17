@@ -470,11 +470,26 @@ void vmem_init(multiboot_t* multiboot_struct, void* pml4) {
 }
 
 struct heap_block_t {
+    // start of virtual address
     void* start_real_addr;
+
+    // size of memory block
+    size_t size;
+    
+    // bitfield
+    struct {
+        // is the memory region used
+        bool free : 1;
+
+        // is the struct used
+        // if false all other fields are invalid memory
+        bool used : 1;
+    };
+
+    // so we can easly deallocate
     heap_block_t* next;
     heap_block_t* prev;
-    size_t size;
-    bool free;
+    
 } __attribute__((packed));
 
 struct heap_t {
@@ -505,8 +520,29 @@ void heap_init(heap_t* heap, void* pml4, void* virtual_address, size_t size) {
     heap->heap_block_array->prev = nullptr;
     heap->heap_block_array->size = heap_size;
     heap->heap_block_array->free = true;
+    heap->heap_block_array->used = true;
 
     /*
+    v2
+        [heap_block]
+        size : number
+        start : addr
+        used : bool
+        free : bool
+
+        allocator:
+        loops blocks for free block of matching size
+        also loops blocks for unused heap_block_t for the new block
+
+        resizes the old & initialzes the new heap block
+        returns the start
+
+        deallocator:
+        free's the block & merges block where possible in linear style
+    */
+
+    /*
+    v1
         [heap_block]
         size : number
         free : bool
@@ -531,53 +567,143 @@ void heap_init(heap_t* heap, void* pml4, void* virtual_address, size_t size) {
 }
 
 void* malloc(heap_t* heap, size_t size) {
+    // TODO: if donor block == size just assign that
+
+
     // check if there are still more blocks
-    if (heap->heap_block_count >= heap->heap_block_array_size) {
-        return nullptr;
-    }
+    // if (heap->heap_block_count >= heap->heap_block_array_size) {
+    //     return nullptr;
+    // }
     
-    for (heap_block_t* heap_block_current = heap->heap_block_array; heap_block_current; heap_block_current = heap_block_current->next) {
-        // current block is valid
-        if (heap_block_current->free && heap_block_current->size >= size) {
-            // get a new heap block in the array
-            heap_block_t* new_heap_block = (heap_block_t*)((uint64_t)heap->heap_block_array + (sizeof(heap_block_t) * heap->heap_block_count));
-            heap->heap_block_count++;
+    // for (heap_block_t* heap_block_current = heap->heap_block_array; heap_block_current; heap_block_current = heap_block_current->next) {
+    //     // current block is valid
+    //     if (heap_block_current->free && heap_block_current->size >= size) {
+    //         // get a new heap block in the array
+    //         heap_block_t* new_heap_block = (heap_block_t*)((uint64_t)heap->heap_block_array + (sizeof(heap_block_t) * heap->heap_block_count));
+    //         heap->heap_block_count++;
 
-            memzero((void*)new_heap_block, sizeof(heap_block_t));
+    //         memzero((void*)new_heap_block, sizeof(heap_block_t));
             
-            heap_block_current->free = false;
-            new_heap_block->free = true;
+    //         heap_block_current->free = false;
+    //         new_heap_block->free = true;
 
-            heap_block_current->next = new_heap_block;
-            new_heap_block->prev = heap_block_current;
+    //         heap_block_current->next = new_heap_block;
+    //         new_heap_block->prev = heap_block_current;
 
-            new_heap_block->size = heap_block_current->size - size;
-            heap_block_current->size = size;
+    //         new_heap_block->size = heap_block_current->size - size;
+    //         heap_block_current->size = size;
 
-            new_heap_block->start_real_addr = (void*)((uint64_t)heap_block_current->start_real_addr + size);
+    //         new_heap_block->start_real_addr = (void*)((uint64_t)heap_block_current->start_real_addr + size);
 
-            return heap_block_current->start_real_addr;
+    //         return heap_block_current->start_real_addr;
+    //     }
+    // }
+
+    // heap block that we can write our data to
+    // & assign our new memory block to
+    heap_block_t* unused_block = nullptr;
+
+    // heap block that is >= requested size
+    // aka the donor block
+    heap_block_t* donor_block = nullptr;
+
+    for (size_t i = 0; i < heap->heap_block_array_size; i++) {
+        if (unused_block != nullptr && donor_block != nullptr)
+            break;
+
+        heap_block_t* current_block = &heap->heap_block_array[i];
+
+        // find donor block
+        if (donor_block == nullptr) {
+            if (current_block->used && current_block->free && current_block->size >= size) {
+                donor_block = current_block;
+                continue;
+            }
+        }
+
+        // find unused block
+        if (unused_block == nullptr) {
+            if (!current_block->used) {
+                unused_block = current_block;
+                continue;
+            }
         }
     }
 
-    return nullptr;
+    // unable to allocate the memory block
+    if (unused_block == nullptr || donor_block == nullptr)
+        return nullptr;
+
+    // // resize the donor block
+    // donor_block->size -= size;
+    // // move its start forward
+    // donor_block->start_real_addr = (void*)((uint64_t)donor_block->start_real_addr + size);
+
+    // unused_block->free = false;
+    // unused_block->used = true;
+    // unused_block->size = size;
+    // // new block starts at the beginning of the donor block
+    // unused_block->start_real_addr = (void*)((uint64_t)donor_block->start_real_addr - size);
+
+    // unused_block->next = donor_block;
+    // unused_block->prev = donor_block->prev;
+    // donor_block->prev = unused_block;
+    // if (unused_block->prev)
+    //     unused_block->prev->next = unused_block;
+
+    return unused_block->start_real_addr;
 }
 
 void free(heap_t* heap, void* ptr) {
-    // find the correct heap block
-    for (heap_block_t* heap_block_current = heap->heap_block_array; heap_block_current; heap_block_current = heap_block_current->next) {
-        if (heap_block_current->start_real_addr != ptr) {
-            continue;
+//     // find the correct heap block
+//     for (heap_block_t* heap_block_current = heap->heap_block_array; heap_block_current; heap_block_current = heap_block_current->next) {
+//         if (heap_block_current->start_real_addr != ptr) {
+//             continue;
+//         }
+
+//         heap_block_current->free = true;
+
+//         // combining logic
+//         // is block next free?
+//         // is prev block free?
+//         // combine if free
+//         // make it loop just incase there is another we can now also add as free 
+//     }
+
+    for (heap_block_t* current_block = heap->heap_block_array; current_block; current_block = current_block->next) {
+        // heap_block_t* current_block = &heap->heap_block_array[i];
+        
+        // find the correct block & free it
+        if (current_block->start_real_addr == ptr) {
+            current_block->free = true;
+            break;
         }
-
-        heap_block_current->free = true;
-
-        // combining logic
-        // is block next free?
-        // is prev block free?
-        // combine if free
-        // make it loop just incase there is another we can now also add as free 
     }
+
+    for (heap_block_t* current_block = heap->heap_block_array; current_block; current_block = current_block->next) {
+        heap_block_t* next_block = current_block->next;
+        if (current_block->free && next_block && next_block->free) {
+            
+            current_block->size += next_block->size;
+
+            current_block->next = next_block->next;
+            if (current_block->next)
+                current_block->next->prev = current_block;
+
+            memzero((void*)next_block, sizeof(heap_block_t));
+        }
+    }
+
+    // // merge blocks forward
+    // for (size_t i = 0; i + 1 < heap->heap_block_array_size; i++) {
+    //     heap_block_t* current_block = &heap->heap_block_array[i];
+    //     heap_block_t* next_block = &heap->heap_block_array[i + 1];
+
+    //     if (current_block->used && next_block->used &&
+    //         current_block->free && next_block->free) {
+            
+    //     }
+    // }
 }
 
 extern "C" void kernel_entry(multiboot_t* multiboot_struct, void* kpml4) {
@@ -587,7 +713,13 @@ extern "C" void kernel_entry(multiboot_t* multiboot_struct, void* kpml4) {
     heap_init(&heap, kpml4, (void*)0x40000000, 0x100000 * 32);
 
     void* addr = malloc(&heap, 0x1000);
-    free(&heap, addr);
+    // free(&heap, addr);
+
+    void* addr1 = malloc(&heap, 0x1000);
+    // free(&heap, addr1);
+
+    void* addr2 = malloc(&heap, 0x1000);
+    // free(&heap, addr2);
 
     while (true) {}
 }
