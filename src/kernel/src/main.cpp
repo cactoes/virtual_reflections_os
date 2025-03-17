@@ -471,8 +471,8 @@ void vmem_init(multiboot_t* multiboot_struct, void* pml4) {
 
 struct heap_block_t {
     void* start_real_addr;
-    void* next;
-    void* prev;
+    heap_block_t* next;
+    heap_block_t* prev;
     size_t size;
     bool free;
 } __attribute__((packed));
@@ -480,7 +480,8 @@ struct heap_block_t {
 struct heap_t {
     heap_block_t* heap_block_array;
     size_t heap_block_array_size;
-    heap_block_t* last;
+    // heap_block_t* heap_block_top;
+    size_t heap_block_count;
 };
 
 void heap_init(heap_t* heap, void* pml4, void* virtual_address, size_t size) {
@@ -497,7 +498,7 @@ void heap_init(heap_t* heap, void* pml4, void* virtual_address, size_t size) {
     // setup heap stuct
     heap->heap_block_array = (heap_block_t*)p_page;
     heap->heap_block_array_size = 2000000 / sizeof(heap_block_t);
-    heap->last = heap->heap_block_array;
+    heap->heap_block_count = 1;
 
     // first block is size of entire heap, but un allocated
     heap->heap_block_array->start_real_addr = virtual_address;
@@ -537,6 +538,24 @@ void* malloc(heap_t* heap, size_t size) {
     //     return nullptr;
 
     // heap_block_t* heap_block(uint64_t)heap_block_last + sizeof(heap_block_t);
+    
+    for (heap_block_t* heap_block_current = heap->heap_block_array; heap_block_current; heap_block_current = heap_block_current->next) {
+        // if (heap_block_current == heap->heap_block_last) {
+        //     // TODO
+        // }
+
+        if (heap_block_current->free && heap_block_current->size >= size) {
+            // no new block needed
+            if (heap_block_current->size == size) {
+                heap_block_current->free = false;
+                return heap_block_current->start_real_addr;
+            }
+
+            heap_block_t* new_heap_block = (heap_block_t*)((uint64_t)heap->heap_block_array + (sizeof(heap_block_t) * heap->heap_block_count));
+
+            return new_heap_block->start_real_addr;
+        }
+    }
 }
 
 extern "C" void kernel_entry(multiboot_t* multiboot_struct, void* kpml4) {
@@ -544,6 +563,8 @@ extern "C" void kernel_entry(multiboot_t* multiboot_struct, void* kpml4) {
 
     heap_t heap {};
     heap_init(&heap, kpml4, (void*)0x40000000, 0x100000 * 32);
+
+    malloc(&heap, 0x1000);
 
     while (true) {}
 }
