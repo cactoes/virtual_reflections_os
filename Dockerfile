@@ -19,4 +19,4 @@ WORKDIR /root/env
 # copying the build script
 COPY build.sh /root/env/
 RUN chmod +x /root/env/build.sh
-CMD ["./build.sh"]
+CMD [ "/bin/bash", "/root/env/build.sh" ]
