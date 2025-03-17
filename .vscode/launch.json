@@ -11,7 +11,7 @@
             "cwd": "${workspaceFolder}",
             "environment": [],
             "MIMode": "gdb",
-            "miDebuggerPath": "E:/cygwin/bin/gdb-multiarch.exe",
+            "miDebuggerPath": "gdb-multiarch.exe",
             "setupCommands": [
                 {
                     "description": "Enable pretty-printing",

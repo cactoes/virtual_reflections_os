@@ -480,7 +480,6 @@ struct heap_block_t {
 struct heap_t {
     heap_block_t* heap_block_array;
     size_t heap_block_array_size;
-    // heap_block_t* heap_block_top;
     size_t heap_block_count;
 };
 
@@ -497,7 +496,7 @@ void heap_init(heap_t* heap, void* pml4, void* virtual_address, size_t size) {
 
     // setup heap stuct
     heap->heap_block_array = (heap_block_t*)p_page;
-    heap->heap_block_array_size = 2000000 / sizeof(heap_block_t);
+    heap->heap_block_array_size = PAGE_SIZE_LARGE / sizeof(heap_block_t);
     heap->heap_block_count = 1;
 
     // first block is size of entire heap, but un allocated
@@ -532,29 +531,52 @@ void heap_init(heap_t* heap, void* pml4, void* virtual_address, size_t size) {
 }
 
 void* malloc(heap_t* heap, size_t size) {
-    heap_block_t* heap_block_current = heap->heap_block_array;
-
-    // if (heap_block_last->size < size)
-    //     return nullptr;
-
-    // heap_block_t* heap_block(uint64_t)heap_block_last + sizeof(heap_block_t);
+    // check if there are still more blocks
+    if (heap->heap_block_count >= heap->heap_block_array_size) {
+        return nullptr;
+    }
     
     for (heap_block_t* heap_block_current = heap->heap_block_array; heap_block_current; heap_block_current = heap_block_current->next) {
-        // if (heap_block_current == heap->heap_block_last) {
-        //     // TODO
-        // }
-
+        // current block is valid
         if (heap_block_current->free && heap_block_current->size >= size) {
-            // no new block needed
-            if (heap_block_current->size == size) {
-                heap_block_current->free = false;
-                return heap_block_current->start_real_addr;
-            }
-
+            // get a new heap block in the array
             heap_block_t* new_heap_block = (heap_block_t*)((uint64_t)heap->heap_block_array + (sizeof(heap_block_t) * heap->heap_block_count));
+            heap->heap_block_count++;
 
-            return new_heap_block->start_real_addr;
+            memzero((void*)new_heap_block, sizeof(heap_block_t));
+            
+            heap_block_current->free = false;
+            new_heap_block->free = true;
+
+            heap_block_current->next = new_heap_block;
+            new_heap_block->prev = heap_block_current;
+
+            new_heap_block->size = heap_block_current->size - size;
+            heap_block_current->size = size;
+
+            new_heap_block->start_real_addr = (void*)((uint64_t)heap_block_current->start_real_addr + size);
+
+            return heap_block_current->start_real_addr;
         }
+    }
+
+    return nullptr;
+}
+
+void free(heap_t* heap, void* ptr) {
+    // find the correct heap block
+    for (heap_block_t* heap_block_current = heap->heap_block_array; heap_block_current; heap_block_current = heap_block_current->next) {
+        if (heap_block_current->start_real_addr != ptr) {
+            continue;
+        }
+
+        heap_block_current->free = true;
+
+        // combining logic
+        // is block next free?
+        // is prev block free?
+        // combine if free
+        // make it loop just incase there is another we can now also add as free 
     }
 }
 
@@ -564,7 +586,8 @@ extern "C" void kernel_entry(multiboot_t* multiboot_struct, void* kpml4) {
     heap_t heap {};
     heap_init(&heap, kpml4, (void*)0x40000000, 0x100000 * 32);
 
-    malloc(&heap, 0x1000);
+    void* addr = malloc(&heap, 0x1000);
+    free(&heap, addr);
 
     while (true) {}
 }
