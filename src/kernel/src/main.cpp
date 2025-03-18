@@ -1,3 +1,4 @@
+#include "common.hpp"
 
 // =================================================
 // TODO: move
@@ -8,60 +9,6 @@ extern "C" constructor __lnk_end_ctors;
 extern "C" void call_constructors() {
     for (constructor* i = &__lnk_start_ctors; i != &__lnk_end_ctors; i++)
         (*i)();
-}
-
-typedef unsigned long long size_t;
-typedef unsigned long long uint64_t;
-typedef          long long int64_t;
-
-typedef unsigned int uint32_t;
-typedef          int int32_t;
-
-typedef unsigned short uint16_t;
-typedef          short int16_t;
-
-typedef unsigned char uint8_t;
-typedef   signed char int8_t;
-
-void* memset(void* dest, uint8_t val, size_t size) {
-    if (size == 0)
-        return dest;
-
-    uint8_t* p_dest = (uint8_t*)dest;
-
-    for (size_t i = 0; i < size; i++)
-        p_dest[i] = val;
-
-    return dest;
-}
-
-void* memzero(void* dest, size_t size) {
-    return memset(dest, 0, size);
-}
-
-void* memcpy(void* dest, const void* src, size_t size) {
-    if (size == 0)
-        return dest;
-
-    uint8_t* p_dest = (uint8_t*)dest;
-    const uint8_t* p_src = (uint8_t*)src;
-
-    for (size_t i = 0; i < size; i++)
-        p_dest[i] = p_src[i];
-
-    return dest;
-}
-
-bool check_alignment(uint64_t addr, uint64_t align) {
-    return (addr & (align - 1)) == 0;
-}
-
-uint64_t align_addr_up(uint64_t addr, uint64_t align) {
-    return (addr + (align - 1)) & ~(align - 1);
-}
-
-uint64_t align_addr_down(uint64_t addr, uint64_t align) {
-    return (addr) & ~(align - 1);
 }
 
 #define PAGE_SIZE           0x1000
@@ -274,7 +221,7 @@ void* vmem_get_page() {
 }
 
 bool vmem_paging_reserve_at_adress(uint64_t address, size_t count = 1) {
-    if (!check_alignment(address, PAGE_SIZE))
+    if (!mem_is_aligned(address, PAGE_SIZE))
         return false;
 
     constexpr uint64_t end_critical_memory_space = KERNEL_PAGE_CRITICAL_BITMAP_SIZE * PAGE_SIZE;
@@ -348,8 +295,8 @@ void vmem_identity_map(uint64_t* pml4) {
 }
 
 bool vmem_map_2kb_page(void* pml4, void* virtual_addr, void* physical_addr) {
-    if (!check_alignment((uint64_t)virtual_addr, PAGE_SIZE) ||
-        !check_alignment((uint64_t)physical_addr, PAGE_SIZE)) {
+    if (!mem_is_aligned((uint64_t)virtual_addr, PAGE_SIZE) ||
+        !mem_is_aligned((uint64_t)physical_addr, PAGE_SIZE)) {
         return false;
     }
 
@@ -386,8 +333,8 @@ bool vmem_map_2kb_page(void* pml4, void* virtual_addr, void* physical_addr) {
 }
 
 bool vmem_map_2mb_page(void* pml4, void* virtual_addr, void* physical_addr) {
-    if (!check_alignment((uint64_t)virtual_addr, PAGE_SIZE_LARGE) ||
-        !check_alignment((uint64_t)physical_addr, PAGE_SIZE_LARGE)) {
+    if (!mem_is_aligned((uint64_t)virtual_addr, PAGE_SIZE_LARGE) ||
+        !mem_is_aligned((uint64_t)physical_addr, PAGE_SIZE_LARGE)) {
         return false;
     }
 
@@ -423,7 +370,7 @@ size_t vmem_smart_alloc_pages(void* pml4, void* virtual_addr, size_t size) {
         uint64_t target_physical_address = (uint64_t)vmem_get_page();
 
         // force 2mb memory alignment
-        if (!check_alignment(target_physical_address, PAGE_SIZE_LARGE))
+        if (!mem_is_aligned(target_physical_address, PAGE_SIZE_LARGE))
             continue;
 
         // reserve the remaining pages to complete 2MB
@@ -446,7 +393,7 @@ void vmem_init(multiboot_t* multiboot_struct, void* pml4) {
     // zero page
     memzero(0, PAGE_SIZE);
 
-    const uint64_t aligned_kernel_end_addr = align_addr_up((uint64_t)&__lnk_end_kernel, PAGE_SIZE_LARGE);
+    const uint64_t aligned_kernel_end_addr = mem_align_up((uint64_t)&__lnk_end_kernel, PAGE_SIZE_LARGE);
     const uint64_t kernel_page_count = aligned_kernel_end_addr / PAGE_SIZE;
     vmem_paging_reserve_at_adress(0, kernel_page_count);
 
@@ -459,7 +406,7 @@ void vmem_init(multiboot_t* multiboot_struct, void* pml4) {
 
             // reserve as much as possible
             for (size_t i = 0; i < mm_entry->len; i += PAGE_SIZE) {
-                vmem_paging_reserve_at_adress(align_addr_down(mm_entry->addr, PAGE_SIZE) + i);
+                vmem_paging_reserve_at_adress(mem_align_down(mm_entry->addr, PAGE_SIZE) + i);
             }
         }
     }
@@ -612,7 +559,14 @@ void free(heap_t* heap, void* ptr) {
     }
 }
 
+void critical_fatal(int code, const char* message) {
+    while (true) {}
+}
+
 extern "C" void kernel_entry(multiboot_t* multiboot_struct, void* kpml4) {
+    if (multiboot_struct->magic == 0x2BADB002)
+        critical_fatal(multiboot_struct->magic, "multiboot magic was invalid");
+
     vmem_init(multiboot_struct, kpml4);
 
     heap_t heap {};

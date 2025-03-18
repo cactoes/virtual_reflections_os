@@ -10,7 +10,10 @@ section .multiboot
     dd -(0x1BADB002 + (1 << 0 | 1 << 1))    ; checksum
 
 section .text
+    ; 64 bit functions
     extern boot_kernel
+
+    ; globals
     global entry
     global multiboot_magic
 
