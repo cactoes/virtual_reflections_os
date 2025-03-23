@@ -64,6 +64,7 @@ struct vga_generic_buffer_t {
 int vga_tm_print(char ch);
 int vga_tm_print(const char* fmt, ...);
 int vga_tm_print(const vga_tm_color_map_t* color_map, const char* fmt, ...);
+int vga_tm_clear_row(uint32_t row);
 int vga_tm_clear_screen();
 int vga_tm_set_cursor(uint32_t x, uint32_t y);
 int vga_tm_get_cursor(uint32_t* x, uint32_t* y);

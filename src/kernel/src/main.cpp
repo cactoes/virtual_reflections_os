@@ -1,4 +1,5 @@
 #include "common.hpp"
+#include "vga_driver.hpp"
 
 // =================================================
 // TODO: move
@@ -559,14 +560,16 @@ void free(heap_t* heap, void* ptr) {
     }
 }
 
-void critical_fatal(int code, const char* message) {
+void critical_fatal(uint64_t code, const char* message) {
+    vga_tm_clear_screen();
+    vga_tm_print("(%uh) %s \n", code, message);
     while (true) {}
 }
 
 extern "C" void kernel_entry(multiboot_t* multiboot_struct, void* kpml4) {
-    if (multiboot_struct->magic == 0x2BADB002)
+    if (multiboot_struct->magic != 0x2BADB002)
         critical_fatal(multiboot_struct->magic, "multiboot magic was invalid");
-
+    
     vmem_init(multiboot_struct, kpml4);
 
     heap_t heap {};

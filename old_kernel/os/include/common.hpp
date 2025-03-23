@@ -6,8 +6,8 @@
 
 #pragma once
 
-#ifndef __COMMON_HPP__
-#define __COMMON_HPP__
+#ifndef __COMMON_HPP____
+#define __COMMON_HPP____
 
 namespace signed_number_types {
 
@@ -26,7 +26,7 @@ typedef unsigned short     uint16_t;
 typedef unsigned int       uint32_t;
 typedef unsigned long long uint64_t;
 
-typedef long unsigned int  size_t;
+typedef unsigned long long  size_t;
 } // namespace unsigned_number_types
 using namespace unsigned_number_types;
 
@@ -43,4 +43,4 @@ typedef uint64_t kresult_t;
 } // namespace custom_types
 using namespace custom_types;
 
-#endif // __COMMON_HPP__
+#endif // __COMMON_HPP____

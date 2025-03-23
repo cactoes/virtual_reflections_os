@@ -1,5 +1,5 @@
 #include "string.hpp"
-#include "critical/memory.hpp"
+#include "memory.hpp"
 
 #include <stdarg.h>
 
