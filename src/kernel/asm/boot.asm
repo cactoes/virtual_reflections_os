@@ -13,6 +13,8 @@ section .text
     ; loader variables
     extern __lnk_bss_size
     extern __lnk_bss_start
+    extern __lnk_start_ctors
+    extern __lnk_end_ctors
     extern __end_bss_keep
 
     ; globals
@@ -21,7 +23,7 @@ section .text
 
 bits 64
 ; @function          memzero
-; @bried             wipes a memory region
+; @brief             wipes a memory region
 ; @param[in] rdi     target address
 ; @param[in] rsi     size
 memzero:
@@ -29,6 +31,25 @@ memzero:
     mov   rcx,   rsi
     rep   stosb
     ret
+
+; @function         call_constructors
+; @brief
+call_constructors:
+    push    rbx
+    mov     rsi,    __lnk_start_ctors
+
+    .loop:
+        cmp     rsi,    __lnk_end_ctors
+        jge     .done
+
+        mov     rdi,    [rsi]
+        call    rdi
+        add     rsi,    8
+        jmp     .loop
+
+    .done:
+        pop     rbx
+        ret
 
 boot_kernel:
     ; clean registers

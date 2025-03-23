@@ -1,12 +1,12 @@
 #include "vga_driver.hpp"
 #include "string.hpp"
 
-vga_tm_color_map_t g_vga_tm_current_color {
+static vga_tm_color_map_t g_vga_tm_current_color {
     .color = (uint8_t)vga_tm_color_t::WHITE | ((uint8_t)vga_tm_color_t::BLACK << 4)
 };
 
-uint32_t g_vga_tm_column = 0;
-uint32_t g_vga_tm_row = 0;
+static uint32_t g_vga_tm_column = 0;
+static uint32_t g_vga_tm_row = 0;
 
 void vga_tm_new_line() {
     g_vga_tm_column = 0;

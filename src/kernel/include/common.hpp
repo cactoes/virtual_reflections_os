@@ -9,6 +9,10 @@
 #ifndef __COMMON_HPP__
 #define __COMMON_HPP__
 
+#define PAGE_SIZE           0x1000
+#define PAGE_SIZE_LARGE     0x200000
+#define PAGE_SIZE_HUGE      0x40000000
+
 typedef unsigned long long size_t;
 typedef unsigned long long uint64_t;
 typedef          long long int64_t;
@@ -30,4 +34,27 @@ bool mem_is_aligned(uint64_t addr, uint64_t align);
 uint64_t mem_align_up(uint64_t addr, uint64_t align);
 uint64_t mem_align_down(uint64_t addr, uint64_t align);
 
+bool bitmap_get(uint64_t* bitmap, size_t size, size_t index);
+
+template <size_t size>
+bool bitmap_get(uint64_t (&bitmap)[size], size_t index) {
+    return bitmap_get(bitmap, size, index);
+}
+
+void bitmap_set(uint64_t* bitmap, size_t size, size_t index, bool state);
+
+template <size_t size>
+void bitmap_set(uint64_t (&bitmap)[size], size_t index, bool state) {
+    return bitmap_set(bitmap, size, index, state);
+}
+
+constexpr uint64_t hash_fnv1a_64(const char* str, uint64_t hash = 14695981039346656037ULL) {
+    return (*str == '\0') ? hash :
+        hash_fnv1a_64(str + 1, (hash ^ static_cast<uint64_t>(*str)) * 1099511628211ULL);
+}
+
+constexpr uint64_t hash_string_64(const char* str, uint64_t hash = 0ULL) {
+    return (*str == '\0') ? hash :
+        hash_string_64(str + 1, (hash << 1) + static_cast<uint64_t>(*str));
+}
 #endif // __COMMON_HPP__

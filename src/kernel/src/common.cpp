@@ -40,3 +40,23 @@ uint64_t mem_align_up(uint64_t addr, uint64_t align) {
 uint64_t mem_align_down(uint64_t addr, uint64_t align) {
     return (addr) & ~(align - 1);
 }
+
+bool bitmap_get(uint64_t* bitmap, size_t size, size_t index) {
+    if (index >= size * (sizeof(uint64_t) * 8))
+        return false;
+
+    const size_t item_index = index / 64;
+    const size_t bit_index = index % 64;
+    return (bitmap[item_index] >> bit_index) & 1;
+}
+
+void bitmap_set(uint64_t* bitmap, size_t size, size_t index, bool state) {
+    if (index >= size * (sizeof(uint64_t) * 8))
+        return;
+
+    const size_t item_index = index / 64;
+    const size_t bit_index = index % 64;
+
+    state ? bitmap[item_index] |= (1ULL << bit_index)
+          : bitmap[item_index] &= ~(1ULL << bit_index);
+}
