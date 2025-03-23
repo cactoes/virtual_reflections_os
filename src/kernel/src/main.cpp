@@ -567,6 +567,9 @@ void critical_fatal(uint64_t code, const char* message) {
 }
 
 extern "C" void kernel_entry(multiboot_t* multiboot_struct, void* kpml4) {
+    vga_tm_clear_screen();
+    vga_tm_print("initializing kernel ...");
+
     if (multiboot_struct->magic != 0x2BADB002)
         critical_fatal(multiboot_struct->magic, "multiboot magic was invalid");
     
