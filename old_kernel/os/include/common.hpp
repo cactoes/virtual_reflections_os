@@ -26,7 +26,7 @@ typedef unsigned short     uint16_t;
 typedef unsigned int       uint32_t;
 typedef unsigned long long uint64_t;
 
-typedef unsigned long long  size_t;
+// typedef long unsigned int  size_t;
 } // namespace unsigned_number_types
 using namespace unsigned_number_types;
 

@@ -54,6 +54,8 @@ struct heap_t {
     heap_block_t* heap_block_array;
     size_t heap_block_array_size;
     size_t heap_block_count;
+    void* start_virtual_addr;
+    size_t size;
 };
 
 struct memory_map_entry_t {
@@ -118,6 +120,8 @@ enum class multiboot_flags_t : uint32_t {
     VBE          = (1 << 11)
 };
 
+typedef bool(*block_filter_callback_t)(const heap_block_t*, const void*);
+
 void* vmem_get_page_critical();
 void* vmem_get_page();
 bool vmem_paging_reserve_at_adress(uint64_t address, size_t count = 1);
@@ -127,8 +131,17 @@ bool vmem_map_2mb_page(void* pml4, void* virtual_addr, void* physical_addr);
 size_t vmem_smart_alloc_pages(void* pml4, void* virtual_addr, size_t size);
 void vmem_init(multiboot_t* multiboot_struct, void* pml4);
 
-void heap_init(heap_t* heap, void* pml4, void* virtual_address, size_t size);
+namespace heap_block_filters {
 
+bool donor_block_filter(const heap_block_t* block, const void* param);
+bool unused_block_filter(const heap_block_t* block, const void* param);
+
+} // namespace heap_block_filters
+
+void heap_filter_blocks(heap_t* heap, void* param, block_filter_callback_t bfc_array[], size_t bfc_array_size, heap_block_t* block_array[], size_t block_array_size);
+
+void heap_init(heap_t* heap, void* pml4, void* virtual_address, size_t size);
+void heap_expand(heap_t* heap, void* pml4, size_t size);
 void* heap_alloc(heap_t* heap, size_t size);
 void heap_free(heap_t* heap, void* ptr);
 
@@ -139,16 +152,16 @@ memory_map_entry_t* mb_get_next_entry(multiboot_t* multiboot_struct, memory_map_
 void set_global_heap(heap_t* heap);
 heap_t* get_global_heap();
 
-void* operator new(size_t size);
-// void* operator new[](size_t size);
+// void* operator new(size_t size);
+// // void* operator new[](size_t size);
 
-void* operator new(size_t size, void* ptr);
-// void* operator new[](size_t size, void* ptr);
+// void* operator new(size_t size, void* ptr);
+// // void* operator new[](size_t size, void* ptr);
 
-void operator delete(void* ptr);
-// void operator delete[](void* ptr);
+// void operator delete(void* ptr);
+// // void operator delete[](void* ptr);
 
-void operator delete(void* ptr, size_t size);
-// void operator delete[](void* ptr, size_t size);
+// void operator delete(void* ptr, size_t size);
+// // void operator delete[](void* ptr, size_t size);
 
 #endif // __MEMORY_HPP__

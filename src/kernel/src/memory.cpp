@@ -231,6 +231,40 @@ void vmem_init(multiboot_t* multiboot_struct, void* pml4) {
     __set_pml4(pml4);
 }
 
+bool heap_block_filters::donor_block_filter(const heap_block_t* block, const void* param) {
+    return block->used && block->free && block->size >= *(size_t*)param;
+}
+
+bool heap_block_filters::unused_block_filter(const heap_block_t* block, const void* param) {
+    return !block->used;
+}
+
+void heap_filter_blocks(heap_t* heap, void* param, block_filter_callback_t bfc_array[], size_t bfc_array_size, heap_block_t* block_array[], size_t block_array_size) {
+    if (bfc_array_size != block_array_size)
+        return;
+
+    size_t found_size = 0;
+    for (size_t i = 0; i < heap->heap_block_array_size; i++) {
+        if (found_size == block_array_size)
+            break;
+        
+        heap_block_t* current_block = &heap->heap_block_array[i];
+
+        for (size_t k = 0; k < bfc_array_size; k++) {
+            heap_block_t** stored_block = &block_array[k];
+            block_filter_callback_t filter_func = bfc_array[k];
+
+            if (*stored_block == nullptr) {
+                if (filter_func(current_block, param)) {
+                    *stored_block = current_block;
+                    found_size++;
+                    break;
+                }
+            }
+        }
+    }
+}
+
 void heap_init(heap_t* heap, void* pml4, void* virtual_address, size_t size) {
     // TODO: check result vmem reserve
 
@@ -246,6 +280,8 @@ void heap_init(heap_t* heap, void* pml4, void* virtual_address, size_t size) {
     heap->heap_block_array = (heap_block_t*)p_page;
     heap->heap_block_array_size = PAGE_SIZE_LARGE / sizeof(heap_block_t);
     heap->heap_block_count = 1;
+    heap->start_virtual_addr = virtual_address;
+    heap->size = heap_size;
 
     // first block is size of entire heap, but un allocated
     heap->heap_block_array->start_real_addr = virtual_address;
@@ -273,6 +309,13 @@ void heap_init(heap_t* heap, void* pml4, void* virtual_address, size_t size) {
         deallocator:
         free's the block & merges block where possible in linear style
     */
+}
+
+void heap_expand(heap_t* heap, void* pml4, size_t size) {
+    void* heap_virtual_end = (void*)((uint64_t)heap->start_virtual_addr + heap->size);
+    const auto new_heap_block = vmem_smart_alloc_pages(pml4, heap_virtual_end, size);
+
+    // TODO @since 24/03/2025 -- 15:57
 }
 
 void* heap_alloc(heap_t* heap, size_t size) {
@@ -384,22 +427,22 @@ heap_t* get_global_heap() {
     return g_heap;
 }
 
-void* operator new(size_t size) {
-    if (g_heap == nullptr)
-        return nullptr;
-    return heap_alloc(g_heap, size);
-}
+// void* operator new(size_t size) {
+//     if (g_heap == nullptr)
+//         return nullptr;
+//     return heap_alloc(g_heap, size);
+// }
 
-void* operator new(size_t size, void* ptr) {
-    return ptr;
-}
+// void* operator new(size_t size, void* ptr) {
+//     return ptr;
+// }
 
-void operator delete(void* ptr) {
-    if (g_heap != nullptr)
-       heap_free(g_heap, ptr);
-}
+// void operator delete(void* ptr) {
+//     if (g_heap != nullptr)
+//        heap_free(g_heap, ptr);
+// }
 
-void operator delete(void* ptr, size_t) {
-    if (g_heap != nullptr)
-        heap_free(g_heap, ptr);
-}
+// void operator delete(void* ptr, size_t) {
+//     if (g_heap != nullptr)
+//         heap_free(g_heap, ptr);
+// }
