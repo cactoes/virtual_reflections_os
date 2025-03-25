@@ -155,16 +155,16 @@ memory_map_entry_t* mb_get_next_entry(multiboot_t* multiboot_struct, memory_map_
 void set_global_heap(heap_t* heap);
 heap_t* get_global_heap();
 
-void* operator new(size_t size) noexcept;
-// void* operator new[](size_t size);
+// void* operator new(size_t size) noexcept;
+// // void* operator new[](size_t size);
 
-void* operator new(size_t size, void* ptr) noexcept;
-// void* operator new[](size_t size, void* ptr);
+// void* operator new(size_t size, void* ptr) noexcept;
+// // void* operator new[](size_t size, void* ptr);
 
-void operator delete(void* ptr) noexcept;
-// void operator delete[](void* ptr);
+// void operator delete(void* ptr) noexcept;
+// // void operator delete[](void* ptr);
 
-void operator delete(void* ptr, size_t size) noexcept;
-// void operator delete[](void* ptr, size_t size);
+// void operator delete(void* ptr, size_t size) noexcept;
+// // void operator delete[](void* ptr, size_t size);
 
 #endif // __MEMORY_HPP__

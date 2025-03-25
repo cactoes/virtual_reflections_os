@@ -1,11 +1,22 @@
 #include "common.hpp"
 #include "memory.hpp"
 #include "vga_driver.hpp"
+#include "interrupt.hpp"
 
 void critical_fatal(uint64_t code, const char* message) {
+    vga_tm_color_map_t color {
+        .foreground = vga_tm_color_t::WHITE,
+        .background = vga_tm_color_t::BLUE,
+    };
+    vga_tm_set_color(&color);
     vga_tm_clear_screen();
     vga_tm_print("(%uh) %s \n", code, message);
     while (true) {}
+}
+
+cpu_state_t* handle_critical_interrupt(uint64_t code, cpu_state_t* rsp) {
+    critical_fatal(code, "FATAL");
+    return rsp;
 }
 
 extern "C" void kernel_entry(multiboot_t* multiboot_struct, void* kpml4) {
@@ -14,6 +25,9 @@ extern "C" void kernel_entry(multiboot_t* multiboot_struct, void* kpml4) {
 
     if (multiboot_struct->magic != 0x2BADB002)
         critical_fatal(multiboot_struct->magic, "multiboot magic was invalid");
+
+    int_set_callback(interrupt_type::CRITICAL, handle_critical_interrupt);
+    int_init();
 
     vmem_init(multiboot_struct, kpml4);
 

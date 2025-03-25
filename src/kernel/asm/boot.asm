@@ -22,10 +22,13 @@ section .text
     global KPML4T
 
 bits 64
+
+;==========================================
 ; @function          memzero
 ; @brief             wipes a memory region
 ; @param[in] rdi     target address
 ; @param[in] rsi     size
+;==========================================
 memzero:
     xor   rax,   rax
     mov   rcx,   rsi

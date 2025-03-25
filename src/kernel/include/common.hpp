@@ -13,7 +13,7 @@
 #define PAGE_SIZE_LARGE     0x200000
 #define PAGE_SIZE_HUGE      0x40000000
 
-typedef long unsigned int size_t;
+typedef unsigned long long size_t;
 typedef unsigned long long uint64_t;
 typedef          long long int64_t;
 
