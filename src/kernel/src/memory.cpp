@@ -298,7 +298,7 @@ void heap_expand(heap_t* heap, void* pml4, size_t size) {
     void* heap_virtual_end = (void*)((uint64_t)heap->start_virtual_addr + heap->size);
     const auto new_heap_block = vmem_smart_alloc_pages(pml4, heap_virtual_end, size);
 
-    // TODO @since 24/03/2025 -- 15:57
+    // TODO: @since 24/03/2025 -- 15:57
 }
 
 void* heap_alloc(heap_t* heap, size_t size) {

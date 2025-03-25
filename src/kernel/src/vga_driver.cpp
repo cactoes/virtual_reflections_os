@@ -1,5 +1,6 @@
 #include "vga_driver.hpp"
 #include "string.hpp"
+#include "cpu.hpp"
 
 static vga_tm_color_map_t g_vga_tm_current_color {
     .color = (uint8_t)vga_tm_color_t::WHITE | ((uint8_t)vga_tm_color_t::BLACK << 4)
@@ -108,8 +109,17 @@ int vga_tm_clear_screen() {
 }
 
 int vga_tm_set_cursor(uint32_t x, uint32_t y) {
-    // TODO @since 21/03/2025 -- 20:42
-    return 1;
+    int position = x + VGA_TM_NUM_COLS * y;
+
+    cpu_outb(VGA_CRTC_INDEX, 14);
+    cpu_outb(VGA_CRTC_DATA, (position >> 8) & 0xFF);
+    cpu_outb(VGA_CRTC_INDEX, 15);
+    cpu_outb(VGA_CRTC_DATA, position & 0xFF);
+
+    g_vga_tm_column = x;
+    g_vga_tm_row = y;
+
+    return 0;
 }
 
 int vga_tm_get_cursor(uint32_t* x, uint32_t* y) {
