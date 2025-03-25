@@ -27,6 +27,9 @@
 #define PF_PAGE_SIZE            (1 << 7)
 #define PF_GLOBAL               (1 << 8)
 
+#define HEAP_MAKE_FILTER_PARAM(param) ((void*)&param)
+#define HEAP_FILTERS_SIZE(array) (sizeof(array) / sizeof(block_filter_callback_t))
+
 #include "common.hpp"
 
 struct heap_block_t {
@@ -138,7 +141,7 @@ bool unused_block_filter(const heap_block_t* block, const void* param);
 
 } // namespace heap_block_filters
 
-void heap_filter_blocks(heap_t* heap, void* param, block_filter_callback_t bfc_array[], size_t bfc_array_size, heap_block_t* block_array[], size_t block_array_size);
+int heap_filter_blocks(heap_t* heap, void* param, block_filter_callback_t bfc_array[], size_t bfc_array_size, heap_block_t* block_array[], size_t block_array_size);
 
 void heap_init(heap_t* heap, void* pml4, void* virtual_address, size_t size);
 void heap_expand(heap_t* heap, void* pml4, size_t size);
@@ -152,16 +155,16 @@ memory_map_entry_t* mb_get_next_entry(multiboot_t* multiboot_struct, memory_map_
 void set_global_heap(heap_t* heap);
 heap_t* get_global_heap();
 
-// void* operator new(size_t size);
-// // void* operator new[](size_t size);
+void* operator new(size_t size) noexcept;
+// void* operator new[](size_t size);
 
-// void* operator new(size_t size, void* ptr);
-// // void* operator new[](size_t size, void* ptr);
+void* operator new(size_t size, void* ptr) noexcept;
+// void* operator new[](size_t size, void* ptr);
 
-// void operator delete(void* ptr);
-// // void operator delete[](void* ptr);
+void operator delete(void* ptr) noexcept;
+// void operator delete[](void* ptr);
 
-// void operator delete(void* ptr, size_t size);
-// // void operator delete[](void* ptr, size_t size);
+void operator delete(void* ptr, size_t size) noexcept;
+// void operator delete[](void* ptr, size_t size);
 
 #endif // __MEMORY_HPP__

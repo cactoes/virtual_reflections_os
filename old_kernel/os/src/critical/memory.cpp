@@ -429,22 +429,22 @@ void kernel::memory::vmem::kfree(void* ptr) {
     }
 }
 
-void* operator new(size_t size) {
-    // if (g_kernel_heap == nullptr)
-    //     return nullptr;
-    return kernel::memory::vmem::kalloc(size);
-}
+// void* operator new(size_t size) {
+//     // if (g_kernel_heap == nullptr)
+//     //     return nullptr;
+//     return kernel::memory::vmem::kalloc(size);
+// }
 
-void* operator new(size_t size, void* ptr) {
-    return ptr;
-}
+// void* operator new(size_t size, void* ptr) {
+//     return ptr;
+// }
 
-void operator delete(void* ptr) {
-    if (g_kernel_heap != nullptr)
-        kernel::memory::vmem::kfree(ptr);
-}
+// void operator delete(void* ptr) {
+//     if (g_kernel_heap != nullptr)
+//         kernel::memory::vmem::kfree(ptr);
+// }
 
-void operator delete(void* ptr, size_t) {
-    if (g_kernel_heap != nullptr)
-        kernel::memory::vmem::kfree(ptr);
-}
+// void operator delete(void* ptr, size_t) {
+//     if (g_kernel_heap != nullptr)
+//         kernel::memory::vmem::kfree(ptr);
+// }

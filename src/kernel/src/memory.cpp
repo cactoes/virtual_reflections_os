@@ -239,9 +239,9 @@ bool heap_block_filters::unused_block_filter(const heap_block_t* block, const vo
     return !block->used;
 }
 
-void heap_filter_blocks(heap_t* heap, void* param, block_filter_callback_t bfc_array[], size_t bfc_array_size, heap_block_t* block_array[], size_t block_array_size) {
+int heap_filter_blocks(heap_t* heap, void* param, block_filter_callback_t bfc_array[], size_t bfc_array_size, heap_block_t* block_array[], size_t block_array_size) {
     if (bfc_array_size != block_array_size)
-        return;
+        return -1;
 
     size_t found_size = 0;
     for (size_t i = 0; i < heap->heap_block_array_size; i++) {
@@ -263,10 +263,13 @@ void heap_filter_blocks(heap_t* heap, void* param, block_filter_callback_t bfc_a
             }
         }
     }
+
+    return found_size;
 }
 
 void heap_init(heap_t* heap, void* pml4, void* virtual_address, size_t size) {
-    // TODO: check result vmem reserve
+    // TODO: @since 25/03/2025 -- 01:12
+    //       check result vmem reserve
 
     // the heap is just raw memory no data structures
     uint64_t heap_size = vmem_smart_alloc_pages(pml4, virtual_address, size);
@@ -286,29 +289,9 @@ void heap_init(heap_t* heap, void* pml4, void* virtual_address, size_t size) {
     // first block is size of entire heap, but un allocated
     heap->heap_block_array->start_real_addr = virtual_address;
     heap->heap_block_array->next = nullptr;
-    // heap->heap_block_array->prev = nullptr;
     heap->heap_block_array->size = heap_size;
     heap->heap_block_array->free = true;
     heap->heap_block_array->used = true;
-
-    /*
-    v2
-        [heap_block]
-        size : number
-        start : addr
-        used : bool
-        free : bool
-
-        allocator:
-        loops blocks for free block of matching size
-        also loops blocks for unused heap_block_t for the new block
-
-        resizes the old & initialzes the new heap block
-        returns the start
-
-        deallocator:
-        free's the block & merges block where possible in linear style
-    */
 }
 
 void heap_expand(heap_t* heap, void* pml4, size_t size) {
@@ -319,43 +302,34 @@ void heap_expand(heap_t* heap, void* pml4, size_t size) {
 }
 
 void* heap_alloc(heap_t* heap, size_t size) {
-    // TODO: if donor block == size just assign that
-
-    // heap block that we can write our data to
-    // & assign our new memory block to
-    heap_block_t* unused_block = nullptr;
+    block_filter_callback_t filters[] = {
+        heap_block_filters::donor_block_filter,
+        heap_block_filters::unused_block_filter
+    };
+    heap_block_t* blocks[HEAP_FILTERS_SIZE(filters)] = {};
+    
+    int result = heap_filter_blocks(heap, HEAP_MAKE_FILTER_PARAM(size), filters, HEAP_FILTERS_SIZE(filters), blocks, HEAP_FILTERS_SIZE(filters));
 
     // heap block that is >= requested size
     // aka the donor block
-    heap_block_t* donor_block = nullptr;
+    heap_block_t* donor_block = blocks[0];
 
-    for (size_t i = 0; i < heap->heap_block_array_size; i++) {
-        if (unused_block != nullptr && donor_block != nullptr)
-            break;
-
-        heap_block_t* current_block = &heap->heap_block_array[i];
-
-        // find donor block
-        if (donor_block == nullptr) {
-            if (current_block->used && current_block->free && current_block->size >= size) {
-                donor_block = current_block;
-                continue;
-            }
-        }
-
-        // find unused block
-        if (unused_block == nullptr) {
-            if (!current_block->used) {
-                unused_block = current_block;
-                continue;
-            }
-        }
+    // early return, we dont need the unused block here
+    // we could exit if we dont have a donor block but not needed to check here
+    if (donor_block && donor_block->size == size) {
+        donor_block->free = false;
+        donor_block->used = true;
+        return donor_block->start_real_addr;
     }
 
-    // unable to allocate the memory block
-    if (unused_block == nullptr || donor_block == nullptr)
+    // heap block that we can write our data to
+    // & assign our new memory block to
+    heap_block_t* unused_block = blocks[1];
+
+    // make sure we have both blocks
+    if (result != HEAP_FILTERS_SIZE(filters))
         return nullptr;
-    
+
     donor_block->size -= size;
 
     unused_block->free = true;
@@ -427,22 +401,22 @@ heap_t* get_global_heap() {
     return g_heap;
 }
 
-// void* operator new(size_t size) {
-//     if (g_heap == nullptr)
-//         return nullptr;
-//     return heap_alloc(g_heap, size);
-// }
+void* operator new(size_t size) noexcept {
+    if (g_heap == nullptr)
+        return nullptr;
+    return heap_alloc(g_heap, size);
+}
 
-// void* operator new(size_t size, void* ptr) {
-//     return ptr;
-// }
+void* operator new(size_t size, void* ptr) noexcept {
+    return ptr;
+}
 
-// void operator delete(void* ptr) {
-//     if (g_heap != nullptr)
-//        heap_free(g_heap, ptr);
-// }
+void operator delete(void* ptr) noexcept {
+    if (g_heap != nullptr)
+       heap_free(g_heap, ptr);
+}
 
-// void operator delete(void* ptr, size_t) {
-//     if (g_heap != nullptr)
-//         heap_free(g_heap, ptr);
-// }
+void operator delete(void* ptr, size_t) noexcept {
+    if (g_heap != nullptr)
+        heap_free(g_heap, ptr);
+}
