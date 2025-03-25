@@ -61,7 +61,7 @@ cpu_state_t* int_handler(uint64_t code, cpu_state_t* rsp) {
             break;
         }
         default: {
-            const auto callback = g_int_cb_array[INT_TYPE_CAST(interrupt_type::DEFAULT)];
+            const auto callback = g_int_cb_array[INT_TYPE_CAST(interrupt_type::OTHER)];
             if (callback)
                 rsp = callback(code, rsp);
             break;

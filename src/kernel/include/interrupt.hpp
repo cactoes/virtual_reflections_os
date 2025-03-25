@@ -50,8 +50,8 @@ struct idt_entry_t {
 } __attribute__((packed));
 
 struct idt_register_t {
-    uint16_t    limit;
-    uint64_t    base;
+    uint16_t limit;
+    uint64_t base;
 } __attribute__((packed));
 
 enum class interrupt_type {
@@ -59,7 +59,7 @@ enum class interrupt_type {
     PIT,
     KEYBOARD,
     MOUSE,
-    DEFAULT,
+    OTHER,
     __ITEM_COUNT
 };
 
