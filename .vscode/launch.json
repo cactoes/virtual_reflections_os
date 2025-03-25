@@ -2,7 +2,7 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "QEMU + GDB (NO COMPILE)",
+            "name": "debug (no compile)",
             "type": "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/build/VirtualReflectionsOS.bin",
@@ -33,10 +33,10 @@
             ],
             "miDebuggerServerAddress": "localhost:1234",
             "showDisplayString": true,
-            "preLaunchTask": "Start QEMU"
+            "preLaunchTask": "start QEMU dbg"
         },
         {
-            "name": "QEMU + GDB + COMPILE",
+            "name": "debug",
             "type": "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/build/VirtualReflectionsOS.bin",
@@ -45,7 +45,7 @@
             "cwd": "${workspaceFolder}",
             "environment": [],
             "MIMode": "gdb",
-            "miDebuggerPath": "E:/cygwin/bin/gdb-multiarch.exe",
+            "miDebuggerPath": "gdb-multiarch.exe",
             "setupCommands": [
                 {
                     "description": "Enable pretty-printing",
@@ -67,7 +67,7 @@
             ],
             "miDebuggerServerAddress": "localhost:1234",
             "showDisplayString": true,
-            "preLaunchTask": "Compile kernel & Start QEMU"
+            "preLaunchTask": "build kernel & start QEMU dbg"
         }
     ]
 }

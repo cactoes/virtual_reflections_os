@@ -2,16 +2,23 @@
     "version": "2.0.0",
     "tasks": [
         {
-            "label": "Start QEMU",
+            "label": "start QEMU dbg",
             "type": "shell",
             "command": "Start-Process",
             "args": [
                 "qemu-system-x86_64",
-                "-ArgumentList", "\"-cdrom ${workspaceFolder}/build/VirtualReflectionsOS.iso -drive format=raw,file=test_disk.vhd,id=disk,if=none -device ahci,id=ahci -device ide-hd,drive=disk,bus=ahci.0 -S -gdb tcp::1234\" -no-reboot -m 2G"
-            ]
+                "-ArgumentList",
+                "-cdrom ${workspaceFolder}/build/VirtualReflectionsOS.iso -drive format=raw,file=test_disk.vhd,id=disk,if=none -device ahci,id=ahci -device ide-hd,drive=disk,bus=ahci.0 -S -gdb tcp::1234 -m 2G -no-reboot",
+                "-NoNewWindow"
+            ],
+            "options": {
+                "statusbar": {
+                    "hide": true
+                }
+            }
         },
         {
-            "label": "Compile kernel",
+            "label": "build kernel",
             "type": "shell",
             "command": "docker",
             "args": [
@@ -23,14 +30,29 @@
                 "${workspaceFolder}:/root/env",
                 "virtual_reflections_os_buildenv"
             ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "options": {
+                "statusbar": {
+                    "label": "$(settings-gear) Build",
+                    "detail" : "build the kernel"
+                }
+            }
         },
         {
-            "label": "Compile kernel & Start QEMU",
+            "label": "build kernel & start QEMU dbg",
             "dependsOrder": "sequence",
             "dependsOn": [
-                "Compile kernel",
-                "Start QEMU"
-            ]
+                "build kernel",
+                "start QEMU dbg"
+            ],
+            "options": {
+                "statusbar": {
+                    "hide": true
+                }
+            }
         }
     ]
 }
