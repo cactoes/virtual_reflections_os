@@ -5,7 +5,7 @@
 
 #pragma once
 
-#ifndef __PCI_HPP__
+#ifndef __PCI_HPP___
 #define __PCI_HPP__
 
 #include "../common.hpp"

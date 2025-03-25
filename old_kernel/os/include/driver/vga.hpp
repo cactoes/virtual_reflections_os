@@ -5,7 +5,7 @@
 
 #pragma once
 
-#ifndef __VGA_HPP__
+#ifndef __VGA_HPP___
 #define __VGA_HPP__
 
 #include "../common.hpp"

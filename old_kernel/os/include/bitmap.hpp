@@ -6,7 +6,7 @@
 
 #pragma once
 
-#ifndef __BITMAP_HPP__
+#ifndef __BITMAP_HPP___
 #define __BITMAP_HPP__
 
 #include "common.hpp"

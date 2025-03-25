@@ -5,7 +5,7 @@
 
 #pragma once
 
-#ifndef __INTERRUPT_HPP__
+#ifndef __INTERRUPT_HPP___
 #define __INTERRUPT_HPP__
 
 #include "common.hpp"

@@ -5,7 +5,7 @@
 
 #pragma once
 
-#ifndef __DRIVER_KEYBOARD_HPP__
+#ifndef __DRIVER_KEYBOARD_HPP___
 #define __DRIVER_KEYBOARD_HPP__
 
 #include "../common.hpp"

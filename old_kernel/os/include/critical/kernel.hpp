@@ -1,6 +1,6 @@
 #pragma once
 
-#ifndef __KERNEL_HPP__
+#ifndef __KERNEL_HPP___
 #define __KERNEL_HPP__
 
 #include "common.hpp"

@@ -5,7 +5,7 @@
 
 #pragma once
 
-#ifndef __STRING_HPP__
+#ifndef __STRING_HPP___
 #define __STRING_HPP__
 
 #include "common.hpp"

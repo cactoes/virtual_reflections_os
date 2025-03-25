@@ -6,7 +6,7 @@
 
 #pragma once
 
-#ifndef __COMMON_HPP____
+#ifndef __COMMON_HPP_____
 #define __COMMON_HPP____
 
 namespace signed_number_types {

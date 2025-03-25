@@ -5,7 +5,7 @@
 
 #pragma once
 
-#ifndef __MEMORY_HPP__
+#ifndef __MEMORY_HPP___
 #define __MEMORY_HPP__
 
 #include "common.hpp"
