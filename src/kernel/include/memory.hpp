@@ -127,12 +127,12 @@ typedef bool(*block_filter_callback_t)(const heap_block_t*, const void*);
 
 void* vmem_get_page_critical();
 void* vmem_get_page();
-bool vmem_paging_reserve_at_adress(uint64_t address, size_t count = 1);
+[[nodiscard]] bool vmem_paging_reserve_at_adress(uint64_t address, size_t count = 1);
 void vmem_identity_map(uint64_t* pml4);
-bool vmem_map_2kb_page(void* pml4, void* virtual_addr, void* physical_addr);
-bool vmem_map_2mb_page(void* pml4, void* virtual_addr, void* physical_addr);
-size_t vmem_smart_alloc_pages(void* pml4, void* virtual_addr, size_t size);
-void vmem_init(multiboot_t* multiboot_struct, void* pml4);
+[[nodiscard]] bool vmem_map_2kb_page(void* pml4, void* virtual_addr, void* physical_addr);
+[[nodiscard]] bool vmem_map_2mb_page(void* pml4, void* virtual_addr, void* physical_addr);
+[[nodiscard]] size_t vmem_smart_alloc_pages(void* pml4, void* virtual_addr, size_t size);
+[[nodiscard]] bool vmem_init(multiboot_t* multiboot_struct, void* pml4);
 
 namespace heap_block_filters {
 
@@ -143,8 +143,8 @@ bool unused_block_filter(const heap_block_t* block, const void* param);
 
 int heap_filter_blocks(heap_t* heap, void* param, block_filter_callback_t bfc_array[], size_t bfc_array_size, heap_block_t* block_array[], size_t block_array_size);
 
-void heap_init(heap_t* heap, void* pml4, void* virtual_address, size_t size);
-void heap_expand(heap_t* heap, void* pml4, size_t size);
+[[nodiscard]] bool heap_init(heap_t* heap, void* pml4, void* virtual_address, size_t size);
+[[nodiscard]] bool heap_expand(heap_t* heap, void* pml4, size_t size);
 void* heap_alloc(heap_t* heap, size_t size);
 void heap_free(heap_t* heap, void* ptr);
 

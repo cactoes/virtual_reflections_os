@@ -189,10 +189,12 @@ size_t vmem_smart_alloc_pages(void* pml4, void* virtual_addr, size_t size) {
             continue;
 
         // reserve the remaining pages to complete 2MB
-        vmem_paging_reserve_at_adress(target_physical_address + PAGE_SIZE, (PAGE_SIZE_LARGE / PAGE_SIZE - 1));
+        if (!vmem_paging_reserve_at_adress(target_physical_address + PAGE_SIZE, (PAGE_SIZE_LARGE / PAGE_SIZE - 1)))
+            return 0;
 
         // map the address
-        vmem_map_2mb_page(pml4, (void*)current_virtual_address, (void*)target_physical_address);
+        if (!vmem_map_2mb_page(pml4, (void*)current_virtual_address, (void*)target_physical_address))
+            return false;
 
         // update counters
         allocated += PAGE_SIZE_LARGE;
@@ -202,26 +204,25 @@ size_t vmem_smart_alloc_pages(void* pml4, void* virtual_addr, size_t size) {
     return allocated;
 }
 
-void vmem_init(multiboot_t* multiboot_struct, void* pml4) {
-    // TODO: check result vmem reserve
-
+bool vmem_init(multiboot_t* multiboot_struct, void* pml4) {
     // zero page
     memzero(0, PAGE_SIZE);
 
     const uint64_t aligned_kernel_end_addr = mem_align_up((uint64_t)&__lnk_end_kernel, PAGE_SIZE_LARGE);
     const uint64_t kernel_page_count = aligned_kernel_end_addr / PAGE_SIZE;
-    vmem_paging_reserve_at_adress(0, kernel_page_count);
+    if (!vmem_paging_reserve_at_adress(0, kernel_page_count))
+        return false;
 
     for (auto mm_entry = mb_get_first_entry(multiboot_struct); mm_entry; mm_entry = mb_get_next_entry(multiboot_struct, mm_entry)) {
         // reserve physical pages for reserved memory
         if (mm_entry->type != (uint32_t)memory_map_type_t::USABLE) {
-            if (mm_entry->addr + mm_entry->len > (KERNEL_PAGE_BITMAP_SIZE + KERNEL_PAGE_CRITICAL_BITMAP_SIZE) * PAGE_SIZE) {
+            if (mm_entry->addr + mm_entry->len > (KERNEL_PAGE_BITMAP_SIZE + KERNEL_PAGE_CRITICAL_BITMAP_SIZE) * PAGE_SIZE)
                 continue;
-            }
 
             // reserve as much as possible
             for (size_t i = 0; i < mm_entry->len; i += PAGE_SIZE) {
-                vmem_paging_reserve_at_adress(mem_align_down(mm_entry->addr, PAGE_SIZE) + i);
+                if (!vmem_paging_reserve_at_adress(mem_align_down(mm_entry->addr, PAGE_SIZE) + i))
+                    return false;
             }
         }
     }
@@ -229,6 +230,8 @@ void vmem_init(multiboot_t* multiboot_struct, void* pml4) {
     // first 1G is identity mapped
     vmem_identity_map((uint64_t*)pml4);
     __set_pml4(pml4);
+
+    return true;
 }
 
 bool heap_block_filters::donor_block_filter(const heap_block_t* block, const void* param) {
@@ -267,17 +270,17 @@ int heap_filter_blocks(heap_t* heap, void* param, block_filter_callback_t bfc_ar
     return found_size;
 }
 
-void heap_init(heap_t* heap, void* pml4, void* virtual_address, size_t size) {
-    // TODO: @since 25/03/2025 -- 01:12
-    //       check result vmem reserve
-
+bool heap_init(heap_t* heap, void* pml4, void* virtual_address, size_t size) {
     // the heap is just raw memory no data structures
     uint64_t heap_size = vmem_smart_alloc_pages(pml4, virtual_address, size);
 
     // heap struct (identity mapped memory)
     void* p_page = vmem_get_page_critical();
-    vmem_paging_reserve_at_adress((uint64_t)p_page + PAGE_SIZE, (PAGE_SIZE_LARGE / PAGE_SIZE - 1));
-    vmem_map_2mb_page(pml4, p_page, p_page);
+    if (!vmem_paging_reserve_at_adress((uint64_t)p_page + PAGE_SIZE, (PAGE_SIZE_LARGE / PAGE_SIZE - 1)))
+        return false;
+
+    if (!vmem_map_2mb_page(pml4, p_page, p_page))
+        return false;
 
     // setup heap stuct
     heap->heap_block_array = (heap_block_t*)p_page;
@@ -292,13 +295,17 @@ void heap_init(heap_t* heap, void* pml4, void* virtual_address, size_t size) {
     heap->heap_block_array->size = heap_size;
     heap->heap_block_array->free = true;
     heap->heap_block_array->used = true;
+
+    return true;
 }
 
-void heap_expand(heap_t* heap, void* pml4, size_t size) {
+bool heap_expand(heap_t* heap, void* pml4, size_t size) {
     void* heap_virtual_end = (void*)((uint64_t)heap->start_virtual_addr + heap->size);
     const auto new_heap_block = vmem_smart_alloc_pages(pml4, heap_virtual_end, size);
 
     // TODO: @since 24/03/2025 -- 15:57
+
+    return false;
 }
 
 void* heap_alloc(heap_t* heap, size_t size) {
