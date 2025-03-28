@@ -18,6 +18,17 @@
             }
         },
         {
+            "label": "run qemu default",
+            "type": "shell",
+            "command": "./qemu_start.ps1",
+            "options": {
+                "statusbar": {
+                    "label": "$(debug-start) Run",
+                    "detail" : "run the os"
+                }
+            }
+        },
+        {
             "label": "build kernel",
             "type": "shell",
             "command": "docker",
