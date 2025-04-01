@@ -5,7 +5,29 @@
 #include "cpu.hpp"
 #include "keyboard_driver.hpp"
 
-void critical_fatal(uint64_t code, const char* message) {
+void draw_logo_vga_tm() {
+    constexpr uint32_t x = 29;
+    constexpr uint32_t y_base = 1;
+    
+    vga_tm_set_cursor(x, y_base + 1);  vga_tm_print("         *  ..        \n");
+    vga_tm_set_cursor(x, y_base + 2);  vga_tm_print("        @@# @@.       \n");
+    vga_tm_set_cursor(x, y_base + 3);  vga_tm_print("       @@*@@ @@.      \n");
+    vga_tm_set_cursor(x, y_base + 4);  vga_tm_print("     .@@  #@@ @@:     \n");
+    vga_tm_set_cursor(x, y_base + 5);  vga_tm_print("     @@ *@ :@@ @@:    \n");
+    vga_tm_set_cursor(x, y_base + 6);  vga_tm_print("   :@@ #@%  .@@ @@=   \n");
+    vga_tm_set_cursor(x, y_base + 7);  vga_tm_print("  :@@ %@#    .@@ @@+  \n");
+    vga_tm_set_cursor(x, y_base + 8);  vga_tm_print(" +@@ @@*       @@ %@* \n");
+    vga_tm_set_cursor(x, y_base + 9);  vga_tm_print(" @@: @@.       @@ -@@ \n");
+    vga_tm_set_cursor(x, y_base + 10); vga_tm_print("  @@- @@:     @@ =@@  \n");
+    vga_tm_set_cursor(x, y_base + 11); vga_tm_print("   @@* @@:   @@ *@@   \n");
+    vga_tm_set_cursor(x, y_base + 12); vga_tm_print("    @@# @@. @@ *@@    \n");
+    vga_tm_set_cursor(x, y_base + 13); vga_tm_print("     #@@ . @@ %@#     \n");
+    vga_tm_set_cursor(x, y_base + 14); vga_tm_print("      +@@ @@ #@#      \n");
+    vga_tm_set_cursor(x, y_base + 15); vga_tm_print("       -@@@ @@+       \n");
+    vga_tm_set_cursor(x, y_base + 16); vga_tm_print("        :@  %=        \n");
+}
+
+[[noreturn]] void critical_fatal(uint64_t code, const char* message) {
     vga_tm_color_map_t color {
         .foreground = vga_tm_color_t::WHITE,
         .background = vga_tm_color_t::BLUE,
@@ -30,7 +52,9 @@ cpu_state_t* handle_other_interrupt(uint64_t code, cpu_state_t* rsp) {
 
 extern "C" void kernel_entry(multiboot_t* multiboot_struct, void* kpml4) {
     vga_tm_clear_screen();
-    vga_tm_print("initializing kernel ...\n\n");
+    draw_logo_vga_tm();
+    vga_tm_set_cursor(29, 20);
+    vga_tm_print("initializing kernel ...");
 
     if (multiboot_struct->magic != 0x2BADB002)
         critical_fatal(multiboot_struct->magic, "multiboot magic was invalid");
