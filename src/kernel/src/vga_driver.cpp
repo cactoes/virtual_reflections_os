@@ -109,6 +109,9 @@ int vga_tm_clear_screen() {
 }
 
 int vga_tm_set_cursor(uint32_t x, uint32_t y) {
+    if (x > VGA_TM_NUM_COLS || y > VGA_TM_NUM_ROWS)
+        return 1;
+
     int position = x + VGA_TM_NUM_COLS * y;
 
     cpu_outb(VGA_CRTC_INDEX, 14);
