@@ -5,7 +5,7 @@
 #include "cpu.hpp"
 #include "keyboard_driver.hpp"
 #include "pit_driver.hpp"
-ffff
+
 void draw_logo_vga_tm() {
     constexpr uint32_t x = 29;
     constexpr uint32_t y_base = 1;
