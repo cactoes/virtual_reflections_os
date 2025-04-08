@@ -1,0 +1,35 @@
+name: Kernel Build
+
+on:
+  push:
+    branches:
+      - main  # Trigger on push to the main branch (change if your default branch is different)
+  pull_request:
+    branches:
+      - main  # Trigger on pull request to the main branch
+  workflow_dispatch:  # Allows manual triggering of the workflow
+
+jobs:
+  build:
+    runs-on: ubuntu-latest  # You can change this to another runner if necessary
+
+    steps:
+    # Step 1: Check out the repository
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    # Step 2: Install dependencies required to build your kernel
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          nasm \
+          grub-pc-bin \
+          grub-common \
+          x86_64-elf-g++ \
+          x86_64-elf-ld \
+          make
+
+    # Step 3: Run the Makefile to build the kernel
+    - name: Run Makefile to build kernel
+      run: make
