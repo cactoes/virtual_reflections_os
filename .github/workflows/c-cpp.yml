@@ -1,33 +1,22 @@
-name: Kernel Build with Custom Dockerfile
+# .github/workflows/build.yml
+name: Build ISO
 
 on:
   push:
-    branches:
-      - main  # Trigger on push to the main branch
+    branches: [main]
   pull_request:
-    branches:
-      - main  # Trigger on pull request to the main branch
-  workflow_dispatch:  # Allows manual triggering of the workflow
+    branches: [main]
 
 jobs:
   build:
-    runs-on: ubuntu-latest  # This is where Docker will run
+    runs-on: ubuntu-latest
 
     steps:
-    # Step 1: Checkout the repository
     - name: Checkout repository
       uses: actions/checkout@v3
 
-    # Step 2: Set up Docker (ensure Docker is available in the environment)
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v2
+    - name: Build Docker image
+      run: docker build -t iso-builder .
 
-    # Step 3: Build the custom Docker image
-    - name: Build Docker image from custom Dockerfile
-      run: |
-        docker build -t kernel-build .
-
-    # Step 4: Run the custom Docker container to build the kernel
-    - name: Run Docker container
-      run: |
-        docker run --rm kernel-build
+    - name: Run build script in container
+      run: docker run --rm -v ${{ github.workspace }}:/root/env iso-builder
