@@ -68,7 +68,7 @@ cpu_state_t* int_handler(uint64_t code, cpu_state_t* rsp) {
         }
     }
 
-    cpu_halt();
+    // cpu_halt();
 
     return rsp;
 }
@@ -94,7 +94,7 @@ void int_init() {
     cpu_outb(PIC1_DATA, 1);
     cpu_outb(PIC2_DATA, 1);
 
-    cpu_outb(PIC1_DATA, 0xFD);
+    cpu_outb(PIC1_DATA, 0xFE);
     cpu_outb(PIC2_DATA, 0xFF);
 
     __flush_idt(g_idtr);

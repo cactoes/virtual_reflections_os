@@ -57,4 +57,5 @@ constexpr uint64_t hash_string_64(const char* str, uint64_t hash = 0ULL) {
     return (*str == '\0') ? hash :
         hash_string_64(str + 1, (hash << 1) + static_cast<uint64_t>(*str));
 }
+
 #endif // __COMMON_HPP__

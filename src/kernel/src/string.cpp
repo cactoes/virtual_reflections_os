@@ -39,7 +39,7 @@ size_t sprintf(char* buffer, size_t size, void* ptr) {
     if (size < 17 || buffer == nullptr)
         return 0;
 
-    static const char numbers[] = "0123456789ABCDEF";
+    static const char numbers[] = "0123456789abcdef";
 
     uint64_t number = (uint64_t)ptr;
 
@@ -56,7 +56,7 @@ size_t sprintf(char* buffer, size_t size, uint32_t num, int base) {
     if (size < 11 || buffer == nullptr)
         return 0;
 
-    static const char numbers[] = "0123456789ABCDEF";
+    static const char numbers[] = "0123456789abcdef";
 
     if (base >= sizeof(numbers))
         return 0;
@@ -86,7 +86,7 @@ size_t sprintf(char* buffer, size_t size, int32_t num, int base) {
     if (size < 12 || buffer == nullptr)
         return 0;
 
-    static const char numbers[] = "0123456789ABCDEF";
+    static const char numbers[] = "0123456789abcdef";
 
     if (base >= sizeof(numbers))
         return 0;
@@ -119,7 +119,7 @@ size_t sprintf(char* buffer, size_t size, uint64_t num, int base) {
     if (size < 21 || buffer == nullptr)
         return 0;
 
-    static const char numbers[] = "0123456789ABCDEF";
+    static const char numbers[] = "0123456789abcdef";
 
     if (base >= sizeof(numbers))
         return 0;
@@ -149,7 +149,7 @@ size_t sprintf(char* buffer, size_t size, int64_t num, int base) {
     if (size < 22 || buffer == nullptr)
         return 0;
 
-    static const char numbers[] = "0123456789ABCDEF";
+    static const char numbers[] = "0123456789abcdef";
 
     if (base >= sizeof(numbers))
         return 0;

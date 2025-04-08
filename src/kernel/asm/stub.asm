@@ -133,7 +133,7 @@ isr_stub 17 ; isr 17
 isr_stub 18 ; isr 18
 isr_stub 19 ; isr 19
 isr_stub 20 ; isr 20
-isr_stub 21 ; isr 21
+isr_stub 21 ; isr 21 last basic interupt
 isr_stub 22 ; isr 22
 isr_stub 23 ; isr 23
 isr_stub 24 ; isr 24

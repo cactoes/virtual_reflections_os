@@ -47,4 +47,10 @@ inline uint32_t cpu_inl(uint16_t port) {
     }
 }
 
+inline void* cpu_get_stack_pointer() {
+    void* stack_pointer;
+    __asm__ ("mov %%rsp, %0" : "=r" (stack_pointer));
+    return stack_pointer;
+}
+
 #endif // __CPU_HPP__

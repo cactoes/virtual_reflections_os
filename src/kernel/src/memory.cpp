@@ -10,6 +10,7 @@ static heap_t* g_heap = nullptr;
 
 void __flush_tlb(uint64_t* virtual_address) { asm volatile("invlpg (%0)" : : "r"(virtual_address) : "memory"); }
 void __set_pml4(void* ptr) { asm volatile("mov %0, %%cr3" : : "r"(ptr) : "memory"); }
+void* __get_pml4() { void* pml4; asm volatile("mov %%cr3, %0" : "=r"(pml4) : : "memory"); return pml4; }
 
 void* vmem_get_page_critical() {
     // slow ahh
@@ -309,6 +310,9 @@ bool heap_expand(heap_t* heap, void* pml4, size_t size) {
 }
 
 void* heap_alloc(heap_t* heap, size_t size) {
+    if (size > PAGE_SIZE_LARGE)
+        return nullptr;
+
     block_filter_callback_t filters[] = {
         heap_block_filters::donor_block_filter,
         heap_block_filters::unused_block_filter
@@ -334,8 +338,13 @@ void* heap_alloc(heap_t* heap, size_t size) {
     heap_block_t* unused_block = blocks[1];
 
     // make sure we have both blocks
-    if (result != HEAP_FILTERS_SIZE(filters))
-        return nullptr;
+    if (result != HEAP_FILTERS_SIZE(filters)) {
+        // kinda sketch to just get a "random" pml4 but whtv
+        if (!heap_expand(heap, __get_pml4(), PAGE_SIZE_LARGE))
+            return nullptr;
+
+        return heap_alloc(heap, size);
+    }
 
     donor_block->size -= size;
 
