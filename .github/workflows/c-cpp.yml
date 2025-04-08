@@ -1,9 +1,9 @@
-name: Kernel Build
+name: Kernel Build with Custom Dockerfile
 
 on:
   push:
     branches:
-      - main  # Trigger on push to the main branch (change if your default branch is different)
+      - main  # Trigger on push to the main branch
   pull_request:
     branches:
       - main  # Trigger on pull request to the main branch
@@ -11,25 +11,23 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest  # You can change this to another runner if necessary
+    runs-on: ubuntu-latest  # This is where Docker will run
 
     steps:
-    # Step 1: Check out the repository
+    # Step 1: Checkout the repository
     - name: Checkout repository
       uses: actions/checkout@v3
 
-    # Step 2: Install dependencies required to build your kernel
-    - name: Install dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y \
-          nasm \
-          grub-pc-bin \
-          grub-common \
-          x86_64-elf-g++ \
-          x86_64-elf-ld \
-          make
+    # Step 2: Set up Docker (ensure Docker is available in the environment)
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v2
 
-    # Step 3: Run the Makefile to build the kernel
-    - name: Run Makefile to build kernel
-      run: make
+    # Step 3: Build the custom Docker image
+    - name: Build Docker image from custom Dockerfile
+      run: |
+        docker build -t kernel-build .
+
+    # Step 4: Run the custom Docker container to build the kernel
+    - name: Run Docker container
+      run: |
+        docker run --rm kernel-build
