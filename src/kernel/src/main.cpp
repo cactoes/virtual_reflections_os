@@ -93,6 +93,6 @@ extern "C" void kernel_entry(multiboot_t* multiboot_struct, void* kpml4) {
         vga_tm_set_cursor(29 + 24, 20);
         vga_tm_print("%c", spinner[i++ % chars_size]);
         vga_tm_set_cursor(29 + 24, 20);
-        pit_sleep(0, 200);
+        pit_sleep(0, 150);
     }
 }
