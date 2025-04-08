@@ -1,9 +1,6 @@
 # VirtualReflectionsOS (Altered State-0)
 A 64-bit custom made operating system, using grub as bootloader
 
-
-
-
 ## Setup build environment
 ### Windows host
 ```powershell
