@@ -5,6 +5,7 @@
 #include "cpu.hpp"
 #include "keyboard_driver.hpp"
 #include "pit_driver.hpp"
+#include "string.hpp"
 
 void draw_logo_vga_tm() {
     constexpr uint32_t x = 29;
@@ -29,10 +30,10 @@ void draw_logo_vga_tm() {
 }
 
 extern "C" [[noreturn]] void critical_fatal_ex(uint64_t code, const char* message, cpu_state_t* cpu_state = nullptr) {
-    vga_tm_color_map_t color {
-        .foreground = vga_tm_color_t::WHITE,
-        .background = vga_tm_color_t::BLUE,
-    };
+    vga_tm_color_map_t color {};
+    color.foreground = vga_tm_color_t::WHITE,
+    color.background = vga_tm_color_t::BLUE,
+
     vga_tm_set_color(&color);
     vga_tm_clear_screen();
     vga_tm_print("\n\n\n       :(\n\n");
@@ -170,13 +171,13 @@ extern "C" void kernel_entry(multiboot_t* multiboot_struct, void* kpml4) {
         critical_fatal(0x0, "heap_init failed");
     set_global_heap(&heap);
 
-    const char spinner[] = "|/-\\";
-    constexpr size_t chars_size = (sizeof(spinner) / sizeof(char)) - 1;
+    const char* spinner[] = { ".  ", ".. ", "...", ".. ", ".  ", "   " };
+    constexpr size_t chars_size = (sizeof(spinner) / sizeof(char*));
     size_t i = 0;
     while (true) {
-        vga_tm_set_cursor(29 + 24, 20);
-        vga_tm_print("%c", spinner[i++ % chars_size]);
-        vga_tm_set_cursor(29 + 24, 20);
-        pit_sleep(0, 150);
+        vga_tm_set_cursor(49, 20);
+        vga_tm_print("%s", spinner[i++ % chars_size]);
+        vga_tm_set_cursor(VGA_TM_NUM_COLS, VGA_TM_NUM_ROWS);
+        pit_sleep(0, 250);
     }
 }
