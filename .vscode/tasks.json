@@ -53,6 +53,20 @@
             }
         },
         {
+            "label": "build & run",
+            "dependsOrder": "sequence",
+            "dependsOn": [
+                "build kernel",
+                "run qemu default",
+            ],
+            "options": {
+                "statusbar": {
+                    "label": "$(run-all) Build & Run",
+                    "detail" : "build & run the os"
+                }
+            }
+        },
+        {
             "label": "build kernel & start QEMU dbg",
             "dependsOrder": "sequence",
             "dependsOn": [
