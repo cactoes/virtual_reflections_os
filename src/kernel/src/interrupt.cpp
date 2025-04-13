@@ -37,32 +37,27 @@ cpu_state_t* int_handler(uint64_t code, cpu_state_t* rsp) {
         case 0x13:
         case 0x14:
         case 0x15: { // end of "basic" interrupts
-            const auto callback = g_int_cb_array[INT_TYPE_CAST(interrupt_type::CRITICAL)];
-            if (callback)
+            if (const auto callback = g_int_cb_array[INT_TYPE_CAST(interrupt_type::CRITICAL)])
                 rsp = callback(code, rsp);
             break;
         }
         case 0x20: { // PIT
-            const auto callback = g_int_cb_array[INT_TYPE_CAST(interrupt_type::PIT)];
-            if (callback)
+            if (const auto callback = g_int_cb_array[INT_TYPE_CAST(interrupt_type::PIT)])
                 rsp = callback(code, rsp);
             break;
         }
         case 0x21: { // keyboard
-            const auto callback = g_int_cb_array[INT_TYPE_CAST(interrupt_type::KEYBOARD)];
-            if (callback)
+            if (const auto callback = g_int_cb_array[INT_TYPE_CAST(interrupt_type::KEYBOARD)])
                 rsp = callback(code, rsp);
             break;
         }
         case 0x2C: { // mouse
-            const auto callback = g_int_cb_array[INT_TYPE_CAST(interrupt_type::MOUSE)];
-            if (callback)
+            if (const auto callback = g_int_cb_array[INT_TYPE_CAST(interrupt_type::MOUSE)])
                 rsp = callback(code, rsp);
             break;
         }
         default: {
-            const auto callback = g_int_cb_array[INT_TYPE_CAST(interrupt_type::OTHER)];
-            if (callback)
+            if (const auto callback = g_int_cb_array[INT_TYPE_CAST(interrupt_type::OTHER)])
                 rsp = callback(code, rsp);
             break;
         }
@@ -73,6 +68,20 @@ cpu_state_t* int_handler(uint64_t code, cpu_state_t* rsp) {
     return rsp;
 }
 
+bool int_unmask_pic_irq(uint8_t irq) {
+    if (irq >= 16)
+        return false;
+
+    const auto PIC_DATA_PORT = irq > 8 ? PIC2_DATA : PIC1_DATA;
+    irq = irq > 8 ? irq - 8 : irq;
+
+    uint8_t mask = cpu_inb(PIC_DATA_PORT);
+    mask &= ~(1 << irq);
+    cpu_outb(PIC_DATA_PORT, mask);
+
+    return true;
+}
+
 void int_init() {
     g_idtr.base = (uint64_t)&g_idt[0];
     g_idtr.limit = (uint16_t)(sizeof(idt_entry_t) * IDT_ENTRY_COUNT - 1);
@@ -81,7 +90,7 @@ void int_init() {
         int_set_idt_entry(vector, isr_stub_table[vector], 0x8E);
 
     // int_set_idt_entry(0x80, (void*)systemcall, 0x8E);
-    
+
     cpu_outb(PIC1, 0x11);
     cpu_outb(PIC2, 0x11);
 
@@ -94,8 +103,9 @@ void int_init() {
     cpu_outb(PIC1_DATA, 1);
     cpu_outb(PIC2_DATA, 1);
 
-    cpu_outb(PIC1_DATA, 0xFE);
-    cpu_outb(PIC2_DATA, 0xFF);
+    int_unmask_pic_irq(IRQ_PIT);
+    int_unmask_pic_irq(IRQ_KEYBOARD);
+    int_unmask_pic_irq(IRQ_PS2_MOUSE);
 
     __flush_idt(g_idtr);
 
@@ -116,4 +126,11 @@ void int_set_idt_entry(uint8_t vector, void* handler, uint8_t flags) {
 
 void int_set_callback(interrupt_type type, interrupt_callback int_cb) {
     g_int_cb_array[INT_TYPE_CAST(type)] = int_cb;
+}
+
+void int_pic_send_eoi(uint8_t irq) {
+    if (irq >= 8)
+        cpu_outb(PIC2, PIC_EOI);
+    
+    cpu_outb(PIC1, PIC_EOI);
 }
