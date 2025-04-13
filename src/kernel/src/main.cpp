@@ -1,11 +1,14 @@
 #include "common.hpp"
-#include "memory.hpp"
-#include "vga_driver.hpp"
-#include "interrupt.hpp"
-#include "cpu.hpp"
-#include "keyboard_driver.hpp"
-#include "pit_driver.hpp"
 #include "string.hpp"
+#include "memory.hpp"
+#include "cpu.hpp"
+
+#include "interrupt.hpp"
+
+#include "vga_driver.hpp"
+#include "pit_driver.hpp"
+#include "keyboard_driver.hpp"
+#include "mouse_driver.hpp"
 
 void draw_logo_vga_tm() {
     constexpr uint32_t x = 29;
@@ -74,10 +77,6 @@ extern "C" [[noreturn]] void critical_fatal_ex(uint64_t code, const char* messag
 
 __attribute__((naked)) [[noreturn]] inline void critical_fatal(uint64_t code, const char* message) {
     asm volatile (
-        // Move the incoming parameters into temporary registers.
-        "mov %[code], %%rcx\n"    // Save code in RCX.
-        "mov %[msg], %%r8\n"       // Save message in R8.
-
         // Reserve space for a cpu_state_t and align the stack.
         "sub %[state_size], %%rsp\n"
         "and $-16, %%rsp\n"
@@ -86,6 +85,10 @@ __attribute__((naked)) [[noreturn]] inline void critical_fatal(uint64_t code, co
         "mov %%rsp, %%rdi\n"
         "call __dump_cpu\n"
 
+        // Move the incoming parameters into temporary registers.
+        "mov %[code], %%rcx\n"    // Save code in RCX.
+        "mov %[msg], %%r8\n"       // Save message in R8.
+
         // Set up the arguments for critical_fatal_ex:
         // rdi = code, rsi = message, rdx = cpu_state (rsp).
         "mov %%rcx, %%rdi\n"
@@ -93,7 +96,6 @@ __attribute__((naked)) [[noreturn]] inline void critical_fatal(uint64_t code, co
         "mov %%rsp, %%rdx\n"
         "call critical_fatal_ex\n"
 
-        "ud2\n"  // Trap if critical_fatal_ex ever returns.
         :
         : [code] "r"(code),
           [msg] "r"(message),
@@ -161,7 +163,11 @@ extern "C" void kernel_entry(multiboot_t* multiboot_struct, void* kpml4) {
     int_set_callback(interrupt_type::CRITICAL, handle_critical_interrupt);
     int_set_callback(interrupt_type::KEYBOARD, keyboard_handle_interrupt);
     int_set_callback(interrupt_type::PIT, pit_handle_interrupt);
+    int_set_callback(interrupt_type::MOUSE, mouse_handle_interrupt);
     int_init();
+
+    mouse_state_t mouse_state = {};
+    ps2_mouse_init(&mouse_state);
 
     if (!vmem_init(multiboot_struct, kpml4))
         critical_fatal(0x0, "vmem_init failed");
