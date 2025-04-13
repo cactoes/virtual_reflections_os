@@ -25,7 +25,7 @@ public:
 };
 
 static const event_t events[] = {
-    event_t("TEST_EVENT"),
+    event_t((char*)"TEST_EVENT"),
 };
 
 bool add_handler(const char* event_name, event_handler_t handler);
