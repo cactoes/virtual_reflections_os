@@ -4,6 +4,7 @@
 #include "cpu.hpp"
 
 #include "interrupt.hpp"
+#include "virtual_thread.hpp"
 
 #include "vga_driver.hpp"
 #include "pit_driver.hpp"
@@ -45,14 +46,17 @@ extern "C" [[noreturn]] void critical_fatal_ex(uint64_t code, const char* messag
 
     if (cpu_state) {
         vga_tm_set_cursor(10, 10); vga_tm_print("cf=%ul", (cpu_state->rflags >> 0) & 1);
-        vga_tm_set_cursor(10, 11); vga_tm_print("pf=%ul", (cpu_state->rflags >> 2) & 1);
-        vga_tm_set_cursor(10, 12); vga_tm_print("af=%ul", (cpu_state->rflags >> 4) & 1);
-        vga_tm_set_cursor(10, 13); vga_tm_print("zf=%ul", (cpu_state->rflags >> 6) & 1);
-        vga_tm_set_cursor(10, 14); vga_tm_print("sf=%ul", (cpu_state->rflags >> 7) & 1);
-        vga_tm_set_cursor(10, 15); vga_tm_print("tf=%ul", (cpu_state->rflags >> 8) & 1);
-        vga_tm_set_cursor(10, 16); vga_tm_print("if=%ul", (cpu_state->rflags >> 9) & 1);
-        vga_tm_set_cursor(10, 17); vga_tm_print("df=%ul", (cpu_state->rflags >> 10) & 1);
-        vga_tm_set_cursor(10, 18); vga_tm_print("of=%ul", (cpu_state->rflags >> 11) & 1);
+        vga_tm_set_cursor(10, 11); vga_tm_print("? =%ul", (cpu_state->rflags >> 1) & 1);
+        vga_tm_set_cursor(10, 12); vga_tm_print("pf=%ul", (cpu_state->rflags >> 2) & 1);
+        vga_tm_set_cursor(10, 13); vga_tm_print("? =%ul", (cpu_state->rflags >> 3) & 1);
+        vga_tm_set_cursor(10, 14); vga_tm_print("af=%ul", (cpu_state->rflags >> 4) & 1);
+        vga_tm_set_cursor(10, 15); vga_tm_print("? =%ul", (cpu_state->rflags >> 5) & 1);
+        vga_tm_set_cursor(10, 16); vga_tm_print("zf=%ul", (cpu_state->rflags >> 6) & 1);
+        vga_tm_set_cursor(10, 17); vga_tm_print("sf=%ul", (cpu_state->rflags >> 7) & 1);
+        vga_tm_set_cursor(10, 18); vga_tm_print("tf=%ul", (cpu_state->rflags >> 8) & 1);
+        vga_tm_set_cursor(10, 19); vga_tm_print("if=%ul", (cpu_state->rflags >> 9) & 1);
+        vga_tm_set_cursor(10, 20); vga_tm_print("df=%ul", (cpu_state->rflags >> 10) & 1);
+        vga_tm_set_cursor(10, 21); vga_tm_print("of=%ul", (cpu_state->rflags >> 11) & 1);
         
         vga_tm_set_cursor(20, 10); vga_tm_print("r8= 0x%uh", cpu_state->r8);
         vga_tm_set_cursor(20, 11); vga_tm_print("r9= 0x%uh", cpu_state->r9);
@@ -69,6 +73,7 @@ extern "C" [[noreturn]] void critical_fatal_ex(uint64_t code, const char* messag
         vga_tm_set_cursor(35, 13); vga_tm_print("rbp=0x%uh", cpu_state->rbp);
         vga_tm_set_cursor(35, 14); vga_tm_print("rsi=0x%uh", cpu_state->rsi);
         vga_tm_set_cursor(35, 15); vga_tm_print("rdi=0x%uh", cpu_state->rdi);
+        vga_tm_set_cursor(35, 16); vga_tm_print("rip=0x%uh", cpu_state->rip);
     }
     
     while (true)
@@ -138,6 +143,12 @@ cpu_state_t* handle_other_interrupt(uint64_t code, cpu_state_t* rsp) {
     return rsp;
 }
 
+void task_2_test() {
+    vga_tm_print("task2");
+
+    while (true) {}
+}
+
 extern "C" void kernel_entry(multiboot_t* multiboot_struct, void* kpml4) {
     vga_tm_clear_screen();
     draw_logo_vga_tm();
@@ -176,6 +187,14 @@ extern "C" void kernel_entry(multiboot_t* multiboot_struct, void* kpml4) {
     if (!heap_init(&heap, kpml4, (void*)0x40000000, 0x100000 * 32))
         critical_fatal(0x0, "heap_init failed");
     set_global_heap(&heap);
+
+    vthread_t main_thread {};
+    vthread_add(&main_thread);
+
+    // FIXME @since 14/04/2025 -- 01:04
+    // shit doesnt work always get int13
+    // vthread_t thread_2 {};
+    // vthread_create(&thread_2, task_2_test);
 
     const char* spinner[] = { ".  ", ".. ", "...", ".. ", ".  ", "   " };
     constexpr size_t chars_size = (sizeof(spinner) / sizeof(char*));

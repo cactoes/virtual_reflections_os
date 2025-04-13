@@ -1,14 +1,22 @@
 #include "pit_driver.hpp"
 #include "cpu.hpp"
+#include "virtual_thread.hpp"
 
 static pit_timer_t* g_timers;
 static size_t g_timers_size;
 
 cpu_state_t* pit_handle_interrupt(uint64_t code, cpu_state_t* rsp) {
+    // TODO @since 13/04/2025 -- 20:31
+    // check if main thread
+    
     for (size_t i = 0; i < g_timers_size; i++)
         g_timers[i].tick++;
     
     int_pic_send_eoi(IRQ_PIT);
+
+    if (const auto new_thread = vthread_schedule(rsp))
+        return new_thread;
+
     return rsp;
 }
 

@@ -22,12 +22,6 @@ __dump_cpu:
     mov rbx, rsp
 
     ; store cpu state on stack
-    pushfq
-    push rax
-    push rcx
-    push rdx
-    push rsi
-    push rdi
     push r8
     push r9
     push r10
@@ -36,6 +30,12 @@ __dump_cpu:
     push r13
     push r14
     push r15
+    
+    push rax
+    push rcx
+    push rdx
+    push rsi
+    push rdi
     push rbp
     push rsp
 
@@ -59,13 +59,15 @@ __dump_cpu:
 %macro isr_stub 1
 isr_stub_%+%1:
 
-    ; store cpu state
-    pushfq
-    push rax
-    push rcx
-    push rdx
-    push rsi
-    push rdi
+    ; mov rax, [rsp + (16 * 8)]
+    ; push rax
+
+    ; ; push CS assuming kernel
+    ; push 0x08
+
+    ; pushfq
+
+    ; store cpu state on stack
     push r8
     push r9
     push r10
@@ -74,8 +76,13 @@ isr_stub_%+%1:
     push r13
     push r14
     push r15
+
+    push rax
+    push rcx
+    push rdx
+    push rsi
+    push rdi
     push rbp
-    push rsp
 
     ; store isr code
     mov rdi, %1
@@ -83,13 +90,18 @@ isr_stub_%+%1:
     mov rsi, rsp
     ; call the interrupt handler
     call int_handler
-    ; manually align stack
-    add rax, 8
+
     ; update / restore stack pointer
     mov rsp, rax
 
-    ; update / restore cpu state
+    ; restore all state (reverse of push order)
     pop rbp
+    pop rdi
+    pop rsi
+    pop rdx
+    pop rcx
+    pop rax
+
     pop r15
     pop r14
     pop r13
@@ -98,12 +110,6 @@ isr_stub_%+%1:
     pop r10
     pop r9
     pop r8
-    pop rdi
-    pop rsi
-    pop rdx
-    pop rcx
-    pop rax
-    popfq
 
     ; return from interrupt
     iretq
