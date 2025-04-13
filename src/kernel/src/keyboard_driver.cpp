@@ -34,6 +34,6 @@ cpu_state_t* keyboard_handle_interrupt(uint64_t code, cpu_state_t* rsp) {
         critical_fatal(key_state.scan_code, "FATAL (keyboard): key code out of range");
     }
 
-    cpu_outb(PIC1, 0x20);
+    int_pic_send_eoi(IRQ_KEYBOARD);
     return rsp;
 }
