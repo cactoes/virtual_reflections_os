@@ -2,6 +2,7 @@
 /// @file       pit_driver.hpp
 /// @brief      pit related functions
 //==========================================
+
 #pragma once
 
 #ifndef __PIT_DRIVER_HPP__
