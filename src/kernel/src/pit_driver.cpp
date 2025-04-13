@@ -8,8 +8,7 @@ cpu_state_t* pit_handle_interrupt(uint64_t code, cpu_state_t* rsp) {
     for (size_t i = 0; i < g_timers_size; i++)
         g_timers[i].tick++;
     
-    cpu_outb(PIC1, 0x20);
-    cpu_outb(PIC2, 0x20);
+    int_pic_send_eoi(IRQ_PIT);
     return rsp;
 }
 
