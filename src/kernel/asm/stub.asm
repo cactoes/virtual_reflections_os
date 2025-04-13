@@ -16,7 +16,7 @@ section .text
 ; @function                 __dump_cpu
 ; @brief                    function to dump the current cpu_state
 ; @param rdi, buffer        pointer to cpu struct
-; @remarks                  no registers destroyed
+; @remarks                  destroyed registers: rsp
 ;==========================================
 __dump_cpu:
     mov rbx, rsp
