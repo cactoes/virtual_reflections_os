@@ -97,15 +97,15 @@ size_t sprintf(char* buffer, size_t size, int32_t num, int base) {
         return 2;
     }
 
-    int32_t number = num;
+    uint32_t number = (num < 0) ? -((uint32_t)num) : (uint32_t)num;
 
     char tmp[12] = { 0 };
     int i = sizeof(tmp) - 1;
     for (; number && i; number /= base)
         tmp[--i] = numbers[number % base];
 
-    if (number < 0)
-        buffer[i++] = '-';
+    if (num < 0)
+        tmp[--i] = '-';
 
     char* str = &tmp[i];
     auto strlength = strlen(str);
@@ -160,15 +160,15 @@ size_t sprintf(char* buffer, size_t size, int64_t num, int base) {
         return 2;
     }
 
-    int64_t number = num;
+    uint64_t number = (num < 0) ? -((uint64_t)num) : (uint64_t)num;
 
     char tmp[22] = { 0 };
     int i = sizeof(tmp) - 1;
     for (; number && i; number /= base)
         tmp[--i] = numbers[number % base];
 
-    if (number < 0)
-        buffer[i++] = '-';
+    if (num < 0)
+        tmp[--i] = '-';
 
     char* str = &tmp[i];
     auto strlength = strlen(str);
