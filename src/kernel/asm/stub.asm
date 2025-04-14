@@ -37,7 +37,9 @@ __dump_cpu:
     push rsi
     push rdi
     push rbp
-    push rsp
+
+    ; TODO @since 14/04/2025 -- 13:57
+    ; push rflags, cs, rip 
 
     ; copy cpu state
     mov rsi, rsp    ; source cpu_state aka current stack
@@ -83,12 +85,15 @@ isr_stub_%+%1:
     push rsi
     push rdi
     push rbp
-
+    
     ; store isr code
     mov rdi, %1
     ; store pointer to the stack
     mov rsi, rsp
     ; call the interrupt handler
+    ; TODO @since 14/04/2025 -- 13:58
+    ; THIS ONLY SUPPORT KERNEL MODE INTERRUPTS
+    ; THE STACK IS DIFFERENT OTHERWISE
     call int_handler
 
     ; update / restore stack pointer

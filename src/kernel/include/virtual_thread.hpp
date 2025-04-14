@@ -17,6 +17,9 @@
 struct vthread_t {
     cpu_state_t cpu_state;
     void* stack;
+
+    // TODO @since 14/04/2025 -- 13:58
+    // extra info like: thread sleep
 };
 
 static vthread_t* g_vthreads[VTHREAD_MAX_COUNT] {};

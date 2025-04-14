@@ -193,8 +193,8 @@ extern "C" void kernel_entry(multiboot_t* multiboot_struct, void* kpml4) {
 
     // FIXME @since 14/04/2025 -- 01:04
     // shit doesnt work always get int13
-    // vthread_t thread_2 {};
-    // vthread_create(&thread_2, task_2_test);
+    vthread_t thread_2 {};
+    vthread_create(&thread_2, task_2_test);
 
     const char* spinner[] = { ".  ", ".. ", "...", ".. ", ".  ", "   " };
     constexpr size_t chars_size = (sizeof(spinner) / sizeof(char*));
