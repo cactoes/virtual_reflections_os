@@ -13,6 +13,48 @@ section .text
     global isr_stub_table
 
 ;==========================================
+; @macro    push_all_regs
+; @brief    pushes all gpr's to the stack
+;==========================================
+%macro push_all_regs 0
+    push r8
+    push r9
+    push r10
+    push r11
+    push r12
+    push r13
+    push r14
+    push r15
+    push rax
+    push rcx
+    push rdx
+    push rsi
+    push rdi
+    push rbp
+%endmacro
+
+;==========================================
+; @macro    pop_all_regs
+; @brief    pops all gpr's from the stack
+;==========================================
+%macro pop_all_regs 0
+    pop rbp
+    pop rdi
+    pop rsi
+    pop rdx
+    pop rcx
+    pop rax
+    pop r15
+    pop r14
+    pop r13
+    pop r12
+    pop r11
+    pop r10
+    pop r9
+    pop r8
+%endmacro
+
+;==========================================
 ; @function                 __dump_cpu
 ; @brief                    function to dump the current cpu_state
 ; @param rdi, buffer        pointer to cpu struct
@@ -47,7 +89,7 @@ __dump_cpu:
 %macro isr_stub 1
 isr_stub_%+%1:
     push_all_regs
-    
+
     ; store isr code
     mov rdi, %1
     ; store pointer to the stack
@@ -124,7 +166,6 @@ isr_stub 46 ; irq14 primary ata harddisk
 isr_stub 47 ; irq15 secondary ata harddisk
 
 ;==========================================
-; @macro    isr_stub_table
 ; @brief    interrupt array, stores all interrupts
 ;==========================================
 isr_stub_table:
@@ -133,47 +174,3 @@ isr_stub_table:
     dq isr_stub_%+i
 %assign i i+1 
 %endrep
-
-;==========================================
-; @macro    push_all_regs
-; @brief    pushes all gpr's to the stack
-;==========================================
-%macro push_all_regs 0
-    push r8
-    push r9
-    push r10
-    push r11
-    push r12
-    push r13
-    push r14
-    push r15
-
-    push rax
-    push rcx
-    push rdx
-    push rsi
-    push rdi
-    push rbp
-%endmacro
-
-;==========================================
-; @macro    pop_all_regs
-; @brief    pops all gpr's from the stack
-;==========================================
-%macro pop_all_regs 0
-    pop rbp
-    pop rdi
-    pop rsi
-    pop rdx
-    pop rcx
-    pop rax
-
-    pop r15
-    pop r14
-    pop r13
-    pop r12
-    pop r11
-    pop r10
-    pop r9
-    pop r8
-%endmacro
