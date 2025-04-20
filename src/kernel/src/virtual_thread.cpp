@@ -17,14 +17,16 @@ bool vthread_create(vthread_t* vthread, void(*entry)()) {
     memzero(&vthread->cpu_state, sizeof(cpu_state_t));
 
     uint64_t* stack_top = (uint64_t*)((uint8_t*)vthread->stack + VTHREAD_STACK_SIZE);
-    stack_top = (uint64_t*)((uint64_t)stack_top & ~0xF); // 16-byte align
+    stack_top = (uint64_t*)((uint64_t)stack_top & ~0xF);
 
     vthread->cpu_state.rip = (uint64_t)entry;
     vthread->cpu_state.cs = 0x08;
     vthread->cpu_state.rflags = 0x202;
+    vthread->cpu_state.rsp = (uint64_t)(stack_top + 1);
+    vthread->cpu_state.ss = 0x10;
 
     memcpy((void*)((uint64_t)stack_top - sizeof(cpu_state_t)), &vthread->cpu_state, sizeof(cpu_state_t));
-    
+
     return vthread_add(vthread);
 }
 
@@ -35,7 +37,10 @@ cpu_state_t* vthread_schedule(cpu_state_t* cpu_state) {
     auto current_vthread = g_vthreads[g_current_vthread_index];
 
     // store original cpu state
-    memcpy(&current_vthread->cpu_state, cpu_state, sizeof(cpu_state_t));
+    // memcpy(&current_vthread->cpu_state, cpu_state, sizeof(cpu_state_t));
+    // memcpy((void*)((uint64_t)current_vthread->stack - sizeof(cpu_state_t)), cpu_state, sizeof(cpu_state_t));
+    // memcpy(current_vthread->stack, cpu_state, sizeof(cpu_state_t));
+    current_vthread->stack = cpu_state;
 
     // get next thread
     g_current_vthread_index = (g_current_vthread_index + 1) % g_vthread_count;
@@ -43,12 +48,13 @@ cpu_state_t* vthread_schedule(cpu_state_t* cpu_state) {
 
     // TODO @since 14/04/2025 -- 14:02
     // validate if thread is asleep or not
-    
+
     // return new cpu state
     // BUG @since 14/04/2025 -- 15:50
     // uses original stack and wont properly work
-    memcpy(cpu_state, &next_vthread->cpu_state, sizeof(cpu_state_t));
-    return cpu_state;
+    // memcpy(cpu_state, &next_vthread->cpu_state, sizeof(cpu_state_t));
+    // return cpu_state;
+    return (cpu_state_t*)next_vthread->stack;
 
     // memcpy((void*)((uint64_t)next_vthread->stack + sizeof(cpu_state_t)), &next_vthread->cpu_state, sizeof(cpu_state_t));
 
