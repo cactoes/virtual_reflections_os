@@ -22,21 +22,7 @@ __dump_cpu:
     mov rbx, rsp
 
     ; store cpu state on stack
-    push r8
-    push r9
-    push r10
-    push r11
-    push r12
-    push r13
-    push r14
-    push r15
-    
-    push rax
-    push rcx
-    push rdx
-    push rsi
-    push rdi
-    push rbp
+    push_all_regs
 
     ; TODO @since 14/04/2025 -- 13:57
     ; push rflags, cs, rip 
@@ -60,31 +46,7 @@ __dump_cpu:
 ;==========================================
 %macro isr_stub 1
 isr_stub_%+%1:
-
-    ; mov rax, [rsp + (16 * 8)]
-    ; push rax
-
-    ; ; push CS assuming kernel
-    ; push 0x08
-
-    ; pushfq
-
-    ; store cpu state on stack
-    push r8
-    push r9
-    push r10
-    push r11
-    push r12
-    push r13
-    push r14
-    push r15
-
-    push rax
-    push rcx
-    push rdx
-    push rsi
-    push rdi
-    push rbp
+    push_all_regs
     
     ; store isr code
     mov rdi, %1
@@ -99,22 +61,7 @@ isr_stub_%+%1:
     ; update / restore stack pointer
     mov rsp, rax
 
-    ; restore all state (reverse of push order)
-    pop rbp
-    pop rdi
-    pop rsi
-    pop rdx
-    pop rcx
-    pop rax
-
-    pop r15
-    pop r14
-    pop r13
-    pop r12
-    pop r11
-    pop r10
-    pop r9
-    pop r8
+    pop_all_regs
 
     ; return from interrupt
     iretq
@@ -177,8 +124,8 @@ isr_stub 46 ; irq14 primary ata harddisk
 isr_stub 47 ; irq15 secondary ata harddisk
 
 ;==========================================
-; @macro                    isr_stub_table
-; @brief                    interrupt array, stores all interrupts
+; @macro    isr_stub_table
+; @brief    interrupt array, stores all interrupts
 ;==========================================
 isr_stub_table:
 %assign i 0 
@@ -186,3 +133,47 @@ isr_stub_table:
     dq isr_stub_%+i
 %assign i i+1 
 %endrep
+
+;==========================================
+; @macro    push_all_regs
+; @brief    pushes all gpr's to the stack
+;==========================================
+%macro push_all_regs 0
+    push r8
+    push r9
+    push r10
+    push r11
+    push r12
+    push r13
+    push r14
+    push r15
+
+    push rax
+    push rcx
+    push rdx
+    push rsi
+    push rdi
+    push rbp
+%endmacro
+
+;==========================================
+; @macro    pop_all_regs
+; @brief    pops all gpr's from the stack
+;==========================================
+%macro pop_all_regs 0
+    pop rbp
+    pop rdi
+    pop rsi
+    pop rdx
+    pop rcx
+    pop rax
+
+    pop r15
+    pop r14
+    pop r13
+    pop r12
+    pop r11
+    pop r10
+    pop r9
+    pop r8
+%endmacro
