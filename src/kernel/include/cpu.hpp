@@ -30,7 +30,7 @@ struct cpu_state_t {
     uint64_t rip;
     uint64_t cs;
     uint64_t rflags;
-} __attribute__((packed)); 
+} PACKED;
 
 // struct cpu_registers {
 //     uint64_t rax, rbx, rcx, rdx;

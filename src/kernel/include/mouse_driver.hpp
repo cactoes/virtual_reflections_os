@@ -38,7 +38,7 @@ struct mouse_state_t {
         bool middle : 1;
         bool right : 1;
     } buttons;
-} __attribute__((packed));
+} PACKED;
 
 void ps2_mouse_init(mouse_state_t* mouse_state);
 

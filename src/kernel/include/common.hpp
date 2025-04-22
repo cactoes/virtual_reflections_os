@@ -15,6 +15,8 @@
 
 #define ABS(a) (((a) < 0) ? -(a) : (a))
 
+#define PACKED __attribute__((packed))
+
 typedef unsigned long long size_t;
 typedef unsigned long long uint64_t;
 typedef          long long int64_t;

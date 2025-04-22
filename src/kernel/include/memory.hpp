@@ -51,7 +51,7 @@ struct heap_block_t {
         // if false all other fields are invalid
         bool used : 1;
     };
-} __attribute__((packed));
+} PACKED;
 
 struct heap_t {
     heap_block_t* heap_block_array;
@@ -93,7 +93,7 @@ struct multiboot_info_t {
     uint32_t vbe_interface_seg;
     uint32_t vbe_interface_off;
     uint32_t vbe_interface_len;
-} __attribute__((packed));
+} PACKED;
 
 struct multiboot_t {
     uint64_t magic;
