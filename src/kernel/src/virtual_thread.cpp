@@ -1,4 +1,5 @@
 #include "virtual_thread.hpp"
+#include "gdt.hpp"
 
 bool vthread_add(vthread_t* vthread) {
     if (g_vthread_count >= VTHREAD_MAX_COUNT)
@@ -76,6 +77,8 @@ cpu_state_t* vthread_schedule(cpu_state_t* cpu_state) {
 
     // TODO @since 14/04/2025 -- 14:02
     // validate if thread is asleep or not
+
+    tss_set_rsp0(g_vthreads[g_current_vthread_index]->stack);
 
     return (cpu_state_t*)g_vthreads[g_current_vthread_index]->stack;
 }
