@@ -63,8 +63,6 @@ cpu_state_t* int_handler(uint64_t code, cpu_state_t* rsp) {
         }
     }
 
-    // cpu_halt();
-
     return rsp;
 }
 
