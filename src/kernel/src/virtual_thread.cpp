@@ -1,6 +1,9 @@
 #include "virtual_thread.hpp"
 #include "gdt.hpp"
 
+static uint64_t g_vtid_counter = 1;
+static vthread_t* g_current_thread = nullptr;
+
 bool vthread_add(vthread_t* vthread) {
     if (g_vthread_count >= VTHREAD_MAX_COUNT)
         return false;
@@ -9,46 +12,20 @@ bool vthread_add(vthread_t* vthread) {
     return true;
 }
 
-// bool vthread_create(vthread_t* vthread, void(*entry)()) {
-//     if (g_vthread_count >= VTHREAD_MAX_COUNT)
-//         return false;
-
-//     vthread->stack = heap_alloc(get_global_heap(), VTHREAD_STACK_SIZE);
-
-//     memzero(&vthread->cpu_state, sizeof(cpu_state_t));
-
-//     vthread->stack = (uint64_t*)((uint64_t)vthread->stack + VTHREAD_STACK_SIZE);
-//     // stack_top = (uint64_t*)((uint64_t)stack_top & ~0xF);
-
-//     ((cpu_state_t*)vthread->stack)->rip = (uint64_t)entry;
-//     ((cpu_state_t*)vthread->stack)->rip = 0x08;
-//     ((cpu_state_t*)vthread->stack)->rip = 0x202;
-
-//     // vthread->cpu_state.rip = (uint64_t)entry;
-//     // vthread->cpu_state.cs = 0x08;
-//     // vthread->cpu_state.rflags = 0x202;
-
-//     // memcpy((void*)((uint64_t)stack_top - sizeof(cpu_state_t)), &vthread->cpu_state, sizeof(cpu_state_t));
-
-//     // vthread->stack = (void*)((uint64_t)stack_top - sizeof(cpu_state_t));
-
-//     return vthread_add(vthread);
-// }
-
 bool vthread_create(vthread_t* vthread, void(*entry)()) {
     if (g_vthread_count >= VTHREAD_MAX_COUNT)
         return false;
 
-    uint64_t* stack = (uint64_t*)heap_alloc(get_global_heap(), VTHREAD_STACK_SIZE * sizeof(uint64_t));
+    uint64_t* stack = (uint64_t*)heap_alloc(get_global_heap(), VTHREAD_STACK_SIZE);
 
     if (!stack)
         return false;
 
     memzero(stack, VTHREAD_STACK_SIZE);
 
-    uint64_t* sp = (uint64_t*)((uint64_t*)stack + VTHREAD_STACK_SIZE);
-    sp = (uint64_t*)((uint64_t)sp & ~0xF);
+    uint64_t* sp = (uint64_t*)(((uint64_t)stack + sizeof(cpu_state_t)) & ~0xF);
 
+    *(--sp) = (uint64_t)sp;
     *(--sp) = 0x202;
     *(--sp) = 0x8;
     *(--sp) = (uint64_t)entry;
@@ -57,6 +34,7 @@ bool vthread_create(vthread_t* vthread, void(*entry)()) {
         *(--sp) = 0;
 
     vthread->stack = sp;
+    vthread->vtid = g_vtid_counter++;
 
     if (vthread_add(vthread))
         return true;
@@ -66,11 +44,11 @@ bool vthread_create(vthread_t* vthread, void(*entry)()) {
     return false;
 }
 
-cpu_state_t* vthread_schedule(cpu_state_t* cpu_state) {
+cpu_state_t* vthread_schedule(cpu_state_t* stack) {
     if (g_vthread_count == 0)
         return nullptr;
 
-    g_vthreads[g_current_vthread_index]->stack = cpu_state;
+    g_vthreads[g_current_vthread_index]->stack = (void*)stack;
 
     // get next thread
     g_current_vthread_index = (g_current_vthread_index + 1) % g_vthread_count;
@@ -78,7 +56,13 @@ cpu_state_t* vthread_schedule(cpu_state_t* cpu_state) {
     // TODO @since 14/04/2025 -- 14:02
     // validate if thread is asleep or not
 
-    tss_set_rsp0(g_vthreads[g_current_vthread_index]->stack);
+    g_current_thread = g_vthreads[g_current_vthread_index];
 
-    return (cpu_state_t*)g_vthreads[g_current_vthread_index]->stack;
+    tss_set_rsp0(g_current_thread->stack);
+
+    return (cpu_state_t*)g_current_thread->stack;
+}
+
+uint64_t* vthread_get_tls() {
+    return g_current_thread->tls;
 }

@@ -66,9 +66,6 @@ __dump_cpu:
     ; store cpu state on stack
     push_all_regs
 
-    ; TODO @since 14/04/2025 -- 13:57
-    ; push rflags, cs, rip 
-
     ; copy cpu state
     mov rsi, rsp    ; source cpu_state aka current stack
     mov rcx, 16     ; 16 registers

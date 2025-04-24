@@ -6,9 +6,6 @@ static pit_timer_t* g_timers;
 static size_t g_timers_size;
 
 cpu_state_t* pit_handle_interrupt(uint64_t code, cpu_state_t* rsp) {
-    // TODO @since 13/04/2025 -- 20:31
-    // check if main thread
-    
     for (size_t i = 0; i < g_timers_size; i++)
         g_timers[i].tick++;
     
@@ -44,14 +41,6 @@ void pit_set_count(uint32_t count) {
 }
 
 void pit_sleep(uint64_t id, uint32_t ms) {
-    // for (uint32_t i = 0; i < ms; i++) {
-	
-	// 	pit_set_count(1193182/1000);
-	// 	uint32_t start = pit_read_count();
-
-	// 	while ((start - pit_read_count()) < 1000) {}
-	// }
-
     volatile pit_timer_t* timer = nullptr;
 
     for (size_t i = 0; i < g_timers_size; i++) {
