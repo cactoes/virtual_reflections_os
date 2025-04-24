@@ -145,15 +145,13 @@ cpu_state_t* handle_other_interrupt(uint64_t code, cpu_state_t* rsp) {
 }
 
 void task_2_test() {
-    vga_tm_print("task2");
-
     while (true) {}
 }
 
 extern "C" void kernel_entry(multiboot_t* multiboot_struct, void* kpml4) {
     gdt_init();
     tss_init();
-
+    
     vga_tm_clear_screen();
     draw_logo_vga_tm();
     vga_tm_set_cursor(29, 20);
@@ -195,11 +193,8 @@ extern "C" void kernel_entry(multiboot_t* multiboot_struct, void* kpml4) {
     vthread_t main_thread {};
     vthread_add(&main_thread);
 
-    // FIXME @since 14/04/2025 -- 01:04
-    // shit doesnt work always get int13
-    // add TSS???
-    vthread_t thread_2 {};
-    vthread_create(&thread_2, task_2_test);
+    // vthread_t thread_2 {};
+    // vthread_create(&thread_2, task_2_test);
 
     const char* spinner[] = { ".  ", ".. ", "...", ".. ", ".  ", "   " };
     constexpr size_t chars_size = (sizeof(spinner) / sizeof(char*));
