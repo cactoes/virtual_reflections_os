@@ -417,22 +417,22 @@ heap_t* get_global_heap() {
     return g_heap;
 }
 
-// void* operator new(size_t size) noexcept {
-//     if (g_heap == nullptr)
-//         return nullptr;
-//     return heap_alloc(g_heap, size);
-// }
+void* operator new(size_t size) noexcept {
+    if (get_global_heap() == nullptr)
+        return nullptr;
+    return heap_alloc(get_global_heap(), size);
+}
 
-// void* operator new(size_t size, void* ptr) noexcept {
-//     return ptr;
-// }
+void* operator new(size_t size, void* ptr) noexcept {
+    return ptr;
+}
 
-// void operator delete(void* ptr) noexcept {
-//     if (g_heap != nullptr)
-//        heap_free(g_heap, ptr);
-// }
+void operator delete(void* ptr) noexcept {
+    if (get_global_heap() != nullptr)
+       heap_free(get_global_heap(), ptr);
+}
 
-// void operator delete(void* ptr, size_t) noexcept {
-//     if (g_heap != nullptr)
-//         heap_free(g_heap, ptr);
-// }
+void operator delete(void* ptr, size_t) noexcept {
+    if (get_global_heap() != nullptr)
+        heap_free(get_global_heap(), ptr);
+}
