@@ -1,5 +1,6 @@
 #include "virtual_thread.hpp"
 #include "gdt.hpp"
+#include "pit_driver.hpp"
 
 static uint64_t g_vtid_counter = 1;
 static vthread_t* g_current_thread = nullptr;
@@ -35,6 +36,9 @@ bool vthread_create(vthread_t* vthread, void(*entry)()) {
 
     vthread->stack = sp;
     vthread->vtid = g_vtid_counter++;
+    ((tls_base_t*)vthread->tls)->vtid = vthread->vtid;
+
+    pit_add_clock(vthread->vtid);
 
     if (vthread_add(vthread))
         return true;

@@ -16,10 +16,14 @@
 #include "cpu.hpp"
 #include "memory.hpp"
 
+struct tls_base_t {
+    uint64_t vtid;
+};
+
 struct vthread_t {
     cpu_state_t cpu_state;
     void* stack;
-    uint64_t tls[VTHREAD_TLS_ENTRY_COUNT] = { 0 };
+    uint64_t tls[VTHREAD_TLS_ENTRY_COUNT] = {};
     uint64_t vtid;
 };
 
