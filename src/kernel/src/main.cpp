@@ -160,17 +160,16 @@ extern "C" void kernel_entry(multiboot_t* multiboot_struct, void* kpml4) {
     if (multiboot_struct->magic != 0x2badb002)
         critical_fatal(multiboot_struct->magic, "multiboot magic was invalid");
 
+    if (!vmem_init(multiboot_struct, kpml4))
+        critical_fatal(0x0, "vmem_init failed");
+
+    heap_t heap {};
+    if (!heap_init(&heap, kpml4, (void*)0x40000000, 0x100000 * 32))
+        critical_fatal(0x0, "heap_init failed");
+    set_global_heap(&heap);
+
     key_state_t key_states[0xff] = {};
     keyboard_init(key_states);
-
-    pit_timer_t timers[1] = {
-        {
-            // main process
-            .id = 0,
-            .tick = 0
-        }
-    };
-    pit_init(timers, 1);
 
     int_set_callback(interrupt_type::OTHER, handle_other_interrupt);
     int_set_callback(interrupt_type::CRITICAL, handle_critical_interrupt);
@@ -182,15 +181,14 @@ extern "C" void kernel_entry(multiboot_t* multiboot_struct, void* kpml4) {
     mouse_state_t mouse_state = {};
     ps2_mouse_init(&mouse_state);
 
-    if (!vmem_init(multiboot_struct, kpml4))
-        critical_fatal(0x0, "vmem_init failed");
+    vector<pit_timer_t> timers {};
+    timers.insert_back(pit_timer_t { .id = 0 });
+    pit_init(&timers);
 
-    heap_t heap {};
-    if (!heap_init(&heap, kpml4, (void*)0x40000000, 0x100000 * 32))
-        critical_fatal(0x0, "heap_init failed");
-    set_global_heap(&heap);
-
+    // manual (main) thread setup
     vthread_t main_thread {};
+    main_thread.vtid = 0;
+    ((tls_base_t*)main_thread.tls)->vtid = 0;
     vthread_add(&main_thread);
 
     // vthread_t thread_2 {};
@@ -203,6 +201,6 @@ extern "C" void kernel_entry(multiboot_t* multiboot_struct, void* kpml4) {
         vga_tm_set_cursor(49, 20);
         vga_tm_print("%s", spinner[i++ % chars_size]);
         vga_tm_set_cursor(VGA_TM_NUM_COLS, VGA_TM_NUM_ROWS);
-        pit_sleep(0, 250);
+        pit_sleep(250);
     }
 }
