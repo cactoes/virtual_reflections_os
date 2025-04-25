@@ -43,7 +43,7 @@ size_t sprintf(char* buffer, size_t size, void* ptr) {
 
     uint64_t number = (uint64_t)ptr;
 
-    memset(buffer, '0', 16);
+    memset(buffer, '0', 16ul);
 
     int i = 16;
     for (; number && i; number /= 16)

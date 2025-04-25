@@ -53,7 +53,7 @@ int vga_tm_print(const char* fmt, ...) {
 
     va_list args;
     va_start(args, fmt);
-    size_t strlen = sprintf(buffer, sizeof(buffer), fmt, args);
+    size_t strlen = sprintf(buffer, (unsigned long int)sizeof(buffer), fmt, args);
     va_end(args);
 
     for (uint64_t i = 0; buffer[i] != '\0' && i < sizeof(buffer); i++)
@@ -71,7 +71,7 @@ int vga_tm_print(const vga_tm_color_map_t* color_map, const char* fmt, ...) {
 
     va_list args;
     va_start(args, fmt);
-    size_t strlen = sprintf(buffer, sizeof(buffer), fmt, args);
+    size_t strlen = sprintf(buffer, (unsigned long int)sizeof(buffer), fmt, args);
     va_end(args);
 
     vga_tm_color_map_t old_color;
