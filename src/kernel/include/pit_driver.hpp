@@ -10,6 +10,7 @@
 
 #include "common.hpp"
 #include "interrupt.hpp"
+#include "vector.hpp"
 
 struct pit_timer_t {
     uint64_t id;
@@ -18,7 +19,9 @@ struct pit_timer_t {
 
 cpu_state_t* pit_handle_interrupt(uint64_t code, cpu_state_t* rsp);
 
+void pit_sleep(uint32_t ms);
 void pit_sleep(uint64_t id, uint32_t ms);
-void pit_init(pit_timer_t timers[], size_t size);
+void pit_init(vector<pit_timer_t>* timers);
+void pit_add_clock(uint64_t id);
 
 #endif // __PIT_DRIVER_HPP__

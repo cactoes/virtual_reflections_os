@@ -2,13 +2,12 @@
 #include "cpu.hpp"
 #include "virtual_thread.hpp"
 
-static pit_timer_t* g_timers;
-static size_t g_timers_size;
+static vector<pit_timer_t>* g_timers;
 
 cpu_state_t* pit_handle_interrupt(uint64_t code, cpu_state_t* rsp) {
-    for (size_t i = 0; i < g_timers_size; i++)
-        g_timers[i].tick++;
-    
+    for (auto timer_node = g_timers->first(); timer_node; timer_node = timer_node->next)
+        timer_node->value.tick++;
+
     int_pic_send_eoi(IRQ_PIT);
 
     if (const auto new_thread = vthread_schedule(rsp))
@@ -40,14 +39,16 @@ void pit_set_count(uint32_t count) {
     asm volatile ("sti");
 }
 
+void pit_sleep(uint32_t ms) {
+    pit_sleep(((tls_base_t*)vthread_get_tls())->vtid, ms);
+}
+
 void pit_sleep(uint64_t id, uint32_t ms) {
     volatile pit_timer_t* timer = nullptr;
 
-    for (size_t i = 0; i < g_timers_size; i++) {
-        pit_timer_t& _timer = g_timers[i];
-
-        if (_timer.id == id) {
-            timer = &_timer;
+    for (auto timer_node = g_timers->first(); timer_node; timer_node = timer_node->next) {
+        if (timer_node->value.id == id) {
+            timer = &timer_node->value;
             break;
         }
     };
@@ -62,11 +63,14 @@ void pit_sleep(uint64_t id, uint32_t ms) {
     }
 }
 
-void pit_init(pit_timer_t timers[], size_t size) {
-    g_timers_size = size;
+void pit_init(vector<pit_timer_t>* timers) {
     g_timers = timers;
 
     uint32_t divisor = 1193182 / 1000;
     cpu_outb(0x43, 0x36);
     pit_set_count(divisor);
+}
+
+void pit_add_clock(uint64_t id) {
+    g_timers->insert_back(pit_timer_t { .id = id });
 }
