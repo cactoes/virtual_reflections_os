@@ -1,6 +1,9 @@
 //==========================================
 /// @file       virtual_thread.hpp
 /// @brief      very basic implementation of multitasking
+///  TODO       vthread cleanup
+///             wrapper start function
+///             better thread hander / scheduler
 //==========================================
 
 #pragma once
