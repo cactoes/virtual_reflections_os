@@ -197,6 +197,11 @@ extern "C" void kernel_entry(multiboot_t* multiboot_struct, void* kpml4) {
     ((tls_base_t*)main_thread.tls)->vtid = 0;
     vthread_add(&main_thread);
 
+    // disabled since we cant draw anything yet (other than a pixel)
+    // vga_generic_buffer_t buffer{};
+    // vga_gm_buffer_create(&buffer);
+    // vga_gm_startup(&buffer);
+
     const char* spinner[] = { ".  ", ".. ", "...", ".. ", ".  ", "   " };
     constexpr size_t chars_size = (sizeof(spinner) / sizeof(char*));
     size_t i = 0;
