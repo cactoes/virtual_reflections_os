@@ -8,6 +8,7 @@
 #include "gdt.hpp"
 
 #include "vga_driver.hpp"
+#include "pci_driver.hpp"
 #include "pit_driver.hpp"
 #include "keyboard_driver.hpp"
 #include "mouse_driver.hpp"
@@ -144,10 +145,6 @@ cpu_state_t* handle_other_interrupt(uint64_t code, cpu_state_t* rsp) {
     return rsp;
 }
 
-void task_2_test() {
-    while (true) {}
-}
-
 extern "C" void kernel_entry(multiboot_t* multiboot_struct, void* kpml4) {
     gdt_init();
     tss_init();
@@ -186,14 +183,19 @@ extern "C" void kernel_entry(multiboot_t* multiboot_struct, void* kpml4) {
     timers.insert_back(pit_timer_t { .id = 0 });
     pit_init(&timers);
 
+    vector<pci_device_info_t> pci_devices {};
+    pci_enumerate_devices(&pci_devices);
+
+    vector<pci_device_request_t> pci_devices_requested {};
+    pci_devices_requested.insert_back(pci_device_request_t { .class_code = 2 });
+    pci_devices_requested.insert_back(pci_device_request_t { .sub_class = 6, .class_code = 1 });
+    pci_find_devices(&pci_devices, &pci_devices_requested);
+
     // manual (main) thread setup
     vthread_t main_thread {};
     main_thread.vtid = 0;
     ((tls_base_t*)main_thread.tls)->vtid = 0;
     vthread_add(&main_thread);
-
-    // vthread_t thread_2 {};
-    // vthread_create(&thread_2, task_2_test);
 
     const char* spinner[] = { ".  ", ".. ", "...", ".. ", ".  ", "   " };
     constexpr size_t chars_size = (sizeof(spinner) / sizeof(char*));
