@@ -5,7 +5,7 @@
 static vector<pit_timer_t>* g_timers;
 
 cpu_state_t* pit_handle_interrupt(uint64_t code, cpu_state_t* rsp) {
-    for (auto timer_node = g_timers->first(); timer_node; timer_node = timer_node->next)
+    for (VECTOR_LOOP(g_timers, timer_node))
         timer_node->value.tick++;
 
     int_pic_send_eoi(IRQ_PIT);
@@ -46,7 +46,7 @@ void pit_sleep(uint32_t ms) {
 void pit_sleep(uint64_t id, uint32_t ms) {
     volatile pit_timer_t* timer = nullptr;
 
-    for (auto timer_node = g_timers->first(); timer_node; timer_node = timer_node->next) {
+    for (VECTOR_LOOP(g_timers, timer_node)) {
         if (timer_node->value.id == id) {
             timer = &timer_node->value;
             break;
