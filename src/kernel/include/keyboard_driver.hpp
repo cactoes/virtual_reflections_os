@@ -1,6 +1,7 @@
 //==========================================
 /// @file       keyboard_driver.hpp
 /// @brief      simple keyboard driver
+///  TODO       translate keyboard keys function
 //==========================================
 
 #pragma once
