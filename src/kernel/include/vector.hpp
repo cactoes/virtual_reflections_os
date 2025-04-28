@@ -8,6 +8,9 @@
 #ifndef __VECTOR_HPP__
 #define __VECTOR_HPP__
 
+#define VECTOR_LOOP(_vector, name) \
+    auto name = _vector->first(); name; name = name->next
+
 #include "memory.hpp"
 #include "mutex.hpp"
 
@@ -66,11 +69,33 @@ public:
         return result;
     }
 
+    T* get_at(size_t index) {
+        mutex_lock(&mutex);
+        const auto result = get_at_unprotected(index);
+        mutex_unlock(&mutex);
+        return result;
+    }
+
     vector_node_t<T>* first() {
         return _first;
     }
 
 private:
+    T* get_at_unprotected(size_t index) {
+        if (!first())
+            return nullptr;
+
+        size_t current_index = 0;
+        for (VECTOR_LOOP(this, node)) {
+            if (current_index == index)
+                return &node->value;
+
+            current_index++;
+        }
+
+        return nullptr;
+    }
+
     bool delete_at_unprotected(size_t index) {
         if (!first())
             return false;
@@ -125,7 +150,7 @@ private:
         }
 
         if (prev_node) {
-            new_node->next = prev_node;
+            new_node->next = prev_node->next;
             prev_node->next = new_node;
             size++;
             return true;
