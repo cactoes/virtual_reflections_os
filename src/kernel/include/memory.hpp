@@ -138,6 +138,7 @@ namespace heap_block_filters {
 
 bool donor_block_filter(const heap_block_t* block, const void* param);
 bool unused_block_filter(const heap_block_t* block, const void* param);
+bool last_block_filter(const heap_block_t* block, const void* param);
 
 } // namespace heap_block_filters
 

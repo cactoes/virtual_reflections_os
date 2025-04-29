@@ -243,6 +243,10 @@ bool heap_block_filters::unused_block_filter(const heap_block_t* block, const vo
     return !block->used;
 }
 
+bool heap_block_filters::last_block_filter(const heap_block_t* block, const void* param) {
+    return block->used && !block->next;
+}
+
 int heap_filter_blocks(heap_t* heap, void* param, block_filter_callback_t bfc_array[], size_t bfc_array_size, heap_block_t* block_array[], size_t block_array_size) {
     if (bfc_array_size != block_array_size)
         return -1;
@@ -301,12 +305,32 @@ bool heap_init(heap_t* heap, void* pml4, void* virtual_address, size_t size) {
 }
 
 bool heap_expand(heap_t* heap, void* pml4, size_t size) {
+    block_filter_callback_t filters[] = {
+        heap_block_filters::last_block_filter,
+        heap_block_filters::unused_block_filter
+    };
+    heap_block_t* blocks[HEAP_FILTERS_SIZE(filters)] = {};
+    
+    int result = heap_filter_blocks(heap, HEAP_MAKE_FILTER_PARAM(size), filters, HEAP_FILTERS_SIZE(filters), blocks, HEAP_FILTERS_SIZE(filters));
+
+    if (result != HEAP_FILTERS_SIZE(filters))
+        return false;
+
     void* heap_virtual_end = (void*)((uint64_t)heap->start_virtual_addr + heap->size);
-    const auto new_heap_block = vmem_smart_alloc_pages(pml4, heap_virtual_end, size);
+    const auto new_heap_block_size = vmem_smart_alloc_pages(pml4, heap_virtual_end, size);
 
-    // TODO: @since 24/03/2025 -- 15:57
+    heap->size += new_heap_block_size;
 
-    return false;
+    heap_block_t* new_block = blocks[1];
+    new_block->used = true;
+    new_block->free = true;
+    new_block->size = new_heap_block_size;
+    new_block->start_real_addr = heap_virtual_end;
+    
+    heap_block_t* last_block = blocks[0];
+    last_block->next = new_block;
+
+    return true;
 }
 
 void* heap_alloc(heap_t* heap, size_t size) {
@@ -338,6 +362,8 @@ void* heap_alloc(heap_t* heap, size_t size) {
     heap_block_t* unused_block = blocks[1];
 
     // make sure we have both blocks
+    // TODO @since 30/04/2025 -- 01:25
+    // check this logic
     if (result != HEAP_FILTERS_SIZE(filters)) {
         // kinda sketch to just get a "random" pml4 but whtv
         if (!heap_expand(heap, __get_pml4(), PAGE_SIZE_LARGE))
