@@ -10,6 +10,7 @@ bool vthread_add(vthread_t* vthread) {
         return false;
     
     g_vthreads[g_vthread_count++] = vthread;
+    pit_add_clock(vthread->vtid);
     return true;
 }
 
@@ -37,8 +38,6 @@ bool vthread_create(vthread_t* vthread, void(*entry)()) {
     vthread->stack = sp;
     vthread->vtid = g_vtid_counter++;
     ((tls_base_t*)vthread->tls)->vtid = vthread->vtid;
-
-    pit_add_clock(vthread->vtid);
 
     if (vthread_add(vthread))
         return true;

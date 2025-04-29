@@ -179,8 +179,6 @@ extern "C" void kernel_entry(multiboot_t* multiboot_struct, void* kpml4) {
     ps2_mouse_init(&mouse_state);
 
     vector<pit_timer_t> timers {};
-    // 0 == main aka this thread
-    timers.insert_back(pit_timer_t { .id = 0 });
     pit_init(&timers);
 
     vector<pci_device_info_t> pci_devices {};
