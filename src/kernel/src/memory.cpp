@@ -334,8 +334,9 @@ bool heap_expand(heap_t* heap, void* pml4, size_t size) {
 }
 
 void* heap_alloc(heap_t* heap, size_t size) {
-    if (size > PAGE_SIZE_LARGE)
-        return nullptr;
+    // not needed
+    // if (size > PAGE_SIZE_LARGE)
+    //     return nullptr;
 
     block_filter_callback_t filters[] = {
         heap_block_filters::donor_block_filter,
