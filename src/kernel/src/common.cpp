@@ -42,7 +42,7 @@ uint64_t mem_align_down(uint64_t addr, uint64_t align) {
 }
 
 bool bitmap_get(uint64_t* bitmap, size_t size, size_t index) {
-    if (index >= size * (sizeof(uint64_t) * 8))
+    if (index >= bitmap_get_size(size))
         return false;
 
     const size_t item_index = index / 64;
@@ -51,7 +51,7 @@ bool bitmap_get(uint64_t* bitmap, size_t size, size_t index) {
 }
 
 void bitmap_set(uint64_t* bitmap, size_t size, size_t index, bool state) {
-    if (index >= size * (sizeof(uint64_t) * 8))
+    if (index >= bitmap_get_size(size))
         return;
 
     const size_t item_index = index / 64;

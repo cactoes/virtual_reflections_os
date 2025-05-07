@@ -39,6 +39,15 @@ bool mem_is_aligned(uint64_t addr, uint64_t align);
 uint64_t mem_align_up(uint64_t addr, uint64_t align);
 uint64_t mem_align_down(uint64_t addr, uint64_t align);
 
+constexpr uint64_t bitmap_get_size(size_t size) {
+    return size * (sizeof(uint64_t) * 8);
+}
+
+template <size_t size>
+constexpr uint64_t bitmap_get_size(uint64_t (&bitmap)[size]) {
+    return bitmap_get_size(size);
+}
+
 bool bitmap_get(uint64_t* bitmap, size_t size, size_t index);
 
 template <size_t size>

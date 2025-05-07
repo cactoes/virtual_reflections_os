@@ -185,8 +185,9 @@ extern "C" void kernel_entry(multiboot_t* multiboot_struct, void* kpml4) {
     pci_enumerate_devices(&pci_devices);
 
     vector<pci_device_request_t> pci_devices_requested {};
-    pci_devices_requested.insert_back(pci_device_request_t { .class_code = 2 });
-    pci_devices_requested.insert_back(pci_device_request_t { .sub_class = 6, .class_code = 1 });
+    pci_devices_requested.insert_back(pci_device_request_t { .revision_id = (uint8_t)PCI_UNKNOWN, .prog_if = (uint8_t)PCI_UNKNOWN, .sub_class = (uint8_t)PCI_UNKNOWN, .class_code = 2 });
+    pci_devices_requested.insert_back(pci_device_request_t { .revision_id = (uint8_t)PCI_UNKNOWN, .prog_if = (uint8_t)1, .sub_class = 6, .class_code = 1 });
+    pci_find_devices(&pci_devices, &pci_devices_requested);
     pci_find_devices(&pci_devices, &pci_devices_requested);
 
     // manual (main) thread setup

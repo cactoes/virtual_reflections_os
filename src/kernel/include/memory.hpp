@@ -1,6 +1,9 @@
 //==========================================
 /// @file       memory.hpp
 /// @brief      kernel memory mapping logic
+/// TODO        fix the bitmap size shit
+///             its currently super fucked up
+///             & magically works rn
 //==========================================
 
 #pragma once
