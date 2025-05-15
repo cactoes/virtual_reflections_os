@@ -37,6 +37,8 @@ bool vthread_create(vthread_t* vthread, void(*entry)()) {
 
     vthread->stack = sp;
     vthread->vtid = g_vtid_counter++;
+    // for now RUNNING is fine since we dont use it
+    vthread->vt_state = vthread_state_t::RUNNING;
     ((tls_base_t*)vthread->tls)->vtid = vthread->vtid;
 
     if (vthread_add(vthread))
@@ -47,19 +49,18 @@ bool vthread_create(vthread_t* vthread, void(*entry)()) {
     return false;
 }
 
+void vthread_loop_next_thread() {
+    g_current_vthread_index = (g_current_vthread_index + 1) % g_vthread_count;
+    g_current_thread = g_vthreads[g_current_vthread_index];
+}
+
 cpu_state_t* vthread_schedule(cpu_state_t* stack) {
     if (g_vthread_count == 0)
         return nullptr;
 
     g_vthreads[g_current_vthread_index]->stack = (void*)stack;
 
-    // get next thread
-    g_current_vthread_index = (g_current_vthread_index + 1) % g_vthread_count;
-
-    // TODO @since 14/04/2025 -- 14:02
-    // validate if thread is asleep or not
-
-    g_current_thread = g_vthreads[g_current_vthread_index];
+    vthread_loop_next_thread();
 
     tss_set_rsp0(g_current_thread->stack);
 

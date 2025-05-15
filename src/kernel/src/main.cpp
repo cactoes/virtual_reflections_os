@@ -76,6 +76,7 @@ extern "C" [[noreturn]] void critical_fatal_ex(uint64_t code, const char* messag
         vga_tm_set_cursor(35, 14); vga_tm_print("rsi=0x%uh", cpu_state->rsi);
         vga_tm_set_cursor(35, 15); vga_tm_print("rdi=0x%uh", cpu_state->rdi);
         vga_tm_set_cursor(35, 16); vga_tm_print("rip=0x%uh", cpu_state->rip);
+        vga_tm_set_cursor(35, 17); vga_tm_print("rsp=0x%uh", cpu_state->rsp);
     }
     
     while (true)
@@ -141,8 +142,12 @@ cpu_state_t* handle_critical_interrupt(uint64_t code, cpu_state_t* rsp) {
 }
 
 cpu_state_t* handle_other_interrupt(uint64_t code, cpu_state_t* rsp) {
-    critical_fatal_ex(code, "FATAL (other)", rsp);
+    critical_fatal_ex(code, "FATAL: unhandled interrupt", rsp);
     return rsp;
+}
+
+void thread_test() {
+    while (true) {}
 }
 
 extern "C" void kernel_entry(multiboot_t* multiboot_struct, void* kpml4) {
@@ -191,22 +196,26 @@ extern "C" void kernel_entry(multiboot_t* multiboot_struct, void* kpml4) {
 
     // manual (main) thread setup
     vthread_t main_thread {};
+    main_thread.vt_state = vthread_state_t::RUNNING;
     main_thread.vtid = 0;
     ((tls_base_t*)main_thread.tls)->vtid = 0;
     vthread_add(&main_thread);
+
+    vthread_t thread{};
+    vthread_create(&thread, thread_test);
 
     // disabled since we cant draw anything yet (other than a pixel)
     // vga_generic_buffer_t buffer{};
     // vga_gm_buffer_create(&buffer);
     // vga_gm_startup(&buffer);
 
-    const char* spinner[] = { ".  ", ".. ", "...", ".. ", ".  ", "   " };
-    constexpr size_t chars_size = (sizeof(spinner) / sizeof(char*));
-    size_t i = 0;
+    // const char* spinner[] = { ".  ", ".. ", "...", ".. ", ".  ", "   " };
+    // constexpr size_t chars_size = (sizeof(spinner) / sizeof(char*));
+    // size_t i = 0;
     while (true) {
-        vga_tm_set_cursor(49, 20);
-        vga_tm_print("%s", spinner[i++ % chars_size]);
-        vga_tm_set_cursor(VGA_TM_NUM_COLS, VGA_TM_NUM_ROWS);
-        pit_sleep(250);
+        // vga_tm_set_cursor(49, 20);
+        // vga_tm_print("%s", spinner[i++ % chars_size]);
+        // vga_tm_set_cursor(VGA_TM_NUM_COLS, VGA_TM_NUM_ROWS);
+        // pit_sleep(250);
     }
 }

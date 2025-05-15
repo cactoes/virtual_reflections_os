@@ -23,11 +23,20 @@ struct tls_base_t {
     uint64_t vtid;
 };
 
+enum class vthread_state_t {
+    UNKNOWN = 0,
+    STARTING,
+    RUNNING,
+    SLEEPING,
+    STOPPING
+};
+
 struct vthread_t {
     cpu_state_t cpu_state;
     void* stack;
     uint64_t tls[VTHREAD_TLS_ENTRY_COUNT] = {};
     uint64_t vtid;
+    vthread_state_t vt_state;
 };
 
 static vthread_t* g_vthreads[VTHREAD_MAX_COUNT] {};
