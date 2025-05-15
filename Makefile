@@ -3,7 +3,7 @@ HEADER_FILES_PATH = src/kernel/include
 ASSEMBLY_FILES_PATH = src/kernel/asm
 
 # [!!!] -mno-sse2: SSE2 is disabled
-GPP_COMPILE_FLAGS = -nostdlib -m64 -mno-red-zone -mno-sse2 -fno-rtti -fno-exceptions -Werror -Wunused-result
+GPP_COMPILE_FLAGS = -nostdlib -m64 -mno-red-zone -mno-sse2 -fno-rtti -fno-exceptions -Werror -Wunused-result -fno-use-cxa-atexit
 
 source_files := $(shell find $(SOURCE_FILES_PATH) -name *.cpp)
 object_files := $(patsubst $(SOURCE_FILES_PATH)/%.cpp, build/objects/%.o, $(source_files))
