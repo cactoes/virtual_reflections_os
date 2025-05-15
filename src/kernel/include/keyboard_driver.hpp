@@ -28,6 +28,7 @@
 
 #include "common.hpp"
 #include "interrupt.hpp"
+#include "event_manager.hpp"
 
 struct key_state_t {
     uint64_t full_code = 0;
@@ -36,8 +37,9 @@ struct key_state_t {
     bool is_escaped = false;
 };
 
-void keyboard_init(key_state_t keystates[0xFF]);
+void keyboard_init(key_state_t keystates[KEY_STATE_ARRAY_SIZE]);
 key_state_t* keyboard_get_key_state(uint64_t scan_code);
 cpu_state_t* keyboard_handle_interrupt(uint64_t code, cpu_state_t* rsp);
+void keyboard_add_handler(void(*handler)(key_state_t*));
 
 #endif // __KEYBOARD_DRIVER_HPP__

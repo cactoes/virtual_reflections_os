@@ -3,7 +3,8 @@
 
 extern void critical_fatal(uint64_t code, const char* message);
 
-key_state_t* g_key_states = nullptr;
+static key_state_t* g_key_states = nullptr;
+static event_manager_t<key_state_t*> g_keyboard_event_manager {};
 
 void keyboard_init(key_state_t keystates[KEY_STATE_ARRAY_SIZE]) {
     g_key_states = keystates;
@@ -34,6 +35,12 @@ cpu_state_t* keyboard_handle_interrupt(uint64_t code, cpu_state_t* rsp) {
         critical_fatal(key_state.scan_code, "FATAL (keyboard): key code out of range");
     }
 
+    g_keyboard_event_manager.fire_event(&key_state);
+
     int_pic_send_eoi(IRQ_KEYBOARD);
     return rsp;
+}
+
+void keyboard_add_handler(void(*handler)(key_state_t*)) {
+    g_keyboard_event_manager.add_handler(handler);
 }

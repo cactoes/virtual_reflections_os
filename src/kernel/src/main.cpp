@@ -146,10 +146,6 @@ cpu_state_t* handle_other_interrupt(uint64_t code, cpu_state_t* rsp) {
     return rsp;
 }
 
-void thread_test() {
-    while (true) {}
-}
-
 extern "C" void kernel_entry(multiboot_t* multiboot_struct, void* kpml4) {
     gdt_init();
     tss_init();
@@ -201,21 +197,21 @@ extern "C" void kernel_entry(multiboot_t* multiboot_struct, void* kpml4) {
     ((tls_base_t*)main_thread.tls)->vtid = 0;
     vthread_add(&main_thread);
 
-    vthread_t thread{};
-    vthread_create(&thread, thread_test);
+    // vthread_t thread{};
+    // vthread_create(&thread, thread_test);
 
     // disabled since we cant draw anything yet (other than a pixel)
     // vga_generic_buffer_t buffer{};
     // vga_gm_buffer_create(&buffer);
     // vga_gm_startup(&buffer);
 
-    // const char* spinner[] = { ".  ", ".. ", "...", ".. ", ".  ", "   " };
-    // constexpr size_t chars_size = (sizeof(spinner) / sizeof(char*));
-    // size_t i = 0;
+    const char* spinner[] = { ".  ", " . ", "  ." };
+    constexpr size_t chars_size = (sizeof(spinner) / sizeof(char*));
+    size_t i = 0;
     while (true) {
-        // vga_tm_set_cursor(49, 20);
-        // vga_tm_print("%s", spinner[i++ % chars_size]);
-        // vga_tm_set_cursor(VGA_TM_NUM_COLS, VGA_TM_NUM_ROWS);
-        // pit_sleep(250);
+        vga_tm_set_cursor(49, 20);
+        vga_tm_print("%s", spinner[i++ % chars_size]);
+        vga_tm_set_cursor(VGA_TM_NUM_COLS, VGA_TM_NUM_ROWS);
+        pit_sleep(250);
     }
 }
