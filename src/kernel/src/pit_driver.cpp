@@ -72,5 +72,5 @@ void pit_init(vector<pit_timer_t>* timers) {
 }
 
 void pit_add_clock(uint64_t id) {
-    g_timers->insert_back(pit_timer_t { .id = id });
+    g_timers->insert_back(pit_timer_t { .id = id, .tick = 0 });
 }

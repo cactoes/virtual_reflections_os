@@ -155,7 +155,7 @@ extern "C" void kernel_entry(multiboot_t* multiboot_struct, void* kpml4) {
     vga_tm_set_cursor(29, 20);
     vga_tm_print("initializing kernel ...");
 
-    if (multiboot_struct->magic != 0x2badb002)
+    if (!mb_has_valid_magic(multiboot_struct))
         critical_fatal(multiboot_struct->magic, "multiboot magic was invalid");
 
     if (!vmem_init(multiboot_struct, kpml4))
@@ -166,7 +166,7 @@ extern "C" void kernel_entry(multiboot_t* multiboot_struct, void* kpml4) {
         critical_fatal(0x0, "heap_init failed");
     set_global_heap(&heap);
 
-    key_state_t key_states[0xff] = {};
+    key_state_t key_states[KEY_STATE_ARRAY_SIZE] = {};
     keyboard_init(key_states);
 
     int_set_callback(interrupt_type::OTHER, handle_other_interrupt);
