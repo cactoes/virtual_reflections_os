@@ -8,7 +8,7 @@
             "args": [
                 "qemu-system-x86_64",
                 "-ArgumentList",
-                "-cdrom ${workspaceFolder}/build/VirtualReflectionsOS.iso -drive format=raw,file=test_disk.vhd,id=disk,if=none -device ahci,id=ahci -device ide-hd,drive=disk,bus=ahci.0 -S -gdb tcp::1234 -m 2G -no-reboot",
+                "-cdrom ${workspaceFolder}/build/VirtualReflectionsOS.iso -drive format=raw,file=test_disk.vhd,id=disk,if=none -device ahci,id=ahci -device ide-hd,drive=disk,bus=ahci.0 -S -gdb tcp::1234 -m 4G -no-reboot",
                 "-NoNewWindow"
             ],
             "options": {

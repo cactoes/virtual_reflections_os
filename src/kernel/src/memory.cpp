@@ -14,7 +14,7 @@ void* __get_pml4() { void* pml4; asm volatile("mov %%cr3, %0" : "=r"(pml4) : : "
 
 void* vmem_get_page_critical() {
     // slow ahh
-    for (size_t i = 1; i < KERNEL_PAGE_CRITICAL_BITMAP_SIZE; i++) {
+    for (size_t i = 1; i < bitmap_get_size(kernel_page_critical_bitmap); i++) {
         if (!bitmap_get(kernel_page_critical_bitmap, i)) {
             bitmap_set(kernel_page_critical_bitmap, i, true);
             return (void*)(i * PAGE_SIZE);
@@ -26,10 +26,10 @@ void* vmem_get_page_critical() {
 
 void* vmem_get_page() {
     // slow ahh
-    for (size_t i = 1; i < KERNEL_PAGE_BITMAP_SIZE; i++) {
+    for (size_t i = 1; i < bitmap_get_size(kernel_page_bitmap); i++) {
         if (!bitmap_get(kernel_page_bitmap, i)) {
             bitmap_set(kernel_page_bitmap, i, true);
-            return (void*)((i + KERNEL_PAGE_CRITICAL_BITMAP_SIZE) * PAGE_SIZE);
+            return (void*)((i + bitmap_get_size(kernel_page_critical_bitmap)) * PAGE_SIZE);
         }
     }
 
@@ -40,51 +40,33 @@ bool vmem_paging_reserve_at_adress(uint64_t address, size_t count) {
     if (!mem_is_aligned(address, PAGE_SIZE))
         return false;
 
-    constexpr uint64_t end_critical_memory_space = KERNEL_PAGE_CRITICAL_BITMAP_SIZE * PAGE_SIZE;
-    constexpr uint64_t end_memory_space = end_critical_memory_space + KERNEL_PAGE_BITMAP_SIZE * PAGE_SIZE;
+    constexpr uint64_t end_critical_memory_space = bitmap_get_size(kernel_page_critical_bitmap) * PAGE_SIZE;
+    constexpr uint64_t end_memory_space = end_critical_memory_space + bitmap_get_size(kernel_page_bitmap) * PAGE_SIZE;
 
-    if (address + (PAGE_SIZE * count) < end_critical_memory_space) {
-        size_t page_start_index = address / PAGE_SIZE;
-        size_t current_count = 0;
-        for (size_t i = page_start_index; i < KERNEL_PAGE_CRITICAL_BITMAP_SIZE; i++) {
-            !bitmap_get(kernel_page_critical_bitmap, i)
-                ? current_count++
-                : current_count = 0;
+    size_t pages_reserved = 0;
 
-            // found section so we reserve it
-            if (current_count == count) {
-                for (; current_count > 0; current_count--)
-                    bitmap_set(kernel_page_critical_bitmap, i - current_count, true);
-                return true;
-            }
-        }
+    while (pages_reserved < count) {
+        if (address < end_critical_memory_space) {
+            size_t index = address / PAGE_SIZE;
+            if (index >= bitmap_get_size(kernel_page_critical_bitmap))
+                return false;
 
-        return false;
-    }
+            bitmap_set(kernel_page_critical_bitmap, index, true);
+        } else if (address < end_memory_space) {
+            size_t index = (address - end_critical_memory_space) / PAGE_SIZE;
+            if (index >= bitmap_get_size(kernel_page_bitmap))
+                return false;
 
-    if (address + (PAGE_SIZE * count) < end_memory_space) {
-        size_t page_start_index = (address - end_critical_memory_space) / PAGE_SIZE;
-        if (page_start_index < 0)
+            bitmap_set(kernel_page_bitmap, index, true);
+        } else {
             return false;
-
-        size_t current_count = 0;
-        for (size_t i = page_start_index; i < KERNEL_PAGE_BITMAP_SIZE; i++) {
-            !bitmap_get(kernel_page_bitmap, i)
-                ? current_count++
-                : current_count = 0;
-
-            // found section so we reserve it
-            if (current_count == count) {
-                for (; current_count > 0; current_count--)
-                    bitmap_set(kernel_page_bitmap, i - current_count, true);
-                return true;
-            }
         }
 
-        return false;
+        pages_reserved++;
+        address += PAGE_SIZE;
     }
 
-    return false;
+    return true;
 }
 
 void vmem_identity_map(uint64_t* pml4) {
@@ -183,19 +165,22 @@ size_t vmem_smart_alloc_pages(void* pml4, void* virtual_addr, size_t size) {
     uint64_t current_virtual_address = (uint64_t)virtual_addr;
 
     while (allocated < size) {
-        uint64_t target_physical_address = (uint64_t)vmem_get_page();
+        void* target_physical_address = vmem_get_page();
+
+        if (!target_physical_address)
+            return 0;
 
         // force 2mb memory alignment
-        if (!mem_is_aligned(target_physical_address, PAGE_SIZE_LARGE))
+        if (!mem_is_aligned((uint64_t)target_physical_address, PAGE_SIZE_LARGE))
             continue;
 
         // reserve the remaining pages to complete 2MB
-        if (!vmem_paging_reserve_at_adress(target_physical_address + PAGE_SIZE, (PAGE_SIZE_LARGE / PAGE_SIZE - 1)))
+        if (!vmem_paging_reserve_at_adress((uint64_t)target_physical_address + PAGE_SIZE, (PAGE_SIZE_LARGE / PAGE_SIZE - 1)))
             return 0;
 
         // map the address
-        if (!vmem_map_2mb_page(pml4, (void*)current_virtual_address, (void*)target_physical_address))
-            return false;
+        if (!vmem_map_2mb_page(pml4, (void*)current_virtual_address, target_physical_address))
+            return 0;
 
         // update counters
         allocated += PAGE_SIZE_LARGE;
@@ -217,12 +202,12 @@ bool vmem_init(multiboot_t* multiboot_struct, void* pml4) {
     for (auto mm_entry = mb_get_first_entry(multiboot_struct); mm_entry; mm_entry = mb_get_next_entry(multiboot_struct, mm_entry)) {
         // reserve physical pages for reserved memory
         if (mm_entry->type != (uint32_t)memory_map_type_t::USABLE) {
-            if (mm_entry->addr + mm_entry->len > (KERNEL_PAGE_BITMAP_SIZE + KERNEL_PAGE_CRITICAL_BITMAP_SIZE) * PAGE_SIZE)
+            if (mm_entry->addr + mm_entry->len > (bitmap_get_size(kernel_page_bitmap) + bitmap_get_size(kernel_page_critical_bitmap)) * PAGE_SIZE)
                 continue;
 
             // reserve as much as possible
             for (size_t i = 0; i < mm_entry->len; i += PAGE_SIZE) {
-                if (!vmem_paging_reserve_at_adress(mem_align_down(mm_entry->addr, PAGE_SIZE) + i))
+                if (!vmem_paging_reserve_at_adress(mem_align_down(mm_entry->addr, PAGE_SIZE) + i, 1))
                     return false;
             }
         }
@@ -281,6 +266,12 @@ bool heap_init(heap_t* heap, void* pml4, void* virtual_address, size_t size) {
 
     // heap struct (identity mapped memory)
     void* p_page = vmem_get_page_critical();
+    while (p_page && !mem_is_aligned((uint64_t)p_page, PAGE_SIZE_LARGE))
+        p_page = vmem_get_page_critical();
+
+    if (p_page == nullptr)
+        return false;
+
     if (!vmem_paging_reserve_at_adress((uint64_t)p_page + PAGE_SIZE, (PAGE_SIZE_LARGE / PAGE_SIZE - 1)))
         return false;
 

@@ -1,9 +1,6 @@
 //==========================================
 /// @file       memory.hpp
 /// @brief      kernel memory mapping logic
-/// TODO        fix the bitmap size shit
-///             its currently super fucked up
-///             & magically works rn
 //==========================================
 
 #pragma once
@@ -11,8 +8,9 @@
 #ifndef __MEMORY_HPP__
 #define __MEMORY_HPP__
 
-#define KERNEL_PAGE_CRITICAL_BITMAP_SIZE 0x2000 // 1GB
-#define KERNEL_PAGE_BITMAP_SIZE          0x4000 // 2GB
+// THE SYSTEM ONLY HAD 4GB RAM !!!!
+#define KERNEL_PAGE_CRITICAL_BITMAP_SIZE 0x2000 // 1024mb    0x2000 * 64 = page count
+#define KERNEL_PAGE_BITMAP_SIZE          0x2000 // 1024mb    0x2000 * 64 = page count
 
 // helper functions for page tables
 #define KPAGING_GET_PE(virtual_addr, offset)    ((((uint64_t)(virtual_addr)) >> (offset)) & 0x1FF)
