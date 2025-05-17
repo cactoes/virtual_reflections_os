@@ -51,7 +51,7 @@ rectangle "Programs" {
     }
 }
 
-node "Compatibility Layer" as CL {
+node "Compatibility Layer (Kernel API)" as CL {
 
 }
 

@@ -37,7 +37,7 @@ These are being used for testing and not yet required to launching the OS
 `-net nic,model=pcnet`
 
 ## Diagram
-![](docs/svg/kernel diagram.svg)
+![](docs/svg/kernel%20diagram.svg)
 
 ## Resources
 ### YouTube
