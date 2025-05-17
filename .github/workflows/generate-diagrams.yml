@@ -38,7 +38,7 @@ jobs:
           mkdir -p docs/svg
           cd docs/svg
           for file in *.puml; do
-            java -jar plantuml.jar -tsvg "$file" -o ./svg
+            java -jar ../../plantuml.jar -tsvg "$file" -o ./svg
           done
       
       - uses: actions/checkout@v4
