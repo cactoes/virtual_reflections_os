@@ -42,10 +42,6 @@ jobs:
             java -jar ../plantuml.jar -tsvg "$file" -o ./svg
           done
       
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.head_ref }}
-      
       - name: Commit SVG output
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
