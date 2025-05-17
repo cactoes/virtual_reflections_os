@@ -1,7 +1,6 @@
 #include "mouse_driver.hpp"
 #include "common.hpp"
 #include "cpu.hpp"
-#include "vga_driver.hpp"
 
 static int8_t g_mouse_data[4] {};
 static int    g_cycle = 0;
