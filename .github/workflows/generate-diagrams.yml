@@ -39,7 +39,7 @@ jobs:
           cd docs
           for file in docs/*.puml; do
             echo "Processing $file"
-            java -jar plantuml.jar -tsvg "$file" -o ./svg
+            java -jar ../plantuml.jar -tsvg "$file" -o ./svg
           done
       
       - uses: actions/checkout@v4
