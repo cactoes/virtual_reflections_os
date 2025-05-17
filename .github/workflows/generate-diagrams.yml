@@ -19,6 +19,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           persist-credentials: false
+          ref: ${{ github.head_ref }}
 
       - name: Set up Java (for PlantUML)
         uses: actions/setup-java@v3
