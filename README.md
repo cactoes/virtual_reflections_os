@@ -36,6 +36,9 @@ PS> .\qemu_start.ps1
 These are being used for testing and not yet required to launching the OS
 `-net nic,model=pcnet`
 
+## Diagram
+![](docs/svg/diagram.svg)
+
 ## Resources
 ### YouTube
 [Write Your Own 64-bit Operating System Kernel - https://www.youtube.com/watch?v=wz9CZBeXR6U](https://www.youtube.com/watch?v=wz9CZBeXR6U) <br>
