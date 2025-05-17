@@ -4,7 +4,7 @@ on:
   push:
     paths:
       - 'diagrams/**/*.puml'
-      - '.github/workflows/generate-puml-diagrams.yml'
+      - '.github/workflows/generate-diagrams.yml'
 
 jobs:
   render:
