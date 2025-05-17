@@ -37,7 +37,7 @@ jobs:
         run: |
           mkdir -p docs/svg
           cd docs
-          for file in docs/*.puml; do
+          for file in *.puml; do
             echo "Processing $file"
             java -jar ../plantuml.jar -tsvg "$file" -o ./svg
           done
