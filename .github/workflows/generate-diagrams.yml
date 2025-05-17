@@ -39,10 +39,13 @@ jobs:
           for file in docs/*.puml; do
             java -jar plantuml.jar -tsvg "$file" -o svg
           done
-
+      
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+      
       - name: Commit SVG output
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
           commit_message: "auto generated diagrams [skip ci]"
           file_pattern: docs/svg/*.svg
-          token: ${{ secrets.GITHUB_TOKEN }}
