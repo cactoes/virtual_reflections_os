@@ -1,6 +1,7 @@
 name: Generate PlantUML Diagrams
 
 on:
+  workflow_dispatch:
   push:
     paths:
       - 'diagrams/**/*.puml'
