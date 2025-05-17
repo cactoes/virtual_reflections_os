@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
   push:
     paths:
-      - 'diagrams/**/*.puml'
+      - 'docs/**/*.puml'
       - '.github/workflows/generate-diagrams.yml'
 
 permissions:
