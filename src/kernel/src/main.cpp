@@ -35,7 +35,7 @@ void draw_logo_vga_tm() {
     vga_tm_set_cursor(x, y_base + 16); vga_tm_print("        :@  %=        \n");
 }
 
-extern "C" [[noreturn]] void critical_fatal_ex(uint64_t code, const char* message, cpu_state_t* cpu_state = nullptr) {
+extern "C" NORETURN void critical_fatal_ex(uint64_t code, const char* message, cpu_state_t* cpu_state = nullptr) {
     vga_tm_color_map_t color {};
     color.foreground = vga_tm_color_t::WHITE,
     color.background = vga_tm_color_t::BLUE,
@@ -83,7 +83,7 @@ extern "C" [[noreturn]] void critical_fatal_ex(uint64_t code, const char* messag
         cpu_halt();
 }
 
-__attribute__((naked)) [[noreturn]] inline void critical_fatal(uint64_t code, const char* message) {
+NAKED NORETURN inline void critical_fatal(uint64_t code, const char* message) {
     asm volatile (
         // Reserve space for a cpu_state_t and align the stack.
         "sub %[state_size], %%rsp\n"

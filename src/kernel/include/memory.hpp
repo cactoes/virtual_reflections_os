@@ -9,8 +9,8 @@
 #define __MEMORY_HPP__
 
 // THE SYSTEM ONLY HAD 4GB RAM !!!!
-#define KERNEL_PAGE_CRITICAL_BITMAP_SIZE 0x2000 // 1024mb    0x2000 * 64 = page count
-#define KERNEL_PAGE_BITMAP_SIZE          0x2000 // 1024mb    0x2000 * 64 = page count
+#define KERNEL_PAGE_CRITICAL_BITMAP_SIZE    0x2000 // 1024mb    0x2000 * 64 = page count
+#define KERNEL_PAGE_BITMAP_SIZE             0x3000 // 1536mb    0x3000 * 64 = page count
 
 // helper functions for page tables
 #define KPAGING_GET_PE(virtual_addr, offset)    ((((uint64_t)(virtual_addr)) >> (offset)) & 0x1FF)
@@ -28,6 +28,7 @@
 #define PF_PAGE_SIZE            (1 << 7)
 #define PF_GLOBAL               (1 << 8)
 
+// heap block filter helpers
 #define HEAP_MAKE_FILTER_PARAM(param) ((void*)&param)
 #define HEAP_FILTERS_SIZE(array) (sizeof(array) / sizeof(block_filter_callback_t))
 
@@ -126,15 +127,56 @@ enum class multiboot_flags_t : uint32_t {
 
 typedef bool(*block_filter_callback_t)(const heap_block_t*, const void*);
 
+/// @brief      gets a physical address in the first 1gb(unless setup otherwise)
+/// @return     physical memroy address
 void* vmem_get_page_critical();
-void* vmem_get_page();
-[[nodiscard]] bool vmem_paging_reserve_at_adress(uint64_t address, size_t count = 1);
-void vmem_identity_map(uint64_t* pml4);
-[[nodiscard]] bool vmem_map_2kb_page(void* pml4, void* virtual_addr, void* physical_addr);
-[[nodiscard]] bool vmem_map_2mb_page(void* pml4, void* virtual_addr, void* physical_addr);
-[[nodiscard]] size_t vmem_smart_alloc_pages(void* pml4, void* virtual_addr, size_t size);
-[[nodiscard]] bool vmem_init(multiboot_t* multiboot_struct, void* pml4);
 
+/// @brief      gets a physical address after the first 1gb(unless setup otherwise)
+/// @return     physical memroy address
+void* vmem_get_page();
+
+/// @brief              sets bitmap values so that those addresses
+///                     can no longer be used for getting physical pages.
+///                     automatically determines the bitmap
+/// @param address      address to start reserving from (4k aligned)
+/// @param count        amount of pages to reserve at that address
+/// @return             success status
+NODISCARD bool vmem_paging_reserve_at_adress(uint64_t address, size_t count = 1);
+
+/// @brief              maps the firtst ~1gb one-one in the page table
+///                     so that those values are always valid
+/// @param[inout] pml4  pointer to the page table struct
+void vmem_identity_map(uint64_t* pml4);
+
+/// @brief                      maps a 4kb page to a virtual address from a phisical address
+/// @param[inout] pml4          page table to use
+/// @param[in] virtual_addr     pointer to virtual address to map to
+/// @param[in] physical_addr    pointer to physical address to map to
+/// @return                     success status
+NODISCARD bool vmem_map_2kb_page(void* pml4, void* virtual_addr, void* physical_addr);
+
+/// @brief                      maps a 2mb page to a virtual address from a phisical address
+/// @param[inout] pml4          page table to use
+/// @param[in] virtual_addr     pointer to virtual address to map to
+/// @param[in] physical_addr    pointer to physical address to map to
+/// @return                     success status
+NODISCARD bool vmem_map_2mb_page(void* pml4, void* virtual_addr, void* physical_addr);
+
+/// @brief                      allocates memory pages per 2mb if size != large page
+///                             it will round up too the nearest 2mb
+/// @param[inout] pml4          page table to use
+/// @param[in] virtual_addr     pointer to virtual address to map to
+/// @param size                 memory size to allocate
+/// @return                     allocated amount of memory
+NODISCARD size_t vmem_smart_alloc_pages(void* pml4, void* virtual_addr, size_t size);
+
+/// @brief                      initiates virtual memory
+/// @param[in] multiboot_struct pointer to the custom mb struct for memory regions
+/// @param[inout] pml4          page table to use
+/// @return                     success status
+NODISCARD bool vmem_init(multiboot_t* multiboot_struct, void* pml4);
+
+/// @brief      filters for block finding / filtering (undocumented filters)
 namespace heap_block_filters {
 
 bool donor_block_filter(const heap_block_t* block, const void* param);
@@ -143,18 +185,69 @@ bool last_block_filter(const heap_block_t* block, const void* param);
 
 } // namespace heap_block_filters
 
+/// @brief                      finds blockes in the heap based on the filter given
+///                             filter 1 == block 1 ... etc
+///                             1 filter per block
+/// @param[in] heap             heap in which to search
+/// @param[in] param            extra parameter to give to the filter functions
+/// @param[in] bfc_array        array to filter functions
+/// @param bfc_array_size       size of the filter function array
+/// @param[out] block_array     array which gets filled with the (found) blocks
+/// @param block_array_size     max size of the block array
+/// @return                     number of found block or -1 if bfc_array_size != block_array_size
+/// @remarks                    this function cant use the vector since it requires
+///                             memory to be setup already :)
 int heap_filter_blocks(heap_t* heap, void* param, block_filter_callback_t bfc_array[], size_t bfc_array_size, heap_block_t* block_array[], size_t block_array_size);
 
-[[nodiscard]] bool heap_init(heap_t* heap, void* pml4, void* virtual_address, size_t size);
-[[nodiscard]] bool heap_expand(heap_t* heap, void* pml4, size_t size);
+/// @brief                      initiates a heap
+/// @param[inout] heap          heap to initiate
+/// @param[inout] pml4          page table to use
+/// @param[in] virtual_address  virtual address to start the heap from
+/// @param size                 starting size of the heap
+/// @return                     success status
+NODISCARD bool heap_init(heap_t* heap, void* pml4, void* virtual_address, size_t size);
+
+/// @brief              expands the heap ontop of current heap
+///                     make sure the virtual address above is not yet reserved
+/// @param[inout] heap  heap to expand
+/// @param[inout] pml4  page table to use
+/// @param size         size to expand the heap by
+/// @return             success status
+NODISCARD bool heap_expand(heap_t* heap, void* pml4, size_t size);
+
+/// @brief              allocates memory from a heap
+/// @param[in] heap     heap to allocate from
+/// @param size         memory block size
+/// @return             ptr to memory or nullptr if no more memory is available
 void* heap_alloc(heap_t* heap, size_t size);
+
+/// @brief              deallocates memory from a heap
+/// @param[in] heap     heap to free from
+/// @param[in] ptr      pointer to memory
 void heap_free(heap_t* heap, void* ptr);
 
+/// @brief                          checks if the multiboot magic was valid
+/// @param[in] multiboot_struct     pointer to mb struct
+/// @return                         true if mb magic was valid or nullptr if there is no block
 bool mb_has_valid_magic(multiboot_t* multiboot_struct);
+
+/// @brief                          helper for looping over mb entries
+/// @param[in] multiboot_struct     pointer to mb struct
+/// @return                         pointer to first entry
 memory_map_entry_t* mb_get_first_entry(multiboot_t* multiboot_struct);
+
+/// @brief                          helper for looping over mb entries
+/// @param[in] multiboot_struct     pointer to the mb struct
+/// @param[in] prev                 pointer to last mme
+/// @return                         pointer to next entry or nullptr if there are no more blocks
 memory_map_entry_t* mb_get_next_entry(multiboot_t* multiboot_struct, memory_map_entry_t* prev);
 
+/// @brief              sets the global heap to the given one
+/// @param[in] heap     pointer to heap that should be global
 void set_global_heap(heap_t* heap);
+
+/// @brief      gets the global heap if set
+/// @return     pointer to global heap
 heap_t* get_global_heap();
 
 void* operator new(size_t size) noexcept;

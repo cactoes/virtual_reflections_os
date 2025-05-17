@@ -168,7 +168,7 @@ size_t vmem_smart_alloc_pages(void* pml4, void* virtual_addr, size_t size) {
         void* target_physical_address = vmem_get_page();
 
         if (!target_physical_address)
-            return 0;
+            return allocated;
 
         // force 2mb memory alignment
         if (!mem_is_aligned((uint64_t)target_physical_address, PAGE_SIZE_LARGE))
@@ -176,11 +176,11 @@ size_t vmem_smart_alloc_pages(void* pml4, void* virtual_addr, size_t size) {
 
         // reserve the remaining pages to complete 2MB
         if (!vmem_paging_reserve_at_adress((uint64_t)target_physical_address + PAGE_SIZE, (PAGE_SIZE_LARGE / PAGE_SIZE - 1)))
-            return 0;
+            return allocated;
 
         // map the address
         if (!vmem_map_2mb_page(pml4, (void*)current_virtual_address, target_physical_address))
-            return 0;
+            return allocated;
 
         // update counters
         allocated += PAGE_SIZE_LARGE;
@@ -191,8 +191,8 @@ size_t vmem_smart_alloc_pages(void* pml4, void* virtual_addr, size_t size) {
 }
 
 bool vmem_init(multiboot_t* multiboot_struct, void* pml4) {
-    // zero page
-    memzero(0, PAGE_SIZE);
+    // zero page (?)
+    // memzero(0, PAGE_SIZE);
 
     const uint64_t aligned_kernel_end_addr = mem_align_up((uint64_t)&__lnk_end_kernel, PAGE_SIZE_LARGE);
     const uint64_t kernel_page_count = aligned_kernel_end_addr / PAGE_SIZE;

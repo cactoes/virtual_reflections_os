@@ -69,7 +69,7 @@ inline uint32_t cpu_inl(uint16_t port) {
     return value;
 }
 
-[[noreturn]] inline void cpu_halt() {
+NORETURN inline void cpu_halt() {
     for (;;) {
         asm volatile ("cli");
         asm volatile ("hlt");

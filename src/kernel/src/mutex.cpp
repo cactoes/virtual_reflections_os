@@ -1,6 +1,6 @@
 #include "mutex.hpp"
 
-static inline int atomic_exchange(volatile int* ptr, int value) {
+inline static int atomic_exchange(volatile int* ptr, int value) {
     int old;
     asm volatile (
         "lock xchg %0, %1"

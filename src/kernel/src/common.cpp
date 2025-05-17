@@ -47,7 +47,7 @@ bool bitmap_get(uint64_t* bitmap, size_t size, size_t index) {
 
     const size_t item_index = index / 64;
     const size_t bit_index = index % 64;
-    return (bitmap[item_index] >> bit_index) & 1;
+    return BIT_CHECK(bitmap[item_index], bit_index);
 }
 
 void bitmap_set(uint64_t* bitmap, size_t size, size_t index, bool state) {
@@ -57,6 +57,6 @@ void bitmap_set(uint64_t* bitmap, size_t size, size_t index, bool state) {
     const size_t item_index = index / 64;
     const size_t bit_index = index % 64;
 
-    state ? bitmap[item_index] |= (1ULL << bit_index)
-          : bitmap[item_index] &= ~(1ULL << bit_index);
+    state ? BIT_SET(bitmap[item_index], bit_index)
+          : BIT_CLEAR(bitmap[item_index], bit_index);
 }

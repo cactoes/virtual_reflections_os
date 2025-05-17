@@ -13,9 +13,30 @@
 #define PAGE_SIZE_LARGE     0x200000
 #define PAGE_SIZE_HUGE      0x40000000
 
-#define ABS(a) (((a) < 0) ? -(a) : (a))
+#define ABS(a)              (((a) < 0) ? -(a) : (a))
+#define MIN(a, b)           ((a) > (b) ? (b) : (a))
+#define MAX(a, b)           ((a) < (b) ? (b) : (a))
+#define CLAMP(x, a, b)      (MIN(MAX((x), (a)), (b)))
 
-#define PACKED __attribute__((packed))
+#define KB(x)               ((x) * 1024UL)
+#define MB(x)               (KB(x) * 1024UL)
+#define GB(x)               (MB(x) * 1024UL)
+
+#define UNUSED(x)           (void)(x)
+
+#define NOINLINE            __attribute__((noinline))
+#define ALWAYS_INLINE       __attribute__((always_inline))
+#define PACKED              __attribute__((packed))
+#define NAKED               __attribute__((naked))
+#define NODISCARD           [[nodiscard]]
+#define NORETURN            [[noreturn]]
+#define UNUSED_PARAM        [[maybe_unused]]
+
+#define BIT(n)              (1UL << (n))
+#define BIT_SET(x, n)       ((x) |= BIT(n))
+#define BIT_CLEAR(x, n)     ((x) &= ~BIT(n))
+#define BIT_TOGGLE(x, n)    ((x) ^= BIT(n))
+#define BIT_CHECK(x, n)     (((x) >> (n)) & 1U)
 
 typedef long unsigned int size_t;
 
