@@ -36,7 +36,7 @@ jobs:
       - name: Generate SVGs from PUML
         run: |
           mkdir -p docs/svg
-          cd svg
+          cd docs/svg
           for file in *.puml; do
             java -jar plantuml.jar -tsvg "$file" -o ./svg
           done
