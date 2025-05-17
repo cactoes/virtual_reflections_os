@@ -6,6 +6,9 @@ on:
       - 'diagrams/**/*.puml'
       - '.github/workflows/generate-diagrams.yml'
 
+permissions:
+  contents: write
+
 jobs:
   render:
     runs-on: ubuntu-latest
