@@ -49,30 +49,26 @@ public:
     }
 
     bool delete_at(size_t index) {
-        mutex_lock(&mutex);
+        mutex_lock_guard guard(&mutex);
         const auto result = delete_at_unprotected(index);
-        mutex_unlock(&mutex);
         return result;
     }
 
     bool insert_at(size_t index, T value) {
-        mutex_lock(&mutex);
+        mutex_lock_guard guard(&mutex);
         const auto result = insert_at_unprotected(index, value);
-        mutex_unlock(&mutex);
         return result;
     }
 
     bool insert_back(T value) {
-        mutex_lock(&mutex);
+        mutex_lock_guard guard(&mutex);
         const auto result = insert_at_unprotected(length(), value);
-        mutex_unlock(&mutex);
         return result;
     }
 
     T* get_at(size_t index) {
-        mutex_lock(&mutex);
+        mutex_lock_guard guard(&mutex);
         const auto result = get_at_unprotected(index);
-        mutex_unlock(&mutex);
         return result;
     }
 

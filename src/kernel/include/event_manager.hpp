@@ -22,16 +22,14 @@ public:
     typedef void (*handler_t)(_argument);
 
     void fire_event(_argument arg) {
-        mutex_lock(&mutex);
+        mutex_lock_guard guard(&mutex);
         for (VECTOR_LOOP((&handlers), handler_node))
             handler_node->value(arg);
-        mutex_unlock(&mutex);
     }
 
     void add_handler(handler_t handler) {
-        mutex_lock(&mutex);
+        mutex_lock_guard guard(&mutex);
         handlers.insert_back(handler);
-        mutex_unlock(&mutex);
     }
 
 private:
