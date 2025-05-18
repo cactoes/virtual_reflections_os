@@ -1,10 +1,15 @@
 #include "memory.hpp"
+#include "mutex.hpp"
 
-// variable placed at the end of the kernel
+/// @brief variable placed at the end of the kernel
 extern "C" uint64_t __lnk_end_kernel;
 
 static uint64_t kernel_page_critical_bitmap[KERNEL_PAGE_CRITICAL_BITMAP_SIZE] {};
 static uint64_t kernel_page_bitmap[KERNEL_PAGE_BITMAP_SIZE] {};
+
+// no init required here since mutex init sets locked to false
+static mutex_t kpcb_mutex { .locked = 0 };
+static mutex_t kpb_mutex { .locked = 0 };
 
 static heap_t* g_heap = nullptr;
 
@@ -13,6 +18,8 @@ void __set_pml4(void* ptr) { asm volatile("mov %0, %%cr3" : : "r"(ptr) : "memory
 void* __get_pml4() { void* pml4; asm volatile("mov %%cr3, %0" : "=r"(pml4) : : "memory"); return pml4; }
 
 void* vmem_get_page_critical() {
+    const mutex_lock_guard guard(&kpcb_mutex);
+
     // slow ahh
     for (size_t i = 1; i < bitmap_get_size(kernel_page_critical_bitmap); i++) {
         if (!bitmap_get(kernel_page_critical_bitmap, i)) {
@@ -25,6 +32,8 @@ void* vmem_get_page_critical() {
 }
 
 void* vmem_get_page() {
+    const mutex_lock_guard guard(&kpb_mutex);
+
     // slow ahh
     for (size_t i = 1; i < bitmap_get_size(kernel_page_bitmap); i++) {
         if (!bitmap_get(kernel_page_bitmap, i)) {

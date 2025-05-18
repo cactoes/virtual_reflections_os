@@ -28,7 +28,7 @@ rectangle "Core" {
 [Virtual Threads] --> [Memory Manager]
 
 [Memory Manager] --> [Bitmap]
-[Memory Manager] ..> [Mutex]
+[Memory Manager] --> [Mutex]
 
 [Interrupts] ..> [Mutex]
 
@@ -40,7 +40,6 @@ rectangle "Core" {
 [PS/2 Keyboard] --> [Events]
 
 [Events] --> [Mutex]
-[Bitmap] ..> [Mutex]
 [Events] --> [Vector]
 [Vector] --> [Mutex]
 
@@ -52,7 +51,6 @@ rectangle "Programs" {
 }
 
 node "Compatibility Layer (Kernel API)" as CL {
-
 }
 
 Programs --> CL
