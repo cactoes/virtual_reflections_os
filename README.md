@@ -49,4 +49,5 @@ These are being used for testing and not yet required to launching the OS
 [wyoos - https://github.com/AlgorithMan-de/wyoos](https://github.com/AlgorithMan-de/wyoos) <br>
 [osakaOS - https://github.com/pac-ac/osakaOS](https://github.com/pac-ac/osakaOS) <br>
 [uefi-os - https://github.com/sansoune/uefi-os](https://github.com/sansoune/uefi-os)<br>
-[MmdOS - https://github.com/Rostamborn/MmdOS](https://github.com/Rostamborn/MmdOS/blob/master/src/kernel/scheduler/process.c)<br>
+[MmdOS - https://github.com/Rostamborn/MmdOS](https://github.com/Rostamborn/MmdOS)<br>
+[cavOS - https://github.com/malwarepad/cavOS](https://github.com/malwarepad/cavOS)<br>
