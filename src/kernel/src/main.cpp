@@ -2,6 +2,7 @@
 #include "string.hpp"
 #include "memory.hpp"
 #include "cpu.hpp"
+#include "debug.hpp"
 
 #include "interrupt.hpp"
 #include "virtual_thread.hpp"
@@ -36,6 +37,8 @@ void draw_logo_vga_tm() {
 }
 
 extern "C" NORETURN void critical_fatal_ex(uint64_t code, const char* message, cpu_state_t* cpu_state = nullptr) {
+    debug_print("[FATAL]: critical fatal triggerd: 0x%uh, %s", code, message);
+
     vga_tm_color_map_t color {};
     color.foreground = vga_tm_color_t::WHITE,
     color.background = vga_tm_color_t::BLUE,
@@ -147,9 +150,11 @@ cpu_state_t* handle_other_interrupt(uint64_t code, cpu_state_t* rsp) {
 }
 
 extern "C" void kernel_entry(multiboot_t* multiboot_struct, void* kpml4) {
+    debug_init();
+
     gdt_init();
     tss_init();
-    
+
     vga_tm_clear_screen();
     draw_logo_vga_tm();
     vga_tm_set_cursor(29, 20);
