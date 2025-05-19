@@ -8,8 +8,6 @@ cpu_state_t* pit_handle_interrupt(uint64_t code, cpu_state_t* rsp) {
     for (VECTOR_LOOP(g_timers, timer_node))
         timer_node->value.tick++;
 
-    int_pic_send_eoi(IRQ_PIT);
-
     if (const auto new_thread = vthread_schedule(rsp))
         return new_thread;
 

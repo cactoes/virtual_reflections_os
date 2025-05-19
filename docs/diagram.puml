@@ -57,10 +57,9 @@ node "Compatibility Layer (Kernel API)" as CL {
 Programs --> CL
 CL --> Core
 
-[Interrupts] ..> HWCL
+[Interrupts] --> HWCL
 Drivers ..> HWCL
 [Memory Manager] ..> HWCL
 [Virtual Threads] ..> HWCL
-[Mutex] ..> HWCL : unsure
 
 @enduml

@@ -6,7 +6,7 @@
 bits 64
 section .text
     ; c functions
-    extern int_handler
+    extern __int_handler
 
     ; globals
     global __dump_cpu
@@ -95,7 +95,7 @@ isr_stub_%+%1:
     ; TODO @since 14/04/2025 -- 13:58
     ; THIS ONLY SUPPORT KERNEL MODE INTERRUPTS
     ; THE STACK IS DIFFERENT OTHERWISE
-    call int_handler
+    call __int_handler
 
     ; update / restore stack pointer
     mov rsp, rax

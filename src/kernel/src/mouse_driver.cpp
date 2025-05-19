@@ -54,6 +54,5 @@ cpu_state_t* mouse_handle_interrupt(uint64_t code, cpu_state_t* rsp) {
         g_mouse_state->buttons.middle = (buttons & 0x04) != 0;
     }
 
-    int_pic_send_eoi(IRQ_PS2_MOUSE);
     return rsp;
 }

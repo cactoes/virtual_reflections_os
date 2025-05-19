@@ -37,7 +37,6 @@ cpu_state_t* keyboard_handle_interrupt(uint64_t code, cpu_state_t* rsp) {
 
     g_keyboard_event_manager.fire_event(&key_state);
 
-    int_pic_send_eoi(IRQ_KEYBOARD);
     return rsp;
 }
 
