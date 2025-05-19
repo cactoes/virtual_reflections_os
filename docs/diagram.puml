@@ -1,5 +1,7 @@
 @startuml kernel diagram
-' skinparam linetype ortho
+
+node "Hardware Compatibility Layer (Hardware API)" as HWCL {
+}
 
 rectangle "Core" {
     rectangle "Drivers" {
@@ -30,14 +32,13 @@ rectangle "Core" {
 [Memory Manager] --> [Bitmap]
 [Memory Manager] --> [Mutex]
 
-[Interrupts] ..> [Mutex]
-
 [Drivers] --> [Interrupts]
 [PCI] --> [Vector]
 [PIT] --> [Vector]
 [PIT] --> [Virtual Threads]
 [VGA] --> [Memory Manager]
 [PS/2 Keyboard] --> [Events]
+[PS/2 Mouse] ..> [Events]
 
 [Events] --> [Mutex]
 [Events] --> [Vector]
@@ -55,5 +56,11 @@ node "Compatibility Layer (Kernel API)" as CL {
 
 Programs --> CL
 CL --> Core
+
+[Interrupts] ..> HWCL
+Drivers ..> HWCL
+[Memory Manager] ..> HWCL
+[Virtual Threads] ..> HWCL
+[Mutex] ..> HWCL : unsure
 
 @enduml
