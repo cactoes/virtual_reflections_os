@@ -37,7 +37,7 @@ void draw_logo_vga_tm() {
 }
 
 extern "C" NORETURN void critical_fatal_ex(uint64_t code, const char* message, cpu_state_t* cpu_state = nullptr) {
-    debug_print("[FATAL]: critical fatal triggerd: 0x%uh, %s", code, message);
+    debug_print("[FATAL]: critical fatal triggerd: 0x%uh, %s\n", code, message);
 
     vga_tm_color_map_t color {};
     color.foreground = vga_tm_color_t::WHITE,
@@ -209,6 +209,8 @@ extern "C" void kernel_entry(multiboot_t* multiboot_struct, void* kpml4) {
     // vga_generic_buffer_t buffer{};
     // vga_gm_buffer_create(&buffer);
     // vga_gm_startup(&buffer);
+
+    debug_print("[INFO]: kernel finished initializing\n");
 
     const char* spinner[] = { ".  ", " . ", "  ." };
     constexpr size_t chars_size = (sizeof(spinner) / sizeof(char*));
