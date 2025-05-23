@@ -80,6 +80,37 @@ extern "C" NORETURN void critical_fatal_ex(uint64_t code, const char* message, c
         vga_tm_set_cursor(35, 15); vga_tm_print("rdi=0x%uh", cpu_state->rdi);
         vga_tm_set_cursor(35, 16); vga_tm_print("rip=0x%uh", cpu_state->rip);
         vga_tm_set_cursor(35, 17); vga_tm_print("rsp=0x%uh", cpu_state->rsp);
+
+        debug_print("[cf:%ul] ", (cpu_state->rflags >> 0) & 1);
+        debug_print("[?:%ul] ", (cpu_state->rflags >> 1) & 1);
+        debug_print("[pf:%ul] ", (cpu_state->rflags >> 2) & 1);
+        debug_print("[?:%ul] ", (cpu_state->rflags >> 3) & 1);
+        debug_print("[af:%ul] ", (cpu_state->rflags >> 4) & 1);
+        debug_print("[?:%ul] ", (cpu_state->rflags >> 5) & 1);
+        debug_print("[zf:%ul] ", (cpu_state->rflags >> 6) & 1);
+        debug_print("[sf:%ul] ", (cpu_state->rflags >> 7) & 1);
+        debug_print("[tf:%ul] ", (cpu_state->rflags >> 8) & 1);
+        debug_print("[if:%ul] ", (cpu_state->rflags >> 9) & 1);
+        debug_print("[df:%ul] ", (cpu_state->rflags >> 10) & 1);
+        debug_print("[of:%ul]\n", (cpu_state->rflags >> 11) & 1);
+
+        debug_print("r8= 0x%uh\n", cpu_state->r8);
+        debug_print("r9= 0x%uh\n", cpu_state->r9);
+        debug_print("r10=0x%uh\n", cpu_state->r10);
+        debug_print("r11=0x%uh\n", cpu_state->r11);
+        debug_print("r12=0x%uh\n", cpu_state->r12);
+        debug_print("r13=0x%uh\n", cpu_state->r13);
+        debug_print("r14=0x%uh\n", cpu_state->r14);
+        debug_print("r15=0x%uh\n\n", cpu_state->r15);
+
+        debug_print("rax=0x%uh\n", cpu_state->rax);
+        debug_print("rcx=0x%uh\n", cpu_state->rcx);
+        debug_print("rdx=0x%uh\n", cpu_state->rdx);
+        debug_print("rbp=0x%uh\n", cpu_state->rbp);
+        debug_print("rsi=0x%uh\n", cpu_state->rsi);
+        debug_print("rdi=0x%uh\n", cpu_state->rdi);
+        debug_print("rip=0x%uh\n", cpu_state->rip);
+        debug_print("rsp=0x%uh\n", cpu_state->rsp);
     }
     
     while (true)
