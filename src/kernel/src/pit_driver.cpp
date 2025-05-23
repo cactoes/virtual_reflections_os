@@ -16,7 +16,7 @@ cpu_state_t* pit_handle_interrupt(uint64_t code, cpu_state_t* rsp) {
 }
 
 void pit_sleep(uint32_t ms) {
-    pit_sleep(((tls_base_t*)vthread_get_tls())->vtid, ms);
+    pit_sleep(vthread_get_tls()->vtid, ms);
 }
 
 void pit_sleep(uint64_t id, uint32_t ms) {
@@ -31,7 +31,7 @@ void pit_sleep(uint64_t id, uint32_t ms) {
 
     if (!timer)
         return;
-        
+
     for (uint32_t i = 0; i < ms; i++) {
         timer->tick = 0;
         uint64_t start = timer->tick;

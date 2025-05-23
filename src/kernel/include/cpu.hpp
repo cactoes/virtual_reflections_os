@@ -78,7 +78,7 @@ NORETURN inline void cpu_halt() {
 
 inline void* cpu_get_stack_pointer() {
     void* stack_pointer;
-    __asm__ ("mov %%rsp, %0" : "=r" (stack_pointer));
+    asm volatile ("mov %%rsp, %0" : "=r" (stack_pointer));
     return stack_pointer;
 }
 

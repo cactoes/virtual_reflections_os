@@ -125,7 +125,7 @@ NAKED NORETURN inline void critical_fatal(uint64_t code, const char* message) {
 
         // Dump the CPU state. Pass current rsp as the state pointer.
         "mov %%rsp, %%rdi\n"
-        "call __dump_cpu\n"
+        "call __get_cpu_state\n"
 
         // Move the incoming parameters into temporary registers.
         "mov %[code], %%rcx\n"    // Save code in RCX.
@@ -180,6 +180,11 @@ cpu_state_t* handle_other_interrupt(uint64_t code, cpu_state_t* rsp) {
     return rsp;
 }
 
+void thread_test() {
+    debug_print("test\n");
+    while (true) {}
+}
+
 extern "C" void kernel_entry(multiboot_t* multiboot_struct, void* kpml4) {
     debug_init();
 
@@ -232,8 +237,8 @@ extern "C" void kernel_entry(multiboot_t* multiboot_struct, void* kpml4) {
     ((tls_base_t*)main_thread.tls)->vtid = 0;
     vthread_add(&main_thread);
 
-    // vthread_t thread{};
-    // vthread_create(&thread, thread_test);
+    vthread_t thread{};
+    vthread_create(&thread, thread_test);
 
     // disabled since we cant draw anything yet (other than a pixel)
     // vga_generic_buffer_t buffer{};

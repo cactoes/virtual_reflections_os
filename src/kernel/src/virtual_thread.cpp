@@ -8,10 +8,19 @@ static vthread_t* g_current_thread = nullptr;
 bool vthread_add(vthread_t* vthread) {
     if (g_vthread_count >= VTHREAD_MAX_COUNT)
         return false;
-    
-    g_vthreads[g_vthread_count++] = vthread;
+
+    vthread->vt_state = vthread_state_t::RUNNING;
     pit_add_clock(vthread->vtid);
+    g_vthreads[g_vthread_count++] = vthread;
     return true;
+}
+
+void vthread_entry_point(void(*entry)()) {
+    entry();
+    g_current_thread->vt_state = vthread_state_t::STOPPING;
+    
+    // catch it and wait for deletion
+    while (true) {}
 }
 
 bool vthread_create(vthread_t* vthread, void(*entry)()) {
@@ -19,6 +28,7 @@ bool vthread_create(vthread_t* vthread, void(*entry)()) {
         return false;
 
     uint64_t* stack = (uint64_t*)heap_alloc(get_global_heap(), VTHREAD_STACK_SIZE);
+    vthread->stack_og = stack;
 
     if (!stack)
         return false;
@@ -30,14 +40,17 @@ bool vthread_create(vthread_t* vthread, void(*entry)()) {
     *(--sp) = (uint64_t)sp;
     *(--sp) = 0x202;
     *(--sp) = 0x8;
-    *(--sp) = (uint64_t)entry;
+    // *(--sp) = (uint64_t)entry;
+    *(--sp) = (uint64_t)vthread_entry_point;
 
-    for (int i = 0; i < 14; i++)
+    for (int i = 0; i < 12; i++)
         *(--sp) = 0;
+
+    *(--sp) =(uint64_t)entry;
+    *(--sp) = 0;
 
     vthread->stack = sp;
     vthread->vtid = g_vtid_counter++;
-    // for now RUNNING is fine since we dont use it
     vthread->vt_state = vthread_state_t::RUNNING;
     ((tls_base_t*)vthread->tls)->vtid = vthread->vtid;
 
@@ -59,15 +72,55 @@ cpu_state_t* vthread_schedule(cpu_state_t* stack) {
         return nullptr;
 
     g_vthreads[g_current_vthread_index]->stack = (void*)stack;
+    
+    do {
+        vthread_loop_next_thread();
+        switch (g_current_thread->vt_state) {
+            case vthread_state_t::UNKNOWN:
+                break;
+            case vthread_state_t::STARTING:
+                break;
+            case vthread_state_t::RUNNING:
+                break;
+            case vthread_state_t::SLEEPING: {
+            //     // check if we can unsleep the thread
+            //     if (vthread_get_tls()->sleep_until_tick >= hc::pit::read())
+            //         g_current_thread->vt_state = vthread_state_t::RUNNING;
 
-    vthread_loop_next_thread();
+                break;
+            }
+            case vthread_state_t::STOPPING: {
+                heap_free(get_global_heap(), g_current_thread->stack_og);
 
-    // tss_set_rsp0(g_current_thread->stack);
+                // temp until we use a proper list
+                g_vthreads[g_current_vthread_index] = nullptr;
+                break;
+            }
+            default:
+                break;
+        }
+    } while (g_current_thread->vt_state != vthread_state_t::RUNNING);
+
     hc::gdt_tss::set_stack_pointer0(g_current_thread->stack);
 
     return (cpu_state_t*)g_current_thread->stack;
 }
 
-uint64_t* vthread_get_tls() {
-    return g_current_thread->tls;
+tls_base_t* vthread_get_tls() {
+    return (tls_base_t*)g_current_thread->tls;
 }
+
+// extern "C" void __get_cpu_state(void* state);
+// extern "C" void __set_cpu_state(void* state);
+
+// void vthread_yield() {
+//     g_current_thread->vt_state = vthread_state_t::SLEEPING;
+
+//     cpu_state_t state;
+//     __get_cpu_state(&state);
+    
+//     void* new_state = vthread_schedule(&state);
+    
+//     hc::gdt_tss::set_stack_pointer0(new_state);
+//     __set_cpu_state(new_state);
+// }

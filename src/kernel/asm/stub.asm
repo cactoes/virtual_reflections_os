@@ -9,7 +9,8 @@ section .text
     extern __int_handler
 
     ; globals
-    global __dump_cpu
+    global __get_cpu_state
+    global __set_cpu_state
     global isr_stub_table
 
 ;==========================================
@@ -55,13 +56,19 @@ section .text
 %endmacro
 
 ;==========================================
-; @function                 __dump_cpu
+; @function                 __get_cpu_state
 ; @brief                    function to dump the current cpu_state
 ; @param rdi, buffer        pointer to cpu struct
 ; @remarks                  destroyed registers: rsp
 ;==========================================
-__dump_cpu:
+__get_cpu_state:
     mov rbx, rsp
+
+    ; push dummy rsp, rflags, cs, rip
+    push 0x123456
+    push 0x123456
+    push 0x123456
+    push 0x123456
 
     ; store cpu state on stack
     push_all_regs
@@ -76,6 +83,22 @@ __dump_cpu:
     mov rsp, rbx
 
     ; return to caller
+    ret
+
+;==========================================
+; @function                 __set_cpu_state
+; @brief                    function set a new cpu_state
+; @param rdi, buffer        pointer to cpu new struct
+; @remarks                  destroyed registers: EVERYTHING
+;==========================================
+__set_cpu_state:
+    mov rsp, rdi
+
+    pop_all_regs
+
+    ; skip the rsp, rflags, cs, rip
+    sub rsp, 32
+
     ret
 
 ;==========================================

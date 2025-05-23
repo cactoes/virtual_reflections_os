@@ -21,6 +21,7 @@
 
 struct tls_base_t {
     uint64_t vtid;
+    uint64_t sleep_until_tick;
 };
 
 enum class vthread_state_t {
@@ -34,6 +35,7 @@ enum class vthread_state_t {
 struct vthread_t {
     cpu_state_t cpu_state;
     void* stack;
+    void* stack_og;
     uint64_t tls[VTHREAD_TLS_ENTRY_COUNT] = {};
     uint64_t vtid;
     vthread_state_t vt_state;
@@ -46,7 +48,8 @@ static uint64_t   g_current_vthread_index = 0;
 bool vthread_add(vthread_t* vthread);
 bool vthread_create(vthread_t* vthread, void(*entry)());
 cpu_state_t* vthread_schedule(cpu_state_t* cpu_state);
+void vthread_yield();
 
-uint64_t* vthread_get_tls();
+tls_base_t* vthread_get_tls();
 
 #endif // __VIRTUAL_THREAD_HPP__
