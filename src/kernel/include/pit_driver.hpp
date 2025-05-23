@@ -8,6 +8,8 @@
 #ifndef __PIT_DRIVER_HPP__
 #define __PIT_DRIVER_HPP__
 
+#define CLOCK_1MS 1000
+
 #include "common.hpp"
 #include "interrupt.hpp"
 #include "vector.hpp"

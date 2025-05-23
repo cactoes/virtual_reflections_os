@@ -1,6 +1,7 @@
 #include "pit_driver.hpp"
 #include "cpu.hpp"
 #include "virtual_thread.hpp"
+#include "hardware_compatibility.hpp"
 
 static vector<pit_timer_t>* g_timers;
 
@@ -12,29 +13,6 @@ cpu_state_t* pit_handle_interrupt(uint64_t code, cpu_state_t* rsp) {
         return new_thread;
 
     return rsp;
-}
-
-uint32_t pit_read_count() {
-    uint32_t count = 0;
-
-    asm volatile ("cli");
-
-    cpu_outb(0x43, 0x00);
-    count = cpu_inb(0x40);
-    count |= cpu_inb(0x40) << 8;
-
-    asm volatile ("sti");
-
-    return count;
-}
-
-void pit_set_count(uint32_t count) {
-    asm volatile ("cli");
-
-    cpu_outb(0x40, (uint8_t)(count & 0xFF));
-    cpu_outb(0x40, (uint8_t)((count >> 8) & 0xFF));
-
-    asm volatile ("sti");
 }
 
 void pit_sleep(uint32_t ms) {
@@ -57,16 +35,15 @@ void pit_sleep(uint64_t id, uint32_t ms) {
     for (uint32_t i = 0; i < ms; i++) {
         timer->tick = 0;
         uint64_t start = timer->tick;
-        while ( (start - timer->tick) < 1000 ) {}
+        while ((start - timer->tick) < CLOCK_1MS) {}
     }
 }
 
 void pit_init(vector<pit_timer_t>* timers) {
     g_timers = timers;
 
-    uint32_t divisor = 1193182 / 1000;
-    cpu_outb(0x43, 0x36);
-    pit_set_count(divisor);
+    // 1000 = 1ms
+    hc::pit::init(CLOCK_1MS);
 }
 
 void pit_add_clock(uint64_t id) {

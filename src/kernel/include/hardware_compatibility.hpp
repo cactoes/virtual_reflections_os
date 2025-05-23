@@ -52,6 +52,10 @@
 
 #define GDT_INDEX_TO_ENTRY(index)       (index) * sizeof(hc::gdt_tss::gdt_entry_t)
 
+//==========================================
+/// @brief      pit defines
+//==========================================
+
 #include "common.hpp"
 #include "cpu.hpp"
 
@@ -155,5 +159,13 @@ int set_stack_pointer0(void* stack_pointer);
 uint64_t get_kernel_code_selector();
 
 } // namespace hc::gdt_tss
+
+/// @brief pit based compatibility stuff
+namespace hc::pit {
+
+int init(uint64_t times_per_s);
+uint64_t read();
+
+} // namespace hc::pit
 
 #endif // __HARDWARE_COMPATIBILITY_HPP__

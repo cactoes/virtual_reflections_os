@@ -57,9 +57,7 @@ int interrupt::set_idt_entry(uint8_t int_number, void* handler) {
     idt_entry_t* descriptor = &g_idt[int_number];
 
     descriptor->isr_low = (uint64_t)handler & 0xFFFF;
-    // TODO @since 19/05/2025 -- 23:23
-    // gdt::get_kernel_cs()
-    descriptor->kernel_cs = 8;
+    descriptor->kernel_cs = (uint16_t)gdt_tss::get_kernel_code_selector();
     descriptor->ist = 0;
     descriptor->attributes = 0x8E;
     descriptor->isr_mid = ((uint64_t)handler >> 16) & 0xFFFF;
@@ -163,6 +161,31 @@ int gdt_tss::set_stack_pointer0(void* stack_pointer) {
     return 0;
 }
 
-uint64_t get_kernel_code_selector() {
+uint64_t gdt_tss::get_kernel_code_selector() {
     return GDT_INDEX_TO_ENTRY(GDT_INDEX_KERNEL_64_CODE);
+}
+
+int pit::init(uint64_t times_per_s) {
+
+    cpu_outb(0x43, 0x36);
+    uint64_t count = 1193182 / times_per_s;
+
+    cpu_outb(0x40, (uint8_t)(count & 0xFF));
+    cpu_outb(0x40, (uint8_t)((count >> 8) & 0xFF));
+
+    return 0;
+}
+
+uint64_t pit::read() {
+    uint32_t count = 0;
+
+    asm volatile ("cli");
+
+    cpu_outb(0x43, 0x00);
+    count = cpu_inb(0x40);
+    count |= cpu_inb(0x40) << 8;
+
+    asm volatile ("sti");
+
+    return count;
 }
