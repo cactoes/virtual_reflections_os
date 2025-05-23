@@ -1,5 +1,5 @@
 #include "virtual_thread.hpp"
-#include "gdt.hpp"
+#include "hardware_compatibility.hpp"
 #include "pit_driver.hpp"
 
 static uint64_t g_vtid_counter = 1;
@@ -62,7 +62,8 @@ cpu_state_t* vthread_schedule(cpu_state_t* stack) {
 
     vthread_loop_next_thread();
 
-    tss_set_rsp0(g_current_thread->stack);
+    // tss_set_rsp0(g_current_thread->stack);
+    hc::gdt_tss::set_stack_pointer0(g_current_thread->stack);
 
     return (cpu_state_t*)g_current_thread->stack;
 }

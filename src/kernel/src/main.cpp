@@ -6,7 +6,7 @@
 
 #include "interrupt.hpp"
 #include "virtual_thread.hpp"
-#include "gdt.hpp"
+#include "hardware_compatibility.hpp"
 
 #include "vga_driver.hpp"
 #include "pci_driver.hpp"
@@ -183,8 +183,7 @@ cpu_state_t* handle_other_interrupt(uint64_t code, cpu_state_t* rsp) {
 extern "C" void kernel_entry(multiboot_t* multiboot_struct, void* kpml4) {
     debug_init();
 
-    gdt_init();
-    tss_init();
+    hc::gdt_tss::init();
 
     vga_tm_clear_screen();
     draw_logo_vga_tm();

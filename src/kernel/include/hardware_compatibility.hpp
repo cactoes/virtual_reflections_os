@@ -29,6 +29,28 @@
 //==========================================
 /// @brief      gdt defines
 //==========================================
+#define GDT_ACCESS_PRESENT      (1 << 7)
+#define GDT_ACCESS_RING0        (0 << 0)
+// #define GDT_ACCESS_RING1        0b00100000
+// #define GDT_ACCESS_RING2        0b01000000
+#define GDT_ACCESS_RING3        ((1 << 5) | (1 << 6))
+#define GDT_ACCESS_SEGMENT      (1 << 4)
+#define GDT_ACCESS_EXECUTABLE   (1 << 3)
+#define GDT_ACCESS_DIRECTION    (1 << 2)
+#define GDT_ACCESS_READWRITE    (1 << 1)
+#define GDT_ACCESS_ACCESSED     (1 << 0)
+
+#define GDT_GRANULARITY_4K      (1 << 7)
+#define GDT_GRANULARITY_1B      (0 << 0)
+#define GDT_OPERAND_SIZE_32     (1 << 6)
+#define GDT_LONG_MODE           (1 << 5)
+#define GDT_AVAILABLE           (1 << 4)
+
+#define GDT_INDEX_NULL                  0
+#define GDT_INDEX_KERNEL_64_CODE        1
+#define GDT_INDEX_TSS                   sizeof(hc::gdt_tss::gdt_t::entries) / sizeof(hc::gdt_tss::gdt_entry_t)
+
+#define GDT_INDEX_TO_ENTRY(index)       (index) * sizeof(hc::gdt_tss::gdt_entry_t)
 
 #include "common.hpp"
 #include "cpu.hpp"
@@ -77,10 +99,61 @@ bool unmask_irq(uint8_t irq_number);
 } // namespace hc::interrupt
 
 /// @brief gdt based compatibility stuff
-namespace hc::gdt {
+namespace hc::gdt_tss {
 
+struct gdt_entry_t {
+    uint16_t limit;
+    uint16_t base_low16;
+    uint8_t base_mid8;
+    uint8_t access;
+    uint8_t granularity;
+    uint8_t base_high8;
+};
 
+struct tss_entry_t {
+    uint16_t length;
+    uint16_t base_low16;
+    uint8_t base_mid8;
+    uint8_t flags1;
+    uint8_t flags2;
+    uint8_t base_high8;
+    uint32_t base_upper32;
+    uint32_t reserved;
+};
 
-} // namespace hc::gdt
+struct gdt_t {
+    gdt_entry_t entries[2];
+    tss_entry_t tss_entry;
+};
+
+struct gdtr_t {
+    uint16_t limit;
+    uint64_t address;
+} PACKED;
+
+struct tss_t {
+    uint32_t resereved0;
+    uint64_t rsp0;
+    uint64_t rsp1;
+    uint64_t rsp2;
+    uint64_t resereved1;
+    uint64_t resereved2;
+    uint64_t ist1;
+    uint64_t ist2;
+    uint64_t ist3;
+    uint64_t ist4;
+    uint64_t ist5;
+    uint64_t ist6;
+    uint64_t ist7;
+    uint64_t resereved3;
+    uint16_t resereved4;
+    uint16_t iomap_offset;
+} PACKED;
+
+int init();
+int set_stack_pointer0(void* stack_pointer);
+uint64_t get_kernel_code_selector();
+
+} // namespace hc::gdt_tss
 
 #endif // __HARDWARE_COMPATIBILITY_HPP__
