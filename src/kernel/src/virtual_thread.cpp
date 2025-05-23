@@ -25,7 +25,7 @@ bool vthread_create(vthread_t* vthread, void(*entry)()) {
 
     memzero(stack, VTHREAD_STACK_SIZE);
 
-    uint64_t* sp = (uint64_t*)(((uint64_t)stack + sizeof(cpu_state_t)) & ~0xF);
+    uint64_t* sp = (uint64_t*)(((uint64_t)stack + VTHREAD_STACK_SIZE - sizeof(cpu_state_t)) & ~0xF);
 
     *(--sp) = (uint64_t)sp;
     *(--sp) = 0x202;
