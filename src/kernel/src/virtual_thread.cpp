@@ -16,6 +16,7 @@ bool vthread_add(vthread_t* vthread) {
 }
 
 void vthread_entry_point(void(*entry)()) {
+    g_current_thread->vt_state = vthread_state_t::STARTING;
     entry();
     g_current_thread->vt_state = vthread_state_t::STOPPING;
     
@@ -67,6 +68,27 @@ void vthread_loop_next_thread() {
     g_current_thread = g_vthreads[g_current_vthread_index];
 }
 
+void vthread_handle_sleeping(vthread_t* thread) {
+    const auto ptr = pit_find_by_id(thread->vtid);
+    // if ptr is actually a nullptr there are bigger problems :p
+    if (ptr->target_tick <= ptr->tick) {
+        thread->vt_state = vthread_state_t::RUNNING;
+        ((tls_base_t*)thread->tls)->is_yielded = 0;
+    }
+}
+
+void vthread_handle_stopping(vthread_t* thread) {
+    heap_free(get_global_heap(), thread->stack_og);
+
+    // temp until we use a proper list
+    g_vthreads[g_current_vthread_index] = nullptr;
+}
+
+void vthread_handle_starting(vthread_t* thread) {
+    // for now just promote to running
+    thread->vt_state = vthread_state_t::RUNNING;
+}
+
 cpu_state_t* vthread_schedule(cpu_state_t* stack) {
     if (g_vthread_count == 0)
         return nullptr;
@@ -76,28 +98,11 @@ cpu_state_t* vthread_schedule(cpu_state_t* stack) {
     do {
         vthread_loop_next_thread();
         switch (g_current_thread->vt_state) {
+            case vthread_state_t::STARTING: vthread_handle_starting(g_current_thread); break;
+            case vthread_state_t::SLEEPING: vthread_handle_sleeping(g_current_thread); break;
+            case vthread_state_t::STOPPING: vthread_handle_stopping(g_current_thread); break;
             case vthread_state_t::UNKNOWN:
-                break;
-            case vthread_state_t::STARTING:
-                break;
-            case vthread_state_t::RUNNING:
-                break;
-            case vthread_state_t::SLEEPING: {
-            //     // check if we can unsleep the thread
-            //     if (vthread_get_tls()->sleep_until_tick >= hc::pit::read())
-            //         g_current_thread->vt_state = vthread_state_t::RUNNING;
-
-                break;
-            }
-            case vthread_state_t::STOPPING: {
-                heap_free(get_global_heap(), g_current_thread->stack_og);
-
-                // temp until we use a proper list
-                g_vthreads[g_current_vthread_index] = nullptr;
-                break;
-            }
-            default:
-                break;
+            default: break;
         }
     } while (g_current_thread->vt_state != vthread_state_t::RUNNING);
 
@@ -110,17 +115,8 @@ tls_base_t* vthread_get_tls() {
     return (tls_base_t*)g_current_thread->tls;
 }
 
-// extern "C" void __get_cpu_state(void* state);
-// extern "C" void __set_cpu_state(void* state);
-
-// void vthread_yield() {
-//     g_current_thread->vt_state = vthread_state_t::SLEEPING;
-
-//     cpu_state_t state;
-//     __get_cpu_state(&state);
-    
-//     void* new_state = vthread_schedule(&state);
-    
-//     hc::gdt_tss::set_stack_pointer0(new_state);
-//     __set_cpu_state(new_state);
-// }
+void vthread_yield() {
+    vthread_get_tls()->is_yielded = 1;
+    while (vthread_get_tls()->is_yielded)
+        g_current_thread->vt_state = vthread_state_t::SLEEPING;
+}

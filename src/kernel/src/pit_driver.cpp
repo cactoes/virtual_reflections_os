@@ -5,6 +5,15 @@
 
 static vector<pit_timer_t>* g_timers;
 
+pit_timer_t* pit_find_by_id(uint64_t id) {
+    for (VECTOR_LOOP(g_timers, timer_node)) {
+        if (timer_node->value.id == id)
+            return &timer_node->value;
+    };
+
+    return nullptr;
+}
+
 cpu_state_t* pit_handle_interrupt(uint64_t code, cpu_state_t* rsp) {
     for (VECTOR_LOOP(g_timers, timer_node))
         timer_node->value.tick++;
@@ -20,29 +29,19 @@ void pit_sleep(uint32_t ms) {
 }
 
 void pit_sleep(uint64_t id, uint32_t ms) {
-    volatile pit_timer_t* timer = nullptr;
-
-    for (VECTOR_LOOP(g_timers, timer_node)) {
-        if (timer_node->value.id == id) {
-            timer = &timer_node->value;
-            break;
-        }
-    };
+    volatile pit_timer_t* timer = pit_find_by_id(id);
 
     if (!timer)
         return;
 
-    for (uint32_t i = 0; i < ms; i++) {
-        timer->tick = 0;
-        uint64_t start = timer->tick;
-        while ((start - timer->tick) < CLOCK_1MS) {}
-    }
+    timer->tick = 0;
+    timer->target_tick = ms;
+
+    vthread_yield();
 }
 
 void pit_init(vector<pit_timer_t>* timers) {
     g_timers = timers;
-
-    // 1000 = 1ms
     hc::pit::init(CLOCK_1MS);
 }
 

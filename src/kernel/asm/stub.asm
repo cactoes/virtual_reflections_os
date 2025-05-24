@@ -10,7 +10,6 @@ section .text
 
     ; globals
     global __get_cpu_state
-    global __set_cpu_state
     global isr_stub_table
 
 ;==========================================
@@ -60,22 +59,39 @@ section .text
 ; @brief                    function to dump the current cpu_state
 ; @param rdi, buffer        pointer to cpu struct
 ; @remarks                  destroyed registers: rsp
+;  TODO:                    fix this function ahh
 ;==========================================
-__get_cpu_state:
-    mov rbx, rsp
+; section .bss
+; saved_rip: resq 1
 
-    ; push dummy rsp, rflags, cs, rip
-    push 0x123456
-    push 0x123456
-    push 0x123456
-    push 0x123456
+; section .text
+; global store_rip
+
+; store_rip:
+;     call .get_rip
+; .get_rip:
+;     pop rax
+;     mov [saved_rip], rax
+;     ret
+__get_cpu_state:
+    ; call store_rip
+
+    mov rbx, rsp
 
     ; store cpu state on stack
     push_all_regs
 
+    ; ; push dummy rsp, rflags, cs, rip
+    ; push rbx                ; rsp
+    ; pushfq                  ; rflags
+    ; mov ax, cs              ; cs
+    ; movzx rax, ax           
+    ; push rax
+    ; push qword [saved_rip]  ; rip
+
     ; copy cpu state
     mov rsi, rsp    ; source cpu_state aka current stack
-    mov rcx, 16     ; 16 registers
+    mov rcx, 14     ; 14 gp registers
     cld
     rep movsq       ; copy into rdi (buffer)
 
@@ -83,22 +99,6 @@ __get_cpu_state:
     mov rsp, rbx
 
     ; return to caller
-    ret
-
-;==========================================
-; @function                 __set_cpu_state
-; @brief                    function set a new cpu_state
-; @param rdi, buffer        pointer to cpu new struct
-; @remarks                  destroyed registers: EVERYTHING
-;==========================================
-__set_cpu_state:
-    mov rsp, rdi
-
-    pop_all_regs
-
-    ; skip the rsp, rflags, cs, rip
-    sub rsp, 32
-
     ret
 
 ;==========================================

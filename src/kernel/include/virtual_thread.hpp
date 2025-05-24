@@ -21,7 +21,7 @@
 
 struct tls_base_t {
     uint64_t vtid;
-    uint64_t sleep_until_tick;
+    uint64_t is_yielded;
 };
 
 enum class vthread_state_t {
