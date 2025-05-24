@@ -1,4 +1,4 @@
-#include "vga_driver.hpp"
+#include "drivers/vga_driver.hpp"
 #include "string.hpp"
 #include "cpu.hpp"
 #include "memory.hpp"

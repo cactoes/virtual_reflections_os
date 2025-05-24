@@ -1,4 +1,4 @@
-#include "mouse_driver.hpp"
+#include "drivers/mouse_driver.hpp"
 #include "common.hpp"
 #include "cpu.hpp"
 

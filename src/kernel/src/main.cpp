@@ -8,11 +8,11 @@
 #include "virtual_thread.hpp"
 #include "hardware_compatibility.hpp"
 
-#include "vga_driver.hpp"
-#include "pci_driver.hpp"
-#include "pit_driver.hpp"
-#include "keyboard_driver.hpp"
-#include "mouse_driver.hpp"
+#include "drivers/vga_driver.hpp"
+#include "drivers/pci_driver.hpp"
+#include "drivers/pit_driver.hpp"
+#include "drivers/keyboard_driver.hpp"
+#include "drivers/mouse_driver.hpp"
 
 void draw_logo_vga_tm() {
     constexpr uint32_t x = 29;

@@ -1,6 +1,6 @@
 #include "virtual_thread.hpp"
 #include "hardware_compatibility.hpp"
-#include "pit_driver.hpp"
+#include "drivers/pit_driver.hpp"
 
 static uint64_t g_vtid_counter = 1;
 static vthread_t* g_current_thread = nullptr;

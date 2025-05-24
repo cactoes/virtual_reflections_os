@@ -1,4 +1,4 @@
-#include "pci_driver.hpp"
+#include "drivers/pci_driver.hpp"
 #include "cpu.hpp"
 
 uint32_t pci_config_read(uint16_t bus, uint8_t device, uint8_t function, uint8_t offset) {
