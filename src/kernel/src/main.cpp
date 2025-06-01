@@ -185,6 +185,8 @@ void thread_test() {
     while (true) {}
 }
 
+void sata_init(void* pml4);
+
 extern "C" void kernel_entry(multiboot_t* multiboot_struct, void* kpml4) {
     debug_init();
 
@@ -222,13 +224,7 @@ extern "C" void kernel_entry(multiboot_t* multiboot_struct, void* kpml4) {
     vector<pit_timer_t> timers {};
     pit_init(&timers);
 
-    vector<pci_device_info_t> pci_devices {};
-    pci_enumerate_devices(&pci_devices);
-
-    vector<pci_device_request_t> pci_devices_requested {};
-    pci_devices_requested.insert_back(pci_device_request_t { .revision_id = (uint8_t)PCI_UNKNOWN, .prog_if = (uint8_t)PCI_UNKNOWN, .sub_class = (uint8_t)PCI_UNKNOWN, .class_code = 2 });
-    pci_devices_requested.insert_back(pci_device_request_t { .revision_id = (uint8_t)PCI_UNKNOWN, .prog_if = (uint8_t)1, .sub_class = 6, .class_code = 1 });
-    pci_find_devices(&pci_devices, &pci_devices_requested);
+    sata_init(kpml4);
 
     // manual (main) thread setup
     vthread_t main_thread {};
@@ -256,4 +252,337 @@ extern "C" void kernel_entry(multiboot_t* multiboot_struct, void* kpml4) {
         vga_tm_set_cursor(VGA_TM_NUM_COLS, VGA_TM_NUM_ROWS);
         pit_sleep(250);
     }
+}
+
+struct HBA_PORT {
+	uint32_t clb;		// 0x00, command list base address, 1K-byte aligned
+	uint32_t clbu;		// 0x04, command list base address upper 32 bits
+	uint32_t fb;		// 0x08, FIS base address, 256-byte aligned
+	uint32_t fbu;		// 0x0C, FIS base address upper 32 bits
+	uint32_t is;		// 0x10, interrupt status
+	uint32_t ie;		// 0x14, interrupt enable
+	uint32_t cmd;		// 0x18, command and status
+	uint32_t rsv0;		// 0x1C, Reserved
+	uint32_t tfd;		// 0x20, task file data
+	uint32_t sig;		// 0x24, signature
+	uint32_t ssts;		// 0x28, SATA status (SCR0:SStatus)
+	uint32_t sctl;		// 0x2C, SATA control (SCR2:SControl)
+	uint32_t serr;		// 0x30, SATA error (SCR1:SError)
+	uint32_t sact;		// 0x34, SATA active (SCR3:SActive)
+	uint32_t ci;		// 0x38, command issue
+	uint32_t sntf;		// 0x3C, SATA notification (SCR4:SNotification)
+	uint32_t fbs;		// 0x40, FIS-based switch control
+	uint32_t rsv1[11];	// 0x44 ~ 0x6F, Reserved
+	uint32_t vendor[4];	// 0x70 ~ 0x7F, vendor specific
+};
+
+struct HBA_MEM {
+	// 0x00 - 0x2B, Generic Host Control
+	uint32_t cap;		// 0x00, Host capability
+	uint32_t ghc;		// 0x04, Global host control
+	uint32_t is;		// 0x08, Interrupt status
+	uint32_t pi;		// 0x0C, Port implemented
+	uint32_t vs;		// 0x10, Version
+	uint32_t ccc_ctl;	// 0x14, Command completion coalescing control
+	uint32_t ccc_pts;	// 0x18, Command completion coalescing ports
+	uint32_t em_loc;		// 0x1C, Enclosure management location
+	uint32_t em_ctl;		// 0x20, Enclosure management control
+	uint32_t cap2;		// 0x24, Host capabilities extended
+	uint32_t bohc;		// 0x28, BIOS/OS handoff control and status
+
+	// 0x2C - 0x9F, Reserved
+	uint8_t  rsv[0xA0-0x2C];
+
+	// 0xA0 - 0xFF, Vendor specific registers
+	uint8_t  vendor[0x100-0xA0];
+
+	// 0x100 - 0x10FF, Port control registers
+	HBA_PORT	ports[1];	// 1 ~ 32
+};
+
+struct HBA_CMD_HEADER {
+    // DW0
+    uint8_t  cfl     : 5;  // Command FIS length in DWORDS (2 DWORDs = 8 bytes min)
+    uint8_t  a       : 1;  // ATAPI
+    uint8_t  w       : 1;  // Write (1 = write, 0 = read)
+    uint8_t  p       : 1;  // Prefetchable
+
+    uint8_t  r       : 1;  // Reset
+    uint8_t  b       : 1;  // BIST
+    uint8_t  c       : 1;  // Clear Busy upon R_OK
+    uint8_t  rsv0    : 1;  // Reserved
+    uint8_t  pmp     : 4;  // Port multiplier port
+
+    uint16_t prdtl;        // Physical region descriptor table length (in entries)
+
+    // DW1
+    volatile uint32_t prdbc;   // Physical region descriptor byte count transferred
+
+    // DW2/DW3
+    uint32_t ctba;         // Command table descriptor base address
+    uint32_t ctbau;        // Command table descriptor base address upper 32 bits
+
+    // DW4–DW7
+    uint32_t rsv1[4];      // Reserved
+} PACKED;
+
+struct FIS_REG_H2D {
+    // DWORD 0
+    uint8_t  fis_type;    // FIS_TYPE_REG_H2D = 0x27
+
+    uint8_t  pmport : 4;  // Port multiplier
+    uint8_t  rsv0   : 3;  // Reserved
+    uint8_t  c      : 1;  // 1: Command, 0: Control
+
+    uint8_t  command;     // ATA command (e.g. 0xEC for IDENTIFY DEVICE)
+    uint8_t  featurel;    // Feature (low byte)
+
+    // DWORD 1
+    uint8_t  lba0;        // LBA low (7:0)
+    uint8_t  lba1;        // LBA mid (15:8)
+    uint8_t  lba2;        // LBA high (23:16)
+    uint8_t  device;      // Device register
+
+    // DWORD 2
+    uint8_t  lba3;        // LBA (31:24)
+    uint8_t  lba4;        // LBA (39:32)
+    uint8_t  lba5;        // LBA (47:40)
+    uint8_t  featureh;    // Feature (high byte)
+
+    // DWORD 3
+    uint8_t  countl;      // Sector count (low byte)
+    uint8_t  counth;      // Sector count (high byte)
+    uint8_t  icc;         // Isochronous Command Completion
+    uint8_t  control;     // Control register
+
+    // DWORD 4
+    uint8_t  rsv1[4];     // Reserved
+} PACKED;
+
+struct HBA_CMD_TBL {
+    uint8_t  cfis[64];        // 0x00: Command FIS (Host to Device FIS)
+    uint8_t  acmd[16];        // 0x40: ATAPI command (12 or 16 bytes)
+    uint8_t  rsv[48];         // 0x50: Reserved
+
+    // 0x80: Physical Region Descriptor Table (PRDT) — array of up to 65535 entries
+    // The number of PRDT entries used is specified in the Command Header (prdtl)
+    struct HBA_PRDT_ENTRY {
+        uint32_t dba;         // Data base address
+        uint32_t dbau;        // Data base address upper 32 bits
+        uint32_t rsv0;
+
+        // DW3
+        uint32_t dbc : 22;    // Byte count (0-based: 0 = 1 byte, 0x3FFFF = 4 MiB)
+        uint32_t rsv1 : 9;
+        uint32_t i    : 1;    // Interrupt on completion
+    } prdt_entry[1];          // This can be an array with max 65535 entries
+} PACKED;
+
+void sata_init(void* pml4) {
+    dma_heap_t dma_heap {};
+    (void)dma_heap_init(pml4, &dma_heap, (void*)0x3FC00000);
+
+    // get pcie devices
+    vector<pci_device_info_t> pci_devices {};
+    pci_enumerate_devices(&pci_devices);
+
+    // find sata controller
+    vector<pci_device_request_t> pci_devices_requested {};
+    pci_devices_requested.insert_back(pci_device_request_t { .revision_id = (uint8_t)PCI_UNKNOWN, .prog_if = (uint8_t)1, .sub_class = 6, .class_code = 1 });
+    const bool found = pci_find_devices(&pci_devices, &pci_devices_requested);
+
+    if (!found) {
+        debug_print("AHCI device not found\n");
+        return;
+    }
+
+    const pci_device_info_t* ahci_device = pci_devices.get_at(pci_devices_requested.get_at(0)->pci_device_index);
+    
+    // map hba_mem / bar5
+    uint64_t abar_phys = ahci_device->bar5_address & ~0xF;
+    uint64_t abar_page = mem_align_down(abar_phys, PAGE_SIZE_LARGE);
+    uint64_t abar_offset = abar_phys - abar_page;
+
+    (void)vmem_map_2mb_page(pml4, (void*)0x3fe00000, (void*)abar_page);
+    volatile HBA_MEM* hba = (volatile HBA_MEM*)((uint8_t*)0x3fe00000 + abar_offset);
+
+    // get version
+    uint32_t version = hba->vs;
+    debug_print("AHCI Controller version: 0x%uh\n", version);
+
+    // get ports
+    uint32_t ports_implemented = hba->pi;
+    debug_print("Ports Implemented: 0x%uh\n", ports_implemented);
+
+    for (int i = 0; i < 32; i++) {
+        if (ports_implemented & (1 << i)) {
+            volatile HBA_PORT* port = &hba->ports[i];
+            debug_print("port[%i] SATA status: 0x%uh; signature: 0x%uh \n", i, port->ssts, port->sig);
+        }
+    }
+
+    // assume port 0 has a drive
+    volatile HBA_PORT* port = &hba->ports[0];
+
+    // reset device
+    // Clear ST (bit 0)
+    port->cmd &= ~0x01;
+
+    // Wait for CR to clear again
+    while (port->cmd & (1 << 15));
+
+    // Clear FRE (bit 4)
+    port->cmd &= ~(1 << 4);
+
+    // setup commands
+
+    // Allocate 4 KB-aligned pages for CLB and RFIS
+    auto clb = dma_heap_alloc(&dma_heap);   // 1 KB Command List Base
+    auto rfis = dma_heap_alloc(&dma_heap);  // 256-byte Received FIS
+
+    memset(clb, 0, 4096);
+    memset(rfis, 0, 4096);
+
+    port->clb = dma_get_physical_lower(&dma_heap, clb);
+    port->clbu = dma_get_physical_upper(&dma_heap, clb);
+    port->fb = dma_get_physical_lower(&dma_heap, rfis);
+    port->fbu = dma_get_physical_upper(&dma_heap, rfis);
+
+    port->ie = 0;  // Disable interrupts (for now)
+
+    port->cmd |= (1 << 4);  // FRE
+    port->cmd |= (1 << 0);  // ST
+
+    ////////////////////////////////////////////////////////////////////////////
+
+    dma_memory_region_t::block_t* dma_buf = dma_heap_alloc(&dma_heap);
+    memset(dma_buf, 0, 0x1000);
+    uint64_t dma_physl = dma_get_physical_lower(&dma_heap, dma_buf);
+    uint64_t dma_physu = dma_get_physical_upper(&dma_heap, dma_buf);
+
+    HBA_CMD_HEADER* cmdhdr = (HBA_CMD_HEADER*)clb;
+    memset(cmdhdr, 0, sizeof(HBA_CMD_HEADER));
+
+    cmdhdr->cfl = sizeof(FIS_REG_H2D) / sizeof(uint32_t);
+    cmdhdr->w = 0; // Read
+    cmdhdr->prdtl = 1;
+
+
+    HBA_CMD_TBL* cmdtbl = (HBA_CMD_TBL*)dma_heap_alloc(&dma_heap);
+    memset(cmdtbl, 0, sizeof(HBA_CMD_TBL));
+    uint64_t cmdtbl_physl = dma_get_physical_lower(&dma_heap, (dma_memory_region_t::block_t*)cmdtbl);
+    uint64_t cmdtbl_physu = dma_get_physical_upper(&dma_heap, (dma_memory_region_t::block_t*)cmdtbl);
+
+    cmdhdr->ctba = cmdtbl_physl;
+    cmdhdr->ctbau = cmdtbl_physu;
+
+    cmdtbl->prdt_entry[0].dba = dma_physl;
+    cmdtbl->prdt_entry[0].dbau = dma_physu;
+    cmdtbl->prdt_entry[0].dbc = 0x1000 - 1;
+    cmdtbl->prdt_entry[0].i = 1;
+
+    constexpr uint64_t lba = 1;
+
+    FIS_REG_H2D* fis = (FIS_REG_H2D*)(&cmdtbl->cfis);
+    memset(fis, 0, sizeof(FIS_REG_H2D));
+    fis->fis_type = 0x27;
+    fis->c = 1;
+    fis->command = 0x25; // ATA_CMD_READ_DMA_EXT;
+    fis->device = 0x40; // LBA mode
+
+    fis->lba0 = (uint8_t)(lba);
+    fis->lba1 = (uint8_t)(lba >> 8);
+    fis->lba2 = (uint8_t)(lba >> 16);
+    fis->lba3 = (uint8_t)(lba >> 24);
+    fis->lba4 = (uint8_t)(lba >> 32);
+    fis->lba5 = (uint8_t)(lba >> 40);
+
+    fis->countl = 1;
+    fis->counth = 0;
+
+    // Clear interrupts
+    port->is = (uint32_t)-1;
+
+    // Wait until CR is cleared
+    // while (port->cmd & (1 << 15));
+
+    // Start command engine if not running
+    if (!(port->cmd & (1 << 4))) {
+        port->cmd |= (1 << 4); // FRE
+        port->cmd |= (1 << 0); // ST
+    }
+
+    // Issue command slot 0
+    port->ci = 1;
+
+    // Wait for completion
+    while (port->ci & 1) {
+        if (port->is & (1 << 30)) {
+            debug_print("AHCI read: Task file error");
+            return;
+        }
+    }
+
+    if (port->is & (1 << 30)) {
+		debug_print("Read disk error\n");
+		return;
+	}
+
+    uint8_t* data = (uint8_t*)dma_buf;
+    for (int i = 0; i < 512; ++i) {
+        debug_print("%uh ", data[i]);
+        if ((i + 1) % 16 == 0) debug_print("\n");
+    }
+
+    // debug_print("START LBA: %u\n", *(uint32_t*)&data[454]);
+    // debug_print("TOTAL SECTORS: %u\n", *(uint32_t*)&data[458]);
+
+    /**
+    // Command List entry
+    HBA_CMD_HEADER* cmdheader = (HBA_CMD_HEADER*)clb;
+    cmdheader[0].cfl = sizeof(FIS_REG_H2D) / sizeof(uint32_t);  // Command FIS length in DWORDs
+    cmdheader[0].w = 0;     // READ = 0, WRITE = 1
+    cmdheader[0].prdtl = 1; // 1 PRDT
+
+    // Allocate Command Table (256 + PRDT entries)
+    auto cmdtbl = dma_heap_alloc(&dma_heap);
+    memset(cmdtbl, 0, 4096);
+    cmdheader[0].ctba = dma_get_physical_lower(&dma_heap, cmdtbl);
+    cmdheader[0].ctbau = dma_get_physical_upper(&dma_heap, cmdtbl);
+
+    // Fill PRDT to receive 512 bytes
+    HBA_CMD_TBL* tbl = (HBA_CMD_TBL*)cmdtbl;
+    auto identify_buf = dma_heap_alloc(&dma_heap);
+    tbl->prdt_entry[0].dba = dma_get_physical_lower(&dma_heap, identify_buf);
+    tbl->prdt_entry[0].dbau = dma_get_physical_upper(&dma_heap, identify_buf);
+    tbl->prdt_entry[0].dbc = 512 - 1;
+    tbl->prdt_entry[0].i = 0;  // Interrupt on completion
+
+    FIS_REG_H2D* fis = (FIS_REG_H2D*)(&tbl->cfis);
+    fis->fis_type = 0x27; // FIS_TYPE_REG_H2D;
+    fis->c = 1;  // command
+    fis->command = 0xEC;  // IDENTIFY DEVICE
+    fis->device = 0;      // Drive 0
+
+    port->ci = 1 << 0;  // Command slot 0
+
+    // Wait for completion
+    while (port->ci & (1 << 0)) {
+        // optional: timeout
+    }
+
+    // read results
+    char model[41];
+    memcpy(model, (char*)identify_buf + 54, 40);
+    model[40] = '\0';
+
+    // Convert from ATA's word-swapped format
+    for (int i = 0; i < 40; i += 2) {
+        char tmp = model[i];
+        model[i] = model[i + 1];
+        model[i + 1] = tmp;
+    }
+
+    debug_print("port[0] Drive Model: %s\n", model);
+    */
 }

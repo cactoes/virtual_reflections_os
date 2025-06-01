@@ -63,12 +63,24 @@ struct heap_t {
     size_t size;
 };
 
+struct dma_memory_region_t {
+    typedef uint8_t block_t[0x1000];
+
+    block_t blocks[0x200];
+};
+
+struct dma_heap_t {
+    uint64_t block_bitmap[0x200 / (8 * sizeof(uint64_t))];
+    dma_memory_region_t* region;
+    void* pml4;
+};
+
 struct memory_map_entry_t {
     uint32_t size;
     uint64_t addr;
     uint64_t len;
     uint32_t type;
-} __attribute__((packed)) ;
+} PACKED;
 
 struct multiboot_info_t {
     uint32_t flags;
@@ -170,6 +182,8 @@ NODISCARD bool vmem_map_2mb_page(void* pml4, void* virtual_addr, void* physical_
 /// @return                     allocated amount of memory
 NODISCARD size_t vmem_smart_alloc_pages(void* pml4, void* virtual_addr, size_t size);
 
+NODISCARD void* vmem_virtual_to_physical(void* pml4, void* virtual_addr);
+
 /// @brief                      initiates virtual memory
 /// @param[in] multiboot_struct pointer to the custom mb struct for memory regions
 /// @param[inout] pml4          page table to use
@@ -241,6 +255,12 @@ memory_map_entry_t* mb_get_first_entry(multiboot_t* multiboot_struct);
 /// @param[in] prev                 pointer to last mme
 /// @return                         pointer to next entry or nullptr if there are no more blocks
 memory_map_entry_t* mb_get_next_entry(multiboot_t* multiboot_struct, memory_map_entry_t* prev);
+
+dma_memory_region_t::block_t* dma_heap_alloc(dma_heap_t* dma_heap);
+void dma_heap_free(dma_heap_t* dma_heap, dma_memory_region_t::block_t* block);
+uint32_t dma_get_physical_lower(dma_heap_t* dma_heap, dma_memory_region_t::block_t* block);
+uint32_t dma_get_physical_upper(dma_heap_t* dma_heap, dma_memory_region_t::block_t* block);
+NODISCARD int dma_heap_init(void* pml4, dma_heap_t* dma_heap, void* virtual_address);
 
 /// @brief              sets the global heap to the given one
 /// @param[in] heap     pointer to heap that should be global

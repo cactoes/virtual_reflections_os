@@ -199,6 +199,26 @@ size_t vmem_smart_alloc_pages(void* pml4, void* virtual_addr, size_t size) {
     return allocated;
 }
 
+void* vmem_virtual_to_physical(void* pml4, void* virtual_addr) {
+    const uint64_t pml4e =    KPAGING_GET_PE(virtual_addr, 39);
+    const uint64_t pdpe =     KPAGING_GET_PE(virtual_addr, 30);
+    const uint64_t pde =      KPAGING_GET_PE(virtual_addr, 21);
+
+    if (!KPAGING_CHECK_ENTRY(pml4, pml4e))
+        return 0;
+    
+    uint64_t* pdpt = KPAGING_GET_ENTRY(pml4, pml4e);
+    if (!KPAGING_CHECK_ENTRY(pdpt, pdpe))
+        return 0;
+
+    uint64_t* pdt = KPAGING_GET_ENTRY(pdpt, pdpe);
+    if (!KPAGING_CHECK_ENTRY(pdt, pde))
+        return 0;
+
+    const uint64_t page_offset = (uint64_t)virtual_addr & (PAGE_SIZE_LARGE - 1);
+    return (void*)((pdt[pde] & ~(PAGE_SIZE_LARGE - 1)) + page_offset);
+}
+
 bool vmem_init(multiboot_t* multiboot_struct, void* pml4) {
     // zero page (?)
     // memzero(0, PAGE_SIZE);
@@ -434,6 +454,45 @@ memory_map_entry_t* mb_get_next_entry(multiboot_t* multiboot_struct, memory_map_
         return memory_map_entry;
     
     return nullptr;
+}
+
+dma_memory_region_t::block_t* dma_heap_alloc(dma_heap_t* dma_heap) {
+    for (size_t i = 0; i < bitmap_get_size(dma_heap->block_bitmap); i++) {
+        if (!bitmap_get(dma_heap->block_bitmap, i)) {
+            bitmap_set(dma_heap->block_bitmap, i, true);
+            return &dma_heap->region->blocks[i];
+        }
+    }
+
+    return nullptr;
+}
+
+void dma_heap_free(dma_heap_t* dma_heap, dma_memory_region_t::block_t* block) {
+    // TODO @since 01/06/2025 -- 23:19
+}
+
+uint32_t dma_get_physical_lower(dma_heap_t* dma_heap, dma_memory_region_t::block_t* block) {
+    return (uint32_t)(uint64_t)vmem_virtual_to_physical(dma_heap->pml4, block);
+}
+
+uint32_t dma_get_physical_upper(dma_heap_t* dma_heap, dma_memory_region_t::block_t* block) {
+    return (uint32_t)((uint64_t)vmem_virtual_to_physical(dma_heap->pml4, block) >> 32);
+}
+
+NODISCARD int dma_heap_init(void* pml4, dma_heap_t* dma_heap, void* virtual_address) {
+    if (!mem_is_aligned((uint64_t)virtual_address, PAGE_SIZE_LARGE))
+        return 1;
+
+    size_t result_size = vmem_smart_alloc_pages(pml4, virtual_address, PAGE_SIZE_LARGE);
+
+    if (result_size != PAGE_SIZE_LARGE)
+        return 2;
+
+    dma_heap->region = (dma_memory_region_t*)virtual_address;
+    dma_heap->pml4 = pml4;
+    memzero(dma_heap->block_bitmap, sizeof(dma_heap->block_bitmap));
+
+    return 0;
 }
 
 void set_global_heap(heap_t* heap) {
