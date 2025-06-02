@@ -455,89 +455,90 @@ void sata_init(void* pml4) {
 
     ////////////////////////////////////////////////////////////////////////////
 
-    dma_memory_region_t::block_t* dma_buf = dma_heap_alloc(&dma_heap);
-    memset(dma_buf, 0, 0x1000);
-    uint64_t dma_physl = dma_get_physical_lower(&dma_heap, dma_buf);
-    uint64_t dma_physu = dma_get_physical_upper(&dma_heap, dma_buf);
+    // dma_memory_region_t::block_t* dma_buf = dma_heap_alloc(&dma_heap);
+    // memset(dma_buf, 0, 0x1000);
+    // uint64_t dma_physl = dma_get_physical_lower(&dma_heap, dma_buf);
+    // uint64_t dma_physu = dma_get_physical_upper(&dma_heap, dma_buf);
 
-    HBA_CMD_HEADER* cmdhdr = (HBA_CMD_HEADER*)clb;
-    memset(cmdhdr, 0, sizeof(HBA_CMD_HEADER));
+    // HBA_CMD_HEADER* cmdhdr = (HBA_CMD_HEADER*)clb;
+    // memset(cmdhdr, 0, sizeof(HBA_CMD_HEADER));
 
-    cmdhdr->cfl = sizeof(FIS_REG_H2D) / sizeof(uint32_t);
-    cmdhdr->w = 0; // Read
-    cmdhdr->prdtl = 1;
+    // cmdhdr->cfl = sizeof(FIS_REG_H2D) / sizeof(uint32_t);
+    // cmdhdr->w = 0; // Read
+    // cmdhdr->prdtl = 1;
 
 
-    HBA_CMD_TBL* cmdtbl = (HBA_CMD_TBL*)dma_heap_alloc(&dma_heap);
-    memset(cmdtbl, 0, sizeof(HBA_CMD_TBL));
-    uint64_t cmdtbl_physl = dma_get_physical_lower(&dma_heap, (dma_memory_region_t::block_t*)cmdtbl);
-    uint64_t cmdtbl_physu = dma_get_physical_upper(&dma_heap, (dma_memory_region_t::block_t*)cmdtbl);
+    // HBA_CMD_TBL* cmdtbl = (HBA_CMD_TBL*)dma_heap_alloc(&dma_heap);
+    // memset(cmdtbl, 0, sizeof(HBA_CMD_TBL));
+    // uint64_t cmdtbl_physl = dma_get_physical_lower(&dma_heap, (dma_memory_region_t::block_t*)cmdtbl);
+    // uint64_t cmdtbl_physu = dma_get_physical_upper(&dma_heap, (dma_memory_region_t::block_t*)cmdtbl);
 
-    cmdhdr->ctba = cmdtbl_physl;
-    cmdhdr->ctbau = cmdtbl_physu;
+    // cmdhdr->ctba = cmdtbl_physl;
+    // cmdhdr->ctbau = cmdtbl_physu;
 
-    cmdtbl->prdt_entry[0].dba = dma_physl;
-    cmdtbl->prdt_entry[0].dbau = dma_physu;
-    cmdtbl->prdt_entry[0].dbc = 0x1000 - 1;
-    cmdtbl->prdt_entry[0].i = 1;
+    // constexpr uint32_t sector_count = 8;
 
-    constexpr uint64_t lba = 1;
+    // cmdtbl->prdt_entry[0].dba = dma_physl;
+    // cmdtbl->prdt_entry[0].dbau = dma_physu;
+    // cmdtbl->prdt_entry[0].dbc = 512 * (sector_count) - 1;
+    // cmdtbl->prdt_entry[0].i = 1;
 
-    FIS_REG_H2D* fis = (FIS_REG_H2D*)(&cmdtbl->cfis);
-    memset(fis, 0, sizeof(FIS_REG_H2D));
-    fis->fis_type = 0x27;
-    fis->c = 1;
-    fis->command = 0x25; // ATA_CMD_READ_DMA_EXT;
-    fis->device = 0x40; // LBA mode
+    // constexpr uint64_t lba = 0;
 
-    fis->lba0 = (uint8_t)(lba);
-    fis->lba1 = (uint8_t)(lba >> 8);
-    fis->lba2 = (uint8_t)(lba >> 16);
-    fis->lba3 = (uint8_t)(lba >> 24);
-    fis->lba4 = (uint8_t)(lba >> 32);
-    fis->lba5 = (uint8_t)(lba >> 40);
+    // FIS_REG_H2D* fis = (FIS_REG_H2D*)(&cmdtbl->cfis);
+    // memset(fis, 0, sizeof(FIS_REG_H2D));
+    // fis->fis_type = 0x27;
+    // fis->c = 1;
+    // fis->command = 0x25; // ATA_CMD_READ_DMA_EXT;
+    // fis->device = 0x40; // LBA mode
 
-    fis->countl = 1;
-    fis->counth = 0;
+    // fis->lba0 = (uint8_t)(lba);
+    // fis->lba1 = (uint8_t)(lba >> 8);
+    // fis->lba2 = (uint8_t)(lba >> 16);
+    // fis->lba3 = (uint8_t)(lba >> 24);
+    // fis->lba4 = (uint8_t)(lba >> 32);
+    // fis->lba5 = (uint8_t)(lba >> 40);
 
-    // Clear interrupts
-    port->is = (uint32_t)-1;
+    // fis->countl = (uint8_t)(sector_count);
+    // fis->counth = (uint8_t)(sector_count >> 8);
 
-    // Wait until CR is cleared
-    // while (port->cmd & (1 << 15));
+    // // Clear interrupts
+    // port->is = (uint32_t)-1;
 
-    // Start command engine if not running
-    if (!(port->cmd & (1 << 4))) {
-        port->cmd |= (1 << 4); // FRE
-        port->cmd |= (1 << 0); // ST
-    }
+    // // Wait until CR is cleared
+    // // while (port->cmd & (1 << 15));
 
-    // Issue command slot 0
-    port->ci = 1;
+    // // Start command engine if not running
+    // if (!(port->cmd & (1 << 4))) {
+    //     port->cmd |= (1 << 4); // FRE
+    //     port->cmd |= (1 << 0); // ST
+    // }
 
-    // Wait for completion
-    while (port->ci & 1) {
-        if (port->is & (1 << 30)) {
-            debug_print("AHCI read: Task file error");
-            return;
-        }
-    }
+    // // Issue command slot 0
+    // port->ci = 1;
 
-    if (port->is & (1 << 30)) {
-		debug_print("Read disk error\n");
-		return;
-	}
+    // // Wait for completion
+    // while (port->ci & 1) {
+    //     if (port->is & (1 << 30)) {
+    //         debug_print("AHCI read: Task file error");
+    //         return;
+    //     }
+    // }
 
-    uint8_t* data = (uint8_t*)dma_buf;
-    for (int i = 0; i < 512; ++i) {
-        debug_print("%uh ", data[i]);
-        if ((i + 1) % 16 == 0) debug_print("\n");
-    }
+    // if (port->is & (1 << 30)) {
+	// 	debug_print("Read disk error\n");
+	// 	return;
+	// }
+
+    // uint8_t* data = (uint8_t*)dma_buf;
+    // for (int i = 0; i < 512*sector_count; ++i) {
+    //     debug_print("%uh ", data[i]);
+    //     if ((i + 1) % 16 == 0) debug_print("\n");
+    // }
 
     // debug_print("START LBA: %u\n", *(uint32_t*)&data[454]);
     // debug_print("TOTAL SECTORS: %u\n", *(uint32_t*)&data[458]);
 
-    /**
     // Command List entry
     HBA_CMD_HEADER* cmdheader = (HBA_CMD_HEADER*)clb;
     cmdheader[0].cfl = sizeof(FIS_REG_H2D) / sizeof(uint32_t);  // Command FIS length in DWORDs
@@ -571,6 +572,11 @@ void sata_init(void* pml4) {
         // optional: timeout
     }
 
+    // Cast it to 16-bit words (ATA spec is in words)
+    uint16_t identify_words[256];
+    for (int i = 0; i < 256; ++i)
+        identify_words[i] = ((uint8_t*)identify_buf)[2*i] | (((uint8_t*)identify_buf)[2*i + 1] << 8);
+
     // read results
     char model[41];
     memcpy(model, (char*)identify_buf + 54, 40);
@@ -584,5 +590,134 @@ void sata_init(void* pml4) {
     }
 
     debug_print("port[0] Drive Model: %s\n", model);
-    */
+
+    uint32_t logical_sector_size = (uint32_t)identify_words[117] | ((uint32_t)identify_words[118] << 16);
+
+    if (logical_sector_size == 0) {
+        logical_sector_size = 512; // fallback default
+    }
+
+    // Word 106 gives physical sector info
+    uint16_t word106 = identify_words[106];
+
+    uint32_t physical_sector_size = logical_sector_size; // default assumption
+
+    // Check if word 106 indicates multiple logical per physical
+    if (word106 & (1 << 13)) {
+        uint8_t log2_multiple = word106 & 0x1F; // Bits 4–0
+        physical_sector_size = logical_sector_size << log2_multiple; // Multiply by 2^n
+    }
+
+    debug_print("Logical Sector Size: %i bytes\n", logical_sector_size);
+    debug_print("Physical Sector Size: %i bytes\n", physical_sector_size);
+
+    // uint8_t* data = (uint8_t*)identify_buf;
+    // for (int i = 0; i < 512; ++i) {
+    //     debug_print("%uh ", data[i]);
+    //     if ((i + 1) % 16 == 0) debug_print("\n");
+    // }
 }
+
+/*
+
+#include <stdint.h>
+#include <stdio.h>
+#include <string.h>
+
+// Trim leading/trailing spaces from a fixed-size string
+void trim(char* str) {
+    int len = strlen(str);
+    int start = 0, end = len - 1;
+
+    // Trim leading spaces
+    while (start < len && str[start] == ' ') start++;
+
+    // Trim trailing spaces
+    while (end >= start && str[end] == ' ') end--;
+
+    // Shift and null-terminate
+    int new_len = end - start + 1;
+    if (new_len <= 0) {
+        str[0] = '\0';
+    } else {
+        memmove(str, str + start, new_len);
+        str[new_len] = '\0';
+    }
+}
+
+// Convert 16-bit word string (big-endian chars) to C string
+void decode_string(const uint16_t* src, int word_count, char* dest, int max_len) {
+    int pos = 0;
+    for (int i = 0; i < word_count && pos + 1 < max_len; ++i) {
+        dest[pos++] = (char)(src[i] >> 8);
+        dest[pos++] = (char)(src[i] & 0xFF);
+    }
+    dest[pos] = '\0';
+    trim(dest);
+}
+
+// Convert bytes to human-readable size
+void human_readable_size(uint64_t bytes, char* out, int out_size) {
+    const char* units[] = { "B", "KB", "MB", "GB", "TB" };
+    int unit_index = 0;
+    double size = (double)bytes;
+
+    while (size >= 1024.0 && unit_index < 4) {
+        size /= 1024.0;
+        unit_index++;
+    }
+
+    snprintf(out, out_size, "%.2f %s", size, units[unit_index]);
+}
+
+// Main parser function
+void parse_identify_device(const uint8_t* buffer) {
+    const uint16_t* data = (const uint16_t*)buffer;
+
+    char model[41], serial[21], firmware[9];
+
+    decode_string(&data[27], 20, model, sizeof(model));
+    decode_string(&data[10], 10, serial, sizeof(serial));
+    decode_string(&data[23], 4, firmware, sizeof(firmware));
+
+    // LBA28 fallback
+    uint64_t total_lba = (uint32_t)data[60] | ((uint32_t)data[61] << 16);
+
+    // Check for 48-bit LBA
+    if (data[83] & (1 << 10)) {
+        total_lba = ((uint64_t)data[100]) |
+                    ((uint64_t)data[101] << 16) |
+                    ((uint64_t)data[102] << 32) |
+                    ((uint64_t)data[103] << 48);
+    }
+
+    // Logical sector size
+    uint32_t logical_sector_size = (uint32_t)data[117] | ((uint32_t)data[118] << 16);
+    if (logical_sector_size == 0) logical_sector_size = 512;
+
+    // Physical sector size
+    uint32_t physical_sector_size = logical_sector_size;
+    uint16_t word106 = data[106];
+    if (word106 & (1 << 13)) {
+        uint8_t log2_multiple = word106 & 0x1F;
+        physical_sector_size = logical_sector_size << log2_multiple;
+    }
+
+    uint64_t capacity_bytes = total_lba * (uint64_t)logical_sector_size;
+
+    char size_str[32];
+    human_readable_size(capacity_bytes, size_str, sizeof(size_str));
+
+    // Print results
+    printf("Model Number       : %s\n", model);
+    printf("Serial Number      : %s\n", serial);
+    printf("Firmware Revision  : %s\n", firmware);
+    printf("Total LBA Sectors  : %llu\n", (unsigned long long)total_lba);
+    printf("Drive Capacity     : %llu bytes (%s)\n",
+           (unsigned long long)capacity_bytes, size_str);
+    printf("Logical Sector Size: %u bytes\n", logical_sector_size);
+    printf("Physical Sector Size: %u bytes\n", physical_sector_size);
+}
+
+
+*/
