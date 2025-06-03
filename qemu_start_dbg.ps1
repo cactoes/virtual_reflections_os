@@ -1,4 +1,4 @@
-Write-Host "starting qemu"
+Write-Host "==== starting qemu debug mode===="
 qemu-system-x86_64.exe `
     -machine pc `
     -cdrom build/VirtualReflectionsOS.iso `
