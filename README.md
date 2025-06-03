@@ -1,6 +1,10 @@
 # VirtualReflectionsOS (Altered State-0)
 A 64-bit custom made operating system, using grub as bootloader
 
+## TODO
+[ ] network driver (intel e1000)
+[ ] shell
+
 ## Setup build environment
 ### Windows host
 ```powershell
