@@ -22,26 +22,42 @@ int ahci_init(void* pml4, pci_device_info_t* ahci_pci_device, vector<ahci_sata_d
     uint32_t version = g_hba_mem->vs;
     uint32_t ports_implemented = g_hba_mem->pi;
 
+    // g_hba_mem->ghc |= AHCI_GHC_IE;  // Interrupt enable -> irq11
+    g_hba_mem->ghc |= AHCI_GHC_AE; // AHCI Enable
+
     for (int i = 0; i < 32; i++) {
         if (ports_implemented & (1 << i)) {
             volatile hba_port_t* port = &g_hba_mem->ports[i];
-            // debug_print("port[%i] SATA status: 0x%uh; signature: 0x%uh \n", i, port->ssts, port->sig);
 
-            // uint8_t ipm = (ssts >> 8) & 0x0F;
-            // uint8_t det = ssts & 0x0F;
-            // if (det != HBA_PORT_DET_PRESENT)
-            //     continue;
-            // if (ipm != HBA_PORT_IPM_ACTIVE)
-            //     continue;
+            uint32_t ssts = port->ssts;
 
-            if (port->sig == 0x101) { // sig: SATA
-                ahci_sata_drive_t drive {};
-                drive.port = (hba_port_t*)port;
+            uint8_t det = ssts & AHCI_SSTS_DET_MASK;
+            // uint8_t spd = (ssts & AHCI_SSTS_SPD_MASK) >> 4;
+            uint8_t ipm = (ssts & AHCI_SSTS_IPM_MASK) >> 8;
 
-                drive.clb = ahci_port_init((hba_port_t*)port);
-                ahci_identify_device(pml4, &drive);
-                
-                sata_drives->insert_back(drive);
+            if (det != AHCI_DET_PHY_INITIALIZED || ipm != AHCI_IPM_ACTIVE)
+                continue;
+
+            switch (port->sig) {
+                case AHCI_PORT_SIG_SATA: {
+                    ahci_sata_drive_t drive {};
+                    drive.port = (hba_port_t*)port;
+                    
+                    if (!(drive.clb = ahci_port_init((hba_port_t*)port))) {
+                        debug_print("SATA device failed to init port");
+                        break;
+                    }
+
+                    if (ahci_identify_device(&drive) != 0) {
+                        debug_print("SATA device failed to identify port");
+                        break;
+                    }
+                    
+                    sata_drives->insert_back(drive);
+                    break;
+                }
+                default:
+                    break;
             }
         }
     }
@@ -52,31 +68,39 @@ int ahci_init(void* pml4, pci_device_info_t* ahci_pci_device, vector<ahci_sata_d
 void* ahci_port_init(hba_port_t* port) {
     port->cmd &= ~0x01;
 
-    while (port->cmd & (1 << 15));
+    while (port->cmd & AHCI_PORT_CMD_CR);
 
-    port->cmd &= ~(1 << 4);
+    port->cmd &= ~AHCI_PORT_CMD_FRE;
 
     auto clb = dma_heap_alloc(&g_dma_heap);
-    auto rfis = dma_heap_alloc(&g_dma_heap);\
+    if (!clb)
+        return nullptr;
 
-    memset(clb, 0, 4096);
-    memset(rfis, 0, 4096);
-
+    memset(clb, 0, sizeof(dma_memory_region_t::block_t));
     port->clb = dma_get_physical_lower(&g_dma_heap, clb);
     port->clbu = dma_get_physical_upper(&g_dma_heap, clb);
+
+    auto rfis = dma_heap_alloc(&g_dma_heap);
+    if (!rfis) {
+        dma_heap_free(&g_dma_heap, clb);
+        return nullptr;
+    }
+
+    memset(rfis, 0, sizeof(dma_memory_region_t::block_t));
     port->fb = dma_get_physical_lower(&g_dma_heap, rfis);
     port->fbu = dma_get_physical_upper(&g_dma_heap, rfis);
 
     // disable interrupts
     port->ie = 0;
+    // enable all interrupts
+    // port->ie = 0xFFFFFFFF; -> irq11
 
-    port->cmd |= (1 << 4);
-    port->cmd |= (1 << 0);
+    port->cmd |= AHCI_PORT_CMD_FRE;
+    port->cmd |= AHCI_PORT_CMD_ST;
 
     return clb;
 }
 
-// Convert 16-bit word string (big-endian chars) to C string
 void decode_string(const uint16_t* src, int word_count, char* dest, int max_len) {
     int pos = 0;
     for (int i = 0; i < word_count && pos + 1 < max_len; ++i) {
@@ -84,100 +108,177 @@ void decode_string(const uint16_t* src, int word_count, char* dest, int max_len)
         dest[pos++] = (char)(src[i] & 0xFF);
     }
     dest[pos] = '\0';
-    // trim(dest);
 }
 
-void ahci_identify_device(void* pml4, ahci_sata_drive_t* ahci_drive_data) {
-    // uint64_t clb_p = (uint64_t)port->clb | ((uint64_t)port->clbu << 32);
-    // void* clb = vmem_physical_to_virtual(pml4, (void*)AHCI_DMA_HEAP_ADDR, (void*)(AHCI_DMA_HEAP_ADDR + PAGE_SIZE_LARGE), (void*)clb_p);
+int ahci_identify_device(ahci_sata_drive_t* drive) {
+    int slot = ahci_find_command_slot(drive->port);
+    if (slot < 0)
+        return 1;
 
-    hba_cmd_header_t* cmdheader = (hba_cmd_header_t*)ahci_drive_data->clb;
-    cmdheader[0].cfl = sizeof(fis_reg_h2d_t) / sizeof(uint32_t);  // Command FIS length in DWORDs
-    cmdheader[0].w = 0;     // READ = 0, WRITE = 1
-    cmdheader[0].prdtl = 1; // 1 PRDT
+    ahci_cmd_context_t ctx {};
+    if (ahci_prepare_command(&ctx, drive, 0, 1, ATA_CMD_IDENTIFY_DEVICE, false, ATA_DEV_DEFAULT, slot) != 0)
+        return 2;
 
-    // Allocate Command Table (256 + PRDT entries)
-    auto cmdtbl = dma_heap_alloc(&g_dma_heap);
-    memset(cmdtbl, 0, 4096);
-    cmdheader[0].ctba = dma_get_physical_lower(&g_dma_heap, cmdtbl);
-    cmdheader[0].ctbau = dma_get_physical_upper(&g_dma_heap, cmdtbl);
+    drive->port->is = (uint32_t)-1;
+    drive->port->ci = 1 << slot;
 
-    // Fill PRDT to receive 512 bytes
-    hba_cmd_tbl_t* tbl = (hba_cmd_tbl_t*)cmdtbl;
-    auto identify_buf = dma_heap_alloc(&g_dma_heap);
-    tbl->prdt_entry[0].dba = dma_get_physical_lower(&g_dma_heap, identify_buf);
-    tbl->prdt_entry[0].dbau = dma_get_physical_upper(&g_dma_heap, identify_buf);
-    tbl->prdt_entry[0].dbc = 512 - 1;
-    tbl->prdt_entry[0].i = 0;  // Interrupt on completion
+    while (drive->port->ci & (1 << slot)) {}
 
-    fis_reg_h2d_t* fis = (fis_reg_h2d_t*)(&tbl->cfis);
-    fis->fis_type = 0x27; // FIS_TYPE_REG_H2D;
-    fis->c = 1;  // command
-    fis->command = 0xEC;  // IDENTIFY DEVICE
-    fis->device = 0;      // Drive 0
+    const uint16_t* data = (const uint16_t*)ctx.data_buffer;
 
-    ahci_drive_data->port->ci = 1 << 0;  // Command slot 0
+    decode_string(&data[27], 20, drive->model, sizeof(drive->model));
+    decode_string(&data[10], 10, drive->serial, sizeof(drive->serial));
+    decode_string(&data[23], 4, drive->firmware, sizeof(drive->firmware));
 
-    // Wait for completion
-    while (ahci_drive_data->port->ci & (1 << 0)) {
-        // optional: timeout
-    }
+    // lba28 fallback
+    drive->lba = (uint32_t)data[60] | ((uint32_t)data[61] << 16);
 
-    const uint16_t* data = (const uint16_t*)identify_buf;
-
-    char model[41], serial[21], firmware[9];
-
-    decode_string(&data[27], 20, model, sizeof(model));
-    decode_string(&data[10], 10, serial, sizeof(serial));
-    decode_string(&data[23], 4, firmware, sizeof(firmware));
-
-    // LBA28 fallback
-    uint64_t total_lba = (uint32_t)data[60] | ((uint32_t)data[61] << 16);
-
-    // Check for 48-bit LBA
+    // check for 48bit lba
     if (data[83] & (1 << 10)) {
-        total_lba = ((uint64_t)data[100]) |
+        drive->lba = ((uint64_t)data[100]) |
                     ((uint64_t)data[101] << 16) |
                     ((uint64_t)data[102] << 32) |
                     ((uint64_t)data[103] << 48);
     }
 
-    // Logical sector size
-    uint32_t logical_sector_size = (uint32_t)data[117] | ((uint32_t)data[118] << 16);
-    if (logical_sector_size == 0) logical_sector_size = 512;
+    drive->logical_sector_size  = (uint32_t)data[117] | ((uint32_t)data[118] << 16);
+    if (drive->logical_sector_size  == 0) drive->logical_sector_size  = 512;
 
-    // Physical sector size
-    uint32_t physical_sector_size = logical_sector_size;
+    drive->physical_sector_size = drive->logical_sector_size ;
     uint16_t word106 = data[106];
     if (word106 & (1 << 13)) {
         uint8_t log2_multiple = word106 & 0x1F;
-        physical_sector_size = logical_sector_size << log2_multiple;
+        drive->physical_sector_size = drive->logical_sector_size  << log2_multiple;
     }
 
-    uint64_t capacity_bytes = total_lba * (uint64_t)logical_sector_size;
+    drive->capacity = drive->lba * (uint64_t)drive->logical_sector_size ;
 
-    memcpy(ahci_drive_data->model, model, 41);
-    memcpy(ahci_drive_data->serial, serial, 21);
-    memcpy(ahci_drive_data->firmware, firmware, 9);
+    dma_heap_free(&g_dma_heap, (dma_memory_region_t::block_t*)ctx.cmdtable);
+    dma_heap_free(&g_dma_heap, ctx.data_buffer);
 
-    ahci_drive_data->lba = total_lba;
-    ahci_drive_data->capacity = capacity_bytes;
-    ahci_drive_data->logical_sector_size = logical_sector_size;
-    ahci_drive_data->physical_sector_size = physical_sector_size;
-
-    dma_heap_free(&g_dma_heap, cmdtbl);
-    dma_heap_free(&g_dma_heap, identify_buf);
-
-    // Print results
-    // debug_print("Model Number           : %s\n", model);
-    // debug_print("Serial Number          : %s\n", serial);
-    // debug_print("Firmware Revision      : %s\n", firmware);
-    // debug_print("Total LBA Sectors      : %ul\n", total_lba);
-    // debug_print("Drive Capacity         : %ul bytes\n", capacity_bytes);
-    // debug_print("Logical Sector Size    : %u bytes\n", logical_sector_size);
-    // debug_print("Physical Sector Size   : %u bytes\n", physical_sector_size);
+    return 0;
 }
 
-void ahci_read(hba_port_t* port) {
+int ahci_read(ahci_sata_drive_t* drive, uint64_t lba, uint16_t sector_count, uint8_t* buffer) {
+    int slot = ahci_find_command_slot(drive->port);
+    if (slot < 0)
+        return 1;
 
+    ahci_cmd_context_t ctx {};
+    ahci_prepare_command(&ctx, drive, lba, sector_count, ATA_CMD_READ_DMA_EXT, false, ATA_DEV_LBA, slot);
+
+    drive->port->is = (uint32_t)-1;
+    drive->port->ci = 1 << slot;
+
+    // Wait for completion
+    while (drive->port->ci & (1 << slot)) {
+        if (drive->port->is & AHCI_PORT_INT_TFES) {
+            // debug_print("AHCI read: Task file error");
+            return 2;
+        }
+    }
+
+    if (drive->port->is & AHCI_PORT_INT_TFES) {
+		// debug_print("AHCI read failed: Read disk error\n");
+		return 3;
+	}
+
+    memcpy(buffer, ctx.data_buffer, drive->logical_sector_size);
+
+    dma_heap_free(&g_dma_heap, (dma_memory_region_t::block_t*)ctx.cmdtable);
+    dma_heap_free(&g_dma_heap, ctx.data_buffer);
+    return 0;
+}
+
+int ahci_write(ahci_sata_drive_t* drive, uint64_t lba, uint16_t sector_count, const void* buffer) {
+    int slot = ahci_find_command_slot(drive->port);
+    if (slot < 0)
+        return 1;
+
+    ahci_cmd_context_t ctx {};
+    ahci_prepare_command(&ctx, drive, lba, sector_count, ATA_CMD_WRITE_DMA_EXT, true, ATA_DEV_LBA, slot);
+
+    memcpy(ctx.data_buffer, buffer, sector_count * drive->logical_sector_size);
+
+    drive->port->is = (uint32_t)-1;
+    drive->port->ci |= (1 << slot);
+
+    while (drive->port->ci & (1 << slot)) {
+        if (drive->port->is & AHCI_PORT_INT_TFES) {
+            // debug_print("AHCI write: Task file error\n");
+            return 2;
+        }
+    }
+
+    if (drive->port->is & AHCI_PORT_INT_TFES) {
+        // debug_print("AHCI write failed: Disk error\n");
+		return 3;
+    }
+
+    dma_heap_free(&g_dma_heap, (dma_memory_region_t::block_t*)ctx.cmdtable);
+    dma_heap_free(&g_dma_heap, ctx.data_buffer);
+
+    return 0;
+}
+
+int ahci_prepare_command(ahci_cmd_context_t* ctx, ahci_sata_drive_t* drive, uint64_t lba, uint16_t sector_count, uint8_t ata_command, bool write, uint8_t fis_device, uint8_t slot) {
+    ctx->slot = slot;
+
+    ctx->cmdheader = (hba_cmd_header_t*)drive->clb;
+    memset(&ctx->cmdheader[slot], 0, sizeof(hba_cmd_header_t));
+
+    ctx->cmdheader[slot].cfl = sizeof(fis_reg_h2d_t) / sizeof(uint32_t);
+    ctx->cmdheader[slot].w = write ? 1 : 0;
+    ctx->cmdheader[slot].prdtl = 1;
+
+    ctx->cmdtable = (hba_cmd_tbl_t*)dma_heap_alloc(&g_dma_heap);
+    if (!ctx->cmdtable)
+        return 1;
+
+    memset(ctx->cmdtable, 0, sizeof(dma_memory_region_t::block_t));
+
+    ctx->cmdheader[slot].ctba = dma_get_physical_lower(&g_dma_heap, (dma_memory_region_t::block_t*)ctx->cmdtable);
+    ctx->cmdheader[slot].ctbau = dma_get_physical_upper(&g_dma_heap, (dma_memory_region_t::block_t*)ctx->cmdtable);
+
+    ctx->data_buffer = dma_heap_alloc(&g_dma_heap);
+    if (!ctx->data_buffer) {
+        dma_heap_free(&g_dma_heap, (dma_memory_region_t::block_t*)ctx->cmdtable);
+        return 2;
+    }
+
+    memset(ctx->data_buffer, 0, sizeof(dma_memory_region_t::block_t));
+
+    ctx->cmdtable->prdt_entry[0].dba = dma_get_physical_lower(&g_dma_heap, ctx->data_buffer);
+    ctx->cmdtable->prdt_entry[0].dbau = dma_get_physical_upper(&g_dma_heap, ctx->data_buffer);
+    ctx->cmdtable->prdt_entry[0].dbc = (drive->logical_sector_size * sector_count) - 1;
+    ctx->cmdtable->prdt_entry[0].i = 0; // disable interrupts
+
+    ctx->fis = (fis_reg_h2d_t*)(&ctx->cmdtable->cfis);
+    memset(ctx->fis, 0, sizeof(fis_reg_h2d_t));
+    ctx->fis->fis_type = FIS_TYPE_REG_H2D;
+    ctx->fis->c = 1;
+    ctx->fis->command = ata_command;
+    ctx->fis->device = fis_device;
+
+    ctx->fis->lba0 = (uint8_t)(lba);
+    ctx->fis->lba1 = (uint8_t)(lba >> 8);
+    ctx->fis->lba2 = (uint8_t)(lba >> 16);
+    ctx->fis->lba3 = (uint8_t)(lba >> 24);
+    ctx->fis->lba4 = (uint8_t)(lba >> 32);
+    ctx->fis->lba5 = (uint8_t)(lba >> 40);
+    ctx->fis->countl = (uint8_t)(sector_count);
+    ctx->fis->counth = (uint8_t)(sector_count >> 8);
+
+    return 0;
+}
+
+int ahci_find_command_slot(hba_port_t* port) {
+    uint32_t slots = port->sact | port->ci;
+
+    for (int i = 0; i < 32; ++i) {
+        if ((slots & (1 << i)) == 0)
+            return i;
+    }
+
+    return -1;
 }

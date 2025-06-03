@@ -186,8 +186,6 @@ void thread_test() {
     while (true) {}
 }
 
-void sata_init(void* pml4);
-
 extern "C" void kernel_entry(multiboot_t* multiboot_struct, void* kpml4) {
     debug_init();
 
@@ -225,8 +223,6 @@ extern "C" void kernel_entry(multiboot_t* multiboot_struct, void* kpml4) {
     vector<pit_timer_t> timers {};
     pit_init(&timers);
 
-    sata_init(kpml4);
-
     // manual (main) thread setup
     vthread_t main_thread {};
     main_thread.vt_state = vthread_state_t::RUNNING;
@@ -237,12 +233,46 @@ extern "C" void kernel_entry(multiboot_t* multiboot_struct, void* kpml4) {
     vthread_t thread{};
     vthread_create(&thread, thread_test);
 
+    vector<pci_device_info_t> pci_devices {};
+    pci_enumerate_devices(&pci_devices);
+
+    vector<pci_device_request_t> pci_devices_requested {};
+    pci_devices_requested.insert_back(pci_device_request_t { .revision_id = (uint8_t)PCI_UNKNOWN, .prog_if = (uint8_t)1, .sub_class = 6, .class_code = 1 });
+    const bool found = pci_find_devices(&pci_devices, &pci_devices_requested);
+
+    if (found) {
+        pci_device_info_t* ahci_device = pci_devices.get_at(pci_devices_requested.get_at(0)->pci_device_index);
+
+        const auto ahci_irq = pci_config_read(ahci_device->bus, ahci_device->device, ahci_device->function, 0x3C) & 0xFF;
+
+        vector<ahci_sata_drive_t> drives{};
+        ahci_init(kpml4, ahci_device, &drives);
+
+        for (VECTOR_LOOP((&drives), drive_node)) {
+            debug_print("found drive:\n");
+            debug_print("   model number           : %s\n", drive_node->value.model);
+            debug_print("   serial number          : %s\n", drive_node->value.serial);
+            debug_print("   firmware revision      : %s\n", drive_node->value.firmware);
+            debug_print("   total lba sectors      : %ul\n", drive_node->value.lba);
+            debug_print("   drive capacity         : %ul bytes\n", drive_node->value.capacity);
+            debug_print("   logical sector size    : %u bytes\n", drive_node->value.logical_sector_size);
+            debug_print("   physical sector size   : %u bytes\n", drive_node->value.physical_sector_size);
+        }
+
+        // uint8_t data[512] {};
+        // ahci_read(pml4, &drives.first()->value, 0, 1, data);
+        // for (int i = 0; i < 512; ++i) {
+        //     debug_print("%uh ", data[i]);
+        //     if ((i + 1) % 16 == 0) debug_print("\n");
+        // }
+    }
+
     // disabled since we cant draw anything yet (other than a pixel)
     // vga_generic_buffer_t buffer{};
     // vga_gm_buffer_create(&buffer);
     // vga_gm_startup(&buffer);
 
-    debug_print("[INFO]: kernel finished initializing\n");
+    debug_print("kernel finished initializing\n");
 
     const char* spinner[] = { ".  ", " . ", "  ." };
     constexpr size_t chars_size = (sizeof(spinner) / sizeof(char*));
@@ -254,360 +284,3 @@ extern "C" void kernel_entry(multiboot_t* multiboot_struct, void* kpml4) {
         pit_sleep(250);
     }
 }
-
-void sata_init(void* pml4) {
-    // dma_heap_t dma_heap {};
-    // (void)dma_heap_init(pml4, &dma_heap, (void*)0x3FC00000);
-
-    // get pcie devices
-    vector<pci_device_info_t> pci_devices {};
-    pci_enumerate_devices(&pci_devices);
-
-    // find sata controller
-    vector<pci_device_request_t> pci_devices_requested {};
-    pci_devices_requested.insert_back(pci_device_request_t { .revision_id = (uint8_t)PCI_UNKNOWN, .prog_if = (uint8_t)1, .sub_class = 6, .class_code = 1 });
-    const bool found = pci_find_devices(&pci_devices, &pci_devices_requested);
-
-    if (!found) {
-        debug_print("AHCI device not found\n");
-        return;
-    }
-
-    pci_device_info_t* ahci_device = pci_devices.get_at(pci_devices_requested.get_at(0)->pci_device_index);
-
-    vector<ahci_sata_drive_t> drives{};
-    ahci_init(pml4, ahci_device, &drives);
-
-    for (VECTOR_LOOP((&drives), drive_node)) {
-        debug_print("Model Number           : %s\n", drive_node->value.model);
-        debug_print("Serial Number          : %s\n", drive_node->value.serial);
-        debug_print("Firmware Revision      : %s\n", drive_node->value.firmware);
-        debug_print("Total LBA Sectors      : %ul\n", drive_node->value.lba);
-        debug_print("Drive Capacity         : %ul bytes\n", drive_node->value.capacity);
-        debug_print("Logical Sector Size    : %u bytes\n", drive_node->value.logical_sector_size);
-        debug_print("Physical Sector Size   : %u bytes\n", drive_node->value.physical_sector_size);
-    }
-    
-    // // map hba_mem / bar5
-    // uint64_t abar_phys = ahci_device->bar5_address & ~0xF;
-    // uint64_t abar_page = mem_align_down(abar_phys, PAGE_SIZE_LARGE);
-    // uint64_t abar_offset = abar_phys - abar_page;
-
-    // (void)vmem_map_2mb_page(pml4, (void*)0x3fe00000, (void*)abar_page);
-    // volatile hba_mem_t* hba = (volatile hba_mem_t*)((uint8_t*)0x3fe00000 + abar_offset);
-
-    // // get version
-    // uint32_t version = hba->vs;
-    // debug_print("AHCI Controller version: 0x%uh\n", version);
-
-    // // get ports
-    // uint32_t ports_implemented = hba->pi;
-    // debug_print("Ports Implemented: 0x%uh\n", ports_implemented);
-
-    // for (int i = 0; i < 32; i++) {
-    //     if (ports_implemented & (1 << i)) {
-    //         volatile hba_port_t* port = &hba->ports[i];
-    //         debug_print("port[%i] SATA status: 0x%uh; signature: 0x%uh \n", i, port->ssts, port->sig);
-    //     }
-    // }
-
-    // // assume port 0 has a drive
-    // volatile hba_port_t* port = &hba->ports[0];
-
-    // // reset device
-    // // Clear ST (bit 0)
-    // port->cmd &= ~0x01;
-
-    // // Wait for CR to clear again
-    // while (port->cmd & (1 << 15));
-
-    // // Clear FRE (bit 4)
-    // port->cmd &= ~(1 << 4);
-
-    // // setup commands
-
-    // // Allocate 4 KB-aligned pages for CLB and RFIS
-    // auto clb = dma_heap_alloc(&dma_heap);   // 1 KB Command List Base
-    // auto rfis = dma_heap_alloc(&dma_heap);  // 256-byte Received FIS
-
-    // memset(clb, 0, 4096);
-    // memset(rfis, 0, 4096);
-
-    // port->clb = dma_get_physical_lower(&dma_heap, clb);
-    // port->clbu = dma_get_physical_upper(&dma_heap, clb);
-    // port->fb = dma_get_physical_lower(&dma_heap, rfis);
-    // port->fbu = dma_get_physical_upper(&dma_heap, rfis);
-
-    // port->ie = 0;  // Disable interrupts (for now)
-
-    // port->cmd |= (1 << 4);  // FRE
-    // port->cmd |= (1 << 0);  // ST
-
-    // ////////////////////////////////////////////////////////////////////////////
-
-    // // dma_memory_region_t::block_t* dma_buf = dma_heap_alloc(&dma_heap);
-    // // memset(dma_buf, 0, 0x1000);
-    // // uint64_t dma_physl = dma_get_physical_lower(&dma_heap, dma_buf);
-    // // uint64_t dma_physu = dma_get_physical_upper(&dma_heap, dma_buf);
-
-    // // hba_cmd_header_t* cmdhdr = (hba_cmd_header_t*)clb;
-    // // memset(cmdhdr, 0, sizeof(hba_cmd_header_t));
-
-    // // cmdhdr->cfl = sizeof(fis_reg_h2d_t) / sizeof(uint32_t);
-    // // cmdhdr->w = 0; // Read
-    // // cmdhdr->prdtl = 1;
-
-
-    // // hba_cmd_tbl_t* cmdtbl = (hba_cmd_tbl_t*)dma_heap_alloc(&dma_heap);
-    // // memset(cmdtbl, 0, sizeof(hba_cmd_tbl_t));
-    // // uint64_t cmdtbl_physl = dma_get_physical_lower(&dma_heap, (dma_memory_region_t::block_t*)cmdtbl);
-    // // uint64_t cmdtbl_physu = dma_get_physical_upper(&dma_heap, (dma_memory_region_t::block_t*)cmdtbl);
-
-    // // cmdhdr->ctba = cmdtbl_physl;
-    // // cmdhdr->ctbau = cmdtbl_physu;
-
-    // // constexpr uint32_t sector_count = 8;
-
-    // // cmdtbl->prdt_entry[0].dba = dma_physl;
-    // // cmdtbl->prdt_entry[0].dbau = dma_physu;
-    // // cmdtbl->prdt_entry[0].dbc = 512 * (sector_count) - 1;
-    // // cmdtbl->prdt_entry[0].i = 1;
-
-    // // constexpr uint64_t lba = 0;
-
-    // // fis_reg_h2d_t* fis = (fis_reg_h2d_t*)(&cmdtbl->cfis);
-    // // memset(fis, 0, sizeof(fis_reg_h2d_t));
-    // // fis->fis_type = 0x27;
-    // // fis->c = 1;
-    // // fis->command = 0x25; // ATA_CMD_READ_DMA_EXT;
-    // // fis->device = 0x40; // LBA mode
-
-    // // fis->lba0 = (uint8_t)(lba);
-    // // fis->lba1 = (uint8_t)(lba >> 8);
-    // // fis->lba2 = (uint8_t)(lba >> 16);
-    // // fis->lba3 = (uint8_t)(lba >> 24);
-    // // fis->lba4 = (uint8_t)(lba >> 32);
-    // // fis->lba5 = (uint8_t)(lba >> 40);
-
-    // // fis->countl = (uint8_t)(sector_count);
-    // // fis->counth = (uint8_t)(sector_count >> 8);
-
-    // // // Clear interrupts
-    // // port->is = (uint32_t)-1;
-
-    // // // Wait until CR is cleared
-    // // // while (port->cmd & (1 << 15));
-
-    // // // Start command engine if not running
-    // // if (!(port->cmd & (1 << 4))) {
-    // //     port->cmd |= (1 << 4); // FRE
-    // //     port->cmd |= (1 << 0); // ST
-    // // }
-
-    // // // Issue command slot 0
-    // // port->ci = 1;
-
-    // // // Wait for completion
-    // // while (port->ci & 1) {
-    // //     if (port->is & (1 << 30)) {
-    // //         debug_print("AHCI read: Task file error");
-    // //         return;
-    // //     }
-    // // }
-
-    // // if (port->is & (1 << 30)) {
-	// // 	debug_print("Read disk error\n");
-	// // 	return;
-	// // }
-
-    // // uint8_t* data = (uint8_t*)dma_buf;
-    // // for (int i = 0; i < 512*sector_count; ++i) {
-    // //     debug_print("%uh ", data[i]);
-    // //     if ((i + 1) % 16 == 0) debug_print("\n");
-    // // }
-
-    // // debug_print("START LBA: %u\n", *(uint32_t*)&data[454]);
-    // // debug_print("TOTAL SECTORS: %u\n", *(uint32_t*)&data[458]);
-
-    // // Command List entry
-    // hba_cmd_header_t* cmdheader = (hba_cmd_header_t*)clb;
-    // cmdheader[0].cfl = sizeof(fis_reg_h2d_t) / sizeof(uint32_t);  // Command FIS length in DWORDs
-    // cmdheader[0].w = 0;     // READ = 0, WRITE = 1
-    // cmdheader[0].prdtl = 1; // 1 PRDT
-
-    // // Allocate Command Table (256 + PRDT entries)
-    // auto cmdtbl = dma_heap_alloc(&dma_heap);
-    // memset(cmdtbl, 0, 4096);
-    // cmdheader[0].ctba = dma_get_physical_lower(&dma_heap, cmdtbl);
-    // cmdheader[0].ctbau = dma_get_physical_upper(&dma_heap, cmdtbl);
-
-    // // Fill PRDT to receive 512 bytes
-    // hba_cmd_tbl_t* tbl = (hba_cmd_tbl_t*)cmdtbl;
-    // auto identify_buf = dma_heap_alloc(&dma_heap);
-    // tbl->prdt_entry[0].dba = dma_get_physical_lower(&dma_heap, identify_buf);
-    // tbl->prdt_entry[0].dbau = dma_get_physical_upper(&dma_heap, identify_buf);
-    // tbl->prdt_entry[0].dbc = 512 - 1;
-    // tbl->prdt_entry[0].i = 0;  // Interrupt on completion
-
-    // fis_reg_h2d_t* fis = (fis_reg_h2d_t*)(&tbl->cfis);
-    // fis->fis_type = 0x27; // FIS_TYPE_REG_H2D;
-    // fis->c = 1;  // command
-    // fis->command = 0xEC;  // IDENTIFY DEVICE
-    // fis->device = 0;      // Drive 0
-
-    // port->ci = 1 << 0;  // Command slot 0
-
-    // // Wait for completion
-    // while (port->ci & (1 << 0)) {
-    //     // optional: timeout
-    // }
-
-    // // Cast it to 16-bit words (ATA spec is in words)
-    // uint16_t identify_words[256];
-    // for (int i = 0; i < 256; ++i)
-    //     identify_words[i] = ((uint8_t*)identify_buf)[2*i] | (((uint8_t*)identify_buf)[2*i + 1] << 8);
-
-    // // read results
-    // char model[41];
-    // memcpy(model, (char*)identify_buf + 54, 40);
-    // model[40] = '\0';
-
-    // // Convert from ATA's word-swapped format
-    // for (int i = 0; i < 40; i += 2) {
-    //     char tmp = model[i];
-    //     model[i] = model[i + 1];
-    //     model[i + 1] = tmp;
-    // }
-
-    // debug_print("port[0] Drive Model: %s\n", model);
-
-    // uint32_t logical_sector_size = (uint32_t)identify_words[117] | ((uint32_t)identify_words[118] << 16);
-
-    // if (logical_sector_size == 0) {
-    //     logical_sector_size = 512; // fallback default
-    // }
-
-    // // Word 106 gives physical sector info
-    // uint16_t word106 = identify_words[106];
-
-    // uint32_t physical_sector_size = logical_sector_size; // default assumption
-
-    // // Check if word 106 indicates multiple logical per physical
-    // if (word106 & (1 << 13)) {
-    //     uint8_t log2_multiple = word106 & 0x1F; // Bits 4–0
-    //     physical_sector_size = logical_sector_size << log2_multiple; // Multiply by 2^n
-    // }
-
-    // debug_print("Logical Sector Size: %i bytes\n", logical_sector_size);
-    // debug_print("Physical Sector Size: %i bytes\n", physical_sector_size);
-
-    // // uint8_t* data = (uint8_t*)identify_buf;
-    // // for (int i = 0; i < 512; ++i) {
-    // //     debug_print("%uh ", data[i]);
-    // //     if ((i + 1) % 16 == 0) debug_print("\n");
-    // // }
-}
-
-/*
-
-#include <stdint.h>
-#include <stdio.h>
-#include <string.h>
-
-// Trim leading/trailing spaces from a fixed-size string
-void trim(char* str) {
-    int len = strlen(str);
-    int start = 0, end = len - 1;
-
-    // Trim leading spaces
-    while (start < len && str[start] == ' ') start++;
-
-    // Trim trailing spaces
-    while (end >= start && str[end] == ' ') end--;
-
-    // Shift and null-terminate
-    int new_len = end - start + 1;
-    if (new_len <= 0) {
-        str[0] = '\0';
-    } else {
-        memmove(str, str + start, new_len);
-        str[new_len] = '\0';
-    }
-}
-
-// Convert 16-bit word string (big-endian chars) to C string
-void decode_string(const uint16_t* src, int word_count, char* dest, int max_len) {
-    int pos = 0;
-    for (int i = 0; i < word_count && pos + 1 < max_len; ++i) {
-        dest[pos++] = (char)(src[i] >> 8);
-        dest[pos++] = (char)(src[i] & 0xFF);
-    }
-    dest[pos] = '\0';
-    trim(dest);
-}
-
-// Convert bytes to human-readable size
-void human_readable_size(uint64_t bytes, char* out, int out_size) {
-    const char* units[] = { "B", "KB", "MB", "GB", "TB" };
-    int unit_index = 0;
-    double size = (double)bytes;
-
-    while (size >= 1024.0 && unit_index < 4) {
-        size /= 1024.0;
-        unit_index++;
-    }
-
-    snprintf(out, out_size, "%.2f %s", size, units[unit_index]);
-}
-
-// Main parser function
-void parse_identify_device(const uint8_t* buffer) {
-    const uint16_t* data = (const uint16_t*)buffer;
-
-    char model[41], serial[21], firmware[9];
-
-    decode_string(&data[27], 20, model, sizeof(model));
-    decode_string(&data[10], 10, serial, sizeof(serial));
-    decode_string(&data[23], 4, firmware, sizeof(firmware));
-
-    // LBA28 fallback
-    uint64_t total_lba = (uint32_t)data[60] | ((uint32_t)data[61] << 16);
-
-    // Check for 48-bit LBA
-    if (data[83] & (1 << 10)) {
-        total_lba = ((uint64_t)data[100]) |
-                    ((uint64_t)data[101] << 16) |
-                    ((uint64_t)data[102] << 32) |
-                    ((uint64_t)data[103] << 48);
-    }
-
-    // Logical sector size
-    uint32_t logical_sector_size = (uint32_t)data[117] | ((uint32_t)data[118] << 16);
-    if (logical_sector_size == 0) logical_sector_size = 512;
-
-    // Physical sector size
-    uint32_t physical_sector_size = logical_sector_size;
-    uint16_t word106 = data[106];
-    if (word106 & (1 << 13)) {
-        uint8_t log2_multiple = word106 & 0x1F;
-        physical_sector_size = logical_sector_size << log2_multiple;
-    }
-
-    uint64_t capacity_bytes = total_lba * (uint64_t)logical_sector_size;
-
-    char size_str[32];
-    human_readable_size(capacity_bytes, size_str, sizeof(size_str));
-
-    // Print results
-    printf("Model Number       : %s\n", model);
-    printf("Serial Number      : %s\n", serial);
-    printf("Firmware Revision  : %s\n", firmware);
-    printf("Total LBA Sectors  : %llu\n", (unsigned long long)total_lba);
-    printf("Drive Capacity     : %llu bytes (%s)\n",
-           (unsigned long long)capacity_bytes, size_str);
-    printf("Logical Sector Size: %u bytes\n", logical_sector_size);
-    printf("Physical Sector Size: %u bytes\n", physical_sector_size);
-}
-
-
-*/

@@ -14,6 +14,97 @@
 #define AHCI_DMA_HEAP_ADDR      0x3FC00000
 #define AHCI_HBA_ADDR           (AHCI_DMA_HEAP_ADDR - PAGE_SIZE_LARGE)
 
+#define ATA_CMD_IDENTIFY_DEVICE   0xEC
+#define ATA_CMD_READ_DMA          0xC8
+#define ATA_CMD_READ_DMA_EXT      0x25
+#define ATA_CMD_WRITE_DMA         0xCA
+#define ATA_CMD_WRITE_DMA_EXT     0x35
+#define ATA_CMD_CACHE_FLUSH       0xE7
+#define ATA_CMD_CACHE_FLUSH_EXT   0xEA
+#define ATA_CMD_PACKET            0xA0
+#define ATA_CMD_READ_SECTORS      0x20
+#define ATA_CMD_WRITE_SECTORS     0x30
+
+#define ATA_DEV_LBA               0x40
+#define ATA_DEV_DEFAULT           0xA0
+#define ATA_DEV_LBA_MASTER        (ATA_DEV_DEFAULT | ATA_DEV_LBA)
+
+#define FIS_TYPE_REG_H2D        0x27
+#define FIS_TYPE_REG_D2H        0x34
+#define FIS_TYPE_DMA_ACT        0x39
+#define FIS_TYPE_DMA_SETUP      0x41
+#define FIS_TYPE_DATA           0x46
+#define FIS_TYPE_BIST           0x58
+#define FIS_TYPE_PIO_SETUP      0x5F
+#define FIS_TYPE_DEV_BITS       0xA1
+
+#define AHCI_PORT_INT_DHRS     (1 << 0)   // Device-to-Host Register FIS interrupt
+#define AHCI_PORT_INT_PSS      (1 << 1)   // PIO Setup FIS interrupt
+#define AHCI_PORT_INT_DSS      (1 << 2)   // DMA Setup FIS interrupt
+#define AHCI_PORT_INT_SDBS     (1 << 3)   // Set Device Bits FIS interrupt
+#define AHCI_PORT_INT_UFS      (1 << 4)   // Unknown FIS interrupt
+#define AHCI_PORT_INT_DPS      (1 << 5)   // Descriptor Processed interrupt
+#define AHCI_PORT_INT_PCS      (1 << 6)   // Port Connect Change Status
+#define AHCI_PORT_INT_DMPS     (1 << 7)   // Device Mechanical Presence Status
+#define AHCI_PORT_INT_PRCS     (1 << 22)  // PhyRdy Change Status
+#define AHCI_PORT_INT_IPMS     (1 << 23)  // Incorrect Port Multiplier Status
+#define AHCI_PORT_INT_OFS      (1 << 24)  // Overflow Status
+#define AHCI_PORT_INT_INFS     (1 << 26)  // Interface Non-Fatal Error
+#define AHCI_PORT_INT_IFS      (1 << 27)  // Interface Fatal Error
+#define AHCI_PORT_INT_HBDS     (1 << 28)  // Host Bus Data Error
+#define AHCI_PORT_INT_HBFS     (1 << 29)  // Host Bus Fatal Error
+#define AHCI_PORT_INT_TFES     (1 << 30)  // Task File Error Status
+#define AHCI_PORT_INT_CPDS     (1 << 31)  // Cold Port Detect Status
+
+#define AHCI_PORT_CMD_ST        (1 << 0)   // Start
+#define AHCI_PORT_CMD_SUD       (1 << 1)   // Spin-Up Device
+#define AHCI_PORT_CMD_POD       (1 << 2)   // Power On Device
+#define AHCI_PORT_CMD_CLO       (1 << 3)   // Command List Override
+#define AHCI_PORT_CMD_FRE       (1 << 4)   // FIS Receive Enable
+#define AHCI_PORT_CMD_CCS_MASK  0x1F << 8  // Current Command Slot (bits 8–12)
+#define AHCI_PORT_CMD_FR        (1 << 14)  // FIS Receive Running
+#define AHCI_PORT_CMD_CR        (1 << 15)  // Command List Running
+#define AHCI_PORT_CMD_CPS       (1 << 16)  // Cold Presence State
+#define AHCI_PORT_CMD_PMA       (1 << 17)  // Port Multiplier Attached
+#define AHCI_PORT_CMD_HPCP      (1 << 18)  // Hot Plug Capable Port
+#define AHCI_PORT_CMD_MPSP      (1 << 19)  // Mechanical Presence Switch Attached
+#define AHCI_PORT_CMD_CPD       (1 << 20)  // Cold Presence Detection
+#define AHCI_PORT_CMD_ESP       (1 << 21)  // External SATA Port
+#define AHCI_PORT_CMD_FBSCP     (1 << 22)  // FIS-based Switching Capable Port
+#define AHCI_PORT_CMD_APSTE     (1 << 23)  // Aggressive Link Power Management Enable
+#define AHCI_PORT_CMD_ATAPI     (1 << 24)  // Device is ATAPI
+#define AHCI_PORT_CMD_DLAE      (1 << 25)  // Drive LED on ATAPI Enable
+#define AHCI_PORT_CMD_ALPE      (1 << 26)  // Aggressive Link Power Management Enable
+#define AHCI_PORT_CMD_ASP       (1 << 27)  // Aggressive Slumber/Partial
+#define AHCI_PORT_CMD_ICC_MASK  0xF << 28  // Interface Communication Control (bits 28–31)
+
+#define AHCI_PORT_SIG_NONE         0x00000000  // No device present / empty port
+#define AHCI_PORT_SIG_SATA         0x00000101  // SATA drive (ATA)
+#define AHCI_PORT_SIG_ATAPI        0xEB140101  // ATAPI device (e.g. CD/DVD)
+#define AHCI_PORT_SIG_SEMB         0xC33C0101  // Enclosure management bridge
+#define AHCI_PORT_SIG_PM           0x96690101  // Port multiplier
+
+#define AHCI_SSTS_DET_MASK      0x0000000F  // Device Detection
+#define AHCI_SSTS_SPD_MASK      0x000000F0  // Current Interface Speed
+#define AHCI_SSTS_IPM_MASK      0x00000F00  // Interface Power Management
+
+#define AHCI_DET_NO_DEVICE          0x0  // No device detected
+#define AHCI_DET_DEVICE_PRESENT     0x1  // Device present, but PHY not initialized
+#define AHCI_DET_PHY_INITIALIZED    0x3  // Device present, PHY communication established
+
+#define AHCI_SPD_GEN1   0x1  // 1.5 Gbps
+#define AHCI_SPD_GEN2   0x2  // 3.0 Gbps
+#define AHCI_SPD_GEN3   0x3  // 6.0 Gbps
+
+#define AHCI_IPM_ACTIVE     0x1  // Interface active
+#define AHCI_IPM_PARTIAL    0x2  // Interface in partial power state
+#define AHCI_IPM_SLUMBER    0x6  // Interface in slumber state
+
+#define AHCI_GHC_HR        (1 << 0)   // HBA Reset
+#define AHCI_GHC_IE        (1 << 1)   // Interrupt Enable
+#define AHCI_GHC_MRSM      (1 << 2)   // MSI Revert to Single Message
+#define AHCI_GHC_AE        (1U << 31) // AHCI Enable
+
 #include "common.hpp"
 #include "drivers/pci_driver.hpp"
 #include "vector.hpp"
@@ -139,9 +230,22 @@ struct ahci_sata_drive_t {
     hba_port_t* port;
 };
 
+struct ahci_cmd_context_t {
+    hba_cmd_header_t* cmdheader;
+    hba_cmd_tbl_t* cmdtable;
+    dma_memory_region_t::block_t* data_buffer;
+    fis_reg_h2d_t* fis;
+    uint8_t slot;
+};
+
 int ahci_init(void* pml4, pci_device_info_t* ahci_pci_device, vector<ahci_sata_drive_t>* sata_drives);
 void* ahci_port_init(hba_port_t* port);
-void ahci_identify_device(void* pml4, ahci_sata_drive_t* ahci_drive_data);
-void ahci_read(hba_port_t* port);
+
+int ahci_identify_device(ahci_sata_drive_t* drive);
+int ahci_read(ahci_sata_drive_t* drive, uint64_t lba, uint16_t sector_count, uint8_t* buffer);
+int ahci_write(ahci_sata_drive_t* drive, uint64_t lba, uint16_t sector_count, const void* buffer);
+
+int ahci_prepare_command(ahci_cmd_context_t* ctx, ahci_sata_drive_t* drive, uint64_t lba, uint16_t sector_count, uint8_t ata_command, bool write, uint8_t fis_device, uint8_t slot = 0);
+int ahci_find_command_slot(hba_port_t* port);
 
 #endif // __AHCI_DRIVER_HPP__
