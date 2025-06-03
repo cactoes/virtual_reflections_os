@@ -219,6 +219,36 @@ void* vmem_virtual_to_physical(void* pml4, void* virtual_addr) {
     return (void*)((pdt[pde] & ~(PAGE_SIZE_LARGE - 1)) + page_offset);
 }
 
+void* vmem_physical_to_virtual(void* pml4, void* virtual_start, void* virtual_end, void* physical_addr) {
+    uint64_t start = (uint64_t)virtual_start;
+    uint64_t end   = (uint64_t)virtual_end;
+    uint64_t target_phys = (uint64_t)physical_addr & 0x1FFFFF;
+
+    for (uint64_t va = start; va < end; va += PAGE_SIZE_LARGE) {
+        uint64_t pml4e = KPAGING_GET_PE((void*)va, 39);
+        uint64_t pdpe  = KPAGING_GET_PE((void*)va, 30);
+        uint64_t pde   = KPAGING_GET_PE((void*)va, 21);
+
+        if (!KPAGING_CHECK_ENTRY(pml4, pml4e))
+            continue;
+
+        uint64_t* pdpt = KPAGING_GET_ENTRY(pml4, pml4e);
+        if (!KPAGING_CHECK_ENTRY(pdpt, pdpe))
+            continue;
+
+        uint64_t* pdt = KPAGING_GET_ENTRY(pdpt, pdpe);
+        if (!KPAGING_CHECK_ENTRY(pdt, pde))
+            continue;
+
+        uint64_t entry = pdt[pde];
+
+        if ((entry & (1 << 7)) && ((entry & 0x1FFFFF) == target_phys))
+            return (void*)va;
+    }
+
+    return nullptr;
+}
+
 bool vmem_init(multiboot_t* multiboot_struct, void* pml4) {
     // zero page (?)
     // memzero(0, PAGE_SIZE);
@@ -468,7 +498,12 @@ dma_memory_region_t::block_t* dma_heap_alloc(dma_heap_t* dma_heap) {
 }
 
 void dma_heap_free(dma_heap_t* dma_heap, dma_memory_region_t::block_t* block) {
-    // TODO @since 01/06/2025 -- 23:19
+    memzero((void*)block, sizeof(dma_memory_region_t::block_t));
+    const size_t block_index = ((uint64_t)block - (uint64_t)dma_heap->region) / sizeof(dma_memory_region_t::block_t);
+    if (block_index < 0 || block_index > (sizeof(dma_memory_region_t::blocks) / sizeof(dma_memory_region_t::block_t)))
+        return;
+
+    bitmap_set(dma_heap->block_bitmap, block_index, false);
 }
 
 uint32_t dma_get_physical_lower(dma_heap_t* dma_heap, dma_memory_region_t::block_t* block) {

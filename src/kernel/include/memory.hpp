@@ -183,6 +183,7 @@ NODISCARD bool vmem_map_2mb_page(void* pml4, void* virtual_addr, void* physical_
 NODISCARD size_t vmem_smart_alloc_pages(void* pml4, void* virtual_addr, size_t size);
 
 NODISCARD void* vmem_virtual_to_physical(void* pml4, void* virtual_addr);
+// NODISCARD void* vmem_physical_to_virtual(void* pml4, void* virtual_start, void* virtual_end, void* physical_addr);
 
 /// @brief                      initiates virtual memory
 /// @param[in] multiboot_struct pointer to the custom mb struct for memory regions
