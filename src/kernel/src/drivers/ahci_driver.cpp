@@ -187,19 +187,19 @@ int ahci_identify_device(ahci_sata_drive_t* drive) {
     // check for 48bit lba
     if (data[83] & (1 << 10)) {
         drive->lba = ((uint64_t)data[100]) |
-                    ((uint64_t)data[101] << 16) |
-                    ((uint64_t)data[102] << 32) |
-                    ((uint64_t)data[103] << 48);
+            ((uint64_t)data[101] << 16) |
+            ((uint64_t)data[102] << 32) |
+            ((uint64_t)data[103] << 48);
     }
 
     drive->logical_sector_size = (uint32_t)data[117] | ((uint32_t)data[118] << 16);
-    if (drive->logical_sector_size == 0) drive->logical_sector_size  = 512;
+    if (drive->logical_sector_size == 0) drive->logical_sector_size = 512;
 
-    drive->physical_sector_size = drive->logical_sector_size ;
+    drive->physical_sector_size = drive->logical_sector_size;
     uint16_t word106 = data[106];
     if (word106 & (1 << 13)) {
         uint8_t log2_multiple = word106 & 0x1F;
-        drive->physical_sector_size = drive->logical_sector_size  << log2_multiple;
+        drive->physical_sector_size = drive->logical_sector_size << log2_multiple;
     }
 
     drive->capacity = drive->lba * (uint64_t)drive->logical_sector_size;
@@ -249,19 +249,19 @@ int ahci_atapi_identify_device(ahci_sata_drive_t* drive) {
     // check for 48bit lba
     if (data[83] & (1 << 10)) {
         drive->lba = ((uint64_t)data[100]) |
-                    ((uint64_t)data[101] << 16) |
-                    ((uint64_t)data[102] << 32) |
-                    ((uint64_t)data[103] << 48);
+            ((uint64_t)data[101] << 16) |
+            ((uint64_t)data[102] << 32) |
+            ((uint64_t)data[103] << 48);
     }
 
     drive->logical_sector_size = (uint32_t)data[117] | ((uint32_t)data[118] << 16);
-    if (drive->logical_sector_size == 0) drive->logical_sector_size  = 512;
+    if (drive->logical_sector_size == 0) drive->logical_sector_size = 512;
 
     drive->physical_sector_size = drive->logical_sector_size;
     uint16_t word106 = data[106];
     if (word106 & (1 << 13)) {
         uint8_t log2_multiple = word106 & 0x1F;
-        drive->physical_sector_size = drive->logical_sector_size  << log2_multiple;
+        drive->physical_sector_size = drive->logical_sector_size << log2_multiple;
     }
 
     drive->capacity = drive->lba * (uint64_t)drive->logical_sector_size;

@@ -23,7 +23,7 @@ public:
 
     void fire_event(_argument arg) {
         mutex_lock_guard guard(&mutex);
-        for (VECTOR_LOOP((&handlers), handler_node))
+        for (VECTOR_LOOP(&handlers, handler_node))
             handler_node->value(arg);
     }
 

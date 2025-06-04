@@ -14,6 +14,7 @@
 #include "drivers/keyboard_driver.hpp"
 #include "drivers/mouse_driver.hpp"
 #include "drivers/ahci_driver.hpp"
+#include "drivers/ide_driver.hpp"
 
 void draw_logo_vga_tm() {
     constexpr uint32_t x = 29;
@@ -177,6 +178,9 @@ cpu_state_t* handle_critical_interrupt(uint64_t code, cpu_state_t* rsp) {
 }
 
 cpu_state_t* handle_other_interrupt(uint64_t code, cpu_state_t* rsp) {
+    if (code == 0x2E) return rsp;
+    if (code == 0x2F) return rsp;
+    
     critical_fatal_ex(code, "FATAL: unhandled interrupt", rsp);
     return rsp;
 }
@@ -236,7 +240,7 @@ extern "C" void kernel_entry(multiboot_t* multiboot_struct, void* kpml4) {
     vector<pci_device_info_t> pci_devices {};
     pci_enumerate_devices(&pci_devices);
 
-    for (VECTOR_LOOP((&pci_devices), device_node)) {
+    for (VECTOR_LOOP(&pci_devices, device_node)) {
         const char* cd = pci_get_class_description(&device_node->value);
         debug_print("[PCI] dectected device:\n");
         debug_print("    class description  : %s\n", cd);
@@ -248,7 +252,10 @@ extern "C" void kernel_entry(multiboot_t* multiboot_struct, void* kpml4) {
     }
 
     vector<pci_device_request_t> pci_devices_requested {};
+    // AHCI controller
     pci_devices_requested.insert_back(pci_device_request_t { .revision_id = (uint8_t)PCI_UNKNOWN, .prog_if = (uint8_t)1, .sub_class = 6, .class_code = 1 });
+    // IDE controller
+    pci_devices_requested.insert_back(pci_device_request_t { .revision_id = (uint8_t)PCI_UNKNOWN, .prog_if = (uint8_t)PCI_UNKNOWN, .sub_class = 1, .class_code = 1 });
     const bool found = pci_find_devices(&pci_devices, &pci_devices_requested);
 
     if (found) {
@@ -259,20 +266,49 @@ extern "C" void kernel_entry(multiboot_t* multiboot_struct, void* kpml4) {
         vector<ahci_sata_drive_t> drives{};
         ahci_init(kpml4, ahci_device, &drives);
 
-        for (VECTOR_LOOP((&drives), drive_node)) {
+        for (VECTOR_LOOP(&drives, drive_node)) {
             debug_print("[AHCI] dectected drive:\n");
-            debug_print("   model number           : %s\n", drive_node->value.model);
-            debug_print("   serial number          : %s\n", drive_node->value.serial);
-            debug_print("   firmware revision      : %s\n", drive_node->value.firmware);
-            debug_print("   total lba sectors      : %ul\n", drive_node->value.lba);
-            debug_print("   drive capacity         : %ul bytes\n", drive_node->value.capacity);
-            debug_print("   logical sector size    : %u bytes\n", drive_node->value.logical_sector_size);
-            debug_print("   physical sector size   : %u bytes\n", drive_node->value.physical_sector_size);
+            debug_print("   model number            : %s\n", drive_node->value.model);
+            debug_print("   serial number           : %s\n", drive_node->value.serial);
+            debug_print("   firmware revision       : %s\n", drive_node->value.firmware);
+            debug_print("   total lba sectors       : %ul\n", drive_node->value.lba);
+            debug_print("   drive capacity          : %ul bytes\n", drive_node->value.capacity);
+            debug_print("   logical sector size     : %u bytes\n", drive_node->value.logical_sector_size);
+            debug_print("   physical sector size    : %u bytes\n", drive_node->value.physical_sector_size);
         }
 
         // uint8_t data[512] {};
         // ahci_read(pml4, &drives.first()->value, 0, 1, data);
         // for (int i = 0; i < 512; ++i) {
+        //     debug_print("%uh ", data[i]);
+        //     if ((i + 1) % 16 == 0) debug_print("\n");
+        // }
+
+        pci_device_info_t* ide_device = pci_devices.get_at(pci_devices_requested.get_at(1)->pci_device_index);
+
+        vector<ata_drive_t> ata_drives {};
+        ide_init(ide_device, &ata_drives);
+
+        for (VECTOR_LOOP(&ata_drives, drive_node)) {
+            static const char* channels[3] { "NONE", "PRIMARY", "SECONDARY" };
+            static const char* types[3] { "NONE", "MASTER", "SLAVE" };
+            
+            debug_print("[IDE] dectected drive:\n");
+            debug_print("   type                    : %s\n", drive_node->value.is_atapi ? "ATAPI" : "ATA");
+            debug_print("   channel                 : %s\n", channels[(int)drive_node->value.channel_name]);
+            debug_print("   master/slave            : %s\n", types[(int)drive_node->value.type]);
+            debug_print("   model number            : %s\n", drive_node->value.model);
+            debug_print("   serial number           : %s\n", drive_node->value.serial);
+            debug_print("   firmware revision       : %s\n", drive_node->value.firmware);
+            debug_print("   total lba sectors       : %ul\n", drive_node->value.lba);
+            debug_print("   drive capacity          : %ul bytes\n", drive_node->value.capacity);
+            debug_print("   logical sector size     : %u bytes\n", drive_node->value.logical_sector_size);
+            debug_print("   physical sector size    : %u bytes\n", drive_node->value.physical_sector_size);
+        }
+
+        // uint8_t data[IDE_SECTOR_SIZE] {};
+        // ide_atapi_read(&ata_drives.first()->value, 0, data);
+        // for (int i = 0; i < IDE_SECTOR_SIZE; ++i) {
         //     debug_print("%uh ", data[i]);
         //     if ((i + 1) % 16 == 0) debug_print("\n");
         // }

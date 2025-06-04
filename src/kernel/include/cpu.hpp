@@ -69,6 +69,10 @@ inline uint32_t cpu_inl(uint16_t port) {
     return value;
 }
 
+inline void cpu_io_wait() {
+    cpu_outb(0x80, 0); // 1–4 micro seconds delay
+}
+
 NORETURN inline void cpu_halt() {
     for (;;) {
         asm volatile ("cli");

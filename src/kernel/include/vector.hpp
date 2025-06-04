@@ -9,7 +9,7 @@
 #define __VECTOR_HPP__
 
 #define VECTOR_LOOP(_vector, name) \
-    auto name = _vector->first(); name; name = name->next
+    auto name = (_vector)->first(); name; name = (name)->next
 
 #include "memory.hpp"
 #include "mutex.hpp"
