@@ -238,7 +238,13 @@ extern "C" void kernel_entry(multiboot_t* multiboot_struct, void* kpml4) {
 
     for (VECTOR_LOOP((&pci_devices), device_node)) {
         const char* cd = pci_get_class_description(&device_node->value);
-        debug_print("found [%uh:%uh]: %s\n", device_node->value.vendor_id, device_node->value.device_id, cd);
+        debug_print("[PCI] dectected device:\n");
+        debug_print("    class description  : %s\n", cd);
+        debug_print("    vendor id          : 0x%uh\n", device_node->value.vendor_id);
+        debug_print("    device id          : 0x%uh\n", device_node->value.device_id);
+        debug_print("    bus                : 0x%uh\n", device_node->value.bus);
+        debug_print("    device             : 0x%uh\n", device_node->value.device);
+        debug_print("    function           : %u\n", device_node->value.function);
     }
 
     vector<pci_device_request_t> pci_devices_requested {};
@@ -254,7 +260,7 @@ extern "C" void kernel_entry(multiboot_t* multiboot_struct, void* kpml4) {
         ahci_init(kpml4, ahci_device, &drives);
 
         for (VECTOR_LOOP((&drives), drive_node)) {
-            debug_print("found drive:\n");
+            debug_print("[AHCI] dectected drive:\n");
             debug_print("   model number           : %s\n", drive_node->value.model);
             debug_print("   serial number          : %s\n", drive_node->value.serial);
             debug_print("   firmware revision      : %s\n", drive_node->value.firmware);
@@ -277,7 +283,7 @@ extern "C" void kernel_entry(multiboot_t* multiboot_struct, void* kpml4) {
     // vga_gm_buffer_create(&buffer);
     // vga_gm_startup(&buffer);
 
-    debug_print("kernel finished initializing\n");
+    debug_print("[KERNEL] finished initializing\n");
 
     const char* spinner[] = { ".  ", " . ", "  ." };
     constexpr size_t chars_size = (sizeof(spinner) / sizeof(char*));
