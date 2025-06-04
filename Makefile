@@ -1,3 +1,8 @@
+#==========================================
+## @file       Makefile
+## @brief      build script for src/kernel
+#==========================================
+
 SOURCE_FILES_PATH = src/kernel/src
 HEADER_FILES_PATH = src/kernel/include
 ASSEMBLY_FILES_PATH = src/kernel/asm

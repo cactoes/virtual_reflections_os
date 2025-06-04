@@ -33,7 +33,7 @@
             ],
             "miDebuggerServerAddress": "localhost:1234",
             "showDisplayString": true,
-            "preLaunchTask": "start QEMU dbg"
+            "preLaunchTask": "start qemu debug"
         },
         {
             "name": "debug",
@@ -67,7 +67,7 @@
             ],
             "miDebuggerServerAddress": "localhost:1234",
             "showDisplayString": true,
-            "preLaunchTask": "build kernel & start QEMU dbg"
+            "preLaunchTask": "build kernel & start qemu debug"
         }
     ]
 }
