@@ -240,12 +240,16 @@ struct ahci_cmd_context_t {
 
 int ahci_init(void* pml4, pci_device_info_t* ahci_pci_device, vector<ahci_sata_drive_t>* sata_drives);
 void* ahci_port_init(hba_port_t* port);
+void* ahci_atapi_port_init(hba_port_t* port);
 
 int ahci_identify_device(ahci_sata_drive_t* drive);
+int ahci_atapi_identify_device(ahci_sata_drive_t* drive);
 int ahci_read(ahci_sata_drive_t* drive, uint64_t lba, uint16_t sector_count, uint8_t* buffer);
 int ahci_write(ahci_sata_drive_t* drive, uint64_t lba, uint16_t sector_count, const void* buffer);
 
 int ahci_prepare_command(ahci_cmd_context_t* ctx, ahci_sata_drive_t* drive, uint64_t lba, uint16_t sector_count, uint8_t ata_command, bool write, uint8_t fis_device, uint8_t slot = 0);
+int ahci_atapi_prepare_command(ahci_cmd_context_t* ctx, ahci_sata_drive_t* drive, const uint8_t* atapi_packet, size_t packet_size, uint16_t data_length, bool write, uint8_t slot = 0);
 int ahci_find_command_slot(hba_port_t* port);
+
 
 #endif // __AHCI_DRIVER_HPP__
