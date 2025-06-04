@@ -11,6 +11,7 @@ rectangle "Core" {
         [PS/2 Keyboard]
         [PS/2 Mouse]
         [AHCI]
+        [IDE]
     }
 
     rectangle "Core Functions" {
@@ -42,6 +43,7 @@ rectangle "Core" {
 [PS/2 Mouse] ..> [Events]
 [AHCI] --> [Memory Manager]
 [AHCI] --> [Vector]
+[IDE] --> [Vector]
 
 [Events] --> [Mutex]
 [Events] --> [Vector]
