@@ -236,6 +236,11 @@ extern "C" void kernel_entry(multiboot_t* multiboot_struct, void* kpml4) {
     vector<pci_device_info_t> pci_devices {};
     pci_enumerate_devices(&pci_devices);
 
+    for (VECTOR_LOOP((&pci_devices), device_node)) {
+        const char* cd = pci_get_class_description(&device_node->value);
+        debug_print("found [%uh:%uh]: %s\n", device_node->value.vendor_id, device_node->value.device_id, cd);
+    }
+
     vector<pci_device_request_t> pci_devices_requested {};
     pci_devices_requested.insert_back(pci_device_request_t { .revision_id = (uint8_t)PCI_UNKNOWN, .prog_if = (uint8_t)1, .sub_class = 6, .class_code = 1 });
     const bool found = pci_find_devices(&pci_devices, &pci_devices_requested);
