@@ -2,8 +2,10 @@
 A 64-bit custom made operating system, using grub as bootloader
 
 ## TODO
-[ ] network driver (intel e1000)
-[ ] shell
+- [ ] network driver (intel e1000)
+- [ ] shell
+- [ ] filesystem
+- [ ] buffers / streams (lockable / mutex)
 
 ## Setup build environment
 ### Windows host
@@ -23,9 +25,6 @@ $ ./build.sh
 PS> .\docker_build.ps1
 ```
 
-### Used commands
-`docker run --name VirtualReflectionsOS --rm -v "${PWD}:/root/env" virtual_reflections_os_buildenv`
-
 ## Running QEMU
 Start the QEMU environment with the required startup flags.
 
@@ -33,12 +32,6 @@ Start the QEMU environment with the required startup flags.
 ```powershell
 PS> .\qemu_start.ps1
 ```
-### Used commands
-`qemu-system-x86_64.exe -cdrom build/VirtualReflectionsOS.iso -m 2G -drive format=raw,file=build/disk.vhd,id=disk,if=none -device ahci,id=ahci -device ide-hd,drive=disk,bus=ahci.0`
-
-#### Extra arguments
-These are being used for testing and not yet required to launching the OS
-`-net nic,model=pcnet`
 
 ## Diagram
 ![](docs/svg/kernel%20diagram.svg)
