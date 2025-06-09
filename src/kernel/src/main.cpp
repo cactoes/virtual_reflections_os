@@ -15,6 +15,7 @@
 #include "drivers/mouse_driver.hpp"
 #include "drivers/ahci_driver.hpp"
 #include "drivers/ide_driver.hpp"
+#include "drivers/e1000_driver.hpp"
 
 void draw_logo_vga_tm() {
     constexpr uint32_t x = 29;
@@ -252,10 +253,13 @@ extern "C" void kernel_entry(multiboot_t* multiboot_struct, void* kpml4) {
     }
 
     vector<pci_device_request_t> pci_devices_requested {};
-    // AHCI controller
+    // ahci controller
     pci_devices_requested.insert_back(pci_device_request_t { .revision_id = (uint8_t)PCI_UNKNOWN, .prog_if = (uint8_t)1, .sub_class = 6, .class_code = 1 });
-    // IDE controller
+    // ide controller
     pci_devices_requested.insert_back(pci_device_request_t { .revision_id = (uint8_t)PCI_UNKNOWN, .prog_if = (uint8_t)PCI_UNKNOWN, .sub_class = 1, .class_code = 1 });
+    // network controller
+    pci_devices_requested.insert_back(pci_device_request_t { .revision_id = (uint8_t)PCI_UNKNOWN, .prog_if = (uint8_t)PCI_UNKNOWN, .sub_class = 0, .class_code = 2 });
+
     const bool found = pci_find_devices(&pci_devices, &pci_devices_requested);
 
     if (found) {
@@ -307,11 +311,19 @@ extern "C" void kernel_entry(multiboot_t* multiboot_struct, void* kpml4) {
         }
 
         // uint8_t data[IDE_SECTOR_SIZE] {};
-        // ide_atapi_read(&ata_drives.first()->value, 0, data);
+        // ide_atapi_read(&ata_drives.first()->value, 1024, data);
         // for (int i = 0; i < IDE_SECTOR_SIZE; ++i) {
         //     debug_print("%uh ", data[i]);
         //     if ((i + 1) % 16 == 0) debug_print("\n");
         // }
+
+        pci_device_info_t* network_device = pci_devices.get_at(pci_devices_requested.get_at(3)->pci_device_index);
+
+        e1000_device_t e1000_device {};
+        e1000_init(kpml4, network_device, &e1000_device);
+
+        debug_print("[NETWORK] dectected controller:\n");
+        debug_print("   mac                     : %uh:%uh:%uh:%uh:%uh:%uh\n", e1000_device.mac[0], e1000_device.mac[1], e1000_device.mac[2], e1000_device.mac[3], e1000_device.mac[4], e1000_device.mac[5], e1000_device.mac[6]);
     }
 
     // disabled since we cant draw anything yet (other than a pixel)
