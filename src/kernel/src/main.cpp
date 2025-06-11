@@ -179,8 +179,8 @@ cpu_state_t* handle_critical_interrupt(uint64_t code, cpu_state_t* rsp) {
 }
 
 cpu_state_t* handle_other_interrupt(uint64_t code, cpu_state_t* rsp) {
-    if (code == 0x2E) return rsp;
-    if (code == 0x2F) return rsp;
+    // if (code == 0x2E) return rsp;
+    // if (code == 0x2F) return rsp;
     
     critical_fatal_ex(code, "FATAL: unhandled interrupt", rsp);
     return rsp;
@@ -282,7 +282,7 @@ extern "C" void kernel_entry(multiboot_t* multiboot_struct, void* kpml4) {
         }
 
         // uint8_t data[512] {};
-        // ahci_read(pml4, &drives.first()->value, 0, 1, data);
+        // ahci_read(&drives.first()->value, 0, 1, data);
         // for (int i = 0; i < 512; ++i) {
         //     debug_print("%uh ", data[i]);
         //     if ((i + 1) % 16 == 0) debug_print("\n");
@@ -317,7 +317,7 @@ extern "C" void kernel_entry(multiboot_t* multiboot_struct, void* kpml4) {
         //     if ((i + 1) % 16 == 0) debug_print("\n");
         // }
 
-        pci_device_info_t* network_device = pci_devices.get_at(pci_devices_requested.get_at(3)->pci_device_index);
+        pci_device_info_t* network_device = pci_devices.get_at(pci_devices_requested.get_at(2)->pci_device_index);
 
         e1000_device_t e1000_device {};
         e1000_init(kpml4, network_device, &e1000_device);

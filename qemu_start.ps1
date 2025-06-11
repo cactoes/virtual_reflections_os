@@ -18,20 +18,20 @@ $qemuArgs = @(
 
     # devices
     "-device", "ahci,id=ahci",
-    "-netdev", "user,id=net0",
-
+    
     # serial (i)o
     "-serial", "stdio",
     
     # virtual hard disk
     "-drive", "format=raw,file=$disk_path,id=disk,if=none",
     "-device", "ide-hd,drive=disk,bus=ahci.0",
-
+    
     # drive with our iso / is our iso
     "-drive", "id=cdrom,if=none,media=cdrom,file=$iso_path",
     "-device", "ide-cd,drive=cdrom,bus=ide.0",
-
+    
     # network card
+    "-netdev", "user,id=net0",
     "-device", "e1000,netdev=net0"
 )
 
