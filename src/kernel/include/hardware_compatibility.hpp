@@ -81,7 +81,7 @@ struct idt_register_t {
 /// @param[in] handler      pointer to interrupt handler
 /// @param[in] irq_list     list of irqs to unmask
 /// @param size             size of the list
-/// @return                 0 succes, -1 invalid irq
+/// @return                 0 succes, 1 invalid irq
 int init(cpu_state_t*(*handler)(uint64_t code, cpu_state_t* rsp), uint8_t irq_list[], size_t size);
 
 /// @brief                  creates an entry in the idt table
@@ -92,7 +92,7 @@ int set_idt_entry(uint8_t int_number, void* handler);
 
 /// @brief              sends the end of interrupt signal to the PIC
 /// @param irq_number   irq number
-/// @return             0 success, -1 if irq was invalid
+/// @return             0 success, 1 if irq was invalid
 int pic_send_eoi(uint8_t irq_number);
 
 /// @brief              unmasks an irq so the interrupt for it can be called

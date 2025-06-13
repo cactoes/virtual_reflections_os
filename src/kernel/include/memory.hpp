@@ -63,15 +63,8 @@ struct heap_t {
     size_t size;
 };
 
-struct dma_memory_region_t {
-    typedef uint8_t block_t[0x1000];
-
-    block_t blocks[0x200];
-};
-
 struct dma_heap_t {
-    uint64_t block_bitmap[0x200 / (8 * sizeof(uint64_t))];
-    dma_memory_region_t* region;
+    heap_t heap;
     void* pml4;
 };
 
@@ -257,11 +250,45 @@ memory_map_entry_t* mb_get_first_entry(multiboot_t* multiboot_struct);
 /// @return                         pointer to next entry or nullptr if there are no more blocks
 memory_map_entry_t* mb_get_next_entry(multiboot_t* multiboot_struct, memory_map_entry_t* prev);
 
-dma_memory_region_t::block_t* dma_heap_alloc(dma_heap_t* dma_heap);
-void dma_heap_free(dma_heap_t* dma_heap, dma_memory_region_t::block_t* block);
-uint32_t dma_get_physical_lower(dma_heap_t* dma_heap, dma_memory_region_t::block_t* block);
-uint32_t dma_get_physical_upper(dma_heap_t* dma_heap, dma_memory_region_t::block_t* block);
-NODISCARD int dma_heap_init(void* pml4, dma_heap_t* dma_heap, void* virtual_address);
+/// @brief                      allocates a aligned mem block
+/// @param[inout] dma_heap      pointer to the dma_heap_t struct
+/// @return                     ptr to the block
+void* dma_heap_alloc(dma_heap_t* dma_heap, size_t size, uint64_t align);
+
+/// @brief                      frees the given block
+/// @param[inout] dma_heap      ptr to the dma_heap_t struct where the block is located
+/// @param[in] block            ptr to the block to free
+void dma_heap_free(dma_heap_t* dma_heap, void* block);
+
+/// @brief                  converts a virtual addr in the dma heap to a physical addr
+/// @param[inout] dma_heap  heap that contains the block
+/// @param[in] block        ptr to the block / the virtual addr
+/// @return                 physical addr
+uint64_t dma_get_physical(dma_heap_t* dma_heap, void* block);
+
+/// @brief                  converts a virtual addr in the dma heap to a physical addr
+///                         lower 32 bits
+/// @param[inout] dma_heap  heap that contains the block
+/// @param[in] block        ptr to the block / the virtual addr
+/// @return                 physical addr lower 32 bits
+uint32_t dma_get_physical_lower(dma_heap_t* dma_heap, void* block);
+
+/// @brief                  converts a virtual addr in the dma heap to a physical addr
+///                         upper 32 bits
+/// @param[inout] dma_heap  heap that contains the block
+/// @param[in] block        ptr to the block / the virtual addr
+/// @return                 physical addr upper 32 bits
+uint32_t dma_get_physical_upper(dma_heap_t* dma_heap, void* block);
+
+/// @brief                          initializes a dma heap
+/// @param[inout] pml4              ptr to the page table to use
+/// @param[inout] dma_heap          ptr to the dma_heap_t
+/// @param[in] virtual_address      
+/// @param size                     
+/// @return                         0 success, 1 incorrect alignment, 2 heap size failed, 3 heap init failed
+/// @remarks                        technically memory leaks since it never frees
+///                                 the memory used for the entire dma heap
+NODISCARD int dma_heap_init(void* pml4, dma_heap_t* dma_heap, void* virtual_address, size_t size);
 
 /// @brief              sets the global heap to the given one
 /// @param[in] heap     pointer to heap that should be global

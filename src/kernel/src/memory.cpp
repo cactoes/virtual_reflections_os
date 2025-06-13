@@ -425,7 +425,7 @@ void* heap_alloc(heap_t* heap, size_t size) {
 
     donor_block->size -= size;
 
-    unused_block->free = true;
+    unused_block->free = false;
     unused_block->used = true;
     unused_block->size = size;
     unused_block->start_real_addr = (void*)((uint64_t)donor_block->start_real_addr + donor_block->size);
@@ -486,46 +486,151 @@ memory_map_entry_t* mb_get_next_entry(multiboot_t* multiboot_struct, memory_map_
     return nullptr;
 }
 
-dma_memory_region_t::block_t* dma_heap_alloc(dma_heap_t* dma_heap) {
-    for (size_t i = 0; i < bitmap_get_size(dma_heap->block_bitmap); i++) {
-        if (!bitmap_get(dma_heap->block_bitmap, i)) {
-            bitmap_set(dma_heap->block_bitmap, i, true);
-            return &dma_heap->region->blocks[i];
+void* dma_heap_alloc(dma_heap_t* dma_heap, size_t size, uint64_t align) {
+    if (!mem_is_aligned(size, align))
+        return nullptr;
+
+    block_filter_callback_t filters[] = {
+        heap_block_filters::donor_block_filter,
+        heap_block_filters::unused_block_filter,
+        heap_block_filters::unused_block_filter
+    };
+    heap_block_t* blocks[HEAP_FILTERS_SIZE(filters)] = {};
+    
+    int result = heap_filter_blocks(&dma_heap->heap, HEAP_MAKE_FILTER_PARAM(size), filters, HEAP_FILTERS_SIZE(filters), blocks, HEAP_FILTERS_SIZE(filters));
+
+    // heap block that is >= requested size
+    // aka the donor block
+    heap_block_t* donor_block = blocks[0];
+
+    // early return, we dont need the unused block here
+    // we could exit if we dont have a donor block but not needed to check here
+    // we make sure the alignment & size checks out if so we can just return it here
+    if (donor_block && donor_block->size == size
+        && mem_is_aligned((uint64_t)donor_block->start_real_addr, align)
+        // not sure if we need to check the physical here
+        /* && mem_is_aligned(dma_get_physical(dma_heap, donor_block->start_real_addr), align) */) {
+        
+        donor_block->free = false;
+        donor_block->used = true;
+        return donor_block->start_real_addr;
+    }
+
+    // make sure we have all blocks
+    // if not we cant expand the heap so just leave it be
+    if (result != HEAP_FILTERS_SIZE(filters))
+        return nullptr;
+
+    // heap block that we can write our data to
+    // & assign our new memory block to
+    heap_block_t* unused_block = blocks[1];
+
+    // heap block that we can use to make the unused block our memory aligner
+    heap_block_t* filler_block = blocks[2];
+
+    donor_block->size -= size;
+
+    unused_block->free = false;
+    unused_block->used = true;
+    unused_block->size = size;
+    unused_block->start_real_addr = (void*)((uint64_t)donor_block->start_real_addr + donor_block->size);
+
+    unused_block->next = donor_block->next;
+    donor_block->next = unused_block;
+
+    if (!mem_is_aligned((uint64_t)unused_block->start_real_addr, align)) {
+        uint64_t correction = (uint64_t)unused_block->start_real_addr - mem_align_down((uint64_t)unused_block->start_real_addr, align);
+        
+        if (donor_block->size < correction)
+            return nullptr;
+
+        donor_block->size -= correction;
+
+        filler_block->free = true;
+        filler_block->size = correction;
+        filler_block->start_real_addr = (void*)((uint64_t)donor_block->start_real_addr + donor_block->size);
+        filler_block->used = true;
+
+        unused_block->start_real_addr = (void*)((uint64_t)filler_block->start_real_addr + correction);
+
+        donor_block->next = filler_block;
+        filler_block->next = unused_block;
+    }
+
+    return unused_block->start_real_addr;
+}
+
+void dma_heap_free(dma_heap_t* dma_heap, void* block) {
+    for (heap_block_t* current_block = dma_heap->heap.heap_block_array; current_block; current_block = current_block->next) {
+        // find the correct block & free it
+        if (current_block->start_real_addr == block) {
+            current_block->free = true;
+            break;
         }
     }
 
-    return nullptr;
+    for (heap_block_t* current_block = dma_heap->heap.heap_block_array; current_block; current_block = current_block->next) {
+        heap_block_t* next_block = current_block->next;
+        if (current_block->free && next_block && next_block->free) {
+            current_block->size += next_block->size;
+            current_block->next = next_block->next;
+
+            memzero((void*)next_block, sizeof(heap_block_t));
+        }
+    }
 }
 
-void dma_heap_free(dma_heap_t* dma_heap, dma_memory_region_t::block_t* block) {
-    memzero((void*)block, sizeof(dma_memory_region_t::block_t));
-    const size_t block_index = ((uint64_t)block - (uint64_t)dma_heap->region) / sizeof(dma_memory_region_t::block_t);
-    if (block_index < 0 || block_index > (sizeof(dma_memory_region_t::blocks) / sizeof(dma_memory_region_t::block_t)))
-        return;
-
-    bitmap_set(dma_heap->block_bitmap, block_index, false);
+uint64_t dma_get_physical(dma_heap_t* dma_heap, void* block) {
+    return (uint64_t)vmem_virtual_to_physical(dma_heap->pml4, block);
 }
 
-uint32_t dma_get_physical_lower(dma_heap_t* dma_heap, dma_memory_region_t::block_t* block) {
-    return (uint32_t)(uint64_t)vmem_virtual_to_physical(dma_heap->pml4, block);
+uint32_t dma_get_physical_lower(dma_heap_t* dma_heap, void* block) {
+    return (uint32_t)dma_get_physical(dma_heap, block);
 }
 
-uint32_t dma_get_physical_upper(dma_heap_t* dma_heap, dma_memory_region_t::block_t* block) {
-    return (uint32_t)((uint64_t)vmem_virtual_to_physical(dma_heap->pml4, block) >> 32);
+uint32_t dma_get_physical_upper(dma_heap_t* dma_heap, void* block) {
+    return (uint32_t)(dma_get_physical(dma_heap, block) >> 32);
 }
 
-NODISCARD int dma_heap_init(void* pml4, dma_heap_t* dma_heap, void* virtual_address) {
-    if (!mem_is_aligned((uint64_t)virtual_address, PAGE_SIZE_LARGE))
+int dma_heap_init(void* pml4, dma_heap_t* dma_heap, void* virtual_address, size_t size) {
+    if (!mem_is_aligned((uint64_t)virtual_address, PAGE_SIZE))
         return 1;
 
-    size_t result_size = vmem_smart_alloc_pages(pml4, virtual_address, PAGE_SIZE_LARGE);
+    // the heap is just raw memory no data structures
+    uint64_t heap_size = vmem_smart_alloc_pages(pml4, virtual_address, size);
 
-    if (result_size != PAGE_SIZE_LARGE)
+    if (heap_size != size)
         return 2;
 
-    dma_heap->region = (dma_memory_region_t*)virtual_address;
+    // heap struct (identity mapped memory)
+    void* p_page = vmem_get_page_critical();
+    while (p_page && !mem_is_aligned((uint64_t)p_page, PAGE_SIZE_LARGE))
+        p_page = vmem_get_page_critical();
+
+    if (p_page == nullptr)
+        return 3;
+
+    if (!vmem_paging_reserve_at_adress((uint64_t)p_page + PAGE_SIZE, (PAGE_SIZE_LARGE / PAGE_SIZE - 1)))
+        return 3;
+
+    if (!vmem_map_2mb_page(pml4, p_page, p_page))
+        return 3;
+
+    // setup heap stuct
+    dma_heap->heap.heap_block_array = (heap_block_t*)p_page;
+    dma_heap->heap.heap_block_array_size = PAGE_SIZE_LARGE / sizeof(heap_block_t);
+    dma_heap->heap.heap_block_count = 1;
+    dma_heap->heap.start_virtual_addr = virtual_address;
+    dma_heap->heap.size = heap_size;
+
+    // first block is size of entire heap, but un allocated
+    dma_heap->heap.heap_block_array->start_real_addr = virtual_address;
+    dma_heap->heap.heap_block_array->next = nullptr;
+    dma_heap->heap.heap_block_array->size = heap_size;
+    dma_heap->heap.heap_block_array->free = true;
+    dma_heap->heap.heap_block_array->used = true;
+
     dma_heap->pml4 = pml4;
-    memzero(dma_heap->block_bitmap, sizeof(dma_heap->block_bitmap));
 
     return 0;
 }
