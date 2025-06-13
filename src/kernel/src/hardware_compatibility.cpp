@@ -43,7 +43,7 @@ int interrupt::init(cpu_state_t*(*handler)(uint64_t code, cpu_state_t* rsp), uin
     for (size_t i = 0; i < size; i++) {
         const auto result = unmask_irq(irq_list[i]);
         if (!result)
-            return -1;
+            return 1;
     }
 
     __flush_idt(g_idtr);
@@ -69,7 +69,7 @@ int interrupt::set_idt_entry(uint8_t int_number, void* handler) {
 
 int interrupt::pic_send_eoi(uint8_t irq_number) {
     if (irq_number >= 16)
-        return -1;
+        return 1;
 
     if (irq_number >= 8)
         cpu_outb(INT_PIC2, INT_PIC_EOI);
