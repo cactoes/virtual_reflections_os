@@ -596,6 +596,11 @@ int dma_heap_init(void* pml4, dma_heap_t* dma_heap, void* virtual_address, size_
     if (!mem_is_aligned((uint64_t)virtual_address, PAGE_SIZE))
         return 1;
 
+    // TODO @since 13/06/2025 -- 02:06
+    // we need to make an allocator that only maps contigious
+    if (size > PAGE_SIZE_LARGE)
+        return 1;
+
     // the heap is just raw memory no data structures
     uint64_t heap_size = vmem_smart_alloc_pages(pml4, virtual_address, size);
 

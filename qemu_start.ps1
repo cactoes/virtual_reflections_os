@@ -31,8 +31,10 @@ $qemuArgs = @(
     "-device", "ide-cd,drive=cdrom,bus=ide.0",
     
     # network card
-    "-netdev", "user,id=net0",
+    # "-netdev", "user,id=net0",
+    "-netdev", "tap,id=net0,ifname=tap0,script=no,downscript=no",
     "-device", "e1000,netdev=net0"
+
 )
 
 if ($mode -eq "debug") {
