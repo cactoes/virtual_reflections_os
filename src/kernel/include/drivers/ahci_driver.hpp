@@ -233,7 +233,7 @@ struct ahci_sata_drive_t {
 struct ahci_cmd_context_t {
     hba_cmd_header_t* cmdheader;
     hba_cmd_tbl_t* cmdtable;
-    dma_memory_region_t::block_t* data_buffer;
+    void* data_buffer;
     fis_reg_h2d_t* fis;
     uint8_t slot;
 };
