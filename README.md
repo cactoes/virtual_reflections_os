@@ -1,4 +1,4 @@
-# VirtualReflectionsOS (Altered State-0)
+# virtual reflections e0
 A 64-bit custom made operating system, using grub as bootloader
 
 ## TODO

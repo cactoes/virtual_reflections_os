@@ -197,9 +197,13 @@ extern "C" void kernel_entry(multiboot_t* multiboot_struct, void* kpml4) {
     hc::gdt_tss::init();
 
     vga_tm_clear_screen();
-    draw_logo_vga_tm();
-    vga_tm_set_cursor(29, 20);
-    vga_tm_print("initializing kernel ...");
+    // draw_logo_vga_tm();
+    vga_tm_set_cursor(0, 0);
+    vga_tm_print("[BOOT SQUENCE]\n");
+    vga_tm_print("> SYSTEM EPISODE: 0\n");
+    vga_tm_print("> DEVICE DRIVERS: AHCI, IDE, PS2 KB, PS2 M\n");
+    vga_tm_print("> SCREEN MODE: VGA\n");
+    vga_tm_print("> INITIALIZING MEMORY ...\n");
 
     if (!mb_has_valid_magic(multiboot_struct))
         critical_fatal(multiboot_struct->magic, "multiboot magic was invalid");
@@ -317,13 +321,15 @@ extern "C" void kernel_entry(multiboot_t* multiboot_struct, void* kpml4) {
         //     if ((i + 1) % 16 == 0) debug_print("\n");
         // }
 
-        pci_device_info_t* network_device = pci_devices.get_at(pci_devices_requested.get_at(2)->pci_device_index);
+        // TODO @since 15/06/2025 -- 21:40
+        // fix this hoe
+        // pci_device_info_t* network_device = pci_devices.get_at(pci_devices_requested.get_at(2)->pci_device_index);
 
-        e1000_device_t e1000_device {};
-        e1000_init(kpml4, network_device, &e1000_device);
+        // e1000_device_t e1000_device {};
+        // e1000_init(kpml4, network_device, &e1000_device);
 
-        debug_print("[NETWORK] dectected controller:\n");
-        debug_print("   mac                     : %uh:%uh:%uh:%uh:%uh:%uh\n", e1000_device.mac[0], e1000_device.mac[1], e1000_device.mac[2], e1000_device.mac[3], e1000_device.mac[4], e1000_device.mac[5], e1000_device.mac[6]);
+        // debug_print("[NETWORK] dectected controller:\n");
+        // debug_print("   mac                     : %uh:%uh:%uh:%uh:%uh:%uh\n", e1000_device.mac[0], e1000_device.mac[1], e1000_device.mac[2], e1000_device.mac[3], e1000_device.mac[4], e1000_device.mac[5], e1000_device.mac[6]);
     }
 
     // disabled since we cant draw anything yet (other than a pixel)
@@ -333,11 +339,11 @@ extern "C" void kernel_entry(multiboot_t* multiboot_struct, void* kpml4) {
 
     debug_print("[KERNEL] finished initializing\n");
 
-    const char* spinner[] = { ".  ", " . ", "  ." };
+    const char* spinner[] = { ">  ", ">> ", " >>", "  >" };
     constexpr size_t chars_size = (sizeof(spinner) / sizeof(char*));
     size_t i = 0;
     while (true) {
-        vga_tm_set_cursor(49, 20);
+        vga_tm_set_cursor(VGA_TM_NUM_COLS - chars_size, VGA_TM_NUM_ROWS - 1);
         vga_tm_print("%s", spinner[i++ % chars_size]);
         vga_tm_set_cursor(VGA_TM_NUM_COLS, VGA_TM_NUM_ROWS);
         pit_sleep(250);
