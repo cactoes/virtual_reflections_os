@@ -18,7 +18,7 @@
 #include "drivers/e1000_driver.hpp"
 
 void draw_logo_vga_tm() {
-    constexpr uint32_t x = 29;
+    constexpr uint32_t x = 50;
     constexpr uint32_t y_base = 1;
     
     vga_tm_set_cursor(x, y_base + 1);  vga_tm_print("         *  ..        \n");
@@ -38,7 +38,6 @@ void draw_logo_vga_tm() {
     vga_tm_set_cursor(x, y_base + 15); vga_tm_print("       -@@@ @@+       \n");
     vga_tm_set_cursor(x, y_base + 16); vga_tm_print("        :@  %=        \n");
 }
-
 extern "C" NORETURN void critical_fatal_ex(uint64_t code, const char* message, cpu_state_t* cpu_state = nullptr) {
     debug_print("[FATAL]: critical fatal triggerd: 0x%uh, %s\n", code, message);
 
@@ -197,9 +196,9 @@ extern "C" void kernel_entry(multiboot_t* multiboot_struct, void* kpml4) {
     hc::gdt_tss::init();
 
     vga_tm_clear_screen();
-    // draw_logo_vga_tm();
+    draw_logo_vga_tm();
     vga_tm_set_cursor(0, 0);
-    vga_tm_print("[BOOT SQUENCE]\n");
+    vga_tm_print("[KERNEL BOOT SEQUENCE]\n");
     vga_tm_print("> SYSTEM EPISODE: 0\n");
     vga_tm_print("> DEVICE DRIVERS: AHCI, IDE, PS2 KB, PS2 M\n");
     vga_tm_print("> SCREEN MODE: VGA\n");
@@ -215,6 +214,10 @@ extern "C" void kernel_entry(multiboot_t* multiboot_struct, void* kpml4) {
     if (!heap_init(&heap, kpml4, (void*)0x40000000, 0x100000 * 32))
         critical_fatal(0x0, "heap_init failed");
     set_global_heap(&heap);
+
+    vga_tm_print("> COMPLETE\n");
+
+    vga_tm_print("> INITIALIZING PERIPHERALS ...\n");
 
     key_state_t key_states[KEY_STATE_ARRAY_SIZE] = {};
     keyboard_init(key_states);
@@ -242,6 +245,13 @@ extern "C" void kernel_entry(multiboot_t* multiboot_struct, void* kpml4) {
     vthread_t thread{};
     vthread_create(&thread, thread_test);
 
+    vga_tm_print("> COMPLETE\n");
+
+    vga_tm_print("> KERNEL BOOT SEQUENCE COMPLETE\n\n");
+    debug_print("> KERNEL BOOT SEQUENCE COMPLETE\n");
+
+    vga_tm_print("[HARDWARE]\n");
+
     vector<pci_device_info_t> pci_devices {};
     pci_enumerate_devices(&pci_devices);
 
@@ -255,6 +265,8 @@ extern "C" void kernel_entry(multiboot_t* multiboot_struct, void* kpml4) {
         debug_print("    device             : 0x%uh\n", device_node->value.device);
         debug_print("    function           : %u\n", device_node->value.function);
     }
+
+    vga_tm_print("> PCI(E) DEVICES FOUND: %i\n", pci_devices.length());
 
     vector<pci_device_request_t> pci_devices_requested {};
     // ahci controller
@@ -337,13 +349,11 @@ extern "C" void kernel_entry(multiboot_t* multiboot_struct, void* kpml4) {
     // vga_gm_buffer_create(&buffer);
     // vga_gm_startup(&buffer);
 
-    debug_print("[KERNEL] finished initializing\n");
-
     const char* spinner[] = { ">  ", ">> ", " >>", "  >" };
     constexpr size_t chars_size = (sizeof(spinner) / sizeof(char*));
     size_t i = 0;
     while (true) {
-        vga_tm_set_cursor(VGA_TM_NUM_COLS - chars_size, VGA_TM_NUM_ROWS - 1);
+        vga_tm_set_cursor(VGA_TM_NUM_COLS - 4, VGA_TM_NUM_ROWS - 1);
         vga_tm_print("%s", spinner[i++ % chars_size]);
         vga_tm_set_cursor(VGA_TM_NUM_COLS, VGA_TM_NUM_ROWS);
         pit_sleep(250);
