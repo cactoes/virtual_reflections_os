@@ -90,4 +90,6 @@ size_t sprintf(char* buffer, size_t size, const char* fmt, va_list args);
 /// @return                 size of string inc null terminator
 size_t sprintf(char* buffer, size_t size, const char* fmt, ...);
 
+bool strncpy(char* dest, const char* src, size_t dest_size);
+
 #endif // __STRING_HPP__

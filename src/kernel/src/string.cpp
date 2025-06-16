@@ -354,3 +354,14 @@ size_t sprintf(char* buffer, size_t size, const char* fmt, ...) {
 
     return result;
 }
+
+bool strncpy(char* dest, const char* src, size_t dest_size) {
+    size_t src_len = strlen(src);
+
+    if (src_len > dest_size)
+        return false;
+
+    memcpy(dest, src, src_len);
+
+    return true;
+}

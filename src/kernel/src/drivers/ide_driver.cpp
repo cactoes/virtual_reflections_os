@@ -259,7 +259,7 @@ int ide_atapi_read(ata_drive_t* drive, uint32_t lba, uint8_t* buffer) {
     packet[11] = 0;
 
     for (int i = 0; i < 6; i++) {
-        uint16_t w = ((uint16_t)packet[i*2 + 1] << 8) | packet[i*2];
+        uint16_t w = ((uint16_t)packet[i * 2 + 1] << 8) | packet[i * 2];
         cpu_outw(drive->io_base, w);
     }
 
