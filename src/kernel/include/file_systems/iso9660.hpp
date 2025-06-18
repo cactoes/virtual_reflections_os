@@ -9,7 +9,6 @@
 #define __ISO9660_HPP__
 
 #include "common.hpp"
-#include "drivers/ide_driver.hpp"
 #include "file_systems/vfs.hpp"
 
 struct iso9660_lbs_msb_32 {

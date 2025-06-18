@@ -26,6 +26,14 @@ rectangle "Core" {
         [Events]
         [Bitmap]
     }
+
+    rectangle "Virtual File System" {
+
+    }
+
+    rectangle "File Systems" {
+        [ISO9660]
+    }
 }
 
 [Virtual Threads] --> [Mutex]
@@ -48,6 +56,12 @@ rectangle "Core" {
 [Events] --> [Mutex]
 [Events] --> [Vector]
 [Vector] --> [Mutex]
+
+"Virtual File System" --> [Vector]
+"Virtual File System" --> [ISO9660]
+"Virtual File System" --> [IDE]
+[ISO9660] --> [Vector]
+[ISO9660] --> [Memory Manager]
 
 rectangle "Programs" {
     rectangle "Shell" {

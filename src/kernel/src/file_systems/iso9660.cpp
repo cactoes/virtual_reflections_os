@@ -3,6 +3,7 @@
 #include "debug.hpp"
 #include "vector.hpp"
 #include "string.hpp"
+#include "drivers/ide_driver.hpp"
 
 void fmt_name(const char* name, uint8_t len, char* buff) {
     if(len == 1 && (name[0] == 0 || name[0] == 1)) {
