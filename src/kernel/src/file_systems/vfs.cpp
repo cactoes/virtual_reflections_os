@@ -10,12 +10,31 @@ static vfs_node_t vfs_root {
     .children = vector<vfs_node_t*>{}
 };
 
+int dev_null_read(drive_t*, uint32_t lba, void* buffer, size_t* size) {
+    *size = 0;
+    return 0;
+}
+
+int dev_null_write(drive_t*, uint32_t lba, void* buffer, size_t* size) {
+    return 0;
+}
+
 void vfs_init() {
     vfs_node_t* node = (vfs_node_t*)g_heap_alloc(sizeof(vfs_node_t));
     node->name = "dev";
     node->node_type = vfs_node_type_t::DIRECTORY;
     node->parent = &vfs_root;
     node->children = vector<vfs_node_t*> {};
+
+    vfs_node_t* null_node = (vfs_node_t*)g_heap_alloc(sizeof(vfs_node_t));
+    null_node->name = "dev";
+    null_node->node_type = vfs_node_type_t::CHAR_DEVICE;
+    null_node->parent = node;
+    null_node->children = vector<vfs_node_t*> {};
+    null_node->drive.read = &dev_null_read;
+    null_node->drive.write = &dev_null_write;
+    node->children.insert_back(null_node);
+
     vfs_root.children.insert_back(node);
 }
 
@@ -70,6 +89,8 @@ void vfs_read_recurse(vfs_node_t* start_node, const char* file, void** data, siz
             vfs_read_recurse(node->value, &file[next_index + 1], data, size);
         } else if (node->value->node_type == vfs_node_type_t::BLOCK_DEVICE) {
             node->value->fs.read(&node->value->fs, &node->value->drive, &file[next_index + 1], data, size);
+        } else if (node->value->node_type == vfs_node_type_t::CHAR_DEVICE) {
+            node->value->drive.read(&node->value->drive, 0, *data, size);
         }
     }
 }

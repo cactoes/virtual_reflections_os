@@ -14,7 +14,8 @@
 enum class vfs_node_type_t {
     FILE,
     DIRECTORY,
-    BLOCK_DEVICE
+    BLOCK_DEVICE,
+    CHAR_DEVICE
 };
 
 enum class fs_type_t {
