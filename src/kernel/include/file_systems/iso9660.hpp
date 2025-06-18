@@ -50,17 +50,17 @@ struct iso9660_volume_boot_record_t {
 } PACKED;
 
 struct iso9660_dir_record_t {
-    uint8_t length;                // Length of Directory Record
-    uint8_t ext_attr_length;       // Extended Attribute Record Length
-    iso9660_lbs_msb_32 extent_lba; // Location of extent (LBA) (dual-endian)
-    iso9660_lbs_msb_32 data_length;// Data length (dual-endian)
-    uint8_t recording_date[7];     // Recording date and time (year, month, day, hour, minute, second, offset)
-    uint8_t file_flags;            // File flags
-    uint8_t file_unit_size;        // File unit size for interleaved mode
-    uint8_t interleave_gap_size;   // Interleave gap size
-    iso9660_lbs_msb_16 volume_sequence_number; // Volume sequence number (dual-endian)
-    uint8_t name_len;              // Length of file identifier (name)
-    char name[];                  // File Identifier (not null-terminated), may be 1 or 2 bytes for special entries
+    uint8_t length;
+    uint8_t ext_attr_length;
+    iso9660_lbs_msb_32 extent_lba;
+    iso9660_lbs_msb_32 data_length;
+    uint8_t recording_date[7];
+    uint8_t file_flags;
+    uint8_t file_unit_size;
+    uint8_t interleave_gap_size;
+    iso9660_lbs_msb_16 volume_sequence_number;
+    uint8_t name_len;
+    char name[];
 } PACKED;
 
 struct iso9660_volume_primary_volume_descriptor_t {
@@ -111,6 +111,12 @@ struct iso9660_volume_primary_volume_descriptor_t {
 struct iso9660_volume_descriptor_set_terminator_t {
     iso9660_volume_type_t type;
     char identifier_raw[5];
+    uint8_t version;
+} PACKED;
+
+struct susp_entry_t {
+    char signature[2];
+    uint8_t length;
     uint8_t version;
 } PACKED;
 

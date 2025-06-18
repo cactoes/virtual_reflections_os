@@ -63,6 +63,55 @@ int iso9660_drive_deinit(fs_t* fs) {
     return 0;
 }
 
+void get_name(iso9660_dir_record_t* record, char* out_name, size_t out_size) {
+    uint8_t* system_use = (uint8_t*)record->name + record->name_len;
+    
+    if (record->name_len % 2 == 0)
+        system_use++;
+    
+    size_t system_use_len = record->length - (system_use - (uint8_t*)record);
+    if (system_use_len < 0) {
+        fmt_name(record->name, record->name_len, out_name);
+        return;
+    }
+    
+    const uint8_t* ptr = system_use;
+    const uint8_t* end = system_use + system_use_len;
+    
+    while (ptr + 4 <= end) {
+        const susp_entry_t* entry = (const susp_entry_t*)ptr;
+        
+        if (entry->length < 4 || ptr + entry->length > end)
+            break;
+        
+        if (memeq(entry->signature, "NM", 2)) {
+            size_t data_len = entry->length - 4;
+            const uint8_t* name_ptr = ptr + 4;
+            
+            // Skip flags byte if present
+            if (data_len > 0) {
+                uint8_t flags = *name_ptr;
+                name_ptr++;
+                data_len--;
+            }
+            
+            if (data_len >= out_size) {
+                data_len = out_size - 1;
+            }
+            
+            memcpy(out_name, name_ptr, data_len);
+            out_name[data_len] = '\0';
+            return;
+        }
+        
+        if (entry->length == 0)
+            break;
+        ptr += entry->length;
+    }
+
+    fmt_name(record->name, record->name_len, out_name);
+}
+
 bool __recurse_loop_dir(drive_t* drive, uint64_t lba, uint64_t size, char* file_path, iso9660_node_data_t* data) {
     char* target = (char*)heap_alloc(get_global_heap(), strlen(file_path));
     memzero(target,  strlen(file_path));
@@ -76,7 +125,6 @@ bool __recurse_loop_dir(drive_t* drive, uint64_t lba, uint64_t size, char* file_
 
     for (uint32_t i = 0; i < num_sectors; i++) {
         size_t ss = IDE_SECTOR_SIZE;
-
         if (drive->read(drive, lba + i, dir_data + i * IDE_SECTOR_SIZE, &ss) != 0) {
             heap_free(get_global_heap(), dir_data);
             heap_free(get_global_heap(), target);
@@ -96,7 +144,7 @@ bool __recurse_loop_dir(drive_t* drive, uint64_t lba, uint64_t size, char* file_
             break;
 
         char name[256] { 0 };
-        fmt_name(dir_record->name, dir_record->name_len, name);
+        get_name(dir_record, name, 256);
 
         bool is_directory = (dir_record->file_flags & 0x02) != 0;
         bool is_target = streq(name, target);
@@ -105,6 +153,9 @@ bool __recurse_loop_dir(drive_t* drive, uint64_t lba, uint64_t size, char* file_
             data->lba = dir_record->extent_lba.le;
             data->size = dir_record->data_length.le;
             data->is_directory = false;
+            
+            heap_free(get_global_heap(), dir_data);
+            heap_free(get_global_heap(), target);
             return true;
         }
 
@@ -113,12 +164,11 @@ bool __recurse_loop_dir(drive_t* drive, uint64_t lba, uint64_t size, char* file_
             !(dir_record->name_len == 1 && (dir_record->name[0] == 0 || dir_record->name[0] == 1))) {
             uint32_t child_extent_lba = dir_record->extent_lba.le;
             uint32_t child_extent_size = dir_record->data_length.le;
-            
-            if (!__recurse_loop_dir(drive, child_extent_lba, child_extent_size, &file_path[strlen(target) + 1], data)) {
-                heap_free(get_global_heap(), dir_data);
-                heap_free(get_global_heap(), target);
-                return true;
-            }
+
+            const auto r = __recurse_loop_dir(drive, child_extent_lba, child_extent_size, &file_path[strlen(target) + 1], data);
+            heap_free(get_global_heap(), dir_data);
+            heap_free(get_global_heap(), target);
+            return r;
         }
 
         offset += dir_record->length;
