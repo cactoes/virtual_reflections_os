@@ -40,6 +40,7 @@
 #include "common.hpp"
 #include "vector.hpp"
 #include "drivers/pci_driver.hpp"
+#include "file_systems/vfs.hpp"
 
 enum class ide_channel_name_t {
     NONE = 0,
@@ -86,5 +87,16 @@ int ide_identify(uint16_t io_base, bool slave, uint16_t* out_buf);
 int ide_identify_packet(uint16_t io_base, bool slave, uint16_t* out_buf);
 
 int ide_atapi_read(ata_drive_t* drive, uint32_t lba, uint8_t* buffer);
+
+inline int atapi_read(drive_t* drive, uint32_t lba, void* buffer, size_t* size) {
+    if (*size != IDE_SECTOR_SIZE)
+        return 1;
+
+    return ide_atapi_read((ata_drive_t*)drive->device, lba, (uint8_t*)buffer);
+}
+
+inline int atapi_write(drive_t* drive, uint32_t lba, void* buffer, size_t* size) {
+    return 1;
+}
 
 #endif // __IDE_DRIVER_HPP__

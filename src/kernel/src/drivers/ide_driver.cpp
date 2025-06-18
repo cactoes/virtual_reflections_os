@@ -229,13 +229,28 @@ int ide_atapi_identify_device(ata_drive_t* drive, uint16_t io_base, bool slave) 
     return 0;
 }
 
+void create_atapi_struct_read(uint8_t packet[12], uint64_t lba, uint16_t sector_count) {
+    memzero(packet, 12);
+
+    packet[0] = 0x28; // read
+    packet[1] = 0;
+    packet[2] = (lba >> 24) & 0xFF;
+    packet[3] = (lba >> 16) & 0xFF;
+    packet[4] = (lba >> 8) & 0xFF;
+    packet[5] = (lba >> 0) & 0xFF;
+    packet[6] = 0x00;
+    packet[7] = (sector_count >> 8) & 0xFF;
+    packet[8] = (sector_count >> 0) & 0xFF;
+    packet[9] = 0x00;
+    packet[10] = 0x00;
+    packet[11] = 0x00;
+}
+
 int ide_atapi_read(ata_drive_t* drive, uint32_t lba, uint8_t* buffer) {
     cpu_outb(drive->io_base + IDE_REG_DEVICE, drive->type == ide_drive_type_t::SLAVE ? IDE_DEVICE_SLAVE : IDE_DEVICE_MASTER);
-
     cpu_outb(drive->io_base + IDE_REG_ERROR_FEATURES, 0);
     cpu_outb(drive->io_base + IDE_REG_LBA_MID, 0);
     cpu_outb(drive->io_base + IDE_REG_LBA_HIGH, 8);
-
     cpu_outb(drive->io_base + IDE_REG_COMMAND_STATUS, IDE_CMD_PACKET);
 
     while (true) {
@@ -244,19 +259,8 @@ int ide_atapi_read(ata_drive_t* drive, uint32_t lba, uint8_t* buffer) {
             break;
     }
 
-    uint8_t packet[12] = {0};
-    packet[0] = 0x28; // read
-    packet[1] = 0;
-    packet[2] = (lba >> 24) & 0xFF;
-    packet[3] = (lba >> 16) & 0xFF;
-    packet[4] = (lba >> 8) & 0xFF;
-    packet[5] = (lba >> 0) & 0xFF;
-    packet[6] = 0;
-    packet[7] = 1; // 1 sector
-    packet[8] = 0;
-    packet[9] = 0;
-    packet[10] = 0;
-    packet[11] = 0;
+    uint8_t packet[12];
+    create_atapi_struct_read(packet, lba, 1);
 
     for (int i = 0; i < 6; i++) {
         uint16_t w = ((uint16_t)packet[i * 2 + 1] << 8) | packet[i * 2];

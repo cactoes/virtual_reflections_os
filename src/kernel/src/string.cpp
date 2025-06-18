@@ -365,3 +365,45 @@ bool strncpy(char* dest, const char* src, size_t dest_size) {
 
     return true;
 }
+
+char* strchr(const char* s, char c) {
+    while (*s) {
+        if (*s == c)
+            return (char*)s;
+        s++;
+    }
+
+    if (c == '\0')
+        return (char*)s;
+
+    return nullptr;
+}
+
+bool streq(const char* str1, const char* str2) {
+    while (*str1 && *str2 && *str1 == *str2) {
+        str1++;
+        str2++;
+    }
+
+    return *str1 == *str2;
+}
+
+int strff(const char* str, char ch) {
+    for (int i = 0; str[i]; i++) {
+        if (str[i] == ch)
+            return i;
+    }
+
+    return -1;
+}
+
+bool str_start_with(const char* str1, const char* target) {
+    while (*target) {
+        if (*str1 != *target)
+            return false;
+        str1++;
+        target++;
+    }
+
+    return true;
+}

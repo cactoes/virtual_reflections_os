@@ -91,5 +91,9 @@ size_t sprintf(char* buffer, size_t size, const char* fmt, va_list args);
 size_t sprintf(char* buffer, size_t size, const char* fmt, ...);
 
 bool strncpy(char* dest, const char* src, size_t dest_size);
+char* strchr(const char* s, char c);
+bool streq(const char* str1, const char* str2);
+int strff(const char* str, char ch);
+bool str_start_with(const char* str1, const char* target);
 
 #endif // __STRING_HPP__

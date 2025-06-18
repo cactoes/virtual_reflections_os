@@ -33,15 +33,25 @@ public:
 
     // move
     vector(vector&& other) = delete;
-    vector& operator=(vector&& other) = delete;
+    vector& operator=(vector&& other) noexcept {
+        if (this == &other)
+            return *this;
+        
+        clear();
+        
+        mutex_lock_guard other_guard(&other.mutex);
+        
+        _first = other._first;
+        size = other.size;
+        
+        other._first = nullptr;
+        other.size = 0;
+        
+        return *this;
+    }
 
     ~vector() {
-        vector_node_t<T>* node = first();
-        while (node) {
-            vector_node_t<T>* next = node->next;
-            heap_free(get_global_heap(), node);
-            node = next;
-        }
+        clear();
     }
 
     size_t length() {
@@ -74,6 +84,18 @@ public:
 
     vector_node_t<T>* first() {
         return _first;
+    }
+
+    void clear() {
+        mutex_lock_guard guard(&mutex);
+        vector_node_t<T>* node = first();
+        while (node) {
+            vector_node_t<T>* next = node->next;
+            heap_free(get_global_heap(), node);
+            node = next;
+        }
+        _first = nullptr;
+        size = 0;
     }
 
 private:

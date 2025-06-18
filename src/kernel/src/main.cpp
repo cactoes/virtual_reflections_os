@@ -192,81 +192,6 @@ void thread_test() {
     while (true) {}
 }
 
-void iso_test(ata_drive_t* drive) {
-    uint8_t data[IDE_SECTOR_SIZE] {};
-    ide_atapi_read(drive, 16, data);
-    for (int i = 0; i < IDE_SECTOR_SIZE; ++i) {
-        debug_print("%uh ", data[i]);
-        if ((i + 1) % 16 == 0) debug_print("\n");
-    }
-
-    iso9660_volume_descriptor_t* desc = (iso9660_volume_descriptor_t*)data;
-
-    char id[6] = {0};
-    memcpy(id, desc->identifier, 5);
-
-    debug_print("identifier: %s\n", id);
-    debug_print("version: %u\n", desc->version);
-
-    char system_identifier[33] = {0};
-    memcpy(system_identifier, desc->system_identifier, 32);
-    debug_print("system_identifier: %s\n", system_identifier);
-
-    char volume_identifier[33] = {0};
-    memcpy(volume_identifier, desc->volume_identifier, 32);
-    debug_print("volume_identifier: %s\n", volume_identifier);
-    debug_print("volume_space_size_le: %u\n", desc->volume_space_size_le);
-
-    iso9660_dir_record_t* root_record = (iso9660_dir_record_t*)(data + 156);
-
-    debug_print("Root dir extent LBA: %u\n", root_record->extent_lba_le);
-    debug_print("Root dir data length: %u\n", root_record->data_length_le);
-    debug_print("Flags: %u\n", root_record->file_flags);
-    debug_print("length: %u\n", root_record->length);
-    debug_print("Name length: %u\n", root_record->name_len);
-    debug_print("Name: %i\n", root_record->name[0]);
-
-    memzero(data, IDE_SECTOR_SIZE);
-    ide_atapi_read(drive, root_record->extent_lba_le, data);
-    for (int i = 0; i < IDE_SECTOR_SIZE; ++i) {
-        debug_print("%uh ", data[i]);
-        if ((i + 1) % 16 == 0) debug_print("\n");
-    }
-
-    debug_print("Root Directory Sector (LBA 19) first 16 bytes:\n");
-    for (int i = 0; i < 16; ++i) {
-        debug_print("%uh ", data[i]);
-    }
-    debug_print("\n");
-
-    uint8_t* ptr = data;
-    uint8_t* end = data + IDE_SECTOR_SIZE;
-
-    while (ptr < end && ptr[0] != 0) {
-        uint8_t len = ptr[0];
-        if (len == 0) break; // safety
-        
-        if (ptr + len > end) {
-            debug_print("Directory record extends beyond sector boundary, stopping.\n");
-            break;
-        }
-
-        uint32_t extent_lba = ptr[2] | (ptr[3] << 8) | (ptr[4] << 16) | (ptr[5] << 24);
-        uint32_t file_size = ptr[10] | (ptr[11] << 8) | (ptr[12] << 16) | (ptr[13] << 24);
-        uint8_t name_len = ptr[32];
-        char name[256] = {0};
-        if (name_len > 0 && name_len < sizeof(name)) {
-            memcpy(name, &ptr[33], name_len);
-        } else {
-            strncpy(name, "(invalid name length)", sizeof(name));
-        }
-
-        debug_print("File: %s, LBA: %u, Size: %u\n", name, extent_lba, file_size);
-
-        ptr += len;
-    }
-}
-
 extern "C" void kernel_entry(multiboot_t* multiboot_struct, void* kpml4) {
     debug_init();
 
@@ -324,8 +249,12 @@ extern "C" void kernel_entry(multiboot_t* multiboot_struct, void* kpml4) {
 
     vga_tm_print("> COMPLETE\n");
 
+    vfs_init();
+
     vga_tm_print("> KERNEL BOOT SEQUENCE COMPLETE\n\n");
     debug_print("> KERNEL BOOT SEQUENCE COMPLETE\n");
+
+
 
     vga_tm_print("[HARDWARE]\n");
 
@@ -388,6 +317,7 @@ extern "C" void kernel_entry(multiboot_t* multiboot_struct, void* kpml4) {
         vector<ata_drive_t> ata_drives {};
         ide_init(ide_device, &ata_drives);
 
+        size_t device_index = 0;
         for (VECTOR_LOOP(&ata_drives, drive_node)) {
             static const char* channels[3] { "NONE", "PRIMARY", "SECONDARY" };
             static const char* types[3] { "NONE", "MASTER", "SLAVE" };
@@ -403,11 +333,27 @@ extern "C" void kernel_entry(multiboot_t* multiboot_struct, void* kpml4) {
             debug_print("   drive capacity          : %ul bytes\n", drive_node->value.capacity);
             debug_print("   logical sector size     : %u bytes\n", drive_node->value.logical_sector_size);
             debug_print("   physical sector size    : %u bytes\n", drive_node->value.physical_sector_size);
+
+
+            // TODO @since 18/06/2025 -- 02:46
+            // check file system
+            if (drive_node->value.is_atapi) {
+                char device_name[5] { 0 };
+                sprintf(device_name, 5, "ata%i", device_index);
+                
+                vfs_node_t* file_system_node = vfs_mount_dev(device_name, drive_type_t::ATAPI, fs_type_t::ISO9660);
+                file_system_node->drive.device = &drive_node->value;
+                if (iso9660_drive_init(&file_system_node->drive, &file_system_node->fs) != 0)
+                    debug_print("failed to mount device: %s", device_name);
+
+                // iso9660_drive_deinit(&file_system_node->fs);
+            }
+
+
+            device_index++;
         }
 
         vga_tm_print("> ATA DRIVES FOUND: %i\n", ata_drives.length());
-
-        iso_test(&ata_drives.first()->value);
 
         // TODO @since 15/06/2025 -- 21:40
         // fix this hoe
@@ -418,13 +364,23 @@ extern "C" void kernel_entry(multiboot_t* multiboot_struct, void* kpml4) {
 
         // debug_print("[NETWORK] dectected controller:\n");
         // debug_print("   mac                     : %uh:%uh:%uh:%uh:%uh:%uh\n", e1000_device.mac[0], e1000_device.mac[1], e1000_device.mac[2], e1000_device.mac[3], e1000_device.mac[4], e1000_device.mac[5], e1000_device.mac[6]);
-        vga_tm_print("> NETWORK CARD FOUND: (INTEL) E1000\n");
+        // vga_tm_print("> NETWORK CARD FOUND: (INTEL) E1000\n");
     }
 
     // disabled since we cant draw anything yet (other than a pixel)
     // vga_generic_buffer_t buffer{};
     // vga_gm_buffer_create(&buffer);
     // vga_gm_startup(&buffer);
+
+    void* file_data_out;
+    size_t size;
+    vfs_read("/dev/ata0/test.txt", &file_data_out, &size);
+
+    debug_print("file_content: ");
+    for (size_t i = 0; i < size; i++)
+        debug_print(((char*)file_data_out)[i]);
+
+    g_heap_free(file_data_out);
 
     const char* spinner[] = { ">  ", ">> ", " >>", "  >" };
     constexpr size_t chars_size = (sizeof(spinner) / sizeof(char*));

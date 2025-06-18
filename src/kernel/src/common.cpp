@@ -29,6 +29,15 @@ void* memcpy(void* dest, const void* src, size_t size) {
     return dest;
 }
 
+bool memeq(const void* a1, const void* a2, size_t size) {
+    for (size_t i = 0; i < size; i++) {
+        if (((uint8_t*)a1)[i] != ((uint8_t*)a2)[i])
+            return false;
+    }
+
+    return true;
+}
+
 bool mem_is_aligned(uint64_t addr, uint64_t align) {
     return (addr & (align - 1)) == 0;
 }

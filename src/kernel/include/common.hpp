@@ -55,6 +55,7 @@ typedef   signed char int8_t;
 void* memset(void* dest, uint8_t val, size_t size);
 void* memzero(void* dest, size_t size);
 void* memcpy(void* dest, const void* src, size_t size);
+bool  memeq(const void* a1, const void* a2, size_t size);
 
 bool mem_is_aligned(uint64_t addr, uint64_t align);
 uint64_t mem_align_up(uint64_t addr, uint64_t align);

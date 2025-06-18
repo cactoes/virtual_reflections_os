@@ -32,6 +32,9 @@
 #define HEAP_MAKE_FILTER_PARAM(param) ((void*)&param)
 #define HEAP_FILTERS_SIZE(array) (sizeof(array) / sizeof(block_filter_callback_t))
 
+#define g_heap_alloc(size) heap_alloc(get_global_heap(), size)
+#define g_heap_free(ptr) heap_free(get_global_heap(), ptr)
+
 #include "common.hpp"
 
 struct heap_block_t {
