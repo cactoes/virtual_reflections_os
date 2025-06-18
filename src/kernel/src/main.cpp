@@ -182,6 +182,8 @@ cpu_state_t* handle_critical_interrupt(uint64_t code, cpu_state_t* rsp) {
 cpu_state_t* handle_other_interrupt(uint64_t code, cpu_state_t* rsp) {
     // if (code == 0x2E) return rsp;
     // if (code == 0x2F) return rsp;
+    if (code == 0x2b)
+        return e1000_handle_interrupt(rsp);
     
     critical_fatal_ex(code, "FATAL: unhandled interrupt", rsp);
     return rsp;
@@ -352,8 +354,8 @@ extern "C" void kernel_entry(multiboot_t* multiboot_struct, void* kpml4) {
 
         vga_tm_print("> ATA DRIVES FOUND: %i\n", ata_drives.length());
 
-        // TODO @since 15/06/2025 -- 21:40
-        // fix this hoe
+        // TODO @since 18/06/2025 -- 13:20
+        // might work? figure out if qemu links to real network
         // pci_device_info_t* network_device = pci_devices.get_at(pci_devices_requested.get_at(2)->pci_device_index);
 
         // e1000_device_t e1000_device {};

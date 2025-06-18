@@ -3,8 +3,10 @@
 #include "memory.hpp"
 #include "cpu.hpp"
 #include "drivers/pit_driver.hpp"
+#include "string.hpp"
 
-dma_heap_t g_e1000_dma_heap {};
+static dma_heap_t g_e1000_dma_heap {};
+static e1000_device_t* g_device;
 
 void e1000_write_reg(e1000_device_t* device, uint32_t offset, uint32_t value) {
     *((volatile uint32_t*)((uint8_t*)device->mmio_region + offset)) = value;
@@ -51,28 +53,33 @@ void e1000_init_mac(e1000_device_t* device) {
     }
 }
 
+void e1000_write_mac(e1000_device_t* device, uint8_t mac[6]) {
+    uint32_t mac_low = 0;
+    uint32_t mac_high = 1 << 31;
+    memcpy(&mac_low, &mac[0], 4);
+    memcpy(&mac_high, &mac[4], 2);
+
+    e1000_write_reg(device, E1000_REG_RAL, mac_low);
+    e1000_write_reg(device, E1000_REG_RAH, mac_high);
+}
+
+
 int e1000_transmit_init(e1000_device_t* device) {
-    device->transmit_descriptions = (e1000_transmit_desc_t*)dma_heap_alloc(&g_e1000_dma_heap, E1000_TRANSMIT_DESC_COUNT * sizeof(e1000_transmit_desc_t), 128);
+    device->transmit_descriptions = (e1000_transmit_desc_t*)dma_heap_alloc(&g_e1000_dma_heap, E1000_TRANSMIT_DESC_COUNT * sizeof(e1000_transmit_desc_t), 16);
     if (!device->transmit_descriptions)
         return 1;
 
-    device->transmit_desc_buffers = (uint8_t*)dma_heap_alloc(&g_e1000_dma_heap, E1000_BUFFER_SIZE, 128);
+    device->transmit_desc_buffers = (uint8_t*)dma_heap_alloc(&g_e1000_dma_heap, E1000_BUFFER_SIZE, 16);
     if (!device->transmit_desc_buffers)
-        return 1;
+        return 2;
         
     for (int i = 0; i < E1000_TRANSMIT_DESC_COUNT; ++i) {
+        memzero(&device->transmit_descriptions[i], sizeof(e1000_transmit_desc_t));
         device->transmit_descriptions[i].buffer_addr = dma_get_physical(&g_e1000_dma_heap, (device->transmit_desc_buffers + i * E1000_BUFFER_SIZE));
-        device->transmit_descriptions[i].cmd = 0;
         device->transmit_descriptions[i].status = (1 << 0);
     }
 
-    void* virt = device->transmit_descriptions;
-    uint64_t phys = dma_get_physical(&g_e1000_dma_heap, virt);
-    debug_print("Transmit desc virt: %p, phys: 0x%uh\n", virt, phys);
-
     uint64_t physical = dma_get_physical(&g_e1000_dma_heap, device->transmit_descriptions);
-    debug_print("TDBAL = 0x%uh\n", (uint32_t)(physical));
-    debug_print("TDBAH = 0x%uh\n", (uint32_t)(physical >> 32));
 
     e1000_write_reg(device, E1000_TDBAL, (uint32_t)physical);
     e1000_write_reg(device, E1000_TDBAH, (uint32_t)(physical >> 32));
@@ -82,30 +89,28 @@ int e1000_transmit_init(e1000_device_t* device) {
 
     e1000_write_reg(device, E1000_TCTL,
         E1000_TCTL_EN | E1000_TCTL_PSP |
-        (0x10 << E1000_TCTL_CT_SHIFT) |
+        (0x0F << E1000_TCTL_CT_SHIFT) |
         (0x40 << E1000_TCTL_COLD_SHIFT));
 
-    uint32_t tctl = e1000_read_reg(device, E1000_TCTL);
-    debug_print("TCTL: 0x%uh\n", tctl);
-
-    e1000_write_reg(device, E1000_TIPG,
-        (10 << 20) | (8 << 10) | 6);
+    e1000_write_reg(device, E1000_TIPG, 0x0060200A);
 
     return 0;
 }
 
 int e1000_receive_init(e1000_device_t* device) {
+    e1000_write_mac(device, device->mac);
+
     device->receive_descriptions = (e1000_receive_desc_t*)dma_heap_alloc(&g_e1000_dma_heap, E1000_RECEIVE_DESC_COUNT * sizeof(e1000_receive_desc_t), 16);
     if (!device->receive_descriptions)
         return 1;
 
     device->receive_desc_buffers = (uint8_t*)dma_heap_alloc(&g_e1000_dma_heap, E1000_RECEIVE_DESC_COUNT * E1000_BUFFER_SIZE, 16);
     if (!device->receive_desc_buffers)
-        return 1;
+        return 2;
 
     for (int i = 0; i < E1000_RECEIVE_DESC_COUNT; ++i) {
+        memzero(&device->receive_descriptions[i], sizeof(e1000_receive_desc_t));
         device->receive_descriptions[i].buffer_addr = dma_get_physical(&g_e1000_dma_heap, (device->receive_desc_buffers + i * E1000_BUFFER_SIZE));
-        device->receive_descriptions[i].status = 0;
     }
 
     uint64_t physical = (uint64_t)dma_get_physical(&g_e1000_dma_heap, device->receive_descriptions);
@@ -115,9 +120,12 @@ int e1000_receive_init(e1000_device_t* device) {
     e1000_write_reg(device, E1000_RDH, 0);
     e1000_write_reg(device, E1000_RDT, E1000_RECEIVE_DESC_COUNT - 1);
 
-    uint32_t rctl = e1000_read_reg(device, 0x0100);
-    rctl |= E1000_RCTL_EN | E1000_RCTL_BAM | E1000_RCTL_SECRC | E1000_RCTL_SZ_2048;
-    rctl &= ~(E1000_RCTL_UPE | E1000_RCTL_MPE);
+    uint32_t rctl = E1000_RCTL_EN |
+                    E1000_RCTL_BAM | E1000_RCTL_UPE | E1000_RCTL_MPE |
+                    E1000_RCTL_SECRC |
+                    E1000_RCTL_SZ_2048 |
+                    0x00000000;
+    
     e1000_write_reg(device, 0x0100, rctl);
 
     return 0;
@@ -127,35 +135,59 @@ int e1000_send_packet(e1000_device_t* device, const void* data, size_t size) {
     if (size > E1000_BUFFER_SIZE)
         return 1;
 
-    uint32_t tdt = e1000_read_reg(device, E1000_TDT);
-    e1000_transmit_desc_t* desc = &device->transmit_descriptions[tdt];
+    uint32_t tail = device->tx_tail;
+    e1000_transmit_desc_t* desc = &device->transmit_descriptions[tail];
 
     if (!(desc->status & (1 << 0)))
         return 2;
 
-    memcpy(device->transmit_desc_buffers + (tdt * E1000_BUFFER_SIZE), data, size);
+    uint8_t* buffer = device->transmit_desc_buffers + (tail * E1000_BUFFER_SIZE);
+    memcpy(buffer, data, size);
 
     desc->length = size;
-    desc->cmd = (1 << 0) | (1 << 1) | (1 << 3);
+    desc->cso = 0;
+    desc->cmd = E1000_CMD_EOP | E1000_CMD_IFCS | E1000_CMD_RS;
     desc->status = 0;
+    desc->css = 0;
+    desc->special = 0;
 
-    __asm__ volatile("" ::: "memory");
+    device->tx_tail = (tail + 1) % E1000_TRANSMIT_DESC_COUNT;
+    e1000_write_reg(device, E1000_TDT, device->tx_tail);
+    return 0;
+}
 
-    e1000_write_reg(device, E1000_TDT, (tdt + 1) % E1000_TRANSMIT_DESC_COUNT);
-
-    for (int i = 0; i < 1000000; ++i) {
-        if (desc->status & (1 << 0)) {
-            debug_print("TX complete!\n");
-            break;
-        }
-    }
-
-    debug_print("loop done!\n");
-
+int e1000_receive_packet(e1000_device_t* device, void* buffer, size_t* packet_size) {
+    uint32_t tail = device->rx_tail;
+    e1000_receive_desc_t* desc = &device->receive_descriptions[tail];
+    
+    if (!(desc->status & (1 << 0)))
+        return 1;
+    
+    uint16_t length = desc->length;
+    *packet_size = length;
+    
+    uint8_t* packet_buffer = device->receive_desc_buffers + (tail * E1000_BUFFER_SIZE);
+    memcpy(buffer, packet_buffer, length);
+    
+    desc->status = 0;
+    desc->errors = 0;
+    desc->length = 0;
+    desc->checksum = 0;
+    desc->special = 0;
+    
+    device->rx_tail = (tail + 1) % E1000_RECEIVE_DESC_COUNT;
+    e1000_write_reg(device, E1000_RDT, device->rx_tail);
+    
     return 0;
 }
 
 int e1000_init(void* pml4, pci_device_info_t* e1000_pci_device, e1000_device_t* device) {
+    g_device = device;
+    
+    uint32_t pci_command = pci_config_read(e1000_pci_device->bus, e1000_pci_device->device, e1000_pci_device->function, 0x04);
+    pci_command |= 0x06;
+    pci_config_write(e1000_pci_device->bus, e1000_pci_device->device,  e1000_pci_device->function, 0x04, pci_command);
+    
     if (dma_heap_init(pml4, &g_e1000_dma_heap, (void*)E1000_DMA_HEAP_ADDR, PAGE_SIZE_LARGE) != 0)
         return 1;
 
@@ -167,6 +199,8 @@ int e1000_init(void* pml4, pci_device_info_t* e1000_pci_device, e1000_device_t* 
         return 2;
 
     device->mmio_region = (uint32_t*)((uint32_t)E1000_MMIO_ADDR + bar_addr_offset);
+    device->tx_tail = 0;
+    device->rx_tail = 0;
 
     uint32_t status = e1000_read_reg(device, E1000_STATUS);
     if ((status == 0xFFFFFFFF) || (status == 0))
@@ -175,35 +209,74 @@ int e1000_init(void* pml4, pci_device_info_t* e1000_pci_device, e1000_device_t* 
     if (!(status & E1000_STATUS_EEPROM_PRESENT))
         return 4;
 
+    e1000_write_reg(device, E1000_CTRL, E1000_CTRL_RST);
+    e1000_write_reg(device, 0xD0, (1 << 7) | (1 << 6) | (1 << 4));
     e1000_init_mac(device);
-    e1000_transmit_init(device);
-    e1000_receive_init(device);
 
-    // uint8_t test_packet[60] = {
-    //     // Destination MAC (broadcast)
-    //     0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
-    //     // Source MAC (your MAC)
-    //     e1000_device.mac[0], e1000_device.mac[1], e1000_device.mac[2], e1000_device.mac[3], e1000_device.mac[4], e1000_device.mac[5], e1000_device.mac[6],
-    //     // Ethertype (0x0800 = IPv4)
-    //     0x08, 0x00,
-    //     // Payload (fill with test data, must be ≥ 46 bytes total)
-    //     'T','E','S','T','_','P','A','C','K','E','T','_','D','A','T','A',
-    //     '1','2','3','4','5','6','7','8','9','0','a','b','c','d','e','f',
-    //     'g','h','i','j','k','l','m','n','o','p'
-    // };
+    if (e1000_transmit_init(device) != 0) {
+        debug_print("Failed to initialize transmit\n");
+        return 5;
+    }
+    
+    if (e1000_receive_init(device) != 0) {
+        debug_print("Failed to initialize receive\n");
+        return 6;
+    }
 
-    uint8_t pkt[64] = { 0 };
-    memset(pkt, 'A', sizeof(pkt));
-    // e1000_send_packet(device, pkt, sizeof(pkt));
+    debug_print("Starting loopback test...\n");
 
-    const auto r = e1000_send_packet(device, pkt, sizeof(pkt));
-    debug_print("r: %u\n", r);
+    uint8_t test_packet[64];
+    memset(test_packet, 'F', sizeof(test_packet));
+    
+    // memcpy(test_packet, device->mac, 6);
+    memcpy(test_packet + 6, device->mac, 6);
+    
+    test_packet[12] = 0x08;
+    test_packet[13] = 0x06;
+    
+    const char* test_msg = "06";
+    memcpy(test_packet + 14, test_msg, strlen(test_msg));
+    
+    int result = e1000_send_packet(device, test_packet, sizeof(test_packet));
+    debug_print("send packet result: %u\n", result);
 
-    uint32_t status2 = e1000_read_reg(device, E1000_STATUS);
-    uint32_t icr = e1000_read_reg(device, 0x000C);
-    uint32_t tctl = e1000_read_reg(device, E1000_TCTL);
-
-    debug_print("STATUS=0x%uh ICR=0x%uh TCTL=0x%uh\n", status2, icr, tctl);
-
+    uint8_t packet[E1000_BUFFER_SIZE];
+    size_t packet_size;
+    
     return 0;
+}
+
+cpu_state_t* e1000_handle_interrupt(cpu_state_t* state) {
+    int32_t icr = e1000_read_reg(g_device, 0xC0);
+    debug_print("e1000 int_handler callback: 0x%uh\n", icr);
+    
+    e1000_write_reg(g_device, 0xD0, 0x1);
+
+    if ((icr & (1<<6)) || (icr & (1<<7))) {
+        uint8_t packet[E1000_BUFFER_SIZE];
+        size_t packet_size;
+
+        while (e1000_receive_packet(g_device, packet, &packet_size) == 0) {
+            debug_print("Received packet (%u bytes):\n", (uint32_t)packet_size);
+            
+            // Print Ethernet header
+            debug_print("Dst MAC: %uh:%uh:%uh:%uh:%uh:%uh\n", 
+                        packet[0], packet[1], packet[2], packet[3], packet[4], packet[5]);
+            debug_print("Src MAC: %uh:%uh:%uh:%uh:%uh:%uh\n", 
+                        packet[6], packet[7], packet[8], packet[9], packet[10], packet[11]);
+            debug_print("EtherType: %uh%uh\n", packet[12], packet[13]);
+            
+            debug_print("Payload: ");
+            size_t print_size = (packet_size > 64) ? 64 : packet_size;
+            for (size_t i = 14; i < print_size && i < packet_size; i++) {
+                debug_print("%uh ", packet[i]);
+                if ((i - 14) % 16 == 15) debug_print("\n         ");
+            }
+            debug_print("\n");
+        }
+    }
+
+    e1000_read_reg(g_device, 0xC0);
+
+    return state;
 }

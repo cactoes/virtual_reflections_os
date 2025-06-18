@@ -67,8 +67,12 @@
 #define E1000_CMD_IFCS (1 << 1)
 #define E1000_CMD_RS  (1 << 3)
 
+#define E1000_CTRL          0x0000
+#define E1000_CTRL_RST      0x04000000
+
 #include "common.hpp"
 #include "drivers/pci_driver.hpp"
+#include "cpu.hpp"
 
 struct e1000_receive_desc_t {
     uint64_t buffer_addr;
@@ -98,9 +102,14 @@ struct e1000_device_t {
     
     e1000_receive_desc_t* receive_descriptions;
     uint8_t* receive_desc_buffers;
+
+    uint32_t tx_tail;
+    uint32_t rx_tail;
 };
 
 int e1000_send_packet(e1000_device_t* device, const void* data, size_t size);
 int e1000_init(void* pml4, pci_device_info_t* ahci_pci_device, e1000_device_t* device);
+
+cpu_state_t* e1000_handle_interrupt(cpu_state_t* state);
 
 #endif // __E1000_DRIVER_HPP__  
