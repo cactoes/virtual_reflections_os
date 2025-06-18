@@ -251,12 +251,10 @@ extern "C" void kernel_entry(multiboot_t* multiboot_struct, void* kpml4) {
 
     vfs_init();
 
-    vga_tm_print("> KERNEL BOOT SEQUENCE COMPLETE\n\n");
+    vga_tm_print("> KERNEL BOOT SEQUENCE COMPLETE\n");
     debug_print("> KERNEL BOOT SEQUENCE COMPLETE\n");
 
-
-
-    vga_tm_print("[HARDWARE]\n");
+    vga_tm_print("\n[HARDWARE]\n");
 
     vector<pci_device_info_t> pci_devices {};
     pci_enumerate_devices(&pci_devices);
@@ -349,7 +347,6 @@ extern "C" void kernel_entry(multiboot_t* multiboot_struct, void* kpml4) {
                 // iso9660_drive_deinit(&file_system_node->fs);
             }
 
-
             device_index++;
         }
 
@@ -372,15 +369,15 @@ extern "C" void kernel_entry(multiboot_t* multiboot_struct, void* kpml4) {
     // vga_gm_buffer_create(&buffer);
     // vga_gm_startup(&buffer);
 
-    void* file_data_out;
-    size_t size;
-    vfs_read("/dev/ata0/test.txt", &file_data_out, &size);
+    vga_tm_print("\n[SYSTEM CONFIG]\n");
 
-    debug_print("file_content: ");
-    for (size_t i = 0; i < size; i++)
-        debug_print(((char*)file_data_out)[i]);
+    vfs_file_t file {};
+    vfs_read("/dev/ata0/.env", &file);
 
-    g_heap_free(file_data_out);
+    for (size_t i = 0; i < file.size; i++)
+        vga_tm_print(((char*)file.buffer)[i]);
+
+    vfs_close_file(&file);
 
     const char* spinner[] = { ">  ", ">> ", " >>", "  >" };
     constexpr size_t chars_size = (sizeof(spinner) / sizeof(char*));

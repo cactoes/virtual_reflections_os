@@ -54,9 +54,15 @@ struct vfs_node_t {
     fs_t fs;
 };
 
+struct vfs_file_t {
+    void* buffer;
+    size_t size;
+};
+
 void vfs_init();
 vfs_node_t* vfs_get_root();
 vfs_node_t* vfs_mount_dev(const char* name, drive_type_t drive_type, fs_type_t fs_type);
-void vfs_read(const char* file, void** data, size_t* size);
+void vfs_read(const char* file, vfs_file_t* file_ptr);
+void vfs_close_file(vfs_file_t* file);
 
 #endif // __VFS_HPP__

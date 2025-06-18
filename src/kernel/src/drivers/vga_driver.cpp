@@ -39,6 +39,9 @@ int vga_tm_print(char ch) {
         case '\n':
             vga_tm_new_line();
             break;
+        case '\r':
+            // TODO @since 18/06/2025 -- 02:59
+            break;
         default:
             vga_tm_mem[g_vga_tm_column + VGA_TM_NUM_COLS * g_vga_tm_row] = ch | (g_vga_tm_current_color.color << 8);
             g_vga_tm_column++;

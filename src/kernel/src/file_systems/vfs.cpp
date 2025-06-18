@@ -74,32 +74,12 @@ void vfs_read_recurse(vfs_node_t* start_node, const char* file, void** data, siz
     }
 }
 
-void vfs_read(const char* file, void** data, size_t* size) {
-    // // "/dev/ata0/test.txt"
+void vfs_read(const char* file, vfs_file_t* file_ptr) {
+    vfs_read_recurse(vfs_get_root(), file, &file_ptr->buffer, &file_ptr->size);
+}
 
-    // if (str_start_with(file, "/dev")) {
-
-    //     if (str_start_with(file, "/ata0")) {
-    //         // nodeptr->name == "ata0"
-    //         if (nodeptr->node_type == vfs_node_type_t::BLOCK_DEVICE &&
-    //             nodeptr->fs.type == fs_type_t::ISO9660) {
-    //             nodeptr->fs.read(&nodeptr->fs, &nodeptr->drive, &file[9], data, size);
-    //         }
-    //     }
-
-    // }
-
-    // int next_index = strff(file + 1, '/');
-    // for (VECTOR_LOOP(&vfs_root.children, node)) {
-    //     if (node->value->node_type == vfs_node_type_t::DIRECTORY) {
-    //         if (!str_start_with(file + 1, node->value->name))
-    //             continue;
-
-    //         vfs_read(&file[next_index], data, size);
-    //     } else if (node->value->node_type == vfs_node_type_t::BLOCK_DEVICE) {
-    //         node->value->fs.read(&node->value->fs, &node->value->drive, &file[next_index], data, size);
-    //     }
-    // }
-
-    vfs_read_recurse(vfs_get_root(), file, data, size);
+void vfs_close_file(vfs_file_t* file) {
+    g_heap_free(file->buffer);
+    file->size = 0;
+    file->buffer = nullptr;
 }
