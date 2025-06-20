@@ -103,4 +103,15 @@ void vfs_close_file(vfs_file_t* file) {
     g_heap_free(file->buffer);
     file->size = 0;
     file->buffer = nullptr;
+    file->readptr = 0;
+}
+
+bool vfs_consume(vfs_file_t* file, void* out, size_t size) {
+    if (file->readptr + size > file->size)
+        return false;
+
+    memcpy(out, (uint8_t*)file->buffer + file->readptr, size);
+    file->readptr += size;
+
+    return true;
 }
