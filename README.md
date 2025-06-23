@@ -12,6 +12,9 @@ A 64-bit custom made operating system, using grub as bootloader
         - [ ] write
 - [ ] buffers / streams (lockable / mutex)
 
+## Goal
+Bootable desktop that can play a minesweeper game
+
 ## Setup build environment
 ### Windows host
 ```powershell
