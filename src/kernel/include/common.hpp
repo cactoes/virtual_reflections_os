@@ -38,6 +38,8 @@
 #define BIT_TOGGLE(x, n)    ((x) ^= BIT(n))
 #define BIT_CHECK(x, n)     (((x) >> (n)) & 1U)
 
+#define ARRAY_SIZE(arr) sizeof((arr)) / sizeof(decltype(*(arr)))
+
 typedef long unsigned int size_t;
 
 typedef unsigned long long uint64_t;
