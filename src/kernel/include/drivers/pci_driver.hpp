@@ -56,6 +56,11 @@ struct pci_device_info_t {
     uint32_t function;
 };
 
+enum class pci_device_request_mode_t {
+    CLASS_INFO,
+    VENDOR_DEVICE_ID
+};
+
 struct pci_device_request_t {
     union {
         uint32_t class_info = (uint32_t)PCI_UNKNOWN;
@@ -67,6 +72,10 @@ struct pci_device_request_t {
         };
     };
 
+    uint16_t vendor_id = (uint16_t)PCI_UNKNOWN;
+    uint16_t device_id = (uint16_t)PCI_UNKNOWN;
+
+    pci_device_request_mode_t mode = pci_device_request_mode_t::CLASS_INFO;
     bool found;
     size_t pci_device_index;
 };

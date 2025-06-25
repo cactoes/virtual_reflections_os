@@ -102,6 +102,18 @@ bool pci_enumerate_devices(vector<pci_device_info_t>* list) {
     return true;
 }
 
+bool find_device_class_info(const pci_device_info_t& inf, const pci_device_request_t& req) {
+    return (req.class_code == (uint8_t)PCI_UNKNOWN || inf.class_code == req.class_code) &&
+           (req.sub_class == (uint8_t)PCI_UNKNOWN || inf.sub_class == req.sub_class) &&
+           (req.prog_if == (uint8_t)PCI_UNKNOWN || inf.prog_if == req.prog_if) &&
+           (req.revision_id == (uint8_t)PCI_UNKNOWN || inf.revision_id == req.revision_id);
+}
+
+bool find_device_vendor_device_id(const pci_device_info_t& inf, const pci_device_request_t& req) {
+    return (req.vendor_id == (uint16_t)PCI_UNKNOWN || inf.vendor_id == req.vendor_id) &&
+           (req.device_id == (uint16_t)PCI_UNKNOWN || inf.device_id == req.device_id);
+}
+
 bool pci_find_devices(vector<pci_device_info_t>* list, vector<pci_device_request_t>* request_list) {
     if (!list || !request_list)
         return false;
@@ -111,22 +123,24 @@ bool pci_find_devices(vector<pci_device_info_t>* list, vector<pci_device_request
     size_t device_index = 0;
     for (VECTOR_LOOP(list, device_node)) {
         for (VECTOR_LOOP(request_list, request_node)) {
-            int matching_fields = 0;
+            if (request_node->value.found)
+                continue;
+            
+            bool found = false;
 
-            if (device_node->value.class_code == request_node->value.class_code || request_node->value.class_code == (uint8_t)PCI_UNKNOWN)
-                matching_fields++;
+            switch (request_node->value.mode) {
+                case pci_device_request_mode_t::CLASS_INFO:
+                    found = find_device_class_info(device_node->value, request_node->value);
+                    break;
+                case pci_device_request_mode_t::VENDOR_DEVICE_ID:
+                    found = find_device_vendor_device_id(device_node->value, request_node->value);
+                    break;
+            }
 
-            if (device_node->value.sub_class == request_node->value.sub_class || request_node->value.sub_class == (uint8_t)PCI_UNKNOWN)
-                matching_fields++;
-
-            if (device_node->value.prog_if == request_node->value.prog_if || request_node->value.prog_if == (uint8_t)PCI_UNKNOWN)
-                matching_fields++;
-
-            if (device_node->value.revision_id == request_node->value.revision_id || request_node->value.revision_id == (uint8_t)PCI_UNKNOWN)
-                matching_fields++;
-
-            if (matching_fields == 4) {
+            if (found) {
                 found_device_count++;
+                request_node->value.vendor_id = device_node->value.vendor_id;
+                request_node->value.device_id = device_node->value.device_id;
                 request_node->value.class_info = device_node->value.class_info;
                 request_node->value.pci_device_index = device_index;
                 request_node->value.found = true;

@@ -56,3 +56,12 @@ PS> .\qemu_start.ps1
 [uefi-os - https://github.com/sansoune/uefi-os](https://github.com/sansoune/uefi-os)<br>
 [MmdOS - https://github.com/Rostamborn/MmdOS](https://github.com/Rostamborn/MmdOS)<br>
 [cavOS - https://github.com/malwarepad/cavOS](https://github.com/malwarepad/cavOS)<br>
+
++-----------------------------------------+
+| harware layer (cpu) -> x86_64, ...      |
+| harware layer (other) -> SATA, VGA, ... |
++-----------------------------------------+
+| kernel layer -> mm, interupts, ...      |
++-----------------------------------------+
+| user layer -> webbrowser, ...           |
++-----------------------------------------+

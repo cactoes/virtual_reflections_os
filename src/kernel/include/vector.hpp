@@ -18,6 +18,9 @@ template <class T>
 struct vector_node_t {
     vector_node_t<T>* next;
     T value;
+
+    vector_node_t<T>* get_next() { return next; }
+    T& get_value() { return value; }
 };
 
 template <class T>
