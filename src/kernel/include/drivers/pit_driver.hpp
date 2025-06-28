@@ -26,6 +26,7 @@ void pit_sleep(uint32_t ms);
 void pit_sleep(uint64_t id, uint32_t ms);
 void pit_init(vector<pit_timer_t>* timers);
 void pit_add_clock(uint64_t id);
+uint64_t pit_timer_read();
 pit_timer_t* pit_find_by_id(uint64_t id);
 
 #endif // __PIT_DRIVER_HPP__

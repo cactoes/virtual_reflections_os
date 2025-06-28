@@ -165,6 +165,10 @@ uint64_t gdt_tss::get_kernel_code_selector() {
     return GDT_INDEX_TO_ENTRY(GDT_INDEX_KERNEL_64_CODE);
 }
 
+//==========================================
+/// @brief      section "pit"
+//==========================================
+
 int pit::init(uint64_t times_per_s) {
 
     cpu_outb(0x43, 0x36);

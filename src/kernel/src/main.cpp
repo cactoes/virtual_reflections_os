@@ -218,6 +218,12 @@ void mouse_handler(mouse_state_t* state) {
         mouse_pos_x += state->dx;
 }
 
+bool was_key_pressed = false;
+
+void kb_handler(key_state_t*) {
+    was_key_pressed = true;
+}
+
 extern "C" void kernel_entry(multiboot_t* multiboot_struct, void* kpml4) {
     debug_init();
 
@@ -390,35 +396,53 @@ extern "C" void kernel_entry(multiboot_t* multiboot_struct, void* kpml4) {
         // vga_tm_print("> NETWORK CARD FOUND: (INTEL) E1000\n");
     }
 
-    // vga_tm_print("\n[SYSTEM CONFIG]\n");
+    vga_tm_print("\n[SYSTEM CONFIG]\n");
 
-    // vfs_file_t file {};
-    // vfs_read("/dev/ata0/.env", &file);
+    vfs_file_t file {};
+    vfs_read("/dev/ata0/.env", &file);
 
-    // for (size_t i = 0; i < file.size; i++)
-    //     vga_tm_print(((char*)file.buffer)[i]);
+    for (size_t i = 0; i < file.size; i++)
+        vga_tm_print(((char*)file.buffer)[i]);
 
-    // vfs_close_file(&file);
+    vfs_close_file(&file);
 
-    vga_generic_buffer_t buffer{};
-    vga_gm_buffer_create(&buffer);
-    vga_gm_startup(&buffer);
+    keyboard_add_handler(kb_handler);
 
-    ps2_mouse_add_handler(mouse_handler);
-
-    const char* spinner[] = { ">  ", ">> ", " >>", "  >" };
+    const char* spinner[] = { "   ", ".  ", ".. ", "..." };
     constexpr size_t chars_size = (sizeof(spinner) / sizeof(char*));
     size_t i = 0;
-    while (true) {
-        // vga_tm_set_cursor(VGA_TM_NUM_COLS - 4, VGA_TM_NUM_ROWS - 1);
-        // vga_tm_print("%s", spinner[i++ % chars_size]);
-        // vga_tm_set_cursor(VGA_TM_NUM_COLS, VGA_TM_NUM_ROWS);
-        
-        vga_gm_draw::clear(&buffer, vga_gm_color_index_t::BLACK);
 
-        vga_gm_draw::pixel(&buffer, mouse_pos_x, mouse_pos_y, vga_gm_color_index_t::WHITE);
-
-        vga_gm_render();
-        // pit_sleep(10);
+    while (!was_key_pressed) {
+        vga_tm_set_cursor(0, VGA_TM_NUM_ROWS - 1);
+        vga_tm_print("> PRESS ANY KEY TO START %s", spinner[i++ % chars_size]);
+        vga_tm_set_cursor(VGA_TM_NUM_COLS, VGA_TM_NUM_ROWS);
+        pit_sleep(250);
     }
+
+    // TODO @since 28/06/2025 -- 20:44
+    // shell / interative ui
+
+    // vga_generic_buffer_t buffer{};
+    // vga_gm_buffer_create(&buffer);
+    // vga_gm_startup(&buffer);
+    // vga_gm_render();
+
+    // ps2_mouse_add_handler(mouse_handler);
+
+    // // 60 fps
+    // constexpr float TARGET_FRAME_MS = 1000 / 60;
+    // uint64_t prev_tick = pit_timer_read();
+
+    // while (true) {
+    //     const uint64_t frame_begin = pit_timer_read();
+
+    //     const float delta_sec = static_cast<float>(frame_begin - prev_tick) / 10;
+    //     prev_tick = frame_begin;
+
+    //     vga_gm_draw::clear(&buffer, vga_gm_color_index_t::BLACK);
+    //     vga_gm_draw::pixel(&buffer, mouse_pos_x * delta_sec, mouse_pos_y * delta_sec, vga_gm_color_index_t::WHITE);
+    //     vga_gm_render();
+
+    //     while ((pit_timer_read() - frame_begin) < TARGET_FRAME_MS) { }
+    // }
 }
