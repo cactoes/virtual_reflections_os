@@ -26,7 +26,9 @@
 #define PS2_SAMPLE_RATE_2    100
 #define PS2_SAMPLE_RATE_3     80
 
+#include "common.hpp"
 #include "interrupt.hpp"
+#include "event_manager.hpp"
 
 struct mouse_state_t {
     int dx;
@@ -41,7 +43,8 @@ struct mouse_state_t {
 } PACKED;
 
 void ps2_mouse_init(mouse_state_t* mouse_state);
-
+void ps2_mouse_get_state(mouse_state_t* mouse_state);
 cpu_state_t* mouse_handle_interrupt(uint64_t code, cpu_state_t* rsp);
+void ps2_mouse_add_handler(void(*handler)(mouse_state_t*));
 
 #endif // __MOUSE_DRIVER_HPP__

@@ -6,6 +6,7 @@ static int8_t g_mouse_data[4] {};
 static int    g_cycle = 0;
 
 static mouse_state_t* g_mouse_state = nullptr;
+static event_manager_t<mouse_state_t*> g_ps2_mouse_event_manager {};
 
 void ps2_mouse_write(uint8_t value) {
     cpu_outb(PS2_CMD_PORT, PS2_WRITE_TO_MOUSE);
@@ -37,6 +38,10 @@ void ps2_mouse_init(mouse_state_t* mouse_state) {
     ps2_mouse_write(PS2_SAMPLE_RATE_3);
 }
 
+void ps2_mouse_get_state(mouse_state_t* mouse_state) {
+    memcpy(mouse_state, g_mouse_state, sizeof(mouse_state_t));
+}
+
 cpu_state_t* mouse_handle_interrupt(uint64_t code, cpu_state_t* rsp) {
     g_mouse_data[g_cycle++] = (int8_t)cpu_inb(PS2_DATA_PORT);
 
@@ -52,7 +57,13 @@ cpu_state_t* mouse_handle_interrupt(uint64_t code, cpu_state_t* rsp) {
         g_mouse_state->buttons.left = (buttons & 0x01) != 0;
         g_mouse_state->buttons.right = (buttons & 0x02) != 0;
         g_mouse_state->buttons.middle = (buttons & 0x04) != 0;
+        
+        g_ps2_mouse_event_manager.fire_event(g_mouse_state);
     }
 
     return rsp;
+}
+
+void ps2_mouse_add_handler(void(*handler)(mouse_state_t*)) {
+    g_ps2_mouse_event_manager.add_handler(handler);
 }

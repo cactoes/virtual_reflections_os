@@ -194,6 +194,30 @@ void thread_test() {
     while (true) {}
 }
 
+int mouse_pox_x_max = VGA_BUFFER_WIDTH;
+int mouse_pox_y_max = VGA_BUFFER_HEIGHT;
+
+int mouse_pos_x = 0;
+int mouse_pos_y = 0;
+
+void mouse_handler(mouse_state_t* state) {
+    state->dy = -1 * state->dy;
+
+    if (mouse_pos_y + state->dy >= mouse_pox_y_max)
+        mouse_pos_y = mouse_pox_y_max - 1;
+    else if (mouse_pos_y + state->dy < 0)
+        mouse_pos_y = 0;
+    else
+        mouse_pos_y += state->dy;
+
+    if (mouse_pos_x + state->dx >= mouse_pox_x_max)
+        mouse_pos_x = mouse_pox_x_max - 1;
+    else if (mouse_pos_x + state->dx < 0)
+        mouse_pos_x = 0;
+    else
+        mouse_pos_x += state->dx;
+}
+
 extern "C" void kernel_entry(multiboot_t* multiboot_struct, void* kpml4) {
     debug_init();
 
@@ -366,28 +390,35 @@ extern "C" void kernel_entry(multiboot_t* multiboot_struct, void* kpml4) {
         // vga_tm_print("> NETWORK CARD FOUND: (INTEL) E1000\n");
     }
 
-    // disabled since we cant draw anything yet (other than a pixel)
-    // vga_generic_buffer_t buffer{};
-    // vga_gm_buffer_create(&buffer);
-    // vga_gm_startup(&buffer);
+    // vga_tm_print("\n[SYSTEM CONFIG]\n");
 
-    vga_tm_print("\n[SYSTEM CONFIG]\n");
+    // vfs_file_t file {};
+    // vfs_read("/dev/ata0/.env", &file);
 
-    vfs_file_t file {};
-    vfs_read("/dev/ata0/.env", &file);
+    // for (size_t i = 0; i < file.size; i++)
+    //     vga_tm_print(((char*)file.buffer)[i]);
 
-    for (size_t i = 0; i < file.size; i++)
-        vga_tm_print(((char*)file.buffer)[i]);
+    // vfs_close_file(&file);
 
-    vfs_close_file(&file);
+    vga_generic_buffer_t buffer{};
+    vga_gm_buffer_create(&buffer);
+    vga_gm_startup(&buffer);
+
+    ps2_mouse_add_handler(mouse_handler);
 
     const char* spinner[] = { ">  ", ">> ", " >>", "  >" };
     constexpr size_t chars_size = (sizeof(spinner) / sizeof(char*));
     size_t i = 0;
     while (true) {
-        vga_tm_set_cursor(VGA_TM_NUM_COLS - 4, VGA_TM_NUM_ROWS - 1);
-        vga_tm_print("%s", spinner[i++ % chars_size]);
-        vga_tm_set_cursor(VGA_TM_NUM_COLS, VGA_TM_NUM_ROWS);
-        pit_sleep(250);
+        // vga_tm_set_cursor(VGA_TM_NUM_COLS - 4, VGA_TM_NUM_ROWS - 1);
+        // vga_tm_print("%s", spinner[i++ % chars_size]);
+        // vga_tm_set_cursor(VGA_TM_NUM_COLS, VGA_TM_NUM_ROWS);
+        
+        vga_gm_draw::clear(&buffer, vga_gm_color_index_t::BLACK);
+
+        vga_gm_draw::pixel(&buffer, mouse_pos_x, mouse_pos_y, vga_gm_color_index_t::WHITE);
+
+        vga_gm_render();
+        // pit_sleep(10);
     }
 }
