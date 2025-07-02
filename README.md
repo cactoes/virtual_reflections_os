@@ -65,3 +65,8 @@ PS> .\qemu_start.ps1
 +-----------------------------------------+
 | user layer -> webbrowser, ...           |
 +-----------------------------------------+
+
+[ what exe file is this ]
+[ known start of program ]
+[ syscalls ]
+[ sections: .code, .text, ... ]

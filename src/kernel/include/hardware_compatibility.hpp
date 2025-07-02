@@ -24,7 +24,7 @@
 #define INT_IRQ_PS2_KEYBOARD    0x01
 #define INT_IRQ_PS2_MOUSE       0xC
 
-#define INT_VECTOR_COUNT    48
+#define INT_VECTOR_COUNT    129
 
 //==========================================
 /// @brief      gdt defines

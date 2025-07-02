@@ -184,6 +184,11 @@ cpu_state_t* handle_other_interrupt(uint64_t code, cpu_state_t* rsp) {
     // if (code == 0x2F) return rsp;
     if (code == 0x2b)
         return e1000_handle_interrupt(rsp);
+
+    if (code == 0x80) {
+        *(uint64_t*)rsp->rdi = 123456;
+        return rsp;
+    }
     
     critical_fatal_ex(code, "FATAL: unhandled interrupt", rsp);
     return rsp;
@@ -407,6 +412,13 @@ extern "C" void kernel_entry(multiboot_t* multiboot_struct, void* kpml4) {
     vfs_close_file(&file);
 
     keyboard_add_handler(kb_handler);
+
+    uint64_t data;
+    debug_print("data: 0x%p\n", &data);
+    asm volatile ("mov %[ptr], %%rdi" :: [ptr] "r"(&data) : "rdi", "memory");
+    asm volatile ("int $0x80" ::: "memory");
+    debug_print("data: 0x%p\n", &data);
+    debug_print("data: %ul\n", data);
 
     const char* spinner[] = { "   ", ".  ", ".. ", "..." };
     constexpr size_t chars_size = (sizeof(spinner) / sizeof(char*));

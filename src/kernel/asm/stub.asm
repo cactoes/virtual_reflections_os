@@ -186,11 +186,20 @@ isr_stub 46 ; irq14 primary ata harddisk
 isr_stub 47 ; irq15 secondary ata harddisk
 
 ;==========================================
+; @brief    other interrupts
+;==========================================
+%assign  vec 48
+%rep  (129-48+1)
+    isr_stub vec
+%assign  vec vec+1
+%endrep
+
+;==========================================
 ; @brief    interrupt array, stores all interrupts
 ;==========================================
 isr_stub_table:
 %assign i 0 
-%rep    48
+%rep    129
     dq isr_stub_%+i
 %assign i i+1 
 %endrep
