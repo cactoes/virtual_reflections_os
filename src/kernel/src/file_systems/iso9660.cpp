@@ -1,7 +1,6 @@
 #include "file_systems/iso9660.hpp"
 #include "memory.hpp"
 #include "debug.hpp"
-#include "vector.hpp"
 #include "string.hpp"
 #include "drivers/ide_driver.hpp"
 

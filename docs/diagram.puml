@@ -33,6 +33,7 @@ rectangle "Core" {
 
     rectangle "File Systems" {
         [ISO9660]
+        [FAT32]
     }
 }
 
@@ -59,11 +60,12 @@ rectangle "Core" {
 
 "Virtual File System" --> [Vector]
 "Virtual File System" --> [ISO9660]
+"Virtual File System" --> [FAT32]
 "Virtual File System" --> [IDE]
 "Virtual File System" --> [Memory Manager]
 
-[ISO9660] --> [Vector]
 [ISO9660] --> [Memory Manager]
+[FAT32] --> [Memory Manager]
 
 rectangle "Programs" {
     rectangle "Shell" {
