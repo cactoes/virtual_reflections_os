@@ -18,6 +18,7 @@
 #include "drivers/e1000_driver.hpp"
 
 #include "file_systems/iso9660.hpp"
+#include "file_systems/fat32.hpp"
 
 void draw_logo_vga_tm() {
     constexpr uint32_t x = 50;
@@ -229,6 +230,60 @@ void kb_handler(key_state_t*) {
     was_key_pressed = true;
 }
 
+static char ascii_table[128] = {
+    0,  27, '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '-', '=', '\b',
+    '\t', 'q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p', '[', ']', '\n',
+    0, 'a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l', ';', '\'', '`', 0,
+    '\\', 'z', 'x', 'c', 'v', 'b', 'n', 'm', ',', '.', '/', 0, '*',
+    0, ' ', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, '7', '8', '9', '-',
+    '4', '5', '6', '+', '1', '2', '3', '0', '.'
+};
+
+static char shifted_table[128] = {
+    0,  27, '!', '@', '#', '$', '%', '^', '&', '*', '(', ')', '_', '+', '\b',
+    '\t', 'Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P', '{', '}', '\n',
+    0, 'A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L', ':', '"', '~', 0,
+    '|', 'Z', 'X', 'C', 'V', 'B', 'N', 'M', '<', '>', '?', 0, '*',
+    0, ' ', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, '7', '8', '9', '-',
+    '4', '5', '6', '+', '1', '2', '3', '0', '.'
+};
+
+char to_ascii(uint64_t scancode) {
+    auto key_state = keyboard_get_key_state(scancode);
+
+    if (scancode > sizeof(ascii_table)) 
+        return 0;
+
+    auto shift_key = keyboard_get_key_state(SC_LSHIFT);
+    auto caps_key = keyboard_get_key_state(SC_CAPS_LOCK);
+
+    if (shift_key->is_pressed && !caps_key->is_pressed)
+        return shifted_table[scancode];
+    else if (shift_key->is_pressed && caps_key->is_pressed)
+        return ascii_table[scancode];
+    else if (!shift_key->is_pressed && caps_key->is_pressed)
+        return shifted_table[scancode];
+    else
+        return ascii_table[scancode];
+}
+
+char getchar() {
+    auto scan_code = 0;
+    char ascii = 0;
+    while (scan_code == 0 || ascii == 0) {
+        scan_code = keyboard_get_last_key();
+
+        if (!keyboard_get_key_state(scan_code)->is_pressed)
+            continue;
+
+        ascii = to_ascii(scan_code);
+    }
+
+    keyboard_clear_last_key();
+
+    return ascii;
+}
+
 extern "C" void kernel_entry(multiboot_t* multiboot_struct, void* kpml4) {
     debug_init();
 
@@ -327,6 +382,7 @@ extern "C" void kernel_entry(multiboot_t* multiboot_struct, void* kpml4) {
         vector<ahci_sata_drive_t> drives {};
         ahci_init(kpml4, ahci_device, &drives);
 
+        size_t device_index_sata = 0;
         for (VECTOR_LOOP(&drives, drive_node)) {
             debug_print("[AHCI] dectected drive:\n");
             debug_print("   model number            : %s\n", drive_node->value.model);
@@ -336,6 +392,17 @@ extern "C" void kernel_entry(multiboot_t* multiboot_struct, void* kpml4) {
             debug_print("   drive capacity          : %ul bytes\n", drive_node->value.capacity);
             debug_print("   logical sector size     : %u bytes\n", drive_node->value.logical_sector_size);
             debug_print("   physical sector size    : %u bytes\n", drive_node->value.physical_sector_size);
+
+            char device_name[6] { 0 };
+            sprintf(device_name, 6, "sata%i", device_index_sata);
+            
+            vfs_node_t* file_system_node = vfs_mount_dev(device_name, drive_type_t::SATA, fs_type_t::FAT32);
+            file_system_node->drive.device = &drive_node->value;
+            if (fat32_drive_init(&file_system_node->drive, &file_system_node->fs) != 0)
+                debug_print("failed to mount device: %s", device_name);
+
+            // fat32_drive_deinit(&file_system_node->fs);
+            device_index_sata++;
         }
 
         vga_tm_print("> SATA DRIVES FOUND: %i\n", drives.length());
@@ -405,11 +472,17 @@ extern "C" void kernel_entry(multiboot_t* multiboot_struct, void* kpml4) {
 
     vfs_file_t file {};
     vfs_read("/dev/ata0/.env", &file);
-
     for (size_t i = 0; i < file.size; i++)
         vga_tm_print(((char*)file.buffer)[i]);
-
     vfs_close_file(&file);
+
+    debug_print("SATA0->test.txt: \"");
+    vfs_file_t file2 {};
+    vfs_read("/dev/sata0/test.txt", &file2);
+    for (size_t i = 0; i < file2.size; i++)
+        debug_print(((char*)file2.buffer)[i]);
+    vfs_close_file(&file2);
+    debug_print("\"\n");
 
     keyboard_add_handler(kb_handler);
 
@@ -429,6 +502,13 @@ extern "C" void kernel_entry(multiboot_t* multiboot_struct, void* kpml4) {
         vga_tm_print("> PRESS ANY KEY TO START %s", spinner[i++ % chars_size]);
         vga_tm_set_cursor(VGA_TM_NUM_COLS, VGA_TM_NUM_ROWS);
         pit_sleep(250);
+    }
+
+    vga_tm_clear_screen();
+
+    while (true) {
+        char ch = getchar();
+        vga_tm_print("%c", ch);
     }
 
     // TODO @since 28/06/2025 -- 20:44

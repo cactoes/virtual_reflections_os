@@ -108,6 +108,7 @@
 #include "common.hpp"
 #include "drivers/pci_driver.hpp"
 #include "vector.hpp"
+#include "file_systems/vfs.hpp"
 
 struct hba_port_t {
     uint32_t clb;
@@ -251,5 +252,15 @@ int ahci_prepare_command(ahci_cmd_context_t* ctx, ahci_sata_drive_t* drive, uint
 int ahci_atapi_prepare_command(ahci_cmd_context_t* ctx, ahci_sata_drive_t* drive, const uint8_t* atapi_packet, size_t packet_size, uint16_t data_length, bool write, uint8_t slot = 0);
 int ahci_find_command_slot(hba_port_t* port);
 
+inline int ahci_dev_read(drive_t* drive, uint32_t lba, void* buffer, size_t* size) {
+    if (*size != 512)
+        return 1;
+
+    return ahci_read((ahci_sata_drive_t*)drive->device, lba, 1, (uint8_t*)buffer);
+}
+
+inline int ahci_dev_write(drive_t* drive, uint32_t lba, void* buffer, size_t* size) {
+    return 1;
+}
 
 #endif // __AHCI_DRIVER_HPP__

@@ -35,11 +35,16 @@ struct key_state_t {
     uint64_t scan_code = 0;
     bool is_released = false;
     bool is_escaped = false;
+    bool is_pressed = false;
+    bool is_shift = false;
+    bool is_capslock = false;
 };
 
 void keyboard_init(key_state_t keystates[KEY_STATE_ARRAY_SIZE]);
 key_state_t* keyboard_get_key_state(uint64_t scan_code);
 cpu_state_t* keyboard_handle_interrupt(uint64_t code, cpu_state_t* rsp);
 void keyboard_add_handler(void(*handler)(key_state_t*));
+uint64_t keyboard_get_last_key();
+void keyboard_clear_last_key();
 
 #endif // __KEYBOARD_DRIVER_HPP__

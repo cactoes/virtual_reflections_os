@@ -20,12 +20,14 @@ enum class vfs_node_type_t {
 
 enum class fs_type_t {
     NONE,
-    ISO9660
+    ISO9660,
+    FAT32
 };
 
 enum class drive_type_t {
     NONE,
-    ATAPI
+    ATAPI,
+    SATA
 };
 
 struct drive_t {

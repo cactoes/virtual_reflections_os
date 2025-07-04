@@ -1,6 +1,8 @@
 #include "file_systems/vfs.hpp"
 #include "file_systems/iso9660.hpp"
+#include "file_systems/fat32.hpp"
 #include "drivers/ide_driver.hpp"
+#include "drivers/ahci_driver.hpp"
 #include "string.hpp"
 
 static vfs_node_t vfs_root {
@@ -27,7 +29,7 @@ void vfs_init() {
     node->children = vector<vfs_node_t*> {};
 
     vfs_node_t* null_node = (vfs_node_t*)g_heap_alloc(sizeof(vfs_node_t));
-    null_node->name = "dev";
+    null_node->name = "null";
     null_node->node_type = vfs_node_type_t::CHAR_DEVICE;
     null_node->parent = node;
     null_node->children = vector<vfs_node_t*> {};
@@ -50,12 +52,18 @@ vfs_node_t* vfs_mount_dev(const char* name, drive_type_t drive_type, fs_type_t f
 
     node->name = name;
     node->node_type = vfs_node_type_t::BLOCK_DEVICE;
+    node->children = vector<vfs_node_t*> {};
 
     switch (drive_type) {
         case drive_type_t::ATAPI:
-        node->drive.type = drive_type_t::ATAPI;
+            node->drive.type = drive_type_t::ATAPI;
             node->drive.read = &atapi_read;
             node->drive.write = &atapi_write;
+            break;
+        case drive_type_t::SATA:
+            node->drive.type = drive_type_t::SATA;
+            node->drive.read = &ahci_dev_read;
+            node->drive.write = &ahci_dev_write;
             break;
         case drive_type_t::NONE:
         default:
@@ -68,12 +76,18 @@ vfs_node_t* vfs_mount_dev(const char* name, drive_type_t drive_type, fs_type_t f
             node->fs.read = &iso9660_read_file;
             node->fs.write = &iso9660_write_file;
             break;
+        case fs_type_t::FAT32:
+            node->fs.type = fs_type_t::FAT32;
+            node->fs.read = &fat32_read_file;
+            node->fs.write = &fat32_write_file;
+            break;
         case fs_type_t::NONE:
         default:
             break;
     }
 
     vfs_node_t* dev_node = (*vfs_root.children.get_at(0));
+    node->parent = dev_node;
     dev_node->children.insert_back(node);
 
     return node;
@@ -88,8 +102,12 @@ void vfs_read_recurse(vfs_node_t* start_node, const char* file, void** data, siz
 
             vfs_read_recurse(node->value, &file[next_index + 1], data, size);
         } else if (node->value->node_type == vfs_node_type_t::BLOCK_DEVICE) {
+            if (!str_start_with(file + 1, node->value->name))
+                continue;
             node->value->fs.read(&node->value->fs, &node->value->drive, &file[next_index + 1], data, size);
         } else if (node->value->node_type == vfs_node_type_t::CHAR_DEVICE) {
+            if (!str_start_with(file + 1, node->value->name))
+                continue;
             node->value->drive.read(&node->value->drive, 0, *data, size);
         }
     }

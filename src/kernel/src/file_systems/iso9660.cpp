@@ -32,13 +32,12 @@ int iso9660_drive_init(drive_t* drive, fs_t* fs) {
         return 1;
         
     iso9660_volume_descriptor_t* desc = (iso9660_volume_descriptor_t*)data;
-    if (desc->type != iso9660_volume_type_t::PRIMARY_VOLUME_DESCRIPTOR) {
-        return 3;
-    }
+    if (desc->type != iso9660_volume_type_t::PRIMARY_VOLUME_DESCRIPTOR)
+        return 2;
 
     fs->data = g_heap_alloc(sizeof(iso9660_fs_data_t));
     if (!fs->data)
-        return 2;
+        return 3;
 
     iso9660_fs_data_t* fs_data = (iso9660_fs_data_t*)fs->data;
     memcpy(&fs_data->pvd, desc, sizeof(iso9660_volume_descriptor_t));

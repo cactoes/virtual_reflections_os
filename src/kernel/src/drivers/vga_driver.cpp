@@ -40,7 +40,21 @@ int vga_tm_print(char ch) {
             vga_tm_new_line();
             break;
         case '\r':
-            // TODO @since 18/06/2025 -- 02:59
+            g_vga_tm_column = 0;
+            break;
+        case '\b':
+            if (g_vga_tm_column == 0 && g_vga_tm_row >= 1) {
+                g_vga_tm_row--;
+                g_vga_tm_column = VGA_TM_NUM_COLS;
+            }
+
+            if (g_vga_tm_column >= 1)
+                g_vga_tm_column--;
+            vga_tm_mem[g_vga_tm_column + VGA_TM_NUM_COLS * g_vga_tm_row] = ' ' | (g_vga_tm_current_color.color << 8);
+            break;
+        case '\t':
+            for (int i = 0; i < 4; i++)
+                vga_tm_print(" ");
             break;
         default:
             vga_tm_mem[g_vga_tm_column + VGA_TM_NUM_COLS * g_vga_tm_row] = ch | (g_vga_tm_current_color.color << 8);
