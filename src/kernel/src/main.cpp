@@ -399,7 +399,7 @@ extern "C" void kernel_entry(multiboot_t* multiboot_struct, void* kpml4) {
             vfs_node_t* file_system_node = vfs_mount_dev(device_name, drive_type_t::SATA, fs_type_t::FAT32);
             file_system_node->drive.device = &drive_node->value;
             if (fat32_drive_init(&file_system_node->drive, &file_system_node->fs) != 0)
-                debug_print("failed to mount device: %s", device_name);
+                debug_print("failed to mount device: %s\n", device_name);
 
             // fat32_drive_deinit(&file_system_node->fs);
             device_index_sata++;
@@ -446,7 +446,7 @@ extern "C" void kernel_entry(multiboot_t* multiboot_struct, void* kpml4) {
                 vfs_node_t* file_system_node = vfs_mount_dev(device_name, drive_type_t::ATAPI, fs_type_t::ISO9660);
                 file_system_node->drive.device = &drive_node->value;
                 if (iso9660_drive_init(&file_system_node->drive, &file_system_node->fs) != 0)
-                    debug_print("failed to mount device: %s", device_name);
+                    debug_print("failed to mount device: %s\n", device_name);
 
                 // iso9660_drive_deinit(&file_system_node->fs);
             }

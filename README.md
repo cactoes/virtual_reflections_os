@@ -4,13 +4,13 @@ A 64-bit custom made operating system, using grub as bootloader
 ## TODO
 - [ ] network driver (intel e1000)
 - [ ] shell
+- [ ] buffers / streams (lockable / mutex)
 - [ ] filesystem
     - [x] ISO9660
         - [x] read
     - [ ] fat32
-        - [ ] read
+        - [x] read
         - [ ] write
-- [ ] buffers / streams (lockable / mutex)
 
 ## Goal
 Bootable desktop that can play a minesweeper game
