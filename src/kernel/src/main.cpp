@@ -458,14 +458,14 @@ extern "C" void kernel_entry(multiboot_t* multiboot_struct, void* kpml4) {
 
         // TODO @since 18/06/2025 -- 13:20
         // might work? figure out if qemu links to real network
-        // pci_device_info_t* network_device = pci_devices.get_at(pci_devices_requested.get_at(2)->pci_device_index);
+        pci_device_info_t* network_device = pci_devices.get_at(pci_devices_requested.get_at(2)->pci_device_index);
 
-        // e1000_device_t e1000_device {};
-        // e1000_init(kpml4, network_device, &e1000_device);
+        e1000_device_t e1000_device {};
+        e1000_init(kpml4, network_device, &e1000_device);
 
-        // debug_print("[NETWORK] dectected controller:\n");
-        // debug_print("   mac                     : %uh:%uh:%uh:%uh:%uh:%uh\n", e1000_device.mac[0], e1000_device.mac[1], e1000_device.mac[2], e1000_device.mac[3], e1000_device.mac[4], e1000_device.mac[5], e1000_device.mac[6]);
-        // vga_tm_print("> NETWORK CARD FOUND: (INTEL) E1000\n");
+        debug_print("[NETWORK] dectected controller:\n");
+        debug_print("   mac                     : %uh:%uh:%uh:%uh:%uh:%uh\n", e1000_device.mac[0], e1000_device.mac[1], e1000_device.mac[2], e1000_device.mac[3], e1000_device.mac[4], e1000_device.mac[5], e1000_device.mac[6]);
+        vga_tm_print("> NETWORK CARD FOUND: (INTEL) E1000\n");
     }
 
     vga_tm_print("\n[SYSTEM CONFIG]\n");

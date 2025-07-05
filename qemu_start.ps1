@@ -31,8 +31,9 @@ $qemuArgs = @(
     "-device", "ide-cd,drive=cdrom,bus=ide.0",
     
     # network card
-    "-netdev", "tap,id=net0,ifname=tap0,script=no,downscript=no",
-    "-device", "e1000,netdev=net0"
+    "-netdev", "user,id=net0",
+    "-device", "e1000,netdev=net0",
+    "-object", "filter-dump,id=dump0,netdev=net0,file=out.pcap"
 )
 
 if ($mode -eq "debug") {

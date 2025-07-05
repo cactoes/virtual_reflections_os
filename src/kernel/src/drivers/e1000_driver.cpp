@@ -181,6 +181,33 @@ int e1000_receive_packet(e1000_device_t* device, void* buffer, size_t* packet_si
     return 0;
 }
 
+static inline uint16_t htons16(uint16_t v) { return (v>>8)|(v<<8); }
+static inline uint32_t htonl32(uint32_t v) {
+    return  (v>>24) | ((v>>8)&0xFF00) | ((v<<8)&0xFF0000) | (v<<24);
+}
+
+size_t build_arp_request(const uint8_t mac[6], uint32_t target_ip, uint8_t *buf) {
+    /* 0‑13  Ethernet header --------------------------------------------- */
+    memset(buf, 0, 60);                          /* zero‑pad to 60 B       */
+    memset(buf, 0xFF, 6);                        /* dst = FF:FF:FF:FF:FF:FF*/
+    memcpy(buf + 6, mac, 6);                     /* src = our MAC          */
+    *(uint16_t*)(buf + 12) = htons16(0x0806);    /* EtherType = ARP        */
+
+    /* 14‑41  ARP payload ------------------------------------------------- */
+    uint8_t *arp = buf + 14;
+    *(uint16_t*)(arp +  0) = htons16(1);         /* htype = Ethernet       */
+    *(uint16_t*)(arp +  2) = htons16(0x0800);    /* ptype = IPv4           */
+    arp[4]  = 6;                                 /* hlen  = 6              */
+    arp[5]  = 4;                                 /* plen  = 4              */
+    *(uint16_t*)(arp +  6) = htons16(1);         /* oper  = REQUEST (1)    */
+    memcpy(arp +  8,  mac, 6);                   /* sha   = our MAC        */
+    *(uint32_t*)(arp + 14) = htonl32(0);         /* spa   = 0.0.0.0        */
+    memset(arp + 18, 0, 6);                      /* tha   = 00:00:..       */
+    *(uint32_t*)(arp + 24) = htonl32(target_ip); /* tpa   = target_ip      */
+
+    return 60;                                   /* HW adds the FCS        */
+}
+
 int e1000_init(void* pml4, pci_device_info_t* e1000_pci_device, e1000_device_t* device) {
     g_device = device;
     
@@ -223,26 +250,12 @@ int e1000_init(void* pml4, pci_device_info_t* e1000_pci_device, e1000_device_t* 
         return 6;
     }
 
-    debug_print("Starting loopback test...\n");
+    uint8_t pkt[60];
+    size_t len = build_arp_request(device->mac, 0x0A'00'02'02 /*10.0.2.2*/, pkt);
+    int result = e1000_send_packet(device, pkt, len);
 
-    uint8_t test_packet[64];
-    memset(test_packet, 'F', sizeof(test_packet));
-    
-    // memcpy(test_packet, device->mac, 6);
-    memcpy(test_packet + 6, device->mac, 6);
-    
-    test_packet[12] = 0x08;
-    test_packet[13] = 0x06;
-    
-    const char* test_msg = "06";
-    memcpy(test_packet + 14, test_msg, strlen(test_msg));
-    
-    int result = e1000_send_packet(device, test_packet, sizeof(test_packet));
     debug_print("send packet result: %u\n", result);
 
-    uint8_t packet[E1000_BUFFER_SIZE];
-    size_t packet_size;
-    
     return 0;
 }
 

@@ -2,3 +2,6 @@
 build/*
 
 temp/*
+
+# ignore network capture
+*.pcap
