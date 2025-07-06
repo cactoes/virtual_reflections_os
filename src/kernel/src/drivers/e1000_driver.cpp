@@ -251,7 +251,7 @@ int e1000_init(void* pml4, pci_device_info_t* e1000_pci_device, e1000_device_t* 
     }
 
     uint8_t pkt[60];
-    size_t len = build_arp_request(device->mac, 0x0A'00'02'02 /*10.0.2.2*/, pkt);
+    size_t len = build_arp_request(device->mac, 0xC0A8B201 /* 192.168.178.1 */, pkt);
     int result = e1000_send_packet(device, pkt, len);
 
     debug_print("send packet result: %u\n", result);

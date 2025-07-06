@@ -458,6 +458,8 @@ extern "C" void kernel_entry(multiboot_t* multiboot_struct, void* kpml4) {
 
         // TODO @since 18/06/2025 -- 13:20
         // might work? figure out if qemu links to real network
+        // *update:
+        // might be qemu problem with connection to actual internet (windows host)
         pci_device_info_t* network_device = pci_devices.get_at(pci_devices_requested.get_at(2)->pci_device_index);
 
         e1000_device_t e1000_device {};
