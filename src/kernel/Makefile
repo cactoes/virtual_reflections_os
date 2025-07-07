@@ -1,37 +1,73 @@
 #==========================================
 ## @file       Makefile
-## @brief      build script for src/kernel
+## @brief      build script
 #==========================================
 
-SOURCE_FILES_PATH = src
-HEADER_FILES_PATH = include
-ASSEMBLY_FILES_PATH = asm
-BUILD_PATH = ../../build
+# directories & files
+SOURCE_FILES_PATH		:= src
+HEADER_FILES_PATH		:= include
+ASSEMBLY_FILES_PATH		:= asm
+ROOT_PATH				:= ../..
+BUILD_PATH				:= $(ROOT_PATH)/build
+ISO_PATH				:= $(ROOT_PATH)/iso
+LINKER_SCRIPT			:= linker.ld
+TARGET_NAME				:= VirtualReflectionsOS
 
+# compilers
+COMPILER				:= x86_64-elf-g++
+ASSEMBLER				:= nasm
+LINKER					:= x86_64-elf-ld
+GRUB_MKRESCUE			:= grub-mkrescue
+
+# compiler flags
 # [!!!] -mno-sse2: SSE2 is disabled
-GPP_COMPILE_FLAGS = -nostdlib -m64 -mno-red-zone -mno-sse2 -fno-rtti -fno-exceptions -Werror -Wunused-result -fno-use-cxa-atexit
+COMPILER_FLAGS			:= -nostdlib -m64 -mno-red-zone -mno-sse2 -fno-rtti -fno-exceptions -Werror -Wunused-result -fno-use-cxa-atexit -ffreestanding -I$(HEADER_FILES_PATH) -g -z max-page-size=0x1000
+NASM_FLAGS				:= -f elf64
+LINKER_FLAGS			:= -z max-page-size=0x1000 -n -T $(LINKER_SCRIPT)
 
-source_files := $(shell find $(SOURCE_FILES_PATH) -name *.cpp)
-object_files := $(patsubst $(SOURCE_FILES_PATH)/%.cpp, $(BUILD_PATH)/objects/%.o, $(source_files))
+# file sources & targets
+source_files		:= $(shell find $(SOURCE_FILES_PATH) -name "*.cpp")
+object_files		:= $(patsubst $(SOURCE_FILES_PATH)/%.cpp, $(BUILD_PATH)/objects/%.o, $(source_files))
+asm_files			:= $(shell find $(ASSEMBLY_FILES_PATH) -name "*.asm")
+asm_object_files	:= $(patsubst $(ASSEMBLY_FILES_PATH)/%.asm, $(BUILD_PATH)/objects/%.o, $(asm_files))
 
-asm_files := $(shell find $(ASSEMBLY_FILES_PATH) -name *.asm)
-asm_object_files := $(patsubst $(ASSEMBLY_FILES_PATH)/%.asm, $(BUILD_PATH)/objects/%.o, $(asm_files))
+# silent mode
+SILENT_MODE = @
 
-$(object_files): $(BUILD_PATH)/objects/%.o : $(SOURCE_FILES_PATH)/%.cpp
-	mkdir -p $(dir $@) && \
-	x86_64-elf-g++ -z max-page-size=0x1000 -g $(GPP_COMPILE_FLAGS) -c -I $(HEADER_FILES_PATH) -ffreestanding $(patsubst $(BUILD_PATH)/objects/%.o, $(SOURCE_FILES_PATH)/%.cpp, $@) -o $@
+.PHONY: build clean rebuild
 
-$(asm_object_files): $(BUILD_PATH)/objects/%.o : $(ASSEMBLY_FILES_PATH)/%.asm
-	mkdir -p $(dir $@) && \
-	nasm -f elf64 $(patsubst $(BUILD_PATH)/objects/%.o, $(ASSEMBLY_FILES_PATH)/%.asm, $@) -o $@
+build: $(BUILD_PATH)/$(TARGET_NAME).iso
 
-.PHONY: build clean
+$(BUILD_PATH)/$(TARGET_NAME).bin: $(object_files) $(asm_object_files) $(LINKER_SCRIPT)
+	@echo "linking kernel binary"
+	@mkdir -p $(dir $@)
+	$(SILENT_MODE)$(LINKER) $(LINKER_FLAGS) -o $@ $(object_files) $(asm_object_files)
 
-build: $(object_files) $(asm_object_files)
-	cp -r ../../iso $(BUILD_PATH)/ && \
-	x86_64-elf-ld -z max-page-size=0x1000 -n -o $(BUILD_PATH)/VirtualReflectionsOS.bin -T linker.ld $(object_files) $(asm_object_files) && \
-	cp $(BUILD_PATH)/VirtualReflectionsOS.bin $(BUILD_PATH)/iso/boot/VirtualReflectionsOS.bin && \
-	grub-mkrescue /usr/lib/grub/i386-pc -o $(BUILD_PATH)/VirtualReflectionsOS.iso $(BUILD_PATH)/iso
+$(BUILD_PATH)/$(TARGET_NAME).iso: $(BUILD_PATH)/$(TARGET_NAME).bin
+	@echo "creating iso image"
+	@mkdir -p $(BUILD_PATH)/iso/boot
+	@cp -r $(ISO_PATH) $(BUILD_PATH) 2>/dev/null || true
+	@cp $< $(BUILD_PATH)/iso/boot/$(TARGET_NAME).bin
+	$(SILENT_MODE)$(GRUB_MKRESCUE) /usr/lib/grub/i386-pc -o $@ $(BUILD_PATH)/iso
+
+$(BUILD_PATH)/objects/%.o: $(SOURCE_FILES_PATH)/%.cpp
+	@echo "compiling: $<"
+	@mkdir -p $(dir $@)
+	$(SILENT_MODE)$(COMPILER) $(COMPILER_FLAGS) -c $< -o $@
+
+$(BUILD_PATH)/objects/%.o: $(ASSEMBLY_FILES_PATH)/%.asm
+	@echo "assembling: $<"
+	@mkdir -p $(dir $@)
+	$(SILENT_MODE)$(ASSEMBLER) $(NASM_FLAGS) $< -o $@
 
 clean:
-	rm -rf build/*
+	@echo "cleaning build directory"
+	@rm -rf $(BUILD_PATH)/*
+
+rebuild: clean build
+
+-include $(object_files:.o=.d)
+
+$(BUILD_PATH)/objects/%.d: $(SOURCE_FILES_PATH)/%.cpp
+	@mkdir -p $(dir $@)
+	$(SILENT_MODE)$(COMPILER) $(COMPILER_FLAGS) -MM -MT $(@:.d=.o) $< > $@
