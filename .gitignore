@@ -1,7 +1,5 @@
 # dont ships builds
-build/*
-
-temp/*
+build/
 
 # ignore network capture
 *.pcap
