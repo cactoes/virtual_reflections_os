@@ -3,10 +3,8 @@
 /* @brief   linker script for the kernel      */
 /* ========================================== */
 
-/* entrypoint subroutine name */
 ENTRY(entry)
 
-/* different code segments, offset at 2MB */
 SECTIONS {
     . = 2M;
 
