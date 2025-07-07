@@ -33,7 +33,7 @@ $qemuArgs = @(
     # network card
     "-netdev", "tap,id=net0,ifname=tap0,script=no,downscript=no",
     "-device", "e1000,netdev=net0",
-    "-object", "filter-dump,id=dump0,netdev=net0,file=out.pcap"
+    "-object", "filter-dump,id=dump0,netdev=net0,file=netdump.pcap"
 )
 
 if ($mode -eq "debug") {
