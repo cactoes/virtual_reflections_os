@@ -180,14 +180,47 @@ cpu_state_t* handle_critical_interrupt(uint64_t code, cpu_state_t* rsp) {
     return rsp;
 }
 
+// static inline int64_t syscall(uint64_t number, int64_t a1, int64_t a2, int64_t a3, int64_t a4, int64_t a5, int64_t a6) {
+//     int64_t return_value;
+//     asm volatile (
+//         "mov %[a4], %%r10\n"
+//         "mov %[a5], %%r8\n"
+//         "mov %[a6], %%r9\n"
+//         "syscall"
+//         : "=a"(return_value)
+//         : "a"(number),
+//           "D"(a1), "S"(a2), "d"(a3),
+//           [a4]"r"(a4), [a5]"r"(a5), [a6]"r"(a6)
+//         : "rcx", "r11", "r8", "r9", "r10", "memory"
+//     );
+//     return return_value;
+// }
+
+// void syscall_handle_interrupt(cpu_state_t* rsp) {
+//     uint64_t number = rsp->rax;
+
+//     switch (number) {
+//         case 0:
+//             *(uint64_t*)rsp->rdi = 123456;
+//             rsp->rax = 123;
+//             break;
+//         default:
+//             rsp->rax = 1;
+//             break;
+//     }
+// }
+
 cpu_state_t* handle_other_interrupt(uint64_t code, cpu_state_t* rsp) {
     // if (code == 0x2E) return rsp;
     // if (code == 0x2F) return rsp;
+
     if (code == 0x2b)
         return e1000_handle_interrupt(rsp);
 
     if (code == 0x80) {
-        *(uint64_t*)rsp->rdi = 123456;
+        // syscall_handle_interrupt(rsp);
+        // TODO @since 07/07/2025 -- 20:57
+        // we kinda need usermode first ...
         return rsp;
     }
     
@@ -284,7 +317,23 @@ char getchar() {
     return ascii;
 }
 
+static vfs_file_t __std_out_file { .file_type = vfs_file_type_t::SYS_STD_OUT };
+static vfs_file_t __dbg_file { .file_type = vfs_file_type_t::SYS_DBG };
+
+#define STD_OUT &__std_out_file
+#define DBG &__dbg_file
+
+void file_put_char(char c, vfs_file_t* file) {
+    vfs_write("/dev/stdout", file, &c, sizeof(c));
+}
+
+void file_put_str(const char* c, vfs_file_t* file) {
+    vfs_write("/dev/stdout", file, c, sizeof(c) * strlen(c));
+}
+
 extern "C" void kernel_entry(multiboot_t* multiboot_struct, void* kpml4) {
+    file_put_str("teststr456", DBG);
+
     debug_init();
 
     hc::gdt_tss::init();
@@ -488,12 +537,14 @@ extern "C" void kernel_entry(multiboot_t* multiboot_struct, void* kpml4) {
 
     keyboard_add_handler(kb_handler);
 
-    uint64_t data;
-    debug_print("data: 0x%p\n", &data);
-    asm volatile ("mov %[ptr], %%rdi" :: [ptr] "r"(&data) : "rdi", "memory");
-    asm volatile ("int $0x80" ::: "memory");
-    debug_print("data: 0x%p\n", &data);
-    debug_print("data: %ul\n", data);
+    // uint64_t data;
+    // debug_print("data: 0x%p\n", &data);
+    // // asm volatile ("mov %[ptr], %%rdi" :: [ptr] "r"(&data) : "rdi", "memory");
+    // // asm volatile ("int $0x80" ::: "memory");
+    // auto scresult = syscall(0, (int64_t)&data, 0, 0, 0, 0, 0);
+    // debug_print("data: 0x%p\n", &data);
+    // debug_print("data: %ul\n", data);
+    // debug_print("scresult: %il\n", scresult);
 
     const char* spinner[] = { "   ", ".  ", ".. ", "..." };
     constexpr size_t chars_size = (sizeof(spinner) / sizeof(char*));

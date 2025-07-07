@@ -4,6 +4,7 @@
 #include "drivers/ide_driver.hpp"
 #include "drivers/ahci_driver.hpp"
 #include "string.hpp"
+#include "debug.hpp"
 
 static vfs_node_t vfs_root {
     .name = "/",
@@ -115,6 +116,19 @@ void vfs_read_recurse(vfs_node_t* start_node, const char* file, void** data, siz
 
 void vfs_read(const char* file, vfs_file_t* file_ptr) {
     vfs_read_recurse(vfs_get_root(), file, &file_ptr->buffer, &file_ptr->size);
+}
+
+int vfs_write(const char* file, vfs_file_t* file_ptr, const char* data, size_t size) {
+    switch (file_ptr->file_type) {
+        case vfs_file_type_t::SYS_DBG:
+            debug_print(data);
+            return 0;
+        case vfs_file_type_t::SYS_STD_OUT:
+        case vfs_file_type_t::SYS_STD_ERR:
+        case vfs_file_type_t::DEFAULT:
+        default:
+            return 1;
+    }
 }
 
 void vfs_close_file(vfs_file_t* file) {
