@@ -15,16 +15,17 @@ section .text
 
     ; globals
     global entry
-    global multiboot_magic
+    global MB_MAGIC
+    global __end_bss_keep
 
 bits 32
 entry:
     ; store multiboot struct
-    mov [multiboot_magic],  eax
-    mov [multiboot_info],   ebx
+    mov [MB_MAGIC],  eax
+    mov [MB_INFO],   ebx
 
     ; setup boot stack
-    mov esp,    boot_stack
+    mov esp,    BSTACK_TOP
     and esp,    -16
 
     ; setup paging & long mode
@@ -46,13 +47,13 @@ entry:
     jmp gdt64.code_segment:boot_kernel
 
 setup_page_tables:
-    mov     eax,                    page_table_l3
+    mov     eax,                    PDPT
     or      eax,                    0b11 ; present, writable
-    mov     [page_table_l4],        eax
+    mov     [PML4T],        eax
 
-    mov     eax,                    page_table_l2
+    mov     eax,                    PDT
     or      eax,                    0b11 ; present, writable
-    mov     [page_table_l3],        eax
+    mov     [PDPT],        eax
 
     mov ecx, 0 ; counter
 
@@ -60,7 +61,7 @@ setup_page_tables:
     mov     eax,                            0x200000 ; 2MB
     mul     ecx
     or      eax,                            0b10000011 ; present, writable, huge
-    mov     [page_table_l2 + ecx * 8],      eax
+    mov     [PDT + ecx * 8],      eax
 
     inc ecx ; increment counter
     cmp ecx, 512 ; check if table is mapped
@@ -70,7 +71,7 @@ setup_page_tables:
 
 enable_paging:
     ; pass page table to cpu
-    mov eax, page_table_l4
+    mov eax, PML4T
     mov cr3, eax
 
     ; enable physycal address extension
@@ -95,23 +96,21 @@ enable_paging:
     ret
 
 section .bss
-    global __end_bss_keep
-    align 4096
-page_table_l4: ; PML4T
-    resb 4096
-page_table_l3: ; PDPT
-    resb 4096   
-page_table_l2: ; PDT
-    resb 4096
-boot_stack_bottom:
-    resb 4096 * 4; 4 kb
-boot_stack:
-align 8
+align 4096
+; page table for jumping to x64, discarded later
+PML4T:      resb 4096
+PDPT:       resb 4096   
+PDT:        resb 4096
+
+; 512 b of boot stack
+BSTACK_BOTTOM: resb 512
+BSTACK_TOP:
+
 ; muliboot struct
-multiboot_magic: resq 1 ; uint64_t
-multiboot_info:  resq 1 ; void*
-; uint64_t bss end ptr
-__end_bss_keep: resq 1
+align 8
+MB_MAGIC:    resq 1; uint64_t
+MB_INFO:     resq 1; void*
+__end_bss_keep:     resq 1; uint64_t
 
 section .rodata
 gdt64:

@@ -8,7 +8,7 @@ section .text
     ; c functions
     extern kernel_entry
     extern call_constructors
-    extern multiboot_magic
+    extern MB_MAGIC
 
     ; loader variables
     extern __lnk_bss_size
@@ -90,7 +90,7 @@ boot_kernel:
     call call_constructors
 
     ; push multiboot struct to func
-    mov rdi, multiboot_magic
+    mov rdi, MB_MAGIC
     ; push kernel page table struct
     mov rsi, KPML4
     ; i hope everything has been setup, godspeed o7
@@ -103,12 +103,12 @@ boot_kernel:
     jmp   .loop
 
 section .bss
-    align 4096
+align 4096
 ; page table for identity map (preloaded for the kernel to use)
 KPML4:     resb 4096
 KPDP:      resb 4096
 KPD:       resb 4096
 
-; 64 KB of kernel stack
+; 256 kb of kernel stack
 KSTACK_BOTTOM: resb 4096 * 64
 KSTACK_TOP:
