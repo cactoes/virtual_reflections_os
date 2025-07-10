@@ -1,39 +1,34 @@
-typedef long unsigned int size_t;
+#include "arch/generic.hpp"
+#include "arch/gdt.hpp"
+#include "arch/interrupt.hpp"
 
-typedef unsigned long long uint64_t;
-typedef          long long int64_t;
+#include "drivers/vga.hpp"
 
-typedef unsigned int uint32_t;
-typedef          int int32_t;
+#include "multiboot.hpp"
 
-typedef unsigned short uint16_t;
-typedef          short int16_t;
+#include "common.hpp"
 
-typedef unsigned char uint8_t;
-typedef   signed char int8_t;
+// volatile uint16_t* vga_mem = (volatile uint16_t*)0xB8000;
+// memzero((void*)vga_mem, sizeof(uint16_t) * 80 * 25);
+// uint8_t color = (15ul | (0ul << 4ul));
+// vga_mem[0] = 'I' | (color << 8);
 
-void* memset(void* dest, uint8_t val, size_t size) {
-    if (size == 0)
-        return dest;
-
-    uint8_t* p_dest = (uint8_t*)dest;
-
-    for (size_t i = 0; i < size; i++)
-        p_dest[i] = val;
-
-    return dest;
+void* interrupt_handler(uint64_t code, void* p_rsp) {
+    return p_rsp;
 }
 
-void* memzero(void* dest, size_t size) {
-    return memset(dest, 0, size);
-}
+extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
+    gdt_init();
 
-extern "C" void kernel_entry(void* multiboot_struct, void* kpml4) {
-    volatile uint16_t* vga_mem = (volatile uint16_t*)0xB8000;
+    interrupt_set_handler(interrupt_handler);
+    interrupt_init(gdt_get_kernel_code_selector());
 
-    memzero((void*)vga_mem, sizeof(uint16_t) * 80 * 25);
+    vga_tm_buffer_t buff {};
+    vga_tm_init_buffer(&buff, (void*)VGA_TM_BUFFER_ADDR, VGA_TM_NUM_COLS, VGA_TM_NUM_ROWS);
 
-    uint8_t color = (15ul | (0ul << 4ul));
-    vga_mem[0] = 'K' | (color << 8);
+    vga_tm_clear_screen(&buff);
+
+    UNUSED(mb_has_valid_magic((multiboot_t*)p_multiboot_struct));
+
     while (true);
 }

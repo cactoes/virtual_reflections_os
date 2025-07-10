@@ -1,4 +1,4 @@
-Checks: -*, readability-identifier-naming, readability-magic-numbers
+Checks: -*, readability-identifier-naming
 WarningsAsErrors: ''
 HeaderFilterRegex: '.*'
 CheckOptions:
@@ -22,8 +22,6 @@ CheckOptions:
     value: lower_case
   - key: readability-identifier-naming.PointerParameterPrefix
     value: p_
-  - key: readability-identifier-naming.VariableCase
-    value: lower_case
   - key: readability-identifier-naming.TypeAliasCase
     value: lower_case
   - key: readability-identifier-naming.ClassCase

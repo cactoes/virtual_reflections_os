@@ -17,5 +17,8 @@
         "utility": "cpp",
         "algorithm": "cpp",
         "typeinfo": "cpp"
-    }
+    },
+    "clang-tidy.compilerArgs": [
+        "-I./src/kernel/include"
+    ]
 }

@@ -57,35 +57,11 @@ typedef   signed char int8_t;
 void* memset(void* p_dest, uint8_t val, size_t size);
 void* memzero(void* p_dest, size_t size);
 void* memcpy(void* p_dest, const void* p_src, size_t size);
-bool  memeq(const void* p_a1, const void* p_a2, size_t size);
+bool memeq(const void* p_a1, const void* p_a2, size_t size);
 
 bool is_aligned(uint64_t addr, uint64_t align);
 uint64_t align_up(uint64_t addr, uint64_t align);
 uint64_t align_down(uint64_t addr, uint64_t align);
-
-constexpr uint64_t bitmap_get_size(size_t size) {
-    // NOLINTNEXTLINE
-    return size * (sizeof(uint64_t) * 8);
-}
-
-template <size_t size>
-constexpr uint64_t bitmap_get_size(uint64_t (&bitmap)[size]) {
-    return bitmap_get_size(size);
-}
-
-bool bitmap_get(uint64_t* p_bitmap, size_t size, size_t index);
-
-template <size_t size>
-bool bitmap_get(uint64_t (&bitmap)[size], size_t index) {
-    return bitmap_get(bitmap, size, index);
-}
-
-void bitmap_set(uint64_t* p_bitmap, size_t size, size_t index, bool state);
-
-template <size_t size>
-void bitmap_set(uint64_t (&bitmap)[size], size_t index, bool state) {
-    return bitmap_set(bitmap, size, index, state);
-}
 
 // NOLINTNEXTLINE
 constexpr uint64_t hash_fnv1a_64(const char* p_str, uint64_t hash = 14695981039346656037ULL) {
