@@ -62,12 +62,14 @@ struct vga_tm_buffer_t {
     } cursor;
 };
 
+static vga_tm_buffer_t g_vga_tm_buffer {};
+
 void vga_tm_init_buffer(vga_tm_buffer_t* p_buffer, void* p_vga_array, size_t width, size_t height);
 int vga_tm_putc(vga_tm_buffer_t* p_buffer, char ch);
 int vga_tm_puts(vga_tm_buffer_t* p_buffer, const char* p_str);
 int vga_tm_puts_color(vga_tm_buffer_t* p_buffer, const vga_tm_color_map_t* p_color_map, const char* p_str);
 int vga_tm_clear_row(vga_tm_buffer_t* p_buffer, uint32_t row);
-int vga_tm_clear_screen(vga_tm_buffer_t* p_buffer);
+int vga_tm_clear_buffer(vga_tm_buffer_t* p_buffer);
 int vga_tm_set_cursor(vga_tm_buffer_t* p_buffer, uint32_t x, uint32_t y);
 int vga_tm_get_cursor(vga_tm_buffer_t* p_buffer, uint32_t* p_x, uint32_t* p_y);
 int vga_tm_set_color(vga_tm_buffer_t* p_buffer, const vga_tm_color_map_t* p_color_map);

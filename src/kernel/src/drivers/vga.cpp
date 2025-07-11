@@ -93,14 +93,14 @@ int vga_tm_clear_row(vga_tm_buffer_t* p_buffer, uint32_t row) {
 
     volatile uint16_t* vga_tm_mem = (volatile uint16_t*)p_buffer->buffer;
 
-    for (uint32_t c = 0; c < p_buffer->cursor.x; c++)
+    for (uint32_t c = 0; c < p_buffer->size.width; c++)
         vga_tm_mem[c + p_buffer->size.width * row] = ' ' | (p_buffer->color.color << 8);
 
     const int result = vga_tm_set_cursor(p_buffer, 0, row);
     return result == 0 ? 0 : 2;
 }
 
-int vga_tm_clear_screen(vga_tm_buffer_t* p_buffer) {
+int vga_tm_clear_buffer(vga_tm_buffer_t* p_buffer) {
     for (uint32_t r = 0; r < p_buffer->size.height; r++)
         (void)vga_tm_clear_row(p_buffer, r);
     
