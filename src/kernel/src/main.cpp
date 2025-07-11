@@ -59,12 +59,6 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
     // initialze the debug out stream
     debug_init();
 
-    // initialze memory
-    
-    // kernel finished
-    printf(STD, "Kernel finished initializing, press a key to start the terminal ...\n");
-    printf(DBG, "Kernel finished initializing\n");
-
     // initialze virtual memory
     UNUSED(vmem_init(p_multiboot_struct, p_kpml4));
     vmem_identity_map(p_kpml4);
@@ -82,6 +76,10 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
     // setup vfs
 
     // threads / processes
+
+    // kernel finished
+    printf(STD, "Kernel finished initializing, press a key to start the terminal ...\n");
+    printf(DBG, "Kernel finished initializing\n");
 
     // we shoudn t reach this point since the kernel should never stop
     // incase we do just hang here so we dont break anything
