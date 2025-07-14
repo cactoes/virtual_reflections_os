@@ -29,6 +29,19 @@ void __kernel_fatal(uint64_t code, const char* p_message, cpu_state_t* p_cpu_sta
     if (code >= 0 && code <= 0x15) {
         vga_tm_puts(&g_vga_tm_buffer, "> ");
         switch (code) {
+            case 0x0: vga_tm_puts(&g_vga_tm_buffer, "DIVISION_BY_ZERO\n"); break;
+            case 0x1: vga_tm_puts(&g_vga_tm_buffer, "SINGLE_STEP_INTERRUPT\n"); break;
+            case 0x2: vga_tm_puts(&g_vga_tm_buffer, "NMI\n"); break;
+            case 0x3: vga_tm_puts(&g_vga_tm_buffer, "BREAKPOINT\n"); break;
+            case 0x4: vga_tm_puts(&g_vga_tm_buffer, "OVERFLOW\n"); break;
+            case 0x5: vga_tm_puts(&g_vga_tm_buffer, "BOUND_RANGE_EXCEEDED\n"); break;
+            case 0x6: vga_tm_puts(&g_vga_tm_buffer, "INVALID_OPCODE\n"); break;
+            case 0x7: vga_tm_puts(&g_vga_tm_buffer, "COPROCESSOR_NOT_AVAILABLE\n"); break;
+            case 0x8: vga_tm_puts(&g_vga_tm_buffer, "DOUBLE_FAULT\n"); break;
+            case 0x9: vga_tm_puts(&g_vga_tm_buffer, "COPROCESSOR_SEGMENT_OVERRUN\n"); break;
+            case 0xA: vga_tm_puts(&g_vga_tm_buffer, "INVALID_TSS\n"); break;
+            case 0xB: vga_tm_puts(&g_vga_tm_buffer, "SEGMENT_NOT_PRESENT\n"); break;
+            case 0xC: vga_tm_puts(&g_vga_tm_buffer, "STACK_SEGMENT_FAULT\n"); break;
             case 0xD: {
                 uint16_t seg_index = p_cpu_state->error_code >> 3;
                 bool is_external = p_cpu_state->error_code & 0x1;
@@ -41,19 +54,22 @@ void __kernel_fatal(uint64_t code, const char* p_message, cpu_state_t* p_cpu_sta
             }
             case 0xE:
                 memzero(buffer, ARRAY_SIZE(buffer));
-                sprintf(buffer, ARRAY_SIZE(buffer), "PAGE_FAULT @ 0x%uh\n%s, %s, %s, %s, %s", read_cr2(),
-                (p_cpu_state->error_code & 0x1) ? "Protection Violation" : "Non-present Page",
-                (p_cpu_state->error_code & 0x2) ? "Write" : "Read",
-                (p_cpu_state->error_code & 0x4) ? "User" : "Kernel",
-                (p_cpu_state->error_code & 0x10) ? "Instruction Fetch" : "",
-                (p_cpu_state->error_code & 0x8)  ? "Reserved Bit Violation" : "");
+                sprintf(buffer, ARRAY_SIZE(buffer), "PAGE_FAULT @ 0x%uh\n\nREASON    : %s\nOPERATION : %s\nMODE      : %s\n", read_cr2(),
+                    (p_cpu_state->error_code & 0x1) ? "PROTECTION VIOLATION" : "NON-PRESENT PAGE",
+                    (p_cpu_state->error_code & 0x2) ? "WRITE" : "READ",
+                    (p_cpu_state->error_code & 0x4) ? "USER" : "KERNEL");
                 vga_tm_puts(&g_vga_tm_buffer, buffer);
                 break;
-            default:
-                break;
+            case 0xF: vga_tm_puts(&g_vga_tm_buffer, "RESERVED\n"); break;
+            case 0x10: vga_tm_puts(&g_vga_tm_buffer, "X87_FLOATING_POINT_EXCEPTION\n"); break;
+            case 0x11: vga_tm_puts(&g_vga_tm_buffer, "ALIGNMENT_CHECK\n"); break;
+            case 0x12: vga_tm_puts(&g_vga_tm_buffer, "MACHINE_CHECK\n"); break;
+            case 0x13: vga_tm_puts(&g_vga_tm_buffer, "SIMD_FP_EXCEPTION\n"); break;
+            case 0x14: vga_tm_puts(&g_vga_tm_buffer, "VIRTUALIZATION_EXCEPTION\n"); break;
+            case 0x15: vga_tm_puts(&g_vga_tm_buffer, "CONTROL_PROTECTION_EXCEPTION\n"); break;
+            default: vga_tm_puts(&g_vga_tm_buffer, "UNKOWN\n"); break;
         }
     }
-
 
     if (p_cpu_state) {
         printf(DBG, "[cf:%ul] ", (p_cpu_state->rflags >> 0) & 1);
