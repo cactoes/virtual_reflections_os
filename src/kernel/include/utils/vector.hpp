@@ -76,11 +76,11 @@ public:
     }
 
     iterator<T> begin() {
-        return iterator(first_node);
+        return iterator<T>(first_node);
     }
 
     iterator<T> end() {
-        return iterator(nullptr);
+        return iterator<T>(nullptr);
     }
 
     size_t length() {

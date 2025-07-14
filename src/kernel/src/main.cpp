@@ -4,6 +4,7 @@
 #include "arch/pit.hpp"
 
 #include "drivers/vga.hpp"
+#include "drivers/pcie.hpp"
 #include "drivers/ps2/keyboard.hpp"
 #include "drivers/ps2/mouse.hpp"
 
@@ -123,12 +124,43 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
 
     // TODO @since 14/07/2025 -- 18:58
     // pci(e)
+    vector<pci_device_t> pci_devices {};
+    pci_enumerate_devices(&pci_devices);
+
+    for (auto& device : pci_devices) {
+        const char* cd = pci_get_class_description(&device);
+        printf(DBG, "[+] %s\n", cd);
+    }
+
+    pci_class_info_t ahci_device_class_info {
+        .revision_id = (uint8_t)PCI_UNKNOWN,
+        .prog_if = (uint8_t)1,
+        .sub_class = (uint8_t)6,
+        .class_code = (uint8_t)1
+    };
+    const pci_device_t* ahci_controller = pci_find_device(&pci_devices, &ahci_device_class_info);
+    
+    pci_class_info_t ide_device_class_info {
+        .revision_id = (uint8_t)PCI_UNKNOWN,
+        .prog_if = (uint8_t)PCI_UNKNOWN,
+        .sub_class = (uint8_t)1,
+        .class_code = (uint8_t)1
+    };
+    const pci_device_t* ide_controller = pci_find_device(&pci_devices, &ide_device_class_info);
+    
+    pci_class_info_t network_device_class_info {
+        .revision_id = (uint8_t)PCI_UNKNOWN,
+        .prog_if = (uint8_t)PCI_UNKNOWN,
+        .sub_class = (uint8_t)0,
+        .class_code = (uint8_t)2
+    };
+    const pci_device_t* network_controller = pci_find_device(&pci_devices, &network_device_class_info);
 
     // TODO @since 14/07/2025 -- 18:58
     // setup vfs
 
     // kernel finished
-    printf(STD, "Kernel finished initializing, press a key to start the terminal ...\n");
+    printf(STD, "> SYSTEM READY\n");
     printf(DBG, "Kernel finished initializing\n");
 
     // we shoudn t reach this point since the kernel should never stop
