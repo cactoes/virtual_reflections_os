@@ -13,6 +13,7 @@
 
 #include "utils/debug.hpp"
 #include "utils/vector.hpp"
+#include "utils/event.hpp"
 
 #include "multiboot.hpp"
 #include "string.hpp"
@@ -89,6 +90,22 @@ void* interrupt_handler(uint64_t code, cpu_state_t* p_rsp) {
 //     );
 // }
 
+void on_key_down(const ps2_key_state_t* p_state) {
+    static char s_ascii_table[128] = {
+        0,  27, '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '-', '=', '\b',
+        '\t', 'q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p', '[', ']', '\n',
+        0, 'a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l', ';', '\'', '`', 0,
+        '\\', 'z', 'x', 'c', 'v', 'b', 'n', 'm', ',', '.', '/', 0, '*',
+        0, ' ', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, '7', '8', '9', '-',
+        '4', '5', '6', '+', '1', '2', '3', '0', '.'
+    };
+
+    if (p_state->scan_code > ARRAY_SIZE(s_ascii_table))
+        return;
+
+    printf(STD, "%c", s_ascii_table[p_state->scan_code]);
+}
+
 extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
     // validate multiboot
     UNUSED(mb_has_valid_magic((multiboot_t*)p_multiboot_struct));
@@ -139,6 +156,7 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
         .class_code = (uint8_t)1
     };
     const pci_device_t* ahci_controller = pci_find_device(&pci_devices, &ahci_device_class_info);
+    // TODO @since 14/07/2025 -- 21:52
     
     pci_class_info_t ide_device_class_info {
         .revision_id = (uint8_t)PCI_UNKNOWN,
@@ -147,6 +165,7 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
         .class_code = (uint8_t)1
     };
     const pci_device_t* ide_controller = pci_find_device(&pci_devices, &ide_device_class_info);
+    // TODO @since 14/07/2025 -- 21:52
     
     pci_class_info_t network_device_class_info {
         .revision_id = (uint8_t)PCI_UNKNOWN,
@@ -155,9 +174,12 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
         .class_code = (uint8_t)2
     };
     const pci_device_t* network_controller = pci_find_device(&pci_devices, &network_device_class_info);
+    // TODO @since 14/07/2025 -- 21:52
 
     // TODO @since 14/07/2025 -- 18:58
     // setup vfs
+
+    ps2_keyboard_event_subscribe(on_key_down);
 
     // kernel finished
     printf(STD, "> SYSTEM READY\n");
