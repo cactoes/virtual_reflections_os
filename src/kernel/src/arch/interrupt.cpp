@@ -8,8 +8,8 @@ bool unmask_irq(uint8_t irq_number) {
     if (irq_number >= 16)
         return false;
 
-    const auto pic_data_port = irq_number > 8 ? X86_64_INT_PIC2_DATA : X86_64_INT_PIC1_DATA;
-    irq_number = irq_number > 8 ? irq_number - 8 : irq_number;
+    const auto pic_data_port = irq_number >= 8 ? X86_64_INT_PIC2_DATA : X86_64_INT_PIC1_DATA;
+    irq_number = irq_number >= 8 ? irq_number - 8 : irq_number;
 
     uint8_t mask = in_port<uint8_t>(pic_data_port);
     BIT_CLEAR(mask, irq_number);
@@ -49,4 +49,14 @@ void interrupt_init(uint16_t kernel_code_selector) {
 
 void interrupt_set_handler(void*(p_handler)(uint64_t, cpu_state_t*)) {
     x86_64_set_handler(p_handler);
+}
+
+void interrupt_send_eoi(uint8_t irq_num) {
+    if (irq_num >= 16)
+        return;
+
+    if (irq_num >= 8)
+        out_port<uint8_t>(X86_64_INT_PIC2, X86_64_INT_PIC_EOI);
+    
+    out_port<uint8_t>(X86_64_INT_PIC1, X86_64_INT_PIC_EOI);
 }

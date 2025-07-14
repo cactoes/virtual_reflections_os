@@ -14,6 +14,7 @@
 
 void interrupt_init(uint16_t kernel_code_selector);
 void interrupt_set_handler(void*(p_handler)(uint64_t, cpu_state_t*));
+void interrupt_send_eoi(uint8_t irq_num);
 
 #endif // ARCH_X86_64
 
