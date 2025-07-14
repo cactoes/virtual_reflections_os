@@ -108,9 +108,9 @@ x86_64_get_cpu_state:
 ;==========================================
 %macro isr_stub 1
 isr_stub_%+%1:
-    ; %if %1 != 8 && %1 != 10 && %1 != 11 && %1 != 12 && %1 != 13 && %1 != 14 && %1 != 17 && %1 != 30
-    ;     push 0
-    ; %endif
+    %if %1 != 8 && %1 != 10 && %1 != 11 && %1 != 12 && %1 != 13 && %1 != 14 && %1 != 17 && %1 != 30
+        push 0
+    %endif
 
     push_all_regs
 
@@ -128,6 +128,8 @@ isr_stub_%+%1:
     mov rsp, rax
 
     pop_all_regs
+
+    add rsp, 8
 
     ; return from interrupt
     iretq
