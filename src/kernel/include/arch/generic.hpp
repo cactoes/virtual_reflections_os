@@ -66,6 +66,10 @@ static inline void memory() {
     x86_64_memory();
 }
 
+static inline uint64_t read_cr2() {
+    return x86_64_read_cr2();
+}
+
 template <typename T>
 static inline void out_port(uint16_t port, T value);
 

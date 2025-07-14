@@ -39,7 +39,7 @@ struct x86_64_idt_register_t {
 
 void x86_64_set_idt_entries(x86_64_idt_entry_t* p_idt, uint16_t kernel_code_selector);
 void x86_64_set_idtr(x86_64_idt_register_t* p_idtr, x86_64_idt_entry_t* p_idt);
-void x86_64_set_handler(void*(p_handler)(uint64_t, void*));
+void x86_64_set_handler(void*(p_handler)(uint64_t, cpu_state_t*));
 
 static inline void x86_64_flush_idt(x86_64_idt_register_t idtr) {
     asm volatile("lidt %0" : : "m"(idtr));

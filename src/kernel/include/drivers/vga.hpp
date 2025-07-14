@@ -62,7 +62,7 @@ struct vga_tm_buffer_t {
     } cursor;
 };
 
-static vga_tm_buffer_t g_vga_tm_buffer {};
+extern vga_tm_buffer_t g_vga_tm_buffer;
 
 void vga_tm_init_buffer(vga_tm_buffer_t* p_buffer, void* p_vga_array, size_t width, size_t height);
 int vga_tm_putc(vga_tm_buffer_t* p_buffer, char ch);

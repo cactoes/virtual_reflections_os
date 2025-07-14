@@ -7,14 +7,12 @@
 #include "memory/vmem.hpp"
 #include "memory/heap.hpp"
 
+#include "utils/debug.hpp"
+
 #include "multiboot.hpp"
 #include "string.hpp"
 #include "common.hpp"
-#include "utils/debug.hpp"
-
-void* interrupt_handler(uint64_t code, void* p_rsp) {
-    return p_rsp;
-}
+#include "crash_handler.hpp"
 
 enum print_mode_t {
     STD,
@@ -22,7 +20,7 @@ enum print_mode_t {
 };
 
 void printf(print_mode_t mode, const char* p_str, ...) {
-    char buffer[1024] = { 0 };
+    char buffer[256] = { 0 };
 
     va_list args;
     va_start(args, p_str);
@@ -38,7 +36,15 @@ void printf(print_mode_t mode, const char* p_str, ...) {
             vga_tm_puts(&g_vga_tm_buffer, buffer);
             break;
     }
+}
 
+
+void* interrupt_handler(uint64_t code, cpu_state_t* p_rsp) {
+    if (code >= 0 && code <= 0x15) {
+        __kernel_fatal(code, "", p_rsp);
+
+    }
+    return p_rsp;
 }
 
 extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
@@ -78,8 +84,18 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
     // threads / processes
 
     // kernel finished
-    printf(STD, "Kernel finished initializing, press a key to start the terminal ...\n");
-    printf(DBG, "Kernel finished initializing\n");
+    // printf(STD, "Kernel finished initializing, press a key to start the terminal ...\n");
+    // printf(DBG, "Kernel finished initializing\n");
+
+    volatile int* ptr = (int*)0x1234564478;
+    int val = *ptr;
+    // asm volatile (
+    //     "mov $0xFFFF, %%ax\n"   // Invalid selector (not present in GDT)
+    //     "ltr %%ax\n"            // Load to Task Register — will trigger #GP
+    //     :
+    //     :
+    //     : "rax"
+    // );
 
     // we shoudn t reach this point since the kernel should never stop
     // incase we do just hang here so we dont break anything

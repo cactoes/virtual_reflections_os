@@ -1,6 +1,8 @@
 #include "drivers/vga.hpp"
 #include "arch/generic.hpp"
 
+vga_tm_buffer_t g_vga_tm_buffer {};
+
 void vga_tm_init_buffer(vga_tm_buffer_t* p_buffer, void* p_vga_array, size_t width, size_t height) {
     p_buffer->buffer = (uint8_t*)p_vga_array;
     p_buffer->size.width = width;

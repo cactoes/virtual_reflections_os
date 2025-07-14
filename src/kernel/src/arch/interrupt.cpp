@@ -47,6 +47,6 @@ void interrupt_init(uint16_t kernel_code_selector) {
     sti();
 }
 
-void interrupt_set_handler(void*(p_handler)(uint64_t, void*)) {
+void interrupt_set_handler(void*(p_handler)(uint64_t, cpu_state_t*)) {
     x86_64_set_handler(p_handler);
 }

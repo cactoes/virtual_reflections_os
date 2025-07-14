@@ -124,4 +124,10 @@ static inline void x86_64_memory() {
     asm volatile("" ::: "memory");
 }
 
+static inline uint64_t x86_64_read_cr2() {
+    uint64_t res;
+    asm volatile("mov %%cr2, %0" : "=r"(res));
+    return res;
+}
+
 #endif // __X86_64_GENERIC_HPP__

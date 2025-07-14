@@ -41,6 +41,7 @@ void draw_logo_vga_tm() {
     vga_tm_set_cursor(x, y_base + 15); vga_tm_print("       -@@@ @@+       \n");
     vga_tm_set_cursor(x, y_base + 16); vga_tm_print("        :@  %=        \n");
 }
+
 extern "C" NORETURN void critical_fatal_ex(uint64_t code, const char* message, cpu_state_t* cpu_state = nullptr) {
     debug_print("[FATAL]: critical fatal triggerd: 0x%uh, %s\n", code, message);
 

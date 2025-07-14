@@ -7,7 +7,6 @@
 section .text
     ; c functions
     extern kernel_entry
-    extern call_constructors
     extern MB_MAGIC
 
     ; loader variables

@@ -1,0 +1,41 @@
+//==========================================
+/// @file       crash_handler.hpp
+/// @brief      kernel crash handler
+//==========================================
+
+#pragma once
+
+#ifndef __CRASH_HANDLER_HPP__
+#define __CRASH_HANDLER_HPP__
+
+#include "common.hpp"
+
+NORETURN void __kernel_fatal(uint64_t code, const char* p_message, cpu_state_t* p_cpu_state = nullptr);
+
+NAKED NORETURN inline void kernel_fatal(uint64_t code, const char* p_message) {
+    asm volatile (
+        // reserve space for cpu_state_t
+        "sub %[state_size], %%rsp\n"
+        "and $-16, %%rsp\n"
+
+        // dump the cpu state
+        "mov %%rsp, %%rdi\n"
+        "call x86_64_get_cpu_state\n"
+
+        "mov %[code], %%rcx\n"
+        "mov %[msg], %%r8\n"
+
+        "mov %%rcx, %%rdi\n"
+        "mov %%r8, %%rsi\n"
+        "mov %%rsp, %%rdx\n"
+        "call __kernel_fatal\n"
+
+        :
+        : [code] "r"(code),
+          [msg] "r"(p_message),
+          [state_size] "i"(sizeof(cpu_state_t))
+        : "rcx", "r8", "rdi", "rsi", "rdx", "memory"
+    );
+}
+
+#endif // __CRASH_HANDLER_HPP__

@@ -13,7 +13,7 @@
 #include "arch/x86_64/interrupt.hpp"
 
 void interrupt_init(uint16_t kernel_code_selector);
-void interrupt_set_handler(void*(p_handler)(uint64_t, void*));
+void interrupt_set_handler(void*(p_handler)(uint64_t, cpu_state_t*));
 
 #endif // ARCH_X86_64
 
