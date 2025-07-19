@@ -105,7 +105,7 @@ bool is_interrupt_exception(interrupt_type_t type) {
 
 interrupt_type_t convert_interrupt_code(uint64_t code) {
     // exceptions
-    if (code >= 0 && code <= 21)
+    if (is_interrupt_exception((interrupt_type_t)code))
         return (interrupt_type_t)code;
 
     // hardware
@@ -173,10 +173,33 @@ void on_key_down(const ps2_key_state_t* p_state) {
         '4', '5', '6', '+', '1', '2', '3', '0', '.'
     };
 
-    if (p_state->scan_code > ARRAY_SIZE(s_ascii_table) || !p_state->is_pressed)
+    static char s_ascii_table_upper[128] = {
+        0,  27, '!', '@', '#', '$', '%', '^', '&', '*', '(', ')', '_', '+', '\b',
+        '\t', 'Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P', '{', '}', '\n',
+        0, 'A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L', ':', '"', '~', 0,
+        '|', 'Z', 'X', 'C', 'V', 'B', 'N', 'M', '<', '>', '?', 0, '*',
+        0, ' ', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, '7', '8', '9', '-',
+        '4', '5', '6', '+', '1', '2', '3', '0', '.'
+    };
+
+    if (p_state->scan_code > 128 || !p_state->is_pressed)
         return;
 
-    printf(STD, "%c", s_ascii_table[p_state->scan_code]);
+    auto shift_key = ps2_keyboard_get_key_state(PS2_KEYBOARD_SC_LSHIFT);
+    auto caps_key = ps2_keyboard_get_key_state(PS2_KEYBOARD_SC_CAPS_LOCK);
+
+    char ch;
+
+    if (shift_key->is_pressed && !caps_key->is_pressed)
+        ch = s_ascii_table_upper[p_state->scan_code];
+    else if (shift_key->is_pressed && caps_key->is_pressed)
+        ch = s_ascii_table[p_state->scan_code];
+    else if (!shift_key->is_pressed && caps_key->is_pressed)
+        ch = s_ascii_table_upper[p_state->scan_code];
+    else
+        ch = s_ascii_table[p_state->scan_code];
+
+    printf(STD, "%c", ch);
 }
 
 extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
