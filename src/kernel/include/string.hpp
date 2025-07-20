@@ -98,4 +98,35 @@ bool streq(const char* p_str1, const char* p_str2);
 int strff(const char* p_str, char ch);
 bool str_start_with(const char* p_str1, const char* p_target);
 
+class string {
+public:
+    string(const char* p_string);
+    
+    // for now no copy
+    string(const string& other) = delete;
+    string& operator=(const string& other) = delete;
+    
+    string(string&& other);
+    string& operator=(string&& other);
+    
+    ~string();
+
+    const char* c_str() const;
+    size_t length() const;
+    
+    void append(const char* p_other);
+    void append(const string& r_other);
+    
+    bool operator==(const string& r_other);
+    bool operator==(const char* p_other);
+    string operator+(const string& r_other);
+    string operator+(const char* p_other);
+    string& operator+=(const string& r_other);
+    string& operator+=(const char* p_other);
+    
+private:
+    char* p_str = nullptr;
+    size_t len = 0;
+};
+
 #endif // __STRING_HPP__

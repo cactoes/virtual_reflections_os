@@ -1,6 +1,7 @@
 #include "string.hpp"
 
 #include <stdarg.h>
+#include "memory/heap.hpp"
 
 double pow(double base, int exponent) {
     if (exponent == 0) return 1;
@@ -403,4 +404,97 @@ bool str_start_with(const char* p_str1, const char* p_target) {
     }
 
     return true;
+}
+
+string::string(const char* p_string) {
+    len = strlen(p_string);
+    p_str = (char*)GALLOC(len * sizeof(char) + 1);
+    memzero(p_str, len + 1);
+    memcpy(p_str, p_string, len);
+}
+
+string::string(string&& other) noexcept {
+    p_str = other.p_str;
+    len = other.len;
+
+    other.p_str = nullptr;
+    other.len = 0;
+}
+
+string& string::operator=(string&& other) noexcept {
+    if (this != &other) {
+        if (p_str)
+            GFREE(p_str);
+
+        p_str = other.p_str;
+        len = other.len;
+
+        other.p_str = nullptr;
+        other.len = 0;
+    }
+    return *this;
+}
+
+string::~string() {
+    if (p_str) {
+        GFREE(p_str);
+        p_str = nullptr;
+    }
+}
+
+const char* string::c_str() const {
+    return p_str;
+}
+
+size_t string::length() const {
+    return len;
+}
+
+void string::append(const char* p_other) {
+    size_t other_len = strlen(p_other);
+    size_t new_len = len + other_len;
+    
+    char* p_new_str = (char*)GALLOC(new_len + 1);
+    memzero(p_new_str, new_len + 1);
+    memcpy(p_new_str, p_str, len);
+    memcpy(p_new_str + len, p_other, other_len);
+
+    GFREE(p_str);
+
+    p_str = p_new_str;
+    len = new_len;
+}
+
+void string::append(const string& r_other) {
+    append(r_other.p_str);
+}
+
+bool string::operator==(const string& r_other) {
+    return streq(p_str, r_other.p_str);
+}
+
+bool string::operator==(const char* p_other) {
+    return streq(p_str, p_other);
+}
+
+string string::operator+(const string& r_other) {
+    string n(p_str);
+    n.append(r_other);
+    return n;
+}
+
+string string::operator+(const char* p_other) {
+    string n(p_str);
+    n.append(p_other);
+    return n;
+}
+
+string& string::operator+=(const string& r_other) {
+    append(r_other);
+    return *this;
+}
+
+string& string::operator+=(const char* p_other) {
+    append(p_other);
+    return *this;
 }
