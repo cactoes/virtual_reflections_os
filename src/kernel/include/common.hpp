@@ -40,6 +40,28 @@
 
 #define ARRAY_SIZE(arr) sizeof((arr)) / sizeof(decltype(*(arr)))
 
+// remove_reference
+template<typename T>
+struct remove_reference {
+    using type_t = T;
+};
+
+template<typename T>
+struct remove_reference<T&> {
+    using type_t = T;
+};
+
+template<typename T>
+struct remove_reference<T&&> {
+    using type_t = T;
+};
+
+// move
+template<typename T>
+constexpr typename remove_reference<T>::type_t&& move(T&& t) noexcept {
+    return static_cast<typename remove_reference<T>::type_t&&>(t);
+}
+
 typedef long unsigned int size_t;
 
 typedef unsigned long long uint64_t;
