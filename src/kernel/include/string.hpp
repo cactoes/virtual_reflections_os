@@ -97,6 +97,7 @@ char* strchr(const char* p_s, char c);
 bool streq(const char* p_str1, const char* p_str2);
 int strff(const char* p_str, char ch);
 bool str_start_with(const char* p_str1, const char* p_target);
+void unpack_be16_string(const uint16_t* src, int word_count, char* dest, int max_len);
 
 class string {
 public:

@@ -406,6 +406,15 @@ bool str_start_with(const char* p_str1, const char* p_target) {
     return true;
 }
 
+void unpack_be16_string(const uint16_t* p_src, int word_count, char* p_dst, int max_len) {
+    int pos = 0;
+    for (int i = 0; i < word_count && pos + 1 < max_len; ++i) {
+        p_dst[pos++] = (char)(p_src[i] >> 8);
+        p_dst[pos++] = (char)(p_src[i] & 0xFF);
+    }
+    p_dst[pos] = '\0';
+}
+
 string::string() {
 }
 
