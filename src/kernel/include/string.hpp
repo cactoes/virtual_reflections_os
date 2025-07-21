@@ -100,11 +100,12 @@ bool str_start_with(const char* p_str1, const char* p_target);
 
 class string {
 public:
+    string();
     string(const char* p_string);
     
     // for now no copy
-    string(const string& other) = delete;
-    string& operator=(const string& other) = delete;
+    string(const string& r_other);
+    string& operator=(const string& r_other);
     
     string(string&& other);
     string& operator=(string&& other);
@@ -113,6 +114,8 @@ public:
 
     const char* c_str() const;
     size_t length() const;
+    void assign(const char* p_string);
+    void assign(const string& other);
     
     void append(const char* p_other);
     void append(const string& r_other);
@@ -123,6 +126,8 @@ public:
     string operator+(const char* p_other);
     string& operator+=(const string& r_other);
     string& operator+=(const char* p_other);
+
+    string& operator=(const char* p_other);
     
 private:
     char* p_str = nullptr;

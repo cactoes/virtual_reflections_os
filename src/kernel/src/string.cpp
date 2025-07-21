@@ -406,14 +406,33 @@ bool str_start_with(const char* p_str1, const char* p_target) {
     return true;
 }
 
-string::string(const char* p_string) {
-    len = strlen(p_string);
-    p_str = (char*)GALLOC(len * sizeof(char) + 1);
-    memzero(p_str, len + 1);
-    memcpy(p_str, p_string, len);
+string::string() {
 }
 
-string::string(string&& other) noexcept {
+string::string(const char* p_string) {
+    assign(p_string);
+}
+
+string::string(const string& other) {
+    assign(move(other));
+}
+
+string& string::operator=(const string& other) {
+    if (this == &other)
+        return *this;
+
+    char* new_str = (char*)GALLOC(other.len * sizeof(char) + 1);
+    strncpy(new_str, other.p_str, other.len + 1);
+
+    GFREE(p_str);
+
+    p_str = new_str;
+    len = other.len;
+
+    return *this;
+}
+
+string::string(string&& other) {
     p_str = other.p_str;
     len = other.len;
 
@@ -421,7 +440,7 @@ string::string(string&& other) noexcept {
     other.len = 0;
 }
 
-string& string::operator=(string&& other) noexcept {
+string& string::operator=(string&& other) {
     if (this != &other) {
         if (p_str)
             GFREE(p_str);
@@ -448,6 +467,31 @@ const char* string::c_str() const {
 
 size_t string::length() const {
     return len;
+}
+
+void string::assign(const char* p_string) {
+    if (p_str) {
+        GFREE(p_str);
+        p_str = nullptr;
+        len = 0;
+    }
+
+    len = strlen(p_string);
+    p_str = (char*)GALLOC(len * sizeof(char) + 1);
+    memzero(p_str, len + 1);
+    memcpy(p_str, p_string, len);
+}
+
+void string::assign(const string& other) {
+    if (p_str) {
+        GFREE(p_str);
+        p_str = nullptr;
+        len = 0;
+    }
+
+    len = other.len;
+    p_str = (char*)GALLOC(len * sizeof(char) + 1);
+    strncpy(p_str, other.p_str, len + 1);
 }
 
 void string::append(const char* p_other) {
@@ -496,5 +540,10 @@ string& string::operator+=(const string& r_other) {
 
 string& string::operator+=(const char* p_other) {
     append(p_other);
+    return *this;
+}
+
+string& string::operator=(const char* p_other) {
+    assign(p_other);
     return *this;
 }
