@@ -7,9 +7,12 @@
 #include "drivers/pcie.hpp"
 #include "drivers/ps2/keyboard.hpp"
 #include "drivers/ps2/mouse.hpp"
+#include "drivers/ps2/ps2.hpp"
 
 #include "memory/vmem.hpp"
 #include "memory/heap.hpp"
+
+#include "hardware/vhd.hpp"
 
 #include "utils/debug.hpp"
 #include "utils/vector.hpp"
@@ -202,6 +205,10 @@ void on_key_down(const ps2_key_state_t* p_state) {
     printf(STD, "%c", ch);
 }
 
+void on_mouse(const ps2_mouse_state_t* p_state) {
+    printf(DBG, "L: %i, M: %i, R: %i, S: %i\n", p_state->buttons.left, p_state->buttons.middle, p_state->buttons.right, p_state->ds);
+}
+
 extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
     // validate multiboot
     UNUSED(mb_has_valid_magic((multiboot_t*)p_multiboot_struct));
@@ -231,6 +238,16 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
     ps2_mouse_init();
     pit_init(PIT_TIMER_INTERVAL);
     interrupt_init(gdt_get_kernel_code_selector());
+
+    if (ps2_port_test_device(ps2_device_type_t::KEYBOARD)) {
+        printf(DBG, "[+] ps2/keyboard\n");
+        mount_device("ps2/keyboard", nullptr);
+    }
+
+    if (ps2_port_test_device(ps2_device_type_t::MOUSE)) {
+        printf(DBG, "[+] ps2/mouse\n");
+        mount_device("ps2/mouse", nullptr);
+    }
 
     // TODO @since 14/07/2025 -- 18:58
     // threads / processes
@@ -276,6 +293,7 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
     // setup vfs
 
     ps2_keyboard_event_subscribe(on_key_down);
+    ps2_mouse_event_subscribe(on_mouse);
 
     // kernel finished
     printf(STD, "> SYSTEM READY\n");

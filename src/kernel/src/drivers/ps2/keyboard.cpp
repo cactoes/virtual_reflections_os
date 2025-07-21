@@ -1,7 +1,7 @@
 #include "drivers/ps2/keyboard.hpp"
+#include "drivers/ps2/ps2.hpp"
 #include "utils/debug.hpp"
 #include "utils/event.hpp"
-#include "arch/generic.hpp"
 
 static event_manager_t<const ps2_key_state_t*> g_keyboard_event_manager {};
 static uint32_t g_last_scan_code = 0;
@@ -9,13 +9,12 @@ static ps2_key_state_t g_key_state_array[PS2_KEYBOARD_KEY_STATE_ARRAY_SIZE] {};
 
 void ps2_keyboard_handle_interrupt() {
     ps2_key_state_t key_state {};
-
-    key_state.full_code = in_port<uint8_t>(PS2_KEYBOARD_KEYBOARD_PORT_SCANCODE);
+    key_state.full_code = ps2_read(PS2_DATA_PORT);
     key_state.is_escaped = false;
 
     if (key_state.full_code == PS2_KEYBOARD_FULL_CODE_ESCAPED) {
         key_state.is_escaped = true;
-        key_state.full_code = in_port<uint8_t>(PS2_KEYBOARD_KEYBOARD_PORT_SCANCODE);
+        key_state.full_code = ps2_read(PS2_DATA_PORT);
     }
 
     key_state.scan_code = (key_state.full_code & PS2_KEYBOARD_SCAN_CODE_MASK_CHAR);
