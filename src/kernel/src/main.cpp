@@ -10,6 +10,8 @@
 #include "drivers/ps2/ps2.hpp"
 #include "drivers/storage/ide.hpp"
 
+#include "filesystems/iso9660.hpp"
+
 #include "memory/vmem.hpp"
 #include "memory/heap.hpp"
 
@@ -210,6 +212,24 @@ void on_mouse(const ps2_mouse_state_t* p_state) {
     printf(DBG, "L: %i, M: %i, R: %i, S: %i\n", p_state->buttons.left, p_state->buttons.middle, p_state->buttons.right, p_state->ds);
 }
 
+enum class vfs_node_type_t {
+    FILE,
+    DIRECTORY,
+    BLOCK_DEVICE,
+    CHAR_DEVICE,
+    MOUNT_POINT
+};
+
+struct vfs_node_t {
+    const char* name;
+    vfs_node_type_t node_type;
+    vector<vfs_node_t*> children;
+
+    filesystem_api_t* api;
+};
+
+vfs_node_t* g_vfs_root = nullptr;
+
 extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
     // validate multiboot
     UNUSED(mb_has_valid_magic((multiboot_t*)p_multiboot_struct));
@@ -280,6 +300,15 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
         printf(DBG, "[+] %s\n", buffer);
         mount_device(buffer, nullptr);
     }
+
+    iso9660_fs_data_t data {};
+    iso9660_drive_init(ide_devices.get_at(0), &data);
+
+    void* file_data;
+    size_t file_size;
+    data.read(&data, "/.env", &file_data, &file_size);
+    
+    printf(DBG, "%s\n", (char*)file_data);
 
     // ahci device
     pci_class_info_t ahci_device_class_info {
