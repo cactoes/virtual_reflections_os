@@ -5,5 +5,5 @@
 make build
 
 # other project
-cd src/test_driver
-make build
+# cd src/test_driver
+# make build
