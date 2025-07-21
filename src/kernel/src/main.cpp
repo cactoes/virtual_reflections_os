@@ -8,6 +8,7 @@
 #include "drivers/ps2/keyboard.hpp"
 #include "drivers/ps2/mouse.hpp"
 #include "drivers/ps2/ps2.hpp"
+#include "drivers/storage/ide.hpp"
 
 #include "memory/vmem.hpp"
 #include "memory/heap.hpp"
@@ -202,7 +203,7 @@ void on_key_down(const ps2_key_state_t* p_state) {
     else
         ch = s_ascii_table[p_state->scan_code];
 
-    printf(STD, "%c", ch);
+    printf(DBG, "%c", ch);
 }
 
 void on_mouse(const ps2_mouse_state_t* p_state) {
@@ -252,8 +253,6 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
     // TODO @since 14/07/2025 -- 18:58
     // threads / processes
 
-    // TODO @since 14/07/2025 -- 18:58
-    // pci(e)
     vector<pci_device_t> pci_devices {};
     pci_enumerate_devices(&pci_devices);
 
@@ -262,6 +261,27 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
         printf(DBG, "[+] %s\n", cd);
     }
 
+    // ide device
+    pci_class_info_t ide_device_class_info {
+        .revision_id = (uint8_t)PCI_UNKNOWN,
+        .prog_if = (uint8_t)PCI_UNKNOWN,
+        .sub_class = (uint8_t)1,
+        .class_code = (uint8_t)1
+    };
+    const pci_device_t* ide_controller = pci_find_device(&pci_devices, &ide_device_class_info);
+
+    vector<ide_device_t> ide_devices {};
+    ide_init(ide_controller, &ide_devices);
+    
+    size_t ide_device_index = 0;
+    for (auto& drive : ide_devices) {
+        char buffer[20];
+        sprintf(buffer, 20, "ide/disk%i", ide_device_index++);
+        printf(DBG, "[+] %s\n", buffer);
+        mount_device(buffer, nullptr);
+    }
+
+    // ahci device
     pci_class_info_t ahci_device_class_info {
         .revision_id = (uint8_t)PCI_UNKNOWN,
         .prog_if = (uint8_t)1,
@@ -271,15 +291,7 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
     const pci_device_t* ahci_controller = pci_find_device(&pci_devices, &ahci_device_class_info);
     // TODO @since 14/07/2025 -- 21:52
     
-    pci_class_info_t ide_device_class_info {
-        .revision_id = (uint8_t)PCI_UNKNOWN,
-        .prog_if = (uint8_t)PCI_UNKNOWN,
-        .sub_class = (uint8_t)1,
-        .class_code = (uint8_t)1
-    };
-    const pci_device_t* ide_controller = pci_find_device(&pci_devices, &ide_device_class_info);
-    // TODO @since 14/07/2025 -- 21:52
-    
+    // netowork device
     pci_class_info_t network_device_class_info {
         .revision_id = (uint8_t)PCI_UNKNOWN,
         .prog_if = (uint8_t)PCI_UNKNOWN,
