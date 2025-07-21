@@ -2,4 +2,8 @@
 
 # ~~ build script to automate the building process on docker
 
-make rebuild
+make build
+
+# other project
+cd src/test_driver
+make build
