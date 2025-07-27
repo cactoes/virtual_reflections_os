@@ -49,11 +49,42 @@ public:
     }
 
     // copy
-    vector(const vector& other) = delete;
-    vector& operator=(const vector& other) = delete;
+    vector(const vector& other) {
+        mutex_init(&mutex);
+        mutex_lock_guard other_guard(&other.mutex);
+
+        vector_node_t<T>* node = other.first_node;
+        while (node) {
+            insert_back(node->value);
+            node = node->next;
+        }
+    }
+
+    vector& operator=(const vector& other) {
+        if (this == &other)
+            return *this;
+
+        clear();
+
+        mutex_lock_guard other_guard(&other.mutex);
+        for (auto node = other.first_node; node != nullptr; node = node->next) {
+            insert_back(node->value);
+        }
+
+        return *this;
+    }
 
     // move
-    vector(vector&& other) = delete;
+    vector(vector&& other) {
+        mutex_lock_guard other_guard(&other.mutex);
+
+        first_node = other.first_node;
+        size = other.size;
+
+        other.first_node = nullptr;
+        other.size = 0;
+    }
+
     vector& operator=(vector&& other) noexcept {
         if (this == &other)
             return *this;
@@ -83,7 +114,7 @@ public:
         return iterator<T>(nullptr);
     }
 
-    size_t length() {
+    size_t length() const {
         return size;
     }
 
