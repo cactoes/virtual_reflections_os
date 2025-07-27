@@ -212,24 +212,6 @@ void on_mouse(const ps2_mouse_state_t* p_state) {
     printf(DBG, "L: %i, M: %i, R: %i, S: %i\n", p_state->buttons.left, p_state->buttons.middle, p_state->buttons.right, p_state->ds);
 }
 
-enum class vfs_node_type_t {
-    FILE,
-    DIRECTORY,
-    BLOCK_DEVICE,
-    CHAR_DEVICE,
-    MOUNT_POINT
-};
-
-struct vfs_node_t {
-    const char* name;
-    vfs_node_type_t node_type;
-    vector<vfs_node_t*> children;
-
-    filesystem_api_t* api;
-};
-
-vfs_node_t* g_vfs_root = nullptr;
-
 extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
     // validate multiboot
     UNUSED(mb_has_valid_magic((multiboot_t*)p_multiboot_struct));
