@@ -478,6 +478,62 @@ size_t string::length() const {
     return len;
 }
 
+string string::substr(size_t pos, size_t count) const {
+    if (pos >= len)
+        return string("");
+
+    if (pos + count > len) {
+        count = len - pos;
+    }
+
+    char* buffer = (char*)GALLOC(count + 1);
+    for (size_t i = 0; i < count; i++) {
+        buffer[i] = p_str[pos + i];
+    }
+    buffer[count] = '\0';
+
+    string result(buffer);
+    GFREE(buffer);
+    return result;
+}
+
+size_t string::find_last_of(char c) const {
+    if (len == 0) {
+        return k_npos; // not found
+    }
+
+    for (size_t i = len; i > 0; i--) {
+        if (p_str[i - 1] == c) {
+            return i - 1;
+        }
+    }
+
+    return k_npos;
+}
+
+size_t string::find(const string& str, size_t start) const {
+    if (!p_str || !str.p_str || str.length() == 0)
+        return (start <= len) ? start : k_npos;
+
+    if (str.length() > len || start >= len)
+        return k_npos;
+
+    for (size_t i = start; i <= len - str.length(); ++i) {
+        bool match = true;
+        for (size_t j = 0; j < str.length(); ++j) {
+            if (p_str[i + j] != str.p_str[j]) {
+                match = false;
+                break;
+            }
+        }
+
+        if (match)
+            return i;
+    }
+
+    return k_npos;
+}
+
 void string::assign(const char* p_string) {
     if (p_str) {
         GFREE(p_str);
@@ -522,11 +578,11 @@ void string::append(const string& r_other) {
     append(r_other.p_str);
 }
 
-bool string::operator==(const string& r_other) {
+bool string::operator==(const string& r_other) const {
     return streq(p_str, r_other.p_str);
 }
 
-bool string::operator==(const char* p_other) {
+bool string::operator==(const char* p_other) const {
     return streq(p_str, p_other);
 }
 

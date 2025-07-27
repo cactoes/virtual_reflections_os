@@ -101,6 +101,8 @@ void unpack_be16_string(const uint16_t* src, int word_count, char* dest, int max
 
 class string {
 public:
+    static constexpr size_t k_npos = (size_t)-1;
+
     string();
     string(const char* p_string);
     
@@ -115,14 +117,19 @@ public:
 
     const char* c_str() const;
     size_t length() const;
+
+    string substr(size_t pos, size_t count = (size_t)-1) const;
+    size_t find_last_of(char c) const;
+    size_t find(const string& str, size_t start = 0) const;
+
     void assign(const char* p_string);
     void assign(const string& other);
     
     void append(const char* p_other);
     void append(const string& r_other);
     
-    bool operator==(const string& r_other);
-    bool operator==(const char* p_other);
+    bool operator==(const string& r_other) const;
+    bool operator==(const char* p_other) const;
     string operator+(const string& r_other);
     string operator+(const char* p_other);
     string& operator+=(const string& r_other);
