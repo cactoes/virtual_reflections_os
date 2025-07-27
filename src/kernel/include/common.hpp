@@ -62,6 +62,16 @@ constexpr typename remove_reference<T>::type_t&& move(T&& t) noexcept {
     return static_cast<typename remove_reference<T>::type_t&&>(t);
 }
 
+template<typename T>
+T&& forward(typename remove_reference<T>::type_t& arg) {
+    return static_cast<T&&>(arg);
+}
+
+template<typename T>
+T&& forward(typename remove_reference<T>::type_t&& arg) {
+    return static_cast<T&&>(arg);
+}
+
 typedef long unsigned int size_t;
 
 typedef unsigned long long uint64_t;
