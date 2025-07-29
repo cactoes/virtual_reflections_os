@@ -344,3 +344,23 @@ void set_global_heap(heap_t* p_heap) {
 heap_t* get_global_heap() {
     return g_heap;
 }
+
+void* operator new(size_t size) noexcept {
+    if (get_global_heap() == nullptr)
+        return nullptr;
+    return heap_alloc(get_global_heap(), size);
+}
+
+void* operator new(size_t size, void* p_ptr) noexcept {
+    return p_ptr;
+}
+
+void operator delete(void* p_ptr) noexcept {
+    if (get_global_heap() != nullptr)
+       heap_free(get_global_heap(), p_ptr);
+}
+
+void operator delete(void* p_ptr, size_t) noexcept {
+    if (get_global_heap() != nullptr)
+        heap_free(get_global_heap(), p_ptr);
+}

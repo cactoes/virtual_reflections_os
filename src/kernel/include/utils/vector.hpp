@@ -66,7 +66,7 @@ public:
 
         clear();
 
-        mutex_lock_guard other_guard(&other.mutex);
+        mutex_lock_guard other_guard((mutex_t*)(&other.mutex));
         for (auto node = other.first_node; node != nullptr; node = node->next) {
             insert_back(node->value);
         }
@@ -89,7 +89,7 @@ public:
         if (this == &other)
             return *this;
         
-        clear();
+        clear_unprotected();
         
         mutex_lock_guard other_guard(&other.mutex);
         
@@ -126,13 +126,13 @@ public:
 
     bool insert_at(size_t index, T value) {
         mutex_lock_guard guard(&mutex);
-        const auto result = insert_at_unprotected(index, value);
+        const auto result = insert_at_unprotected(index, move(value));
         return result;
     }
 
     bool insert_back(T value) {
         mutex_lock_guard guard(&mutex);
-        const auto result = insert_at_unprotected(length(), value);
+        const auto result = insert_at_unprotected(length(), move(value));
         return result;
     }
 
@@ -148,14 +148,7 @@ public:
 
     void clear() {
         mutex_lock_guard guard(&mutex);
-        vector_node_t<T>* node = first();
-        while (node) {
-            vector_node_t<T>* next = node->next;
-            heap_free(get_global_heap(), node);
-            node = next;
-        }
-        first_node = nullptr;
-        size = 0;
+        clear_unprotected();
     }
 
 private:
@@ -179,9 +172,9 @@ private:
             return false;
         
         if (index == 0) {
-            vector_node_t<T>* first_node = first();
+            vector_node_t<T>* node_to_delete = first();
             first_node = first_node->next;
-            heap_free(get_global_heap(), first_node);
+            heap_free(get_global_heap(), node_to_delete);
             size--;
             return true;
         }
@@ -210,7 +203,7 @@ private:
             return false;
 
         new_node->next = nullptr;
-        new_node->value = value;
+        new_node->value = move(value);
 
         if (index == 0) {
             new_node->next = first();
@@ -221,7 +214,7 @@ private:
 
         vector_node_t<T>* prev_node = first();
         for (size_t i = 0; i < index - 1; i++) {
-            if (!prev_node->next)
+            if (!prev_node)
                 return false;
 
             prev_node = prev_node->next;
@@ -237,9 +230,20 @@ private:
         return false;
     }
 
+    void clear_unprotected() {
+        vector_node_t<T>* node = first();
+        while (node) {
+            vector_node_t<T>* next = node->next;
+            heap_free(get_global_heap(), node);
+            node = next;
+        }
+        first_node = nullptr;
+        size = 0;
+    }
+
 private:
     vector_node_t<T>* first_node = nullptr;
-    mutex_t mutex {};
+    mutable mutex_t mutex {};
     size_t size = 0;
 };
 

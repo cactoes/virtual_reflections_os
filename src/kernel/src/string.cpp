@@ -482,9 +482,8 @@ string string::substr(size_t pos, size_t count) const {
     if (pos >= len)
         return string("");
 
-    if (pos + count > len) {
+    if (pos + count > len || count == k_npos)
         count = len - pos;
-    }
 
     char* buffer = (char*)GALLOC(count + 1);
     for (size_t i = 0; i < count; i++) {
@@ -556,7 +555,8 @@ void string::assign(const string& other) {
 
     len = other.len;
     p_str = (char*)GALLOC(len * sizeof(char) + 1);
-    strncpy(p_str, other.p_str, len + 1);
+    strncpy(p_str, other.c_str(), len);
+    p_str[len] = '\0';
 }
 
 void string::append(const char* p_other) {

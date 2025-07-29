@@ -11,6 +11,7 @@
 #include "drivers/storage/ide.hpp"
 
 #include "filesystems/iso9660.hpp"
+#include "filesystems/vfs.hpp"
 
 #include "memory/vmem.hpp"
 #include "memory/heap.hpp"
@@ -314,6 +315,29 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
 
     // TODO @since 14/07/2025 -- 18:58
     // setup vfs
+
+    virtual_file_system_t vfs {};
+    vfs_create_directory(&vfs, "/test/path/first");
+
+    const char* test_data = "test string 123";
+    vfs_create_file(&vfs, "/test/path/first/test.txt", (uint8_t*)test_data, 16);
+
+    void* ddata;
+    size_t size;
+    vfs_read_file(&vfs, "/test/path/first/test.txt", &ddata, &size);
+
+    printf(DBG, "data size: %i\n", size);
+
+    // vfs vfs_instance{};
+
+    // vfs_instance.create_directory("/test");
+
+    // vector<uint8_t> ddata {};
+    // ddata.insert_back(12);
+    // vfs_instance.create_file("/test/test.txt", ddata);
+
+    // vector<uint8_t> ddata_out {};
+    // vfs_instance.read_file("/test/test.txt", ddata_out);
 
     ps2_keyboard_event_subscribe(on_key_down);
     ps2_mouse_event_subscribe(on_mouse);

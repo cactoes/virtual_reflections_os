@@ -30,7 +30,7 @@ public:
 
     template <typename U>
     unique& operator=(unique<U>&& other) {
-        if (this != &other) {
+        if ((void*)(this) != (void*)(&other)) {
             GFREE(ptr);
             ptr = other.ptr;
             other.ptr = nullptr;
@@ -67,13 +67,14 @@ public:
     }
 
 private:
+    template<typename> friend class unique;
     T* ptr;
 };
 
 template <typename T, typename... Args>
 ptr::unique<T> make_unique(Args&&... args) {
     void* raw = GALLOC(sizeof(T));
-    T* obj = new (raw) T(forward(args)...);
+    T* obj = new (raw) T(forward<Args>(args)...);
     return ptr::unique<T>(obj);
 }
 

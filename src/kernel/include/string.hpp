@@ -13,6 +13,7 @@
 #include "common.hpp"
 
 #include <stdarg.h>
+#include "utils/vector.hpp"
 
 /// @brief          returns length of string
 /// @param[in] str  string to get length of
@@ -141,5 +142,33 @@ private:
     char* p_str = nullptr;
     size_t len = 0;
 };
+
+inline vector<string> str_split(const string& instr, char ch) {
+    vector<string> parts {};
+
+    size_t i = 0;
+    const size_t len = instr.length();
+    const char* str = instr.c_str();
+
+    while (i < len) {
+        // Skip leading separators
+        while (i < len && str[i] == ch)
+            ++i;
+
+        if (i == len)
+            break;
+
+        size_t start = i;
+
+        while (i < len && str[i] != ch)
+            ++i;
+
+        if (i > start) {
+            parts.insert_back(instr.substr(start, i - start));
+        }
+    }
+
+    return parts;
+}
 
 #endif // __STRING_HPP__

@@ -1,175 +1,245 @@
 #include "filesystems/vfs.hpp"
 
-void vfs_file::set_content(const vector<uint8_t>& data) {
-    content = data;
-    meta->size = data.length();
-    position = 0;
-}
+// void vfs_file::set_content(const vector<uint8_t>& data) {
+//     content = data;
+//     meta->size = data.length();
+//     position = 0;
+// }
 
-vfs_node::vfs_node(const string& name, vfs_node_type_t type) {
-    meta = ptr::make_unique<vfs_file_meta_t>(move(name), type);
-}
+// const vector<uint8_t>& vfs_file::get_content() const {
+//     return content;
+// }
 
-vfs::vfs() {
-    root = ptr::make_unique<vfs_directory>("");
-    default_storage_backend = ptr::make_unique<vfs_memory_storage_backend>();
-}
+// vfs_node::vfs_node(const string& name, vfs_node_type_t type) {
+//     meta = ptr::make_unique<vfs_file_meta_t>(name, type);
+// }
 
-vector<string> vfs::split_path(const string& path) {
-    vector<string> parts {};
+// vfs::vfs() {
+//     root = ptr::make_unique<vfs_directory>("");
+//     default_storage_backend = ptr::make_unique<vfs_memory_storage_backend>();
+// }
 
-    const char* str = path.c_str();
-    const char* start = str;
+// vector<string> vfs::split_path(const string& path) {
+//     vector<string> parts {};
 
-    while (*start) {
-        while (*start == '/')
-            start++;
+//     const char* str = path.c_str();
+//     const char* start = str;
 
-        if (!*start)
-            break;
+//     while (*start) {
+//         while (*start == '/')
+//             start++;
 
-        const char* end = start;
-        while (*end && *end != '/')
-            end++;
+//         if (!*start)
+//             break;
 
-        size_t len = end - start;
-        if (len > 0) {
-            char buffer[256] { 0 };
-            if (len >= sizeof(buffer))
-                len = sizeof(buffer) - 1;
+//         const char* end = start;
+//         while (*end && *end != '/')
+//             end++;
 
-            strncpy(buffer, start, len);
-            buffer[len] = '\0';
+//         size_t len = end - start;
+//         if (len > 0) {
+//             char buffer[256] { 0 };
+//             if (len >= sizeof(buffer))
+//                 len = sizeof(buffer) - 1;
 
-            parts.insert_back(string(buffer));
-        }
+//             strncpy(buffer, start, len);
+//             buffer[len] = '\0';
 
-        start = end;
-    }
+//             parts.insert_back(string(buffer));
+//         }
 
-    return parts;
-}
+//         start = end;
+//     }
 
-vfs_node* vfs_directory::get_child(const string& name) {
-    for (const auto& child : children)
-        if (child.key == name)
-            return child.value.get();
+//     return parts;
+// }
 
-    return nullptr;
-}
+// vfs_node* vfs_directory::get_child(const string& name) {
+//     for (const auto& child : children)
+//         if (child.key == name)
+//             return child.value.get();
 
-void vfs_directory::add_child(ptr::unique<vfs_node> node) {
-    node->parent = this;
-    
-    key_value_t<ptr::unique<vfs_node>> kv {
-        .key = node->meta->name,
-        .value = move(node)
-    };
+//     return nullptr;
+// }
 
-    children.insert_back(move(kv));
-}
+// void vfs_directory::add_child(ptr::unique<vfs_node> node) {
+//     node->parent = this;
+//     key_value_t<ptr::unique<vfs_node>> kv { node->meta->name, move(node) };
+//     children.insert_back(move(kv));
+// }
 
-vfs_directory* vfs::create_directories_recursive(const string& path) {
-    if (path == "/" || path.length() == 0)
-        return root.get();
+// vfs_directory* vfs::create_directories_recursive(const string& path) {
+//     if (path == "/" || path.length() == 0)
+//         return root.get();
 
-    auto parts = split_path(path);
-    vfs_directory* current = root.get();
+//     auto parts = split_path(path);
+//     vfs_directory* current = root.get();
 
-    for (const auto& part : parts) {
-        vfs_node* child = current->get_child(part);
+//     for (const auto& part : parts) {
+//         vfs_node* child = current->get_child(part);
         
-        if (!child) {
-            auto new_dir = ptr::make_unique<vfs_directory>(part);
-            vfs_directory* new_dir_ptr = new_dir.get();
-            current->add_child(move(new_dir));
-            current = new_dir_ptr;
-        } else if (auto* dir = dynamic_cast<vfs_directory*>(child)) {
-            current = dir;
-        } else {
-            return nullptr;
-        }
-    }
+//         if (!child) {
+//             auto new_dir = ptr::make_unique<vfs_directory>(part);
+//             vfs_directory* new_dir_ptr = new_dir.get();
+//             current->add_child(move(new_dir));
+//             current = new_dir_ptr;
+//         } else if (child->meta->type == vfs_node_type_t::DIRECTORY) {
+//             current = (vfs_directory*)child;
+//         } else {
+//             return nullptr;
+//         }
+//     }
 
-    return current;
-}
+//     return current;
+// }
 
-vfs_node* vfs::resolve_path(const string& path) {
-    if (path == "/" || path.length() == 0)
-        return root.get();
+// vfs_node* vfs::resolve_path(const string& path) {
+//     if (path == "/" || path.length() == 0)
+//         return root.get();
 
-    auto parts = split_path(path);
-    vfs_node* current = root.get();
+//     auto parts = split_path(path);
+//     vfs_node* current = root.get();
 
-    for (const auto& part : parts) {
-        if (auto* dir = dynamic_cast<vfs_directory*>(current)) {
-            current = dir->get_child(part);
-            if (!current) {
-                return nullptr;
-            }
-        } else {
-            return nullptr;
-        }
-    }
+//     for (const auto& part : parts) {
+//         if (auto* dir = (vfs_directory*)current) {
+//             current = dir->get_child(part);
+//             if (!current)
+//                 return nullptr;
+//         } else {
+//             return nullptr;
+//         }
+//     }
 
-    return current;
-}
+//     return current;
+// }
 
-bool vfs::mount(const string& vfs_path, ptr::unique<vfs_storage_backend_interface> backend, const string& device, const string& type) {
-    mutex_lock_guard guard(&mutex);
+// bool vfs::mount(const string& vfs_path, ptr::unique<vfs_storage_backend_interface> backend, const string& device, const string& type) {
+//     mutex_lock_guard guard(&mutex);
 
-    if (!create_directories_recursive(vfs_path))
-        return false;
+//     if (!create_directories_recursive(vfs_path))
+//         return false;
 
-    mount_points.insert_back(
-        ptr::make_unique<vfs_mount_point_t>(vfs_path, move(backend), device, type));
+//     mount_points.insert_back(
+//         ptr::make_unique<vfs_mount_point_t>(vfs_path, move(backend), device, type));
 
-    return true;
-}
+//     return true;
+// }
 
-bool vfs::create_file(const string& path, vector<uint8_t>& content) {
-    mutex_lock_guard guard(&mutex);
+// bool vfs::create_file(const string& path, const vector<uint8_t>& content) {
+//     mutex_lock_guard guard(&mutex);
 
-    size_t last_slash = path.find_last_of('/');
-    string dir_path = (last_slash != string::k_npos) ? path.substr(0, last_slash) : "/";
-    string filename = (last_slash != string::k_npos) ? path.substr(last_slash + 1) : path;
+//     size_t last_slash = path.find_last_of('/');
+//     string dir_path = (last_slash != string::k_npos) ? path.substr(0, last_slash) : "/";
+//     string filename = (last_slash != string::k_npos) ? path.substr(last_slash + 1) : path;
 
-    vfs_directory* parent_dir = create_directories_recursive(dir_path);
-    if (!parent_dir || parent_dir->get_child(filename))
-        return false;
+//     vfs_directory* parent_dir = create_directories_recursive(dir_path);
+//     if (!parent_dir || parent_dir->get_child(filename))
+//         return false;
 
-    auto new_file = ptr::make_unique<vfs_file>(filename);
-    new_file->set_content(content);
-    parent_dir->add_child(move(new_file));
+//     // auto new_file = ptr::make_unique<vfs_file>(filename);
+//     // new_file->set_content(content);
+//     // parent_dir->add_child(move(new_file));
 
-    vfs_storage_backend_interface* backend = get_backend_for_path(path);
-    string backend_path = get_backend_relative_path(path);
-    backend->write_file(backend_path, content);
-}
+//     vfs_storage_backend_interface* backend = get_backend_for_path(path);
+//     string backend_path = get_backend_relative_path(path);
+//     backend->write_file(backend_path, content);
 
-vfs_storage_backend_interface* vfs::get_backend_for_path(const string& path) {
-    string best_match = "";
-    vfs_storage_backend_interface* best_backend = default_storage_backend.get();
+//     return true;
+// }
 
-    for (const auto& mount : mount_points) {
-        if (path.find(mount->path) == 0 && mount->path.length() > best_match.length()) {
-            best_match = mount->path;
-            best_backend = mount->storage.get();
-        }
-    }
+// bool vfs::read_file(const string& path, vector<uint8_t>& content) {
+//     mutex_lock_guard guard(&mutex);
 
-    return best_backend;
-}
+//     vfs_storage_backend_interface* backend = get_backend_for_path(path);
+//     string backend_path = get_backend_relative_path(path);
 
-string vfs::get_backend_relative_path(const string& vfs_path) {
-    for (const auto& mount : mount_points) {
-        if (vfs_path.find(mount->path) == 0) {
-            string relative = vfs_path.substr(mount->path.length());
-            return relative.length() == 0 ? "/" : relative;
-        }
-    }
-    return vfs_path;
-}
+//     return backend->read_file(backend_path, content);
+// }
+
+// vfs_storage_backend_interface* vfs::get_backend_for_path(const string& path) {
+//     string best_match = "";
+//     vfs_storage_backend_interface* best_backend = default_storage_backend.get();
+
+//     for (const auto& mount : mount_points) {
+//         if (path.find(mount->path) == 0 && mount->path.length() > best_match.length()) {
+//             best_match = mount->path;
+//             best_backend = mount->storage.get();
+//         }
+//     }
+
+//     return best_backend;
+// }
+
+// string vfs::get_backend_relative_path(const string& vfs_path) {
+//     for (const auto& mount : mount_points) {
+//         if (vfs_path.find(mount->path) == 0) {
+//             string relative = vfs_path.substr(mount->path.length());
+//             return relative.length() == 0 ? "/" : relative;
+//         }
+//     }
+//     return vfs_path;
+// }
+
+// bool vfs::create_directory(const string& path) {
+//     mutex_lock_guard guard(&mutex);
+
+//     if (resolve_path(path))
+//         return false;
+
+//     vfs_directory* created = create_directories_recursive(path);
+
+//     // Persist to backend
+//     vfs_storage_backend_interface* backend = get_backend_for_path(path);
+//     string backend_path = get_backend_relative_path(path);
+//     backend->create_directory(backend_path);
+
+//     return created != nullptr;
+// }
+
+// bool vfs_memory_storage_backend::read_file(const string& path, vector<uint8_t>& content) {
+//     mutex_lock_guard guard(&mutex);
+//     for (auto& p : storage) {
+//         if (p.key == path) {
+//             content = p.value;
+//             return true;
+//         }
+//     }
+
+//     return false;
+// }
+
+// bool vfs_memory_storage_backend::write_file(const string& path, const vector<uint8_t>& content) {
+//     mutex_lock_guard guard(&mutex);
+//     for (auto& p : storage) {
+//         if (p.key == path) {
+//             p.value = content;
+//             return true;
+//         }
+//     }
+//     storage.insert_back({ path, content });
+//     return true;
+// }
+
+// bool vfs_memory_storage_backend::delete_file(const string& path) {
+//     return false;
+// }
+
+// vector<string> vfs_memory_storage_backend::list_directory(const string& path) {
+//     return {};
+// }
+
+// bool vfs_memory_storage_backend::create_directory(const string& path) {
+//     return true;
+// }
+
+// bool vfs_memory_storage_backend::delete_directory(const string& path) {
+//     return false;
+// }
+
+// bool vfs_memory_storage_backend::exists(const string& path) {
+//     return false;
+// }
+
 
 /*
 #pragma warning(disable : 4996)
