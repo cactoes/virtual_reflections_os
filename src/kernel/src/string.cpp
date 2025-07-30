@@ -431,7 +431,8 @@ string& string::operator=(const string& other) {
         return *this;
 
     char* new_str = (char*)GALLOC(other.len * sizeof(char) + 1);
-    strncpy(new_str, other.p_str, other.len + 1);
+    memzero(new_str, other.len * sizeof(char) + 1);
+    strncpy(new_str, other.p_str, other.len);
 
     GFREE(p_str);
 
