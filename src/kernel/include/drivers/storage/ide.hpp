@@ -81,7 +81,7 @@ struct ide_device_t : storage_driver_api_t {
     uint64_t physical_sector_size;
 };
 
-int ide_init(const pci_device_t* p_pcie_device, vector<ide_device_t>* p_ide_devices);
+int ide_init(const pci_device_t* p_pcie_device, linked_list<ide_device_t>* p_ide_devices);
 
 int ide_send_identify(ide_device_t* p_device, uint16_t* p_out_buf);
 

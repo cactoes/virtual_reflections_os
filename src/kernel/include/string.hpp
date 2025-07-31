@@ -143,8 +143,11 @@ private:
     size_t len = 0;
 };
 
-inline vector<string> str_split(const string& instr, char ch) {
-    vector<string> parts {};
+inline dynamic_array<string> str_split(const string& instr, char ch) {
+    dynamic_array<string> parts {};
+    // on average there will most likely be at least 5 items in the array
+    // we can kinda optimize it here, mostly for the vfs :)
+    parts.resize(5);
 
     size_t i = 0;
     const size_t len = instr.length();

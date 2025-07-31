@@ -59,8 +59,8 @@ const char* pci_get_class_description(const pci_device_t* p_device);
 
 uint32_t pci_read_bar(const pci_device_t* p_device, uint32_t bar);
 
-bool pci_enumerate_devices(vector<pci_device_t>* p_list);
-pci_device_t* pci_find_device(vector<pci_device_t>* p_list, const pci_vendor_device_id_t* p_vendor_device_id_target);
-pci_device_t* pci_find_device(vector<pci_device_t>* p_list, const pci_class_info_t* p_class_info_target);
+bool pci_enumerate_devices(linked_list<pci_device_t>* p_list);
+pci_device_t* pci_find_device(linked_list<pci_device_t>* p_list, const pci_vendor_device_id_t* p_vendor_device_id_target);
+pci_device_t* pci_find_device(linked_list<pci_device_t>* p_list, const pci_class_info_t* p_class_info_target);
 
 #endif // __DRIVERS_PCIE_HPP__

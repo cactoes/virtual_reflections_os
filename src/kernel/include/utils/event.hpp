@@ -17,7 +17,7 @@ class event_manager_t {
 public:
     event_manager_t() {
         mutex_init(&mutex);
-    };
+    }
     
     typedef void (*handler_t)(_argument);
 
@@ -33,7 +33,7 @@ public:
     }
 
 private:
-    vector<handler_t> handlers {};
+    linked_list<handler_t> handlers {};
     mutex_t mutex;
 };
 

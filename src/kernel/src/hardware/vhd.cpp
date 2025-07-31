@@ -1,6 +1,6 @@
 #include "hardware/vhd.hpp"
 
-static vector<harware_device_t> g_hardware_devices {};
+static linked_list<harware_device_t> g_hardware_devices {};
 
 harware_device_t* find_device(const char* p_name) {
     for (auto& device : g_hardware_devices) {

@@ -71,7 +71,7 @@ uint32_t pci_read_bar(const pci_device_t* p_device, uint32_t bar) {
     return pci_config_read(p_device, PCI_GET_BAR_OFFSET(bar));
 }
 
-bool pci_enumerate_devices(vector<pci_device_t>* p_list) {
+bool pci_enumerate_devices(linked_list<pci_device_t>* p_list) {
         for (uint32_t bus = 0; bus < 256; bus++) {
         for (uint32_t device = 0; device < 32; device++) {
             for (uint32_t function = 0; function < 8; function++) {
@@ -106,7 +106,7 @@ bool find_device_class_info(const pci_device_t* p_device, const pci_class_info_t
            (p_req->revision_id == (uint8_t)PCI_UNKNOWN || p_device->class_info.revision_id == p_req->revision_id);
 }
 
-pci_device_t* pci_find_device(vector<pci_device_t>* p_list, const pci_vendor_device_id_t* p_vendor_device_id_target) {
+pci_device_t* pci_find_device(linked_list<pci_device_t>* p_list, const pci_vendor_device_id_t* p_vendor_device_id_target) {
     for (auto& device : *p_list) {
         if (find_device_vendor_device_id(&device, p_vendor_device_id_target))
             return &device;
@@ -115,7 +115,7 @@ pci_device_t* pci_find_device(vector<pci_device_t>* p_list, const pci_vendor_dev
     return nullptr;
 }
 
-pci_device_t* pci_find_device(vector<pci_device_t>* p_list, const pci_class_info_t* p_class_info_target) {
+pci_device_t* pci_find_device(linked_list<pci_device_t>* p_list, const pci_class_info_t* p_class_info_target) {
     for (auto& device : *p_list) {
         if (find_device_class_info(&device, p_class_info_target))
             return &device;

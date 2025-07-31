@@ -52,7 +52,7 @@ bool ide_atapi_send_packet(ide_device_t* p_device, const uint8_t* p_packet, uint
     return true;
 }
 
-int ide_init(const pci_device_t* p_pcie_device, vector<ide_device_t>* p_ide_devices) {
+int ide_init(const pci_device_t* p_pcie_device, linked_list<ide_device_t>* p_ide_devices) {
     const auto bar0 = pci_read_bar(p_pcie_device, 0);
     const auto bar1 = pci_read_bar(p_pcie_device, 1);
     const auto bar2 = pci_read_bar(p_pcie_device, 2);
