@@ -256,7 +256,7 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
     // TODO @since 14/07/2025 -- 18:58
     // threads / processes
 
-    vector<pci_device_t> pci_devices {};
+    linked_list<pci_device_t> pci_devices {};
     pci_enumerate_devices(&pci_devices);
 
     for (auto& device : pci_devices) {
@@ -273,7 +273,7 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
     };
     const pci_device_t* ide_controller = pci_find_device(&pci_devices, &ide_device_class_info);
 
-    vector<ide_device_t> ide_devices {};
+    linked_list<ide_device_t> ide_devices {};
     ide_init(ide_controller, &ide_devices);
     
     size_t ide_device_index = 0;
@@ -284,17 +284,17 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
         mount_device(buffer, nullptr);
     }
 
-    iso9660_fs_data_t data {};
-    iso9660_drive_init(ide_devices.get_at(0), &data);
+    iso9660_fs_data_t mounted_iso9660_fs_instance {};
+    iso9660_drive_init(&ide_devices[0], &mounted_iso9660_fs_instance);
 
-    void* file_data;
-    size_t file_size;
-    data.read(&data, "/.env", &file_data, &file_size);
+    // void* file_data;
+    // size_t file_size;
+    // data.read(&mounted_iso9660_fs_instance, "/.env", &file_data, &file_size);
 
-    char buffer[1024];
-    memcpy(buffer, file_data, file_size);
-    buffer[file_size] = '\0';
-    printf(DBG, "%s\n", (char*)buffer);
+    // char buffer[1024];
+    // memcpy(buffer, file_data, file_size);
+    // buffer[file_size] = '\0';
+    // printf(DBG, "%s\n", (char*)buffer);
 
     // ahci device
     pci_class_info_t ahci_device_class_info {
@@ -306,7 +306,7 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
     const pci_device_t* ahci_controller = pci_find_device(&pci_devices, &ahci_device_class_info);
     // TODO @since 14/07/2025 -- 21:52
     
-    // netowork device
+    // network device
     pci_class_info_t network_device_class_info {
         .revision_id = (uint8_t)PCI_UNKNOWN,
         .prog_if = (uint8_t)PCI_UNKNOWN,
@@ -323,10 +323,10 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
     vfs.create_directory("/home");
     vfs.create_directory("/mnt");
 
-    auto disk_storage = ptr::make_unique<vfs_disk_storage>(&data);
+    auto disk_storage = ptr::make_unique<vfs_disk_storage>(&mounted_iso9660_fs_instance);
     vfs.mount("/mnt/disk0", move(disk_storage));
 
-    vector<uint8_t> file_content {};
+    dynamic_array<uint8_t> file_content {};
     // file_content.insert_back(12);
     // vfs.create_file("/home/test.txt", &file_content);
     
