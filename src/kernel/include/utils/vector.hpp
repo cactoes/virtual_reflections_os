@@ -9,8 +9,6 @@
 #define __VECTOR_HPP__
 
 #include "memory/heap.hpp"
-#include "mutex.hpp"
-#include "utils/pointer.hpp"
 
 template <typename T>
 struct node_t {
@@ -146,7 +144,7 @@ public:
         return linked_list_iterator<T>(nullptr);
     }
 
-    linked_list_iterator<T> find(const T& value) const {
+    linked_list_iterator<T> find(const T& value) {
         for (auto it = begin(); it != end(); it++) {
             if (*it == value)
                 return it;
@@ -155,7 +153,7 @@ public:
         return end();
     }
 
-    bool contains(const T& value) const {
+    bool contains(const T& value) {
         return find(value) != end();
     }
 
@@ -383,7 +381,7 @@ public:
         return array_iterator<T>(data + size);
     }
 
-    array_iterator<T> find(const T& value) const {
+    array_iterator<T> find(const T& value) {
         for (auto it = begin(); it != end(); it++) {
             if (*it == value)
                 return it;
@@ -392,7 +390,7 @@ public:
         return end();
     }
 
-    bool contains(const T& value) const {
+    bool contains(const T& value) {
         return find(value) != end();
     }
 
@@ -471,7 +469,7 @@ public:
         size = 0;
     }
 
-    T* get_data() {
+    T* get_data() const {
         return data;
     }
 
@@ -507,7 +505,6 @@ public:
 
 private:
     T* data;
-    mutex_t mutex {};
     size_t size;
     size_t capacity;
 };
