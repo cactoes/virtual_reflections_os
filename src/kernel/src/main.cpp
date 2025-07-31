@@ -290,8 +290,11 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
     void* file_data;
     size_t file_size;
     data.read(&data, "/.env", &file_data, &file_size);
-    
-    printf(DBG, "%s\n", (char*)file_data);
+
+    char buffer[1024];
+    memcpy(buffer, file_data, file_size);
+    buffer[file_size] = '\0';
+    printf(DBG, "%s\n", (char*)buffer);
 
     // ahci device
     pci_class_info_t ahci_device_class_info {
@@ -318,14 +321,23 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
 
     virtual_file_system vfs {};
     vfs.create_directory("/home");
-    
+    vfs.create_directory("/mnt");
+
+    auto disk_storage = ptr::make_unique<vfs_disk_storage>(&data);
+    vfs.mount("/mnt/disk0", move(disk_storage));
+
     vector<uint8_t> file_content {};
-    file_content.insert_back(12);
-    vfs.create_file("/home/test.txt", &file_content);
+    // file_content.insert_back(12);
+    // vfs.create_file("/home/test.txt", &file_content);
     
-    file_content.clear();
+    // file_content.clear();
+    vfs.create_file_cache("/mnt/disk0/.env");
+    vfs.read_file("/mnt/disk0/.env", &file_content);
     
-    vfs.read_file("/home/test.txt", &file_content);
+    printf(DBG, "vfs file debug test:\n");
+    for (const auto& ch : file_content)
+        printf(DBG, "%c", ch);
+    printf(DBG, "END\n");
 
     ps2_keyboard_event_subscribe(on_key_down);
     ps2_mouse_event_subscribe(on_mouse);

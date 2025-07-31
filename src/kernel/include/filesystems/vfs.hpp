@@ -10,9 +10,12 @@
 
 #include "common.hpp"
 #include "string.hpp"
+
 #include "utils/pointer.hpp"
 #include "utils/mutex.hpp"
 #include "utils/vector.hpp"
+
+#include "filesystems/filesystem.hpp"
 
 enum class vfs_node_type_t {
     FILE,
@@ -93,7 +96,42 @@ private:
     mutex_t mutex;
 };
 
+class vfs_disk_storage : public vfs_storage_interface_t {
+public:
+    vfs_disk_storage(filesystem_api_t* p_fs_api) : fs_api(p_fs_api) { mutex_init(&mutex); }
 
+    bool read_file(const string& path, vector<uint8_t>* p_content) override {
+        mutex_lock_guard guard(&mutex);
+        void* data;
+        size_t size;
+        fs_api->read(fs_api, path.c_str(), &data, &size);
+        for (size_t i = 0; i < size; i++) {
+            uint8_t byte = ((uint8_t*)data)[i];
+            p_content->insert_back(byte);
+        }
+        return true;
+    }
+
+    bool write_file(const string& path, vector<uint8_t>* p_content) override {
+        mutex_lock_guard guard(&mutex);
+        uint8_t* data = (uint8_t*)GALLOC(p_content->length());
+        size_t size = p_content->length();
+        for (size_t i = 0; i < size; i++)
+            data[i] = *p_content->get_at(i);
+
+        fs_api->write(fs_api, path.c_str(), data, &size);
+        GFREE(data);
+        return false;
+    }
+
+    bool create_directory(const string& path) override {
+        return false;
+    }
+
+private:
+    filesystem_api_t* fs_api;
+    mutex_t mutex;
+};
 
 inline vfs_node_t* vfs_node_get_child(vfs_node_t* p_parent, const string& name) {
     for (auto& child : p_parent->children)
@@ -121,6 +159,23 @@ public:
         vfs_storage_interface_t* storage = get_backend(path);
         string relative_path = get_relative_path_in_backend(path);
         storage->create_directory(relative_path);
+
+        return true;
+    }
+
+    bool create_file_cache(const string& path) {
+
+        size_t last_slash = path.find_last_of('/');
+        string dir_path = (last_slash != string::k_npos) ? path.substr(0, last_slash) : "/";
+        string filename = (last_slash != string::k_npos) ? path.substr(last_slash + 1) : path;
+
+        vfs_node_t* parent_dir = create_directories(dir_path);
+
+        ptr::unique<vfs_node_t> new_node = ptr::make_unique<vfs_node_t>();
+        new_node->name = filename;
+        new_node->parent = parent_dir;
+        new_node->type = vfs_node_type_t::FILE;
+        parent_dir->children.insert_back(move(new_node));
 
         return true;
     }
@@ -159,6 +214,40 @@ public:
         storage->read_file(relative_path, p_content);
 
         return true;
+    }
+
+    bool mount(const string& path, ptr::unique<vfs_storage_interface_t> storage) {
+        if (!create_directories(path))
+            return false;
+
+        for (const auto& mount : mount_points)
+            if (mount->mount_point == path)
+                return false;
+
+        ptr::unique<vfs_mount_point_t> mp = ptr::make_unique<vfs_mount_point_t>();
+        mp->mount_point = path;
+        mp->storage_interface = move(storage);
+        mount_points.insert_back(move(mp));
+
+        // TODO @since 31/07/2025 -- 10:44
+        // add dirs / files to cache
+
+        return true;
+    }
+
+    bool unmount(const string& path) {
+        // TODO @since 31/07/2025 -- 10:45
+        // remove dirs / file from cache
+
+        size_t counter = 0;
+        for (const auto& mount : mount_points) {
+            if (mount->mount_point == path)
+                return mount_points.delete_at(counter);
+
+            counter++;
+        }
+
+        return false;
     }
 
 private:
