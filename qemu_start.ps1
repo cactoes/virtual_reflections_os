@@ -14,6 +14,9 @@ $ENABLE_VHD         = $true
 $ENABLE_ISO         = $true # required
 $ENABLE_NETWORKING  = $true
 
+# system specs
+$SYSTEM_MEMORY      = "4G"
+
 # files
 $ISO_PATH           = "build/VirtualReflectionsOS.iso"
 $DISK_PATH          = "test_disk.vhd"
@@ -22,7 +25,7 @@ $DISK_PATH          = "test_disk.vhd"
 $ARG_LIST = @(
     "-boot", "d",
     "-machine", "pc",
-    "-m", "4G"
+    "-m", $SYSTEM_MEMORY
 )
 
 if ($ENABLE_AHCI) {
@@ -35,14 +38,14 @@ if ($ENABLE_SERIAL_IO) {
 
 if ($ENABLE_VHD) {
     $ARG_LIST += @(
-        "-drive", "format=raw,file=$disk_path,id=disk,if=none",
+        "-drive", "format=raw,file=$DISK_PATH,id=disk,if=none",
         "-device", "ide-hd,drive=disk,bus=ahci.0"
     )
 }
 
 if ($ENABLE_ISO) {
     $ARG_LIST += @(
-        "-drive", "id=cdrom,if=none,media=cdrom,file=$iso_path",
+        "-drive", "id=cdrom,if=none,media=cdrom,file=$ISO_PATH",
         "-device", "ide-cd,drive=cdrom,bus=ide.0"
     )
 }
