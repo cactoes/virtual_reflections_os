@@ -7,43 +7,67 @@ param (
     [string]$mode = ""
 )
 
-$iso_path = "build/VirtualReflectionsOS.iso"
-$disk_path = "test_disk.vhd"
+# features
+$ENABLE_AHCI        = $true # required
+$ENABLE_SERIAL_IO   = $true
+$ENABLE_VHD         = $true
+$ENABLE_ISO         = $true # required
+$ENABLE_NETWORKING  = $true
 
-$qemuArgs = @(
-    # machine settings
+# files
+$ISO_PATH           = "build/VirtualReflectionsOS.iso"
+$DISK_PATH          = "test_disk.vhd"
+
+# base
+$ARG_LIST = @(
     "-boot", "d",
     "-machine", "pc",
-    "-m", "4G",
-
-    # devices
-    "-device", "ahci,id=ahci",
-    
-    # serial (i)o
-    "-serial", "stdio",
-    
-    # virtual hard disk
-    "-drive", "format=raw,file=$disk_path,id=disk,if=none",
-    "-device", "ide-hd,drive=disk,bus=ahci.0",
-    
-    # drive with our iso / is our iso
-    "-drive", "id=cdrom,if=none,media=cdrom,file=$iso_path",
-    "-device", "ide-cd,drive=cdrom,bus=ide.0",
-    
-    # network card
-    "-netdev", "tap,id=net0,ifname=tap0,script=no,downscript=no",
-    "-device", "e1000,netdev=net0",
-    "-object", "filter-dump,id=dump0,netdev=net0,file=netdump.pcap"
+    "-m", "4G"
 )
 
-if ($mode -eq "debug") {
-    Write-Host "==== starting qemu (debug) ===="
-    $qemuArgs += "-S"
-    $qemuArgs += "-gdb"
-    $qemuArgs += "tcp::1234"
-    $qemuArgs += "-no-reboot"
-} else {
-    Write-Host "==== starting qemu ===="
+if ($ENABLE_AHCI) {
+    $ARG_LIST += @("-device", "ahci,id=ahci")
 }
 
-qemu-system-x86_64.exe $qemuArgs
+if ($ENABLE_SERIAL_IO) {
+    $ARG_LIST += @("-serial", "stdio")
+}
+
+if ($ENABLE_VHD) {
+    $ARG_LIST += @(
+        "-drive", "format=raw,file=$disk_path,id=disk,if=none",
+        "-device", "ide-hd,drive=disk,bus=ahci.0"
+    )
+}
+
+if ($ENABLE_ISO) {
+    $ARG_LIST += @(
+        "-drive", "id=cdrom,if=none,media=cdrom,file=$iso_path",
+        "-device", "ide-cd,drive=cdrom,bus=ide.0"
+    )
+}
+
+if ($ENABLE_NETWORKING) {
+    $ARG_LIST += @(
+        "-netdev", "tap,id=net0,ifname=tap0,script=no,downscript=no",
+        "-device", "e1000,netdev=net0",
+        "-object", "filter-dump,id=dump0,netdev=net0,file=netdump.pcap"
+    )
+}
+
+if ($mode -eq "debug") {
+    $ARG_LIST += @(
+        "-S",
+        "-gdb", "tcp::1234",
+        "-no-reboot"
+    )
+}
+
+$label = if ($mode -eq "debug") { "DEBUG" } else { "DEFAULT" }
+$timestamp = Get-Date -Format "HH:mm:ss"
+Write-Host "[$timestamp] starting qemu"
+Write-Host "    mode: $label"
+Write-Host "    args: $($ARG_LIST -join ' ')"
+Write-Host ""
+
+qemu-system-x86_64.exe @ARG_LIST
