@@ -284,17 +284,10 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
         mount_device(buffer, nullptr);
     }
 
+    // TODO @since 05/08/2025 -- 01:18
+    // detect file system
     iso9660_fs_data_t mounted_iso9660_fs_instance {};
     iso9660_drive_init(&ide_devices[0], &mounted_iso9660_fs_instance);
-
-    // void* file_data;
-    // size_t file_size;
-    // data.read(&mounted_iso9660_fs_instance, "/.env", &file_data, &file_size);
-
-    // char buffer[1024];
-    // memcpy(buffer, file_data, file_size);
-    // buffer[file_size] = '\0';
-    // printf(DBG, "%s\n", (char*)buffer);
 
     // ahci device
     pci_class_info_t ahci_device_class_info {
@@ -316,24 +309,17 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
     const pci_device_t* network_controller = pci_find_device(&pci_devices, &network_device_class_info);
     // TODO @since 14/07/2025 -- 21:52
 
-    // TODO @since 14/07/2025 -- 18:58
-    // setup vfs
-
     virtual_file_system vfs {};
-    vfs.create_directory("/home");
     vfs.create_directory("/mnt");
 
     auto disk_storage = ptr::make_unique<vfs_disk_storage>(&mounted_iso9660_fs_instance);
     vfs.mount("/mnt/disk0", move(disk_storage));
 
     dynamic_array<uint8_t> file_content {};
-    // file_content.insert_back(12);
-    // vfs.create_file("/home/test.txt", &file_content);
-    
-    // file_content.clear();
     vfs.create_file_cache("/mnt/disk0/.env");
-    vfs.read_file("/mnt/disk0/.env", &file_content);
-    
+    auto file = vfs.open_file("/mnt/disk0/.env");
+    vfs.read_file(file, &file_content);
+
     printf(DBG, "vfs file debug test:\n");
     for (const auto& ch : file_content)
         printf(DBG, "%c", ch);
