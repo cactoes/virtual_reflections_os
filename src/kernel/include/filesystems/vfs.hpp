@@ -18,25 +18,38 @@
 
 #include "filesystems/filesystem.hpp"
 
-// typedef int file_descriptor_t;
+#define FILE_DESCRIPTOR_INVALID (int)-1
 
-enum class vfs_node_type_t {
-    FILE,
-    DIRECTORY,
-};
-
-struct vfs_node_t {
-    vfs_node_t* parent;
-    linked_list<ptr::unique<vfs_node_t>> children {};
-    vfs_node_type_t type;
-    string name;
-};
+typedef int file_descriptor_t;
 
 struct vfs_storage_interface_t {
     virtual ~vfs_storage_interface_t() = default;
     virtual bool read_file(const string& path, dynamic_array<uint8_t>* p_content) = 0;
     virtual bool write_file(const string& path, dynamic_array<uint8_t>* p_content) = 0;
     virtual bool create_directory(const string& path) = 0;
+};
+
+enum class vfs_node_type_t {
+    FILE,
+    DIRECTORY,
+};
+
+struct vfs_node_meta_t {
+    string name;
+    vfs_node_type_t type;
+    struct {
+        bool read       : 1;
+        bool write      : 1;
+        bool execute    : 1;
+    } PACKED;
+};
+
+struct vfs_node_t {
+    vfs_node_t* parent;
+    linked_list<ptr::unique<vfs_node_t>> children {};
+    vfs_node_meta_t meta;
+
+    vfs_storage_interface_t* storage = nullptr;
 };
 
 struct vfs_mount_point_t {
@@ -123,7 +136,7 @@ private:
 
 inline vfs_node_t* vfs_node_get_child(vfs_node_t* p_parent, const string& name) {
     for (auto& child : p_parent->children)
-        if (child->name == name)
+        if (child->meta.name == name)
             return child.get();
 
     return nullptr;
@@ -134,7 +147,8 @@ public:
     virtual_file_system() :
         default_storage(ptr::make_unique<vfs_memory_storage>()),
         root(ptr::make_unique<vfs_node_t>()) {
-        root->type = vfs_node_type_t::DIRECTORY;
+        root->meta.type = vfs_node_type_t::DIRECTORY;
+        root->storage = default_storage.get();
     }
 
     bool create_directory(const string& path) {
@@ -144,7 +158,7 @@ public:
             return false;
 
         vfs_node_t* created_directory = create_directories(path);
-        vfs_storage_interface_t* storage = get_backend(path);
+        vfs_storage_interface_t* storage = get_storage_interface(path);
         string relative_path = get_relative_path_in_backend(path);
         storage->create_directory(relative_path);
 
@@ -160,9 +174,9 @@ public:
         vfs_node_t* parent_dir = create_directories(dir_path);
 
         ptr::unique<vfs_node_t> new_node = ptr::make_unique<vfs_node_t>();
-        new_node->name = filename;
+        new_node->meta.name = filename;
         new_node->parent = parent_dir;
-        new_node->type = vfs_node_type_t::FILE;
+        new_node->meta.type = vfs_node_type_t::FILE;
         parent_dir->children.insert_back(move(new_node));
 
         return true;
@@ -178,39 +192,67 @@ public:
         vfs_node_t* parent_dir = create_directories(dir_path);
 
         ptr::unique<vfs_node_t> new_node = ptr::make_unique<vfs_node_t>();
-        new_node->name = filename;
+        new_node->meta.name = filename;
         new_node->parent = parent_dir;
-        new_node->type = vfs_node_type_t::FILE;
+        new_node->meta.type = vfs_node_type_t::FILE;
         parent_dir->children.insert_back(move(new_node));
 
-        vfs_storage_interface_t* storage = get_backend(path);
+        vfs_storage_interface_t* storage = get_storage_interface(path);
         string relative_path = get_relative_path_in_backend(path);
         storage->write_file(relative_path, p_content);
 
         return true;
     }
 
-    bool read_file(const string& path, dynamic_array<uint8_t>* p_content) {
+    bool read_file(file_descriptor_t fd, dynamic_array<uint8_t>* p_content) {
+        // mutex_lock_guard guard(&mutex);
+
+        auto entry = open_files.get(fd);
+        if (entry == open_files.end())
+            return false;
+
+        vfs_storage_interface_t* storage = get_storage_interface(entry->value);
+        string relative_path = get_relative_path_in_backend(entry->value);
+        return storage->read_file(relative_path, p_content);
+    }
+
+    bool write_file(file_descriptor_t fd, dynamic_array<uint8_t>* p_content) {
+        auto entry = open_files.get(fd);
+        if (entry == open_files.end())
+            return false;
+
+        vfs_storage_interface_t* storage = get_storage_interface(entry->value);
+        string relative_path = get_relative_path_in_backend(entry->value);
+        return storage->write_file(relative_path, p_content);
+    }
+
+    file_descriptor_t open_file(const string& path) {
         // mutex_lock_guard guard(&mutex);
 
         vfs_node_t* target = resolve_path(path);
-        if (!target || target->type != vfs_node_type_t::FILE)
-            return false;
+        if (!target) // || target->meta.type != vfs_node_type_t::FILE
+            return FILE_DESCRIPTOR_INVALID;
 
-        vfs_storage_interface_t* storage = get_backend(path);
-        string relative_path = get_relative_path_in_backend(path);
-        storage->read_file(relative_path, p_content);
+        file_descriptor_t file_descriptor = get_next_descriptor();
+        open_files[file_descriptor] = path;
 
-        return true;
+        return file_descriptor;
+    }
+
+    bool close_file(file_descriptor_t fd) {
+        return open_files.remove(fd);
     }
 
     bool mount(const string& path, ptr::unique<vfs_storage_interface_t> storage) {
-        if (!create_directories(path))
+        auto node = create_directories(path);
+        if (!node || node->storage != nullptr)
             return false;
 
         for (const auto& mount : mount_points)
             if (mount->mount_point == path)
                 return false;
+
+        node->storage = storage.get();
 
         ptr::unique<vfs_mount_point_t> mp = ptr::make_unique<vfs_mount_point_t>();
         mp->mount_point = path;
@@ -218,7 +260,7 @@ public:
         mount_points.insert_back(move(mp));
 
         // TODO @since 31/07/2025 -- 10:44
-        // add dirs / files to cache
+        // do drive enumeration
 
         return true;
     }
@@ -238,6 +280,27 @@ public:
         return false;
     }
 
+    dynamic_array<string> list_folder_entries(const string& path) {
+        dynamic_array<string> dirs {};
+
+        vfs_node_t* target = resolve_path(path);
+        if (!target)
+            return dirs;
+
+        for (auto& child : target->children)
+            dirs.insert_back(child->meta.name);
+
+        return dirs;
+    }
+
+    const vfs_node_meta_t* get_meta(file_descriptor_t fd) {
+        auto entry = open_files.get(fd);
+        if (entry == open_files.end())
+            return nullptr;
+
+        return &resolve_path(entry->value)->meta;
+    }
+
 private:
     vfs_node_t* resolve_path(const string& path) {
         if (path == "/" || path.length() == 0)
@@ -247,7 +310,7 @@ private:
         vfs_node_t* current_node = root.get();
 
         for (const auto& part : path_parts) {
-            if (current_node->type != vfs_node_type_t::DIRECTORY)
+            if (current_node->meta.type != vfs_node_type_t::DIRECTORY)
                 return nullptr;
 
             current_node = vfs_node_get_child(current_node, part);
@@ -256,6 +319,21 @@ private:
         }
 
         return current_node;
+    }
+
+    string node_to_path(vfs_node_t* p_node) {
+        if (!p_node->parent)
+            return "/";
+
+        string path = "";
+        vfs_node_t* current = p_node;
+
+        while (current->parent) {
+            path = string("/") + current->meta.name + path;
+            current = current->parent;
+        }
+
+        return path;
     }
 
     vfs_node_t* create_directories(const string& path) {
@@ -269,13 +347,13 @@ private:
             vfs_node_t* child_node = vfs_node_get_child(current_node, part);
             if (!child_node) {
                 ptr::unique<vfs_node_t> new_node = ptr::make_unique<vfs_node_t>();
-                new_node->type = vfs_node_type_t::DIRECTORY;
+                new_node->meta.type = vfs_node_type_t::DIRECTORY;
                 new_node->parent = current_node;
-                new_node->name = part;
+                new_node->meta.name = part;
                 vfs_node_t* p_new_node = new_node.get();
                 current_node->children.insert_back(move(new_node));
                 current_node = p_new_node;
-            } else if (child_node->type == vfs_node_type_t::DIRECTORY) {
+            } else if (child_node->meta.type == vfs_node_type_t::DIRECTORY) {
                 current_node = child_node;
             } else {
                 return nullptr;
@@ -285,35 +363,40 @@ private:
         return current_node;
     }
 
-    vfs_storage_interface_t* get_backend(const string& path) {
-        string best = "";
-        vfs_storage_interface_t* best_storage = default_storage.get();
-
-        for (const auto& mount : mount_points) {
-            if (path.find(mount->mount_point) == 0 &&
-                mount->mount_point.length() > best.length()) {
-                best = mount->mount_point;
-                best_storage = mount->storage_interface.get();
-            }
+    vfs_storage_interface_t* get_storage_interface(const string& path) {
+        vfs_node_t* node = resolve_path(path);
+        while (node) {
+            if (node->storage)
+                return node->storage;
+            node = node->parent;
         }
 
-        return best_storage;
+        return default_storage.get();
     }
 
     string get_relative_path_in_backend(const string& path) {
-        for (const auto& mount : mount_points) {
-            if (path.find(mount->mount_point) == 0) {
-                string relative = path.substr(mount->mount_point.length());
-                return relative.length() == 0 ? "/" : relative;
+        vfs_node_t* node = resolve_path(path);
+        while (node) {
+            if (node->storage) {
+                string relative_path = path.substr(node_to_path(node).length());
+                return relative_path.length() == 0 ? "/" : relative_path;
             }
+            node = node->parent;
         }
 
         return path;
     }
 
+    file_descriptor_t get_next_descriptor() {
+        // for now just do linear descriptors
+        static int s_counter = 0;
+        return s_counter++;
+    }
+
     ptr::unique<vfs_node_t> root;
-    linked_list<ptr::unique<vfs_mount_point_t>> mount_points;
+    linked_list<ptr::unique<vfs_mount_point_t>> mount_points {};
     ptr::unique<vfs_storage_interface_t> default_storage;
+    linear_map<file_descriptor_t, string> open_files {};
 };
 
 #endif // __FILESYSTEMS_VFS_HPP__
