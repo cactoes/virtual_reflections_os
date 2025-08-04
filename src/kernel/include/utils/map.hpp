@@ -31,6 +31,10 @@ public:
         return ptr != other.ptr;
     }
 
+    bool operator==(const linear_map_iterator& other) const {
+        return ptr == other.ptr;
+    }
+
     key_value_pair_t<T, U>& operator*() const {
         return *ptr;
     }
