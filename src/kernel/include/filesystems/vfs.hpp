@@ -14,6 +14,7 @@
 #include "utils/pointer.hpp"
 #include "utils/mutex.hpp"
 #include "utils/vector.hpp"
+#include "utils/map.hpp"
 
 #include "filesystems/filesystem.hpp"
 
@@ -22,12 +23,6 @@
 enum class vfs_node_type_t {
     FILE,
     DIRECTORY,
-};
-
-template <class T>
-struct vfs_kv_t {
-    string key;
-    T value;
 };
 
 struct vfs_node_t {
@@ -59,7 +54,7 @@ public:
             if (key == path) {
                 // TODO @since 30/07/2025 -- 22:34
                 // speed up, for now its okay since its still testing
-                for (auto& v : *value.get())
+                for (auto& v : *value)
                     p_content->insert_back(v);
                 return true;
             }
@@ -77,13 +72,12 @@ public:
                 return true;
             }
         }
-        vfs_kv_t<ptr::unique<dynamic_array<uint8_t>>> value {};
-        value.key = path;
-        value.value = ptr::make_unique<dynamic_array<uint8_t>>();
+        ptr::unique<dynamic_array<uint8_t>> value {};
+        value = ptr::make_unique<dynamic_array<uint8_t>>();
         for (const auto& v : *p_content)
-            value.value->insert_back(v);
+            value->insert_back(v);
 
-        storage.insert_back(move(value));
+        storage.insert(path, move(value));
         return true;
     }
 
@@ -92,9 +86,7 @@ public:
     }
 
 private:
-    // TODO @since 30/07/2025 -- 22:31
-    // create a simple map
-    linked_list<vfs_kv_t<ptr::unique<dynamic_array<uint8_t>>>> storage {};
+    linear_map<string, ptr::unique<dynamic_array<uint8_t>>> storage;
     mutex_t mutex;
 };
 

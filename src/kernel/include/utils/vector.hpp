@@ -446,7 +446,7 @@ public:
         if (size == capacity)
             resize(capacity + 2);
 
-        new (&data[size]) T(value);
+        new (&data[size]) T(move(value));
         size++;
     }
 
