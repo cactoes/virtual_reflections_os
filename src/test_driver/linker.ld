@@ -3,6 +3,8 @@ ENTRY(driver_init)
 
 SECTIONS
 {
+    . = 0x0;
+
     /* Text segment: code + read-only data */
     .text ALIGN(0x1000) : {
         *(.text*)           /* all code sections */

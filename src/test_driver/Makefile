@@ -4,14 +4,14 @@
 #==========================================
 
 # directories & files
+TARGET_NAME				:= TestDriver
 PROJECT_PATH			:= .
 SOURCE_FILES_PATH		:= $(PROJECT_PATH)/src
 HEADER_FILES_PATH		:= $(PROJECT_PATH)/include
 ASSEMBLY_FILES_PATH		:= $(PROJECT_PATH)/asm
 ROOT_PATH				:= ../..
-BUILD_PATH				:= $(ROOT_PATH)/build
+BUILD_PATH				:= $(ROOT_PATH)/build/$(TARGET_NAME)
 LINKER_SCRIPT			:= $(PROJECT_PATH)/linker.ld
-TARGET_NAME				:= TestDriver
 KERNEL_API				:= $(ROOT_PATH)/src/kernel/include/
 
 # compilers
@@ -23,7 +23,7 @@ LINKER					:= x86_64-elf-ld
 # [!!!] -mno-sse2: SSE2 is disabled
 COMPILER_FLAGS			:= -nostdlib -m64 -mno-red-zone -mno-sse2 -fno-rtti -fno-exceptions -Werror -Wunused-result -fno-use-cxa-atexit -ffreestanding -I$(HEADER_FILES_PATH) -I$(KERNEL_API) -g -z max-page-size=0x1000
 NASM_FLAGS				:= -f elf64
-LINKER_FLAGS			:= -z max-page-size=0x1000 -n -T $(LINKER_SCRIPT)
+LINKER_FLAGS			:= -z max-page-size=0x1000 -T $(LINKER_SCRIPT) -static --unresolved-symbols=ignore-all
 
 # file sources & targets
 source_files		:= $(shell find $(SOURCE_FILES_PATH) -name "*.cpp")
@@ -36,7 +36,12 @@ SILENT_MODE = @
 
 .PHONY: build clean rebuild
 
-build: $(BUILD_PATH)/$(TARGET_NAME).sys
+build: $(ROOT_PATH)/iso/$(TARGET_NAME).sys
+
+$(ROOT_PATH)/iso/$(TARGET_NAME).sys: $(BUILD_PATH)/$(TARGET_NAME).sys
+	@echo "copying $(TARGET_NAME)"
+	@mkdir -p $(dir $@)
+	@cp $< $@
 
 $(BUILD_PATH)/$(TARGET_NAME).sys: $(object_files) $(asm_object_files) $(LINKER_SCRIPT)
 	@echo "linking kernel binary"

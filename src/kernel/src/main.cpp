@@ -213,6 +213,8 @@ void on_mouse(const ps2_mouse_state_t* p_state) {
     printf(DBG, "L: %i, M: %i, R: %i, S: %i\n", p_state->buttons.left, p_state->buttons.middle, p_state->buttons.right, p_state->ds);
 }
 
+void elf_driver_test(void* p_data, size_t file_size);
+
 extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
     // validate multiboot
     UNUSED(mb_has_valid_magic((multiboot_t*)p_multiboot_struct));
@@ -315,15 +317,20 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
     auto disk_storage = ptr::make_unique<vfs_disk_storage>(&mounted_iso9660_fs_instance);
     vfs.mount("/mnt/disk0", move(disk_storage));
 
-    dynamic_array<uint8_t> file_content {};
-    vfs.create_file_cache("/mnt/disk0/.env");
-    auto file = vfs.open_file("/mnt/disk0/.env");
-    vfs.read_file(file, &file_content);
+    // dynamic_array<uint8_t> driver_file {};
+    // vfs.create_file_cache("/mnt/disk0/TestDriver.sys");
+    // auto file = vfs.open_file("/mnt/disk0/TestDriver.sys");
+    // vfs.read_file(file, &driver_file);
 
-    printf(DBG, "vfs file debug test:\n");
-    for (const auto& ch : file_content)
-        printf(DBG, "%c", ch);
-    printf(DBG, "END\n");
+    // uint8_t* driver_data = driver_file.get_data();
+    // size_t driver_data_size = driver_file.length();
+
+    // elf_driver_test(driver_data, driver_data_size);
+
+    // printf(DBG, "vfs file debug test:\n");
+    // for (const auto& ch : file_content)
+    //     printf(DBG, "%c", ch);
+    // printf(DBG, "END\n");
 
     ps2_keyboard_event_subscribe(on_key_down);
     ps2_mouse_event_subscribe(on_mouse);
@@ -335,4 +342,198 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
     // we shoudn t reach this point since the kernel should never stop
     // incase we do just hang here so we dont break anything
     while (true);
+}
+
+// VVVV ELF SHIT VVVV
+
+typedef uint16_t Elf32_Half;	// Unsigned half int
+typedef uint32_t Elf32_Off;	    // Unsigned offset
+typedef uint32_t Elf32_Addr;	// Unsigned address
+typedef uint32_t Elf32_Word;	// Unsigned int
+typedef int32_t  Elf32_Sword;	// Signed int
+
+# define ELF_NIDENT	16
+
+typedef struct {
+    unsigned char e_ident[16];
+    uint16_t e_type;
+    uint16_t e_machine;
+    uint32_t e_version;
+    uint64_t e_entry;
+    uint64_t e_phoff;
+    uint64_t e_shoff;      // section header table offset
+    uint32_t e_flags;
+    uint16_t e_ehsize;
+    uint16_t e_phentsize;
+    uint16_t e_phnum;
+    uint16_t e_shentsize;  // section header size
+    uint16_t e_shnum;      // number of section headers
+    uint16_t e_shstrndx;   // index of section header string table
+} Elf64_Ehdr;
+
+enum Elf_Ident {
+	EI_MAG0		= 0, // 0x7F
+	EI_MAG1		= 1, // 'E'
+	EI_MAG2		= 2, // 'L'
+	EI_MAG3		= 3, // 'F'
+	EI_CLASS	= 4, // Architecture (32/64)
+	EI_DATA		= 5, // Byte Order
+	EI_VERSION	= 6, // ELF Version
+	EI_OSABI	= 7, // OS Specific
+	EI_ABIVERSION	= 8, // OS Specific
+	EI_PAD		= 9  // Padding
+};
+
+# define ELFMAG0	0x7F // e_ident[EI_MAG0]
+# define ELFMAG1	'E'  // e_ident[EI_MAG1]
+# define ELFMAG2	'L'  // e_ident[EI_MAG2]
+# define ELFMAG3	'F'  // e_ident[EI_MAG3]
+
+enum Elf_Type {
+	ET_NONE		= 0, // Unkown Type
+	ET_REL		= 1, // Relocatable File
+	ET_EXEC		= 2  // Executable File
+};
+
+typedef struct {
+    uint32_t sh_name;      // offset to section name in shstrtab
+    uint32_t sh_type;
+    uint64_t sh_flags;
+    uint64_t sh_addr;      // load address of section
+    uint64_t sh_offset;    // offset in file/image
+    uint64_t sh_size;      // size of section
+    uint32_t sh_link;
+    uint32_t sh_info;
+    uint64_t sh_addralign;
+    uint64_t sh_entsize;
+} Elf64_Shdr;
+
+typedef struct {
+    uint32_t st_name;      // offset into string table
+    uint8_t  st_info;
+    uint8_t  st_other;
+    uint16_t st_shndx;
+    uint64_t st_value;     // symbol value (address)
+    uint64_t st_size;
+} Elf64_Sym;
+
+static inline Elf64_Shdr *elf_sheader(Elf64_Ehdr *hdr) {
+	return (Elf64_Shdr *)((uint64_t)hdr + hdr->e_shoff);
+}
+
+static inline Elf64_Shdr *elf_section(Elf64_Ehdr *hdr, int idx) {
+	return &elf_sheader(hdr)[idx];
+}
+
+Elf64_Shdr* find_section_by_name(const Elf64_Ehdr* ehdr, const uint8_t* elf_data, const char* name) {
+    Elf64_Shdr* shdrs = (Elf64_Shdr*)(elf_data + ehdr->e_shoff);
+    Elf64_Shdr* shstrtab = &shdrs[ehdr->e_shstrndx];
+    const char* shstrtab_p = (const char*)(elf_data + shstrtab->sh_offset);
+
+    for (int i = 0; i < ehdr->e_shnum; i++) {
+        const char* sec_name = shstrtab_p + shdrs[i].sh_name;
+        if (string(sec_name) == name) {
+            return &shdrs[i];
+        }
+    }
+    return 0;
+}
+
+uint64_t find_symbol_address(const uint8_t* elf_data, const Elf64_Shdr* symtab, const Elf64_Shdr* strtab, const char* sym_name) {
+    int num_symbols = symtab->sh_size / symtab->sh_entsize;
+    Elf64_Sym* symbols = (Elf64_Sym*)(elf_data + symtab->sh_offset);
+    const char* strtab_p = (const char*)(elf_data + strtab->sh_offset);
+
+    for (int i = 0; i < num_symbols; i++) {
+        const char* curr_name = strtab_p + symbols[i].st_name;
+        if (string(curr_name) == sym_name) {
+            return symbols[i].st_value;
+        }
+    }
+    return 0; // not found
+}
+
+typedef struct {
+    uint32_t p_type;
+    uint32_t p_flags;
+    uint64_t p_offset;
+    uint64_t p_vaddr;
+    uint64_t p_paddr;
+    uint64_t p_filesz;
+    uint64_t p_memsz;
+    uint64_t p_align;
+} Elf64_Phdr;
+
+#define PT_LOAD 1
+
+#include "kernel_api.hpp"
+
+void elf_driver_test(void* p_data, size_t file_size) {
+    auto header_ptr = (Elf64_Ehdr*)p_data;
+    printf(DBG, "MAGIC: 0x%uh ", header_ptr->e_ident[EI_MAG0]);
+    printf(DBG, "%c", header_ptr->e_ident[EI_MAG1]);
+    printf(DBG, "%c", header_ptr->e_ident[EI_MAG2]);
+    printf(DBG, "%c\n", header_ptr->e_ident[EI_MAG3]);
+
+    printf(DBG, "CLASS: 0x%uh\n", header_ptr->e_ident[EI_CLASS]);
+    
+    printf(DBG, "DATA: 0x%uh\n", header_ptr->e_ident[EI_DATA]);
+    
+    printf(DBG, "MACHINE: 0x%uh\n", header_ptr->e_machine);
+    
+    printf(DBG, "EI_VERSION: 0x%uh\n", header_ptr->e_ident[EI_VERSION]);
+    
+    printf(DBG, "TYPE: 0x%uh\n", header_ptr->e_type);
+    
+    printf(DBG, "ENTRY: 0x%uh\n", header_ptr->e_entry);
+
+    Elf64_Shdr* shdr = elf_sheader(header_ptr);
+
+    printf(DBG, "SHNUM: 0x%uh\n", header_ptr->e_shnum);
+
+    Elf64_Shdr* symtab = find_section_by_name(header_ptr, (const uint8_t*)p_data, ".symtab");
+    Elf64_Shdr* strtab = find_section_by_name(header_ptr, (const uint8_t*)p_data, ".strtab");
+
+    printf(DBG, "symtab: 0x%uh\n", symtab);
+    printf(DBG, "strtab: 0x%uh\n", strtab);
+    
+    uint64_t symptr = find_symbol_address((const uint8_t*)p_data, symtab, strtab, "driver_init");
+    // uint64_t kernel_test_function_sym = find_symbol_address((const uint8_t*)p_data, symtab, strtab, "kernel_test_function");
+    printf(DBG, "symptr: 0x%uh\n", symptr);
+
+    Elf64_Sym* symbols = (Elf64_Sym*)((const uint8_t*)p_data + symtab->sh_offset);
+    int num_symbols = symtab->sh_size / symtab->sh_entsize;
+    const char* strtab_p = (const char*)((const uint8_t*)p_data + strtab->sh_offset);
+
+    for (int i = 0; i < num_symbols; i++) {
+        const char* name = strtab_p + symbols[i].st_name;
+
+        if (streq(name, "kernel_test_function")) {
+            printf(DBG, "patching symbol: %s\n", name);
+            symbols[i].st_value = (uint64_t)&kernel_test_function;
+            break;
+        }
+    }
+
+    uint8_t* base_load_address = (uint8_t*)GALLOC(0x2000);
+    Elf64_Phdr* phdr = (Elf64_Phdr*)((uint8_t*)p_data + header_ptr->e_phoff);
+
+    for (int i = 0; i < header_ptr->e_phnum; i++) {
+        if (phdr[i].p_type == PT_LOAD) {
+            memcpy(base_load_address + phdr[i].p_vaddr,
+                ((uint8_t*)p_data) + phdr[i].p_offset,
+                phdr[i].p_filesz);
+
+            // Zero out .bss section if needed
+            if (phdr[i].p_memsz > phdr[i].p_filesz) {
+                memset(base_load_address + phdr[i].p_vaddr + phdr[i].p_filesz,
+                    0,
+                    phdr[i].p_memsz - phdr[i].p_filesz);
+            }
+        }
+    }
+
+    int (*driver_init)() = (int(*)())(base_load_address + symptr);
+    int result = driver_init();
+    printf(DBG, "result: %il\n", result);
 }
