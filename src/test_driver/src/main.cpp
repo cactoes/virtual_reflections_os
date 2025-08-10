@@ -5,7 +5,7 @@ extern "C" int kernel_test_function(const char* p_str);
 extern "C" {
 
 int driver_init() {
-    // kernel_test_function("yuhhh!");
+    kernel_test_function("yuhhh!");
     return 0;
 }
 
