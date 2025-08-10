@@ -3,3 +3,6 @@ build/
 
 # ignore network capture
 *.pcap
+
+# ignore built drivers
+iso/*.sys
