@@ -213,47 +213,13 @@ void on_mouse(const ps2_mouse_state_t* p_state) {
     printf(DBG, "L: %i, M: %i, R: %i, S: %i\n", p_state->buttons.left, p_state->buttons.middle, p_state->buttons.right, p_state->ds);
 }
 
-#include "elf.hpp"
-#include "kernel_api.hpp"
-
+#include "drivers/driver.hpp"
 void elf_driver_test(uint8_t* p_file, size_t file_size) {
     printf(DBG, "\n\nELF DIRVER LOAD TEST\n\n");
 
-    if (elf_check_file(p_file) != 0) {
-        printf(DBG, "incorect elf header\n");
-        return;
-    }
-
-    printf(DBG, "header correct!\n");
-
-    auto program_section_info = elf_parse_program_sections(p_file);
-    printf(DBG, "program size: %ul\n", program_section_info.size);
-
-    uint8_t* base_address = (uint8_t*)heap_alloc(get_global_heap(), program_section_info.size);
-    if (!base_address) {
-        printf(DBG, "failed to alloc base address\n");
-        return;
-    }
-
-    elf_load_program_sections(p_file, base_address, &program_section_info);
-
-    auto tables = elf_get_tables(p_file);
-    if (!tables.string_table || !tables.symbol_table) {
-        printf(DBG, "missing tables!\n");
-        return;
-    }
-
-    linear_map<string, void*> symbol_map {};
-    symbol_map["kernel_test_function"] = (void*)&kernel_test_function;
-
-    if (elf_relocate_rel_sections(p_file, base_address, &tables, &symbol_map) != 0) {
-        printf(DBG, "failed to relocate .rela secion(s)\n");
-        return;
-    }
-
-    printf(DBG, "applied relocations!\n");
-
-    elf_get_function<int>(p_file, base_address, &tables, &program_section_info, "driver_init")();
+    auto handle = driver_load("TestDriver", p_file);
+    printf(DBG, "driver handle: %ul", handle);
+    driver_start(handle);
 
     // heap_free(get_global_heap(), base_address);
     printf(DBG, "\n\nELF DIRVER LOAD TEST SUCCESS\n\n");
