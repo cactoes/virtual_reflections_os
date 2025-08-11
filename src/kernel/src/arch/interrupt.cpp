@@ -40,7 +40,7 @@ void interrupt_init(uint16_t kernel_code_selector) {
         X86_64_INT_IRQ_PS2_MOUSE
     };
 
-    for (size_t i = 0; i < ARRAY_SIZE(s_all_irqs); i++)
+    for (size_t i = 0; i < ARRAY_LENGTH(s_all_irqs); i++)
         UNUSED(unmask_irq(s_all_irqs[i]));
 
     x86_64_flush_idt(g_idtr);

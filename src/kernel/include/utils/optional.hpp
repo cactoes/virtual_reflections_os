@@ -19,6 +19,14 @@ static nullopt_t nullopt {};
 template <typename T>
 class optional {
 public:
+    bool has_value() {
+        return b_has_value;
+    }
+
+    T& get_value() const {
+        return value;
+    }
+
     T* operator->() const {
         return &value;
     }
@@ -28,10 +36,10 @@ public:
     }
 
     bool operator==(const optional& other) const {
-        if (has_value != other.has_value)
+        if (b_has_value != other.b_has_value)
             return false;
         
-        if (!has_value)
+        if (!b_has_value)
             return true;
 
         return value_ == other.value_;
@@ -51,7 +59,7 @@ public:
 
 private:
     T value;
-    bool has_value;
+    bool b_has_value;
 };
 
 #endif // __UTILS_OPTIONAL_HPP__

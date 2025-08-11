@@ -38,7 +38,8 @@
 #define BIT_TOGGLE(x, n)    ((x) ^= BIT(n))
 #define BIT_CHECK(x, n)     (((x) >> (n)) & 1U)
 
-#define ARRAY_SIZE(arr) sizeof((arr)) / sizeof(decltype(*(arr)))
+#define ARRAY_LENGTH(arr)   sizeof((arr)) / sizeof(decltype(*(arr)))
+#define ARRAY_SIZE(arr)     sizeof((arr)) * sizeof(decltype(*(arr)))
 
 // remove_reference
 template<typename T>

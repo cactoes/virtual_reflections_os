@@ -23,7 +23,7 @@ void __kernel_fatal(uint64_t code, const char* p_message, cpu_state_t* p_cpu_sta
     vga_tm_puts(&g_vga_tm_buffer, "*** KERNEL FATAL ***\n");
 
     char buffer[256];
-    sprintf(buffer, ARRAY_SIZE(buffer), "> ERROR CODE: 0x%uh\n", code);
+    sprintf(buffer, ARRAY_LENGTH(buffer), "> ERROR CODE: 0x%uh\n", code);
     vga_tm_puts(&g_vga_tm_buffer, buffer);
 
     if (code >= 0 && code <= 0x15) {
@@ -47,14 +47,14 @@ void __kernel_fatal(uint64_t code, const char* p_message, cpu_state_t* p_cpu_sta
                 bool is_external = p_cpu_state->error_code & 0x1;
                 bool is_idt = p_cpu_state->error_code & 0x2;
 
-                memzero(buffer, ARRAY_SIZE(buffer));
-                sprintf(buffer, ARRAY_SIZE(buffer), "GENERAL_PROTECTION_FAULT\nEXTERNAL[%u] TABLE[%s] SEGMENT INDEX: [0x%uh]", is_external, is_idt ? "IDT/LDT" : "GDT", seg_index);
+                memzero(buffer, ARRAY_LENGTH(buffer));
+                sprintf(buffer, ARRAY_LENGTH(buffer), "GENERAL_PROTECTION_FAULT\nEXTERNAL[%u] TABLE[%s] SEGMENT INDEX: [0x%uh]", is_external, is_idt ? "IDT/LDT" : "GDT", seg_index);
                 vga_tm_puts(&g_vga_tm_buffer, buffer);
                 break;
             }
             case 0xE:
-                memzero(buffer, ARRAY_SIZE(buffer));
-                sprintf(buffer, ARRAY_SIZE(buffer), "PAGE_FAULT @ 0x%uh\n\nREASON    : %s\nOPERATION : %s\nMODE      : %s\n", read_cr2(),
+                memzero(buffer, ARRAY_LENGTH(buffer));
+                sprintf(buffer, ARRAY_LENGTH(buffer), "PAGE_FAULT @ 0x%uh\n\nREASON    : %s\nOPERATION : %s\nMODE      : %s\n", read_cr2(),
                     (p_cpu_state->error_code & 0x1) ? "PROTECTION VIOLATION" : "NON-PRESENT PAGE",
                     (p_cpu_state->error_code & 0x2) ? "WRITE" : "READ",
                     (p_cpu_state->error_code & 0x4) ? "USER" : "KERNEL");
