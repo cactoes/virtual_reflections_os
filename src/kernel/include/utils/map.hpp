@@ -23,6 +23,10 @@ public:
     linear_map_iterator(key_value_pair_t<T, U>* p_ptr) : ptr(p_ptr) {}
 
     linear_map_iterator& operator++() {
+        return advance();
+    }
+
+    linear_map_iterator& advance() {
         ++ptr;
         return *this;
     }
