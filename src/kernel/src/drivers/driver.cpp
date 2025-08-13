@@ -7,8 +7,8 @@
 // relocate this kernel api
 #include "kernel_api.hpp"
 
-static system_driver_handle_t s_current_handle = 0;
-static linear_map<system_driver_handle_t, ptr::unique<system_driver_t>> s_loaded_drivers {};
+static system_driver_handle_t g_current_handle = 0;
+static linear_map<system_driver_handle_t, ptr::unique<system_driver_t>> g_loaded_drivers {};
 
 system_driver_handle_t driver_load(const char* p_name, void* p_driver_file) {
     if (elf_check_file((uint8_t*)p_driver_file) != 0)
@@ -26,6 +26,8 @@ system_driver_handle_t driver_load(const char* p_name, void* p_driver_file) {
     if (!tables.string_table || !tables.symbol_table)
         return SYSTEM_DRIVER_HANDLE_INVALID;
 
+    // TODO @since 13/08/2025 -- 22:55
+    // make this more global / better manageable
     linear_map<string, void*> symbol_map {};
     symbol_map["kernel_test_function"] = (void*)&kernel_test_function;
 
@@ -38,28 +40,39 @@ system_driver_handle_t driver_load(const char* p_name, void* p_driver_file) {
     system_driver->functions.driver_init = elf_get_function<int>((uint8_t*)p_driver_file, base_address, &tables, &program_section_info, "driver_init");
     system_driver->functions.driver_exit = elf_get_function<int>((uint8_t*)p_driver_file, base_address, &tables, &program_section_info, "driver_exit");
     
-    s_current_handle++;
+    g_current_handle++;
 
-    s_loaded_drivers[s_current_handle] = move(system_driver);
+    g_loaded_drivers[g_current_handle] = move(system_driver);
 
-    return s_current_handle;
+    return g_current_handle;
 }
 
 int driver_unload(system_driver_handle_t handle) {
-    return 1;
+    auto driver_it = g_loaded_drivers.get(handle);
+    if (driver_it == g_loaded_drivers.end())
+        return 1;
+
+    if (driver_it->value->driver_code)
+        heap_free(get_global_heap(), driver_it->value->driver_code);
+
+    return g_loaded_drivers.remove(handle) ? 0 : 2;
 }
 
 int driver_start(system_driver_handle_t handle) {
     // TODO @since 12/08/2025 -- 00:29
     // spawn new thread etc
 
-    auto driver_it = s_loaded_drivers.get(handle);
-    if (driver_it == s_loaded_drivers.end())
+    auto driver_it = g_loaded_drivers.get(handle);
+    if (driver_it == g_loaded_drivers.end())
         return 1;
     
     return driver_it->value->functions.driver_init();
 }
 
 int driver_stop(system_driver_handle_t handle) {
-    return 1;
+    auto driver_it = g_loaded_drivers.get(handle);
+    if (driver_it == g_loaded_drivers.end())
+        return 1;
+    
+    return driver_it->value->functions.driver_exit();
 }

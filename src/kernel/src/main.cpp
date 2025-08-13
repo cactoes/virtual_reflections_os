@@ -220,8 +220,9 @@ void elf_driver_test(uint8_t* p_file, size_t file_size) {
     auto handle = driver_load("TestDriver", p_file);
     printf(DBG, "driver handle: %ul", handle);
     driver_start(handle);
-
-    // heap_free(get_global_heap(), base_address);
+    driver_stop(handle);
+    driver_unload(handle);
+    
     printf(DBG, "\n\nELF DIRVER LOAD TEST SUCCESS\n\n");
 }
 
