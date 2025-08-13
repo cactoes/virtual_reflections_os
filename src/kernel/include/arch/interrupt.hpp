@@ -12,6 +12,10 @@
 #ifdef ARCH_X86_64
 #include "arch/x86_64/interrupt.hpp"
 
+#define INT_IRQ_PIT             X86_64_INT_IRQ_PIT
+#define INT_IRQ_PS2_KEYBOARD    X86_64_INT_IRQ_PS2_KEYBOARD
+#define INT_IRQ_PS2_MOUSE       X86_64_INT_IRQ_PS2_MOUSE
+
 void interrupt_init(uint16_t kernel_code_selector);
 void interrupt_set_handler(void*(p_handler)(uint64_t, cpu_state_t*));
 void interrupt_send_eoi(uint8_t irq_num);
