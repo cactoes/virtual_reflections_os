@@ -54,8 +54,19 @@ void printf(print_mode_t mode, const char* p_str, ...) {
     }
 }
 
-void pit_handle_interrupt() {
+#include "virtual_thread.hpp"
+cpu_state_t* pit_handle_interrupt(cpu_state_t* p_rsp) {
+    static uint64_t s_global_tick_count;
+    
+    s_global_tick_count++;
+    
     // TODO @since 14/07/2025 -- 18:59
+    // (pit) timers etc
+
+    if (const auto new_thread = vthread_schedule(p_rsp))
+        return new_thread;
+    
+    return p_rsp;
 }
 
 enum class interrupt_type_t {
@@ -134,16 +145,16 @@ void* interrupt_handler(uint64_t code, cpu_state_t* p_rsp) {
 
     switch (interrupt_type) {
         case interrupt_type_t::HARDWARE_PIT:
-            pit_handle_interrupt();
-            interrupt_send_eoi(X86_64_INT_IRQ_PIT);
+            p_rsp = pit_handle_interrupt(p_rsp);
+            interrupt_send_eoi(INT_IRQ_PIT);
             return p_rsp;
         case interrupt_type_t::HARDWARE_KEYBOARD:
             ps2_keyboard_handle_interrupt();
-            interrupt_send_eoi(X86_64_INT_IRQ_PS2_KEYBOARD);
+            interrupt_send_eoi(INT_IRQ_PS2_KEYBOARD);
             return p_rsp;
         case interrupt_type_t::HARDWARE_PS2_MOUSE:
             ps2_mouse_handle_interrupt();
-            interrupt_send_eoi(X86_64_INT_IRQ_PS2_MOUSE);
+            interrupt_send_eoi(INT_IRQ_PS2_MOUSE);
             return p_rsp;
     }
 
@@ -266,8 +277,8 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
         mount_device("ps2/mouse", nullptr);
     }
 
-    // TODO @since 14/07/2025 -- 18:58
-    // threads / processes
+    vthread_t main_thread {};
+    vthread_start_and_setup_main(&main_thread);
 
     linked_list<pci_device_t> pci_devices {};
     pci_enumerate_devices(&pci_devices);
