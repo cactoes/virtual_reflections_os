@@ -45,7 +45,6 @@ struct vthread_t {
 };
 
 bool vthread_start_and_setup_main(vthread_t* p_vthread);
-bool vthread_add(vthread_t* p_vthread);
 bool vthread_create(vthread_t* p_vthread, thread_entry_t p_thread_entry);
 cpu_state_t* vthread_interrupt_handler(cpu_state_t* p_cpu_state);
 cpu_state_t* vthread_schedule(cpu_state_t* p_cpu_state);

@@ -115,6 +115,7 @@ enum class interrupt_type_t {
     HARDWARE_SECONDARY_ATA_HD = 37,
     
     SOFTWARE_SYSTEMCALL,
+    SOFTWARE_SCHEDULER
 };
 
 bool is_interrupt_exception(interrupt_type_t type) {

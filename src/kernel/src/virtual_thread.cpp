@@ -1,14 +1,14 @@
 #include "virtual_thread.hpp"
 #include "utils/map.hpp"
+#include "utils/mutex.hpp"
 #include "arch/gdt.hpp"
 
-// static vthread_t*   g_vthreads[VTHREAD_MAX_COUNT] {};
-// static uint64_t     g_vthread_count = 0;
 static linear_map<vthread_handle_t, vthread_t*> g_threads {};
 
-// static vthread_handle_t     g_current_vthread_handle = 0;
 static vthread_handle_t     g_vth_counter = 1;
 static vthread_t*           g_current_thread = nullptr;
+
+static mutex_t g_mutex {};
 
 void vthread_entry_point(thread_entry_t p_thread_entry) {
     g_current_thread->vt_state = vthread_state_t::STARTING;
@@ -48,7 +48,17 @@ void vthread_handle_starting(vthread_t* p_vthread) {
     p_vthread->vt_state = vthread_state_t::RUNNING;
 }
 
+bool vthread_add(vthread_t* p_vthread) {
+    if (!g_threads.insert(p_vthread->handle, p_vthread))
+        return false;
+
+    p_vthread->vt_state = vthread_state_t::RUNNING;
+    return true;
+}
+
 bool vthread_start_and_setup_main(vthread_t* p_vthread) {
+    mutex_lock_guard guard(&g_mutex);
+
     if (g_current_thread)
         return false;
 
@@ -58,15 +68,9 @@ bool vthread_start_and_setup_main(vthread_t* p_vthread) {
     return vthread_add(p_vthread);
 }
 
-bool vthread_add(vthread_t* p_vthread) {
-    if (!g_threads.insert(p_vthread->handle, p_vthread))
-        return false;
-
-    p_vthread->vt_state = vthread_state_t::RUNNING;
-    return true;
-}
-
 bool vthread_create(vthread_t* p_vthread, thread_entry_t p_thread_entry) {
+    mutex_lock_guard guard(&g_mutex);
+
     uint64_t* stack = (uint64_t*)heap_alloc(get_global_heap(), VTHREAD_STACK_SIZE);
     if (!stack)
         return false;
@@ -110,6 +114,7 @@ cpu_state_t* vthread_interrupt_handler(cpu_state_t* p_cpu_state) {
 }
 
 cpu_state_t* vthread_schedule(cpu_state_t* p_cpu_state) {
+    mutex_lock_guard guard(&g_mutex);
     if (g_threads.size() == 0)
         return nullptr;
 
