@@ -3,7 +3,7 @@
 /// @brief      very basic implementation of multitasking
 ///  TODO       vthread cleanup
 ///             wrapper start function
-///             better thread hander / scheduler
+///             better thread hander
 //==========================================
 
 #pragma once
@@ -12,9 +12,9 @@
 #define __VIRTUAL_THREAD_HPP__
 
 #define VTHREAD_STACK_SIZE          8192 // 8kb
-// #define VTHREAD_MAX_COUNT           256
-
 #define VTHREAD_TLS_ENTRY_COUNT     64
+
+#define VTHREAD_HANDLE_INVALID (vthread_handle_t)-1
 
 #include "common.hpp"
 
@@ -23,7 +23,6 @@ typedef int(*thread_entry_t)();
 
 struct tls_base_t {
     vthread_handle_t handle;
-    uint64_t is_yielded;
 };
 
 enum class vthread_state_t {
@@ -42,13 +41,15 @@ struct vthread_t {
     vthread_handle_t handle;
     vthread_state_t vt_state;
     int exit_code;
+    uint64_t sleep_until_ms;
 };
 
-bool vthread_start_and_setup_main(vthread_t* p_vthread);
-bool vthread_create(vthread_t* p_vthread, thread_entry_t p_thread_entry);
-cpu_state_t* vthread_interrupt_handler(cpu_state_t* p_cpu_state);
+vthread_handle_t vthread_start_and_setup_main();
+vthread_handle_t vthread_create(thread_entry_t p_thread_entry);
+cpu_state_t* vthread_handle_interrupt(cpu_state_t* p_cpu_state);
 cpu_state_t* vthread_schedule(cpu_state_t* p_cpu_state);
 void vthread_yield();
 tls_base_t* vthread_get_tls();
+void vthread_sleep(uint64_t time_ms);
 
 #endif // __VIRTUAL_THREAD_HPP__

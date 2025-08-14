@@ -45,4 +45,8 @@ static inline void x86_64_flush_idt(x86_64_idt_register_t idtr) {
     asm volatile("lidt %0" : : "m"(idtr));
 }
 
+static inline void x86_64_call_scheduler_interrupt() {
+    asm volatile("int $0x81");
+}
+
 #endif // __X86_64_INTERRUPT_HPP__

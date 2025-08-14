@@ -2,8 +2,13 @@
 #include "utils/map.hpp"
 #include "utils/mutex.hpp"
 #include "arch/gdt.hpp"
+#include "arch/interrupt.hpp"
+#include "arch/generic.hpp"
+#include "crash_handler.hpp"
+#include "utils/pointer.hpp"
+#include "time/clock.hpp"
 
-static linear_map<vthread_handle_t, vthread_t*> g_threads {};
+static linear_map<vthread_handle_t, ptr::unique<vthread_t>> g_threads {};
 
 static vthread_handle_t     g_vth_counter = 1;
 static vthread_t*           g_current_thread = nullptr;
@@ -24,18 +29,12 @@ void vthread_set_next_thead() {
     if (current_thread_it.advance() == g_threads.end())
         current_thread_it = g_threads.begin();
     
-    g_current_thread = current_thread_it->value;
+    g_current_thread = current_thread_it->value.get();
 }
 
 void vthread_handle_sleeping(vthread_t* p_vthread) {
-    // TODO @since 13/08/2025 -- 23:38
-
-    // const auto ptr = pit_find_by_id(thread->vtid);
-    // // if ptr is actually a nullptr there are bigger problems :p
-    // if (ptr->target_tick <= ptr->tick) {
-    //     thread->vt_state = vthread_state_t::RUNNING;
-    //     ((tls_base_t*)thread->tls)->is_yielded = 0;
-    // }
+    if (p_vthread->sleep_until_ms <= clock_get_time_since_boot())
+        p_vthread->vt_state = vthread_state_t::RUNNING;
 }
 
 void vthread_handle_stopping(vthread_t* p_vthread) {
@@ -45,37 +44,43 @@ void vthread_handle_stopping(vthread_t* p_vthread) {
 
 void vthread_handle_starting(vthread_t* p_vthread) {
     // for now just promote to running
+    // we dont yet need to do sht
     p_vthread->vt_state = vthread_state_t::RUNNING;
 }
 
-bool vthread_add(vthread_t* p_vthread) {
-    if (!g_threads.insert(p_vthread->handle, p_vthread))
+bool vthread_add(ptr::unique<vthread_t> p_vthread) {
+    p_vthread->vt_state = vthread_state_t::RUNNING;
+    
+    if (!g_threads.insert(p_vthread->handle, move(p_vthread)))
         return false;
 
-    p_vthread->vt_state = vthread_state_t::RUNNING;
     return true;
 }
 
-bool vthread_start_and_setup_main(vthread_t* p_vthread) {
+vthread_handle_t vthread_start_and_setup_main() {
     mutex_lock_guard guard(&g_mutex);
 
     if (g_current_thread)
         return false;
 
+    ptr::unique<vthread_t> p_vthread = ptr::make_unique<vthread_t>();
+
     p_vthread->handle = 0;
     ((tls_base_t*)p_vthread->tls)->handle = 0;
-    g_current_thread = p_vthread;
-    return vthread_add(p_vthread);
+    g_current_thread = p_vthread.get();
+
+    return vthread_add(move(p_vthread)) ? 0 : VTHREAD_HANDLE_INVALID;
 }
 
-bool vthread_create(vthread_t* p_vthread, thread_entry_t p_thread_entry) {
+vthread_handle_t vthread_create(thread_entry_t p_thread_entry) {
     mutex_lock_guard guard(&g_mutex);
 
     uint64_t* stack = (uint64_t*)heap_alloc(get_global_heap(), VTHREAD_STACK_SIZE);
     if (!stack)
-        return false;
+        return VTHREAD_HANDLE_INVALID;
 
     memzero(stack, VTHREAD_STACK_SIZE);
+    ptr::unique<vthread_t> p_vthread = ptr::make_unique<vthread_t>();
     p_vthread->stack_og = stack;
     uint64_t* stack_top = (uint64_t*)(((uint64_t)stack + VTHREAD_STACK_SIZE - sizeof(cpu_state_t)) & ~0xF);
 
@@ -94,32 +99,32 @@ bool vthread_create(vthread_t* p_vthread, thread_entry_t p_thread_entry) {
     *(--stack_top) = (uint64_t)p_thread_entry;
     *(--stack_top) = 0;
 
+    const vthread_handle_t new_handle = g_vth_counter++;
+
     p_vthread->stack = stack_top;
-    p_vthread->handle = g_vth_counter++;
+    p_vthread->handle = new_handle;
     p_vthread->vt_state = vthread_state_t::RUNNING;
-    ((tls_base_t*)p_vthread->tls)->handle = p_vthread->handle;
+    ((tls_base_t*)p_vthread->tls)->handle = new_handle;
 
-    if (vthread_add(p_vthread))
-        return true;
+    if (vthread_add(move(p_vthread)))
+        return new_handle;
 
-    memzero(p_vthread, sizeof(vthread_t));
     heap_free(get_global_heap(), stack);
 
-    return false;
+    return VTHREAD_HANDLE_INVALID;
 }
 
-cpu_state_t* vthread_interrupt_handler(cpu_state_t* p_cpu_state) {
-    // TODO @since 13/08/2025 -- 23:37
-    return p_cpu_state;
+cpu_state_t* vthread_handle_interrupt(cpu_state_t* p_cpu_state) {
+    return vthread_schedule(p_cpu_state);
 }
 
-cpu_state_t* vthread_schedule(cpu_state_t* p_cpu_state) {
+cpu_state_t* vthread_schedule(cpu_state_t* p_cpu_state) {  
     mutex_lock_guard guard(&g_mutex);
     if (g_threads.size() == 0)
         return nullptr;
 
     g_current_thread->stack = (void*)p_cpu_state;
-    
+
     do {
         vthread_set_next_thead();
         switch (g_current_thread->vt_state) {
@@ -137,14 +142,19 @@ cpu_state_t* vthread_schedule(cpu_state_t* p_cpu_state) {
 }
 
 void vthread_yield() {
-    // TODO @since 13/08/2025 -- 23:50
-    // swap to interrupt based
-
-    vthread_get_tls()->is_yielded = 1;
-    while (vthread_get_tls()->is_yielded)
-        g_current_thread->vt_state = vthread_state_t::SLEEPING;
+    call_scheduler_interrupt();
 }
 
 tls_base_t* vthread_get_tls() {
     return (tls_base_t*)g_current_thread->tls;
+}
+
+void vthread_sleep(uint64_t time_ms) {
+    // main thread is not allowed to sleep
+    if (g_current_thread->handle == 0)
+        return;
+
+    g_current_thread->sleep_until_ms = clock_get_time_since_boot() + time_ms;
+    g_current_thread->vt_state = vthread_state_t::SLEEPING;
+    vthread_yield();
 }

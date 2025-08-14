@@ -5,6 +5,7 @@
 
 #include "drivers/vga.hpp"
 #include "drivers/pcie.hpp"
+#include "drivers/pit.hpp"
 #include "drivers/ps2/keyboard.hpp"
 #include "drivers/ps2/mouse.hpp"
 #include "drivers/ps2/ps2.hpp"
@@ -26,6 +27,7 @@
 #include "string.hpp"
 #include "common.hpp"
 #include "crash_handler.hpp"
+#include "virtual_thread.hpp"
 
 #define HEAP_START_SIZE 0x100000 * 32 // 32 mb
 #define PIT_TIMER_INTERVAL 1000 // times per second
@@ -52,21 +54,6 @@ void printf(print_mode_t mode, const char* p_str, ...) {
             vga_tm_puts(&g_vga_tm_buffer, buffer);
             break;
     }
-}
-
-#include "virtual_thread.hpp"
-cpu_state_t* pit_handle_interrupt(cpu_state_t* p_rsp) {
-    static uint64_t s_global_tick_count;
-    
-    s_global_tick_count++;
-    
-    // TODO @since 14/07/2025 -- 18:59
-    // (pit) timers etc
-
-    if (const auto new_thread = vthread_schedule(p_rsp))
-        return new_thread;
-    
-    return p_rsp;
 }
 
 enum class interrupt_type_t {
@@ -135,16 +122,20 @@ interrupt_type_t convert_interrupt_code(uint64_t code) {
     if (code == 128)
         return interrupt_type_t::SOFTWARE_SYSTEMCALL;
 
+    if (code == 129)
+        return interrupt_type_t::SOFTWARE_SCHEDULER;
+
     return interrupt_type_t::UNKOWN;
 }
 
-void* interrupt_handler(uint64_t code, cpu_state_t* p_rsp) {
+void* handle_interrupt(uint64_t code, cpu_state_t* p_rsp) {
     const auto interrupt_type = convert_interrupt_code(code);
 
     if (is_interrupt_exception(interrupt_type))
         __kernel_fatal(code, "critical interrupt triggerd", p_rsp);
 
     switch (interrupt_type) {
+        // hardware
         case interrupt_type_t::HARDWARE_PIT:
             p_rsp = pit_handle_interrupt(p_rsp);
             interrupt_send_eoi(INT_IRQ_PIT);
@@ -157,6 +148,9 @@ void* interrupt_handler(uint64_t code, cpu_state_t* p_rsp) {
             ps2_mouse_handle_interrupt();
             interrupt_send_eoi(INT_IRQ_PS2_MOUSE);
             return p_rsp;
+        // software
+        case interrupt_type_t::SOFTWARE_SCHEDULER:
+            return vthread_handle_interrupt(p_rsp);
     }
 
     // for uncaught irq s
@@ -263,7 +257,7 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
     set_global_heap(&heap);
 
     // initialze the interrupt line(s)
-    interrupt_set_handler(interrupt_handler);
+    interrupt_set_handler(handle_interrupt);
     ps2_mouse_init();
     pit_init(PIT_TIMER_INTERVAL);
     interrupt_init(gdt_get_kernel_code_selector());
@@ -278,8 +272,8 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
         mount_device("ps2/mouse", nullptr);
     }
 
-    vthread_t main_thread {};
-    vthread_start_and_setup_main(&main_thread);
+    UNUSED(vthread_start_and_setup_main());
+    pit_add_interrupt_function(vthread_handle_interrupt);
 
     linked_list<pci_device_t> pci_devices {};
     pci_enumerate_devices(&pci_devices);

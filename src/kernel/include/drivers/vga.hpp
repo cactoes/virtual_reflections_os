@@ -75,5 +75,4 @@ int vga_tm_get_cursor(vga_tm_buffer_t* p_buffer, uint32_t* p_x, uint32_t* p_y);
 int vga_tm_set_color(vga_tm_buffer_t* p_buffer, const vga_tm_color_map_t* p_color_map);
 int vga_tm_get_color(vga_tm_buffer_t* p_buffer, vga_tm_color_map_t* p_color_map);
 
-
 #endif // __DRIVERS_VGA_HPP__
