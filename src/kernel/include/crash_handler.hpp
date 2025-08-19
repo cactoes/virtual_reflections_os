@@ -8,10 +8,15 @@
 #ifndef __CRASH_HANDLER_HPP__
 #define __CRASH_HANDLER_HPP__
 
+#define KERNEL_FATAL_MULTIBOOT_MAGIC_VALIDATE       0xF0000000
+#define KERNEL_FATAL_VMEM_INIT                      0xF0000001
+#define KERNEL_FATAL_HEAP_INIT                      0xF0000002
+#define KERNEL_FATAL_VHREAD_INIT                    0xF0000003
+
 #include "common.hpp"
 
 // NOLINTNEXTLINE
-NORETURN void __kernel_fatal(uint64_t code, const char* p_message, cpu_state_t* p_cpu_state = nullptr);
+extern "C" NORETURN void __kernel_fatal(uint64_t code, const char* p_message, cpu_state_t* p_cpu_state = nullptr);
 
 NAKED NORETURN inline void kernel_fatal(uint64_t code, const char* p_message) {
     asm volatile (

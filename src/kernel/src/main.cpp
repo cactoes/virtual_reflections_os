@@ -234,7 +234,8 @@ void elf_driver_test(uint8_t* p_file, size_t file_size) {
 
 extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
     // validate multiboot
-    UNUSED(mb_has_valid_magic((multiboot_t*)p_multiboot_struct));
+    if (!mb_has_valid_magic((multiboot_t*)p_multiboot_struct))
+        kernel_fatal(KERNEL_FATAL_MULTIBOOT_MAGIC_VALIDATE, "multiboot magic was not valid");
 
     // initialize the gdt / tss
     gdt_init();
@@ -247,13 +248,17 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
     debug_init();
 
     // initialze virtual memory
-    UNUSED(vmem_init(p_multiboot_struct, p_kpml4));
+    if (!vmem_init(p_multiboot_struct, p_kpml4))
+        kernel_fatal(KERNEL_FATAL_VMEM_INIT, "vmem failed to initialize");
+    
     vmem_identity_map(p_kpml4);
     set_pml4(p_kpml4);
 
     // initialze the global heap
     heap_t heap {};
-    UNUSED(heap_init(&heap, p_kpml4, (void*)VMEM_HEAP_START_ADDR, HEAP_START_SIZE));
+    if (!heap_init(&heap, p_kpml4, (void*)VMEM_HEAP_START_ADDR, HEAP_START_SIZE))
+        kernel_fatal(KERNEL_FATAL_HEAP_INIT, "kernel heap fail to initialze");
+    
     set_global_heap(&heap);
 
     // initialze the interrupt line(s)
@@ -272,7 +277,9 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
         mount_device("ps2/mouse", nullptr);
     }
 
-    UNUSED(vthread_start_and_setup_main());
+    if (vthread_start_and_setup_main() == VTHREAD_HANDLE_INVALID)
+        kernel_fatal(KERNEL_FATAL_VHREAD_INIT, "virtual threads failed to intialize");
+
     pit_add_interrupt_function(vthread_handle_interrupt);
 
     linked_list<pci_device_t> pci_devices {};
