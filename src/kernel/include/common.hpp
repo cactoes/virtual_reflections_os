@@ -41,7 +41,11 @@
 #define ARRAY_LENGTH(arr)   sizeof((arr)) / sizeof(decltype(*(arr)))
 #define ARRAY_SIZE(arr)     sizeof((arr)) * sizeof(decltype(*(arr)))
 
-// remove_reference
+#define MAX_UINT8           (uint8_t)-1
+#define MAX_UINT16          (uint16_t)-1
+#define MAX_UINT32          (uint32_t)-1
+#define MAX_UINT64          (uint64_t)-1
+
 template<typename T>
 struct remove_reference {
     using type_t = T;
@@ -57,7 +61,6 @@ struct remove_reference<T&&> {
     using type_t = T;
 };
 
-// move
 template<typename T>
 constexpr typename remove_reference<T>::type_t&& move(T&& t) noexcept {
     return static_cast<typename remove_reference<T>::type_t&&>(t);

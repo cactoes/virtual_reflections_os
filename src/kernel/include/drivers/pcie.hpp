@@ -14,7 +14,7 @@
 #define PCI_CREATE_CONFIG_ADDRESS(bus, dev, func, off) ((1 << 31) | ((bus) << 16) | ((dev) << 11) | ((func) << 8) | ((off) & 0xFC))
 
 #define PCI_GET_BAR_OFFSET(index)           (0x10 + ((index) * 4))
-#define PCI_VENDOR_DEVICE_ID_INVALID        0xFFFFFFFF
+#define PCI_VENDOR_DEVICE_ID_INVALID        MAX_UINT32
 #define PCI_BAR_ADDRESS_MASKED(address)     ((address) & 0xFFFFFFF0)
 
 #define PCI_UNKNOWN -1

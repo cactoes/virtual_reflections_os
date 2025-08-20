@@ -8,12 +8,12 @@ void*(*g_handler)(uint64_t, cpu_state_t*);
 int x86_64_set_idt_entry(x86_64_idt_entry_t* p_idt, uint16_t kernel_code_selector, uint8_t int_number, void* p_handler) {
     x86_64_idt_entry_t* descriptor = &p_idt[int_number];
 
-    descriptor->isr_low = (uint64_t)p_handler & 0xFFFF;
+    descriptor->isr_low = (uint64_t)p_handler & MAX_UINT16;
     descriptor->kernel_cs = kernel_code_selector;
     descriptor->ist = 0;
     descriptor->attributes = 0x8E;
-    descriptor->isr_mid = ((uint64_t)p_handler >> 16) & 0xFFFF;
-    descriptor->isr_high = ((uint64_t)p_handler >> 32) & 0xFFFFFFFF;
+    descriptor->isr_mid = ((uint64_t)p_handler >> 16) & MAX_UINT16;
+    descriptor->isr_high = ((uint64_t)p_handler >> 32) & MAX_UINT32;
     descriptor->reserved = 0;
 
     return 0;

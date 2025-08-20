@@ -65,7 +65,7 @@ enum class elf_type_t {
 #define ELF_RELOCATION_TYPE_RELATIVE    8
 
 #define ELF_RELOCATE_SYMBOL(s)          ((s) >> 32)
-#define ELF_RELOCATE_TYPE(t)      ((t) & 0xffffffffL)
+#define ELF_RELOCATE_TYPE(t)      ((t) & MAX_UINT32)
 
 #define ELF_GET_SECTION_HEADER(header) ((elf_section_header_t*)((uint64_t)(header) + (header)->section_header_offset))
 #define ELF_GET_SECTION(header, index) &ELF_GET_SECTION_HEADER((header))[(index)]

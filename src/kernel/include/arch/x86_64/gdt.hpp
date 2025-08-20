@@ -116,12 +116,12 @@ void x86_64_gdt_set_entry(x86_64_gdt_t<entry_count>* p_gdt, x86_64_gdt_entry_t* 
 template <size_t entry_count>
 void x86_64_gdt_set_tss(x86_64_gdt_t<entry_count>* p_gdt, x86_64_tss_t* p_tss) {
     p_gdt->tss_entry.length = sizeof(x86_64_tss_t);
-    p_gdt->tss_entry.base_low16 = (uint16_t)(((uint64_t)p_tss) & 0xffff);
-    p_gdt->tss_entry.base_mid8 = (uint8_t)(((uint64_t)p_tss >> 16) & 0xff);
+    p_gdt->tss_entry.base_low16 = (uint16_t)(((uint64_t)p_tss) & MAX_UINT16);
+    p_gdt->tss_entry.base_mid8 = (uint8_t)(((uint64_t)p_tss >> 16) & MAX_UINT8);
     p_gdt->tss_entry.flags1 = 0b10001001;
     p_gdt->tss_entry.flags2 = 0;
-    p_gdt->tss_entry.base_high8 = (uint8_t)(((uint64_t)p_tss >> 24) & 0xff);
-    p_gdt->tss_entry.base_upper32 = (uint32_t) (((uint64_t)p_tss >> 32) & 0xffffffff);
+    p_gdt->tss_entry.base_high8 = (uint8_t)(((uint64_t)p_tss >> 24) & MAX_UINT8);
+    p_gdt->tss_entry.base_upper32 = (uint32_t) (((uint64_t)p_tss >> 32) & MAX_UINT32);
     p_gdt->tss_entry.reserved = 0;
 }
 
