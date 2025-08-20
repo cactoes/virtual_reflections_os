@@ -9,6 +9,8 @@
 #define __MEMORY_VMEM_HPP__
 
 #define VMEM_HEAP_START_ADDR      0x40000000
+#define VMEM_E1000_DMA            (VMEM_HEAP_START_ADDR - PAGE_SIZE_LARGE)
+#define VMEM_E1000_MMIO           (VMEM_E1000_DMA - PAGE_SIZE_LARGE)
 
 #include "common.hpp"
 

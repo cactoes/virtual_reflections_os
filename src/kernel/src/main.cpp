@@ -10,6 +10,7 @@
 #include "drivers/ps2/mouse.hpp"
 #include "drivers/ps2/ps2.hpp"
 #include "drivers/storage/ide.hpp"
+#include "drivers/network/e1000.hpp"
 
 #include "filesystems/iso9660.hpp"
 #include "filesystems/vfs.hpp"
@@ -56,9 +57,7 @@ void printf(print_mode_t mode, const char* p_str, ...) {
     }
 }
 
-enum class interrupt_type_t {
-    UNKOWN = -1,
-
+enum class interrupt_type_t : uint64_t {
     // wont change
     EXCEPTION_DIVISION_BY_ZERO = 0,
     EXCEPTION_SINGLE_STEP_INTERRUPT = 1,
@@ -105,6 +104,8 @@ enum class interrupt_type_t {
     SOFTWARE_SCHEDULER,
     // TODO @since 20/08/2025 -- 02:15
     SOFTWARE_CRASH_HANDLER,
+
+    UNKOWN = (uint64_t)-1,
 };
 
 bool is_interrupt_exception(interrupt_type_t type) {
@@ -337,7 +338,14 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
         .class_code = (uint8_t)2
     };
     const pci_device_t* network_controller = pci_find_device(&pci_devices, &network_device_class_info);
+    
     // TODO @since 14/07/2025 -- 21:52
+    e1000_t e1000{};
+    const auto e1000_init_result = e1000_init_device(network_controller, &e1000);
+    printf(DBG, "e1000_init_result: %i\n", e1000_init_result);
+    if (e1000_init_result == 0) {
+        printf(DBG, "MAC: %uh:%uh:%uh:%uh:%uh:%uh\n", e1000.mac[0], e1000.mac[1], e1000.mac[2], e1000.mac[3], e1000.mac[4], e1000.mac[5]);
+    }
 
     virtual_file_system vfs {};
     vfs.create_directory("/mnt");
@@ -353,7 +361,7 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
     uint8_t* driver_data = driver_file.get_data();
     size_t driver_data_size = driver_file.length();
 
-    elf_driver_test(driver_data, driver_data_size);
+    // elf_driver_test(driver_data, driver_data_size);
 
     // printf(DBG, "vfs file debug test:\n");
     // for (const auto& ch : file_content)
