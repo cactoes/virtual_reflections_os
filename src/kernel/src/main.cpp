@@ -102,7 +102,9 @@ enum class interrupt_type_t {
     HARDWARE_SECONDARY_ATA_HD = 37,
     
     SOFTWARE_SYSTEMCALL,
-    SOFTWARE_SCHEDULER
+    SOFTWARE_SCHEDULER,
+    // TODO @since 20/08/2025 -- 02:15
+    SOFTWARE_CRASH_HANDLER,
 };
 
 bool is_interrupt_exception(interrupt_type_t type) {
@@ -119,11 +121,13 @@ interrupt_type_t convert_interrupt_code(uint64_t code) {
         return (interrupt_type_t)(code - 10);
 
     // software
-    if (code == 128)
-        return interrupt_type_t::SOFTWARE_SYSTEMCALL;
-
-    if (code == 129)
-        return interrupt_type_t::SOFTWARE_SCHEDULER;
+    if (code >= 48 && code <= 255) {
+        switch (code) {
+            case 128: return interrupt_type_t::SOFTWARE_SYSTEMCALL;
+            case 129: return interrupt_type_t::SOFTWARE_SCHEDULER;
+            case 130: return interrupt_type_t::SOFTWARE_CRASH_HANDLER;
+        }
+    }
 
     return interrupt_type_t::UNKOWN;
 }
