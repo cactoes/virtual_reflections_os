@@ -4,8 +4,8 @@
 
 # test driver
 cd src/test_driver
-make build
+make -j$(nproc) build
 cd ../..
 
 # kernel
-make build
+make -j$(nproc) build

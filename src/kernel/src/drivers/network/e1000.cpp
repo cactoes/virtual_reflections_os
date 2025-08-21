@@ -104,16 +104,13 @@ void e1000_recieve_packet(e1000_t* p_device) {
     e1000_write_reg(p_device, E1000_RDT, rdt_value);
 }
 
-int e1000_enable_interrupts(e1000_t* p_device, const pci_device_t* p_pcie_device) {
+void e1000_enable_interrupts(e1000_t* p_device) {
     // clear interrupts
     e1000_read_reg(p_device, E1000_ICR);
 
     // enable interrupts
     uint32_t interrupt_mask = E1000_IMS_RXT0 | E1000_IMS_RXDMT0 | E1000_IMS_RXSEQ | E1000_IMS_LSC;
-    e1000_write_reg(p_device, E1000_IMS, interrupt_mask);
-    
-    // return interrupt line
-    return pci_config_read(p_pcie_device, PCI_CONFIG_IRQ_LINE) & MAX_UINT8;
+    e1000_write_reg(p_device, E1000_IMS, interrupt_mask);;
 }
 
 int e1000_init_device(const pci_device_t* p_pcie_device, e1000_t* p_network_device) {
@@ -121,7 +118,8 @@ int e1000_init_device(const pci_device_t* p_pcie_device, e1000_t* p_network_devi
     // the moment we start switching to virtual envoriments this will likeley break ...
     void* pml4 = get_pml4();
 
-    g_e1000 = p_network_device;
+    // register as global e1000 driver
+    e1000_set_global_device(p_network_device);
 
     // enable dma
     auto cmd = pci_config_read(p_pcie_device, PCI_COMMAND);
@@ -171,14 +169,17 @@ int e1000_init_device(const pci_device_t* p_pcie_device, e1000_t* p_network_devi
         return 7;
 
     // re-enable specific interrupts
-    e1000_enable_interrupts(p_network_device, p_pcie_device);
+    e1000_enable_interrupts(p_network_device);
+
+    auto irq = pci_config_read(p_pcie_device, PCI_CONFIG_IRQ_LINE) & MAX_UINT8;
+    UNUSED(irq);
 
     // done
     return 0;
 }
 
 void e1000_handle_interrupt() {
-    auto p_device = g_e1000;
+    auto p_device = e1000_get_global_device();
 
     // get & clear the interrupt
     uint32_t icr = e1000_read_reg(p_device, E1000_ICR);
@@ -192,4 +193,12 @@ void e1000_handle_interrupt() {
         uint32_t status = e1000_read_reg(p_device, E1000_STATUS);
         printf(DBG, "Link status changed: 0x%uh\n", status);
     }
+}
+
+e1000_t* e1000_get_global_device() {
+    return g_e1000;
+}
+
+void e1000_set_global_device(e1000_t* p_device) {
+    g_e1000 = p_device;
 }
