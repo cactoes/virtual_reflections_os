@@ -52,8 +52,9 @@ if ($ENABLE_ISO) {
 
 if ($ENABLE_NETWORKING) {
     $ARG_LIST += @(
+        # "-netdev", "user,id=net0",
         "-netdev", "tap,id=net0,ifname=tap0,script=no,downscript=no",
-        "-device", "e1000,netdev=net0",
+        "-device", "e1000,netdev=net0,mac=52:54:00:12:34:56",
         "-object", "filter-dump,id=dump0,netdev=net0,file=netdump.pcap"
     )
 }

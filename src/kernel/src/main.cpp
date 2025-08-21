@@ -153,6 +153,11 @@ void* handle_interrupt(uint64_t code, cpu_state_t* p_rsp) {
             ps2_mouse_handle_interrupt();
             interrupt_send_eoi(INT_IRQ_PS2_MOUSE);
             return p_rsp;
+        // temp for e1000
+        case interrupt_type_t::HARDWARE_FFP_SSCI_NIC2:
+            e1000_handle_interrupt();
+            interrupt_send_eoi(code - 0x20);
+            return p_rsp;
         // software
         case interrupt_type_t::SOFTWARE_SCHEDULER:
             return vthread_handle_interrupt(p_rsp);
@@ -340,7 +345,7 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
     const pci_device_t* network_controller = pci_find_device(&pci_devices, &network_device_class_info);
     
     // TODO @since 14/07/2025 -- 21:52
-    e1000_t e1000{};
+    e1000_t e1000 {};
     const auto e1000_init_result = e1000_init_device(network_controller, &e1000);
     printf(DBG, "e1000_init_result: %i\n", e1000_init_result);
     if (e1000_init_result == 0) {

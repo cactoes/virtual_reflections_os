@@ -8,8 +8,9 @@
 #ifndef __DRIVERS_PCIE_HPP__
 #define __DRIVERS_PCIE_HPP__
 
-#define PCI_CONFIG_ADDRESS 0xCF8
-#define PCI_CONFIG_DATA    0xCFC
+#define PCI_CONFIG_ADDRESS      0xCF8
+#define PCI_CONFIG_DATA         0xCFC
+#define PCI_CONFIG_IRQ_LINE     0x3C
 
 #define PCI_CREATE_CONFIG_ADDRESS(bus, dev, func, off) ((1 << 31) | ((bus) << 16) | ((dev) << 11) | ((func) << 8) | ((off) & 0xFC))
 
@@ -19,8 +20,11 @@
 
 #define PCI_UNKNOWN -1
 
+#define PCI_COMMAND             0x4
 #define PCI_CMD_MMIO            (1 << 1)
 #define PCI_CMD_BUS_MASTERING   (1 << 2)
+
+#define PCI_BAR_MMIO_ENABLED    (1 << 0)
 
 #include "common.hpp"
 #include "utils/vector.hpp"
