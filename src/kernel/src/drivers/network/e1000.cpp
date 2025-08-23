@@ -74,6 +74,38 @@ int e1000_receive_init(e1000_t* p_device) {
     return 0;
 }
 
+int e1000_transmit_init(e1000_t* p_device) {
+    p_device->tdesc_array = (e1000_tdesc_t*)dma_heap_alloc(&g_e1000_dma_heap, E1000_TRANSMIT_DESC_COUNT * sizeof(e1000_tdesc_t), 16);
+    if (!p_device->tdesc_array)
+        return 1;
+
+    p_device->tdesc_buffer_array = (uint8_t*)dma_heap_alloc(&g_e1000_dma_heap, E1000_TRANSMIT_DESC_COUNT * E1000_BUFFER_SIZE, 16);
+    if (!p_device->tdesc_buffer_array)
+        return 2;
+    
+    for (int i = 0; i < E1000_TRANSMIT_DESC_COUNT; ++i) {
+        memzero(&p_device->tdesc_array[i], sizeof(e1000_tdesc_t));
+        p_device->tdesc_array[i].buffer_addr = dma_get_physical(&g_e1000_dma_heap, (p_device->tdesc_buffer_array + i * E1000_BUFFER_SIZE));
+    }
+
+    uint64_t physical = (uint64_t)dma_get_physical(&g_e1000_dma_heap, p_device->tdesc_array);
+    if (physical == 0)
+        return 3;
+
+    e1000_write_reg(p_device, E1000_TDBAL, (uint32_t)physical);
+    e1000_write_reg(p_device, E1000_TDBAH, (uint32_t)(physical >> 32));
+    e1000_write_reg(p_device, E1000_TDLEN, E1000_TRANSMIT_DESC_COUNT * sizeof(e1000_tdesc_t));
+    e1000_write_reg(p_device, E1000_TDH, 0);
+    e1000_write_reg(p_device, E1000_TDT, 0);
+
+    uint32_t tctl = E1000_TCTL_EN | E1000_TCTL_PSP | (0x0F << E1000_TCTL_CT_SHIFT) | (0x40 << E1000_TCTL_COLD_SHIFT);
+    e1000_write_reg(p_device, E1000_TCTL, tctl);
+
+    p_device->tx_tail = 0;
+    
+    return 0;
+}
+
 void e1000_recieve_packet(e1000_t* p_device) {
     // get current desc
     e1000_rdesc_t* desc = &p_device->rdesc_array[p_device->rx_tail];
@@ -169,12 +201,16 @@ int e1000_init_device(const pci_device_t* p_pcie_device, e1000_t* p_network_devi
     if (e1000_receive_init(p_network_device) != 0)
         return 7;
 
+    // init transmiting packts
+    if (e1000_transmit_init(p_network_device) != 0)
+        return 8;
+
     // re-enable specific interrupts
     e1000_enable_interrupts(p_network_device);
 
     const uint32_t irq = pci_config_read(p_pcie_device, PCI_CONFIG_IRQ_LINE) & MAX_UINT8;
     if (!set_interrupt_callback(convert_to_interrupt(interrupt_irq_to_int(irq)), e1000_handle_interrupt))
-        return 8;
+        return 9;
 
     // done
     return 0;

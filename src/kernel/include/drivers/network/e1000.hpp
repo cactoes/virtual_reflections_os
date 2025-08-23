@@ -30,6 +30,18 @@
 #define E1000_RDT                           0x2818
 #define E1000_RCTL                          0x0100
 
+#define E1000_TDBAL                         0x3800
+#define E1000_TDBAH                         0x3804
+#define E1000_TDLEN                         0x3808
+#define E1000_TDH                           0x3810
+#define E1000_TDT                           0x3818
+#define E1000_TCTL                          0x0400
+
+#define E1000_TCTL_EN                       (1 << 1)
+#define E1000_TCTL_PSP                      (1 << 3)
+#define E1000_TCTL_CT_SHIFT                 4
+#define E1000_TCTL_COLD_SHIFT               12
+
 #define E1000_RCTL_SZ_2048                  (0 << 16)
 #define E1000_RCTL_EN                       (1 << 1)
 #define E1000_RCTL_UPE                      (1 << 3)
@@ -81,7 +93,7 @@ struct e1000_t {
     uint8_t* rdesc_buffer_array;
     size_t rx_tail;
 
-    e1000_rdesc_t* tdesc_array;
+    e1000_tdesc_t* tdesc_array;
     uint8_t* tdesc_buffer_array;
     size_t tx_tail;
 };
