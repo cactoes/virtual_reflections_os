@@ -21,11 +21,11 @@ void ps2_mouse_sync_packets() {
     g_mouse_packet_index = 0;
 }
 
-void ps2_mouse_handle_interrupt() {
+cpu_state_t* ps2_mouse_handle_interrupt(cpu_state_t* p_rsp) {
     g_mouse_packet_buffer[g_mouse_packet_index++] = ps2_read(PS2_DATA_PORT);
 
     if (g_mouse_packet_index < PS2_MOUSE_PACKET_SIZE)
-        return;
+        return p_rsp;
 
     const uint8_t status = g_mouse_packet_buffer[0];
     const uint8_t dx_raw = g_mouse_packet_buffer[1];
@@ -41,7 +41,7 @@ void ps2_mouse_handle_interrupt() {
 
     if (!valid) {
         ps2_mouse_sync_packets();
-        return;
+        return p_rsp;
     }
 
     g_mouse_state.dx = (status & PS2_MOUSE_STATUS_X_SIGN_BIT) ? dx_raw - 256 : dx_raw;
@@ -56,6 +56,8 @@ void ps2_mouse_handle_interrupt() {
 
     g_mouse_packet_index = 0;
     g_mouse_event_manager.fire_event(&g_mouse_state);
+
+    return p_rsp;
 }
 
 void ps2_mouse_write(uint8_t value) {

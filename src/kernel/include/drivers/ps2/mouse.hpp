@@ -52,7 +52,7 @@ struct ps2_mouse_state_t {
 } PACKED;
 
 void ps2_mouse_init();
-void ps2_mouse_handle_interrupt();
+cpu_state_t* ps2_mouse_handle_interrupt(cpu_state_t* p_rsp);
 void ps2_mouse_event_subscribe(void(*p_handler)(const ps2_mouse_state_t*));
 const ps2_mouse_state_t* ps2_mouse_get_state();
 

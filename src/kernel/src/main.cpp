@@ -12,6 +12,8 @@
 #include "drivers/storage/ide.hpp"
 #include "drivers/network/e1000.hpp"
 
+#include "interrupt_manager.hpp"
+
 #include "filesystems/iso9660.hpp"
 #include "filesystems/vfs.hpp"
 
@@ -56,135 +58,6 @@ void printf(print_mode_t mode, const char* p_str, ...) {
             break;
     }
 }
-
-enum class interrupt_type_t : uint64_t {
-    // wont change
-    EXCEPTION_DIVISION_BY_ZERO = 0,
-    EXCEPTION_SINGLE_STEP_INTERRUPT = 1,
-    EXCEPTION_NMI = 2,
-    EXCEPTION_BREAKPOINT = 3,
-    EXCEPTION_OVERFLOW = 4,
-    EXCEPTION_BOUND_RANGE_EXCEEDED = 5,
-    EXCEPTION_INVALID_OPCODE = 6,
-    EXCEPTION_COPROCESSOR_NOT_AVAILABLE = 7,
-    EXCEPTION_DOUBLE_FAULT = 8,
-    EXCEPTION_COPROCESSOR_SEGMENT_OVERRUN = 9,
-    EXCEPTION_INVALID_TSS = 10,
-    EXCEPTION_SEGMENT_NOT_PRESENT = 11,
-    EXCEPTION_STACK_SEGMENT_FAULT = 12,
-    EXCEPTION_GENERAL_PROTECTION_FAULT = 13,
-    EXCEPTION_PAGE_FAULT = 14,
-    EXCEPTION_RESERVED = 15,
-    EXCEPTION_X87_FLOATING_POINT_EXCEPTION = 16,
-    EXCEPTION_ALIGNMENT_CHECK = 17,
-    EXCEPTION_MACHINE_CHECK = 18,
-    EXCEPTION_SIMD_FP_EXCEPTION = 19,
-    EXCEPTION_VIRTUALIZATION_EXCEPTION = 20,
-    EXCEPTION_CONTROL_PROTECTION_EXCEPTION = 21,
-    
-    // wont change
-    HARDWARE_PIT = 22,
-    HARDWARE_KEYBOARD = 23,
-    HARDWARE_CASCADE = 24,
-    HARDWARE_COM2 = 25,
-    HARDWARE_COM1 = 26,
-    HARDWARE_LPT2 = 27,
-    HARDWARE_FLOPPY_DISK = 28,
-    HARDWARE_LPT1 = 29,
-    HARDWARE_CMOS_RTC = 30,
-    HARDWARE_FFP_L_SCSI_NIC = 31,
-    HARDWARE_FFP_SSCI_NIC1 = 32,
-    HARDWARE_FFP_SSCI_NIC2 = 33,
-    HARDWARE_PS2_MOUSE = 34,
-    HARDWARE_COPROCESSOR = 35,
-    HARDWARE_PRIMARY_ATA_HD = 36,
-    HARDWARE_SECONDARY_ATA_HD = 37,
-    
-    SOFTWARE_SYSTEMCALL,
-    SOFTWARE_SCHEDULER,
-    // TODO @since 20/08/2025 -- 02:15
-    SOFTWARE_CRASH_HANDLER,
-
-    UNKOWN = (uint64_t)-1,
-};
-
-bool is_interrupt_exception(interrupt_type_t type) {
-    return ((int64_t)type >= 0 && (int64_t)type <= 21);
-}
-
-interrupt_type_t convert_interrupt_code(uint64_t code) {
-    // exceptions
-    if (is_interrupt_exception((interrupt_type_t)code))
-        return (interrupt_type_t)code;
-
-    // hardware
-    if (code >= 32 && code <= 47)
-        return (interrupt_type_t)(code - 10);
-
-    // software
-    if (code >= 48 && code <= 255) {
-        switch (code) {
-            case 128: return interrupt_type_t::SOFTWARE_SYSTEMCALL;
-            case 129: return interrupt_type_t::SOFTWARE_SCHEDULER;
-            case 130: return interrupt_type_t::SOFTWARE_CRASH_HANDLER;
-        }
-    }
-
-    return interrupt_type_t::UNKOWN;
-}
-
-void* handle_interrupt(uint64_t code, cpu_state_t* p_rsp) {
-    const auto interrupt_type = convert_interrupt_code(code);
-
-    if (is_interrupt_exception(interrupt_type))
-        __kernel_fatal(code, "critical interrupt triggerd", p_rsp);
-
-    switch (interrupt_type) {
-        // hardware
-        case interrupt_type_t::HARDWARE_PIT:
-            p_rsp = pit_handle_interrupt(p_rsp);
-            interrupt_send_eoi(INT_IRQ_PIT);
-            return p_rsp;
-        case interrupt_type_t::HARDWARE_KEYBOARD:
-            ps2_keyboard_handle_interrupt();
-            interrupt_send_eoi(INT_IRQ_PS2_KEYBOARD);
-            return p_rsp;
-        case interrupt_type_t::HARDWARE_PS2_MOUSE:
-            ps2_mouse_handle_interrupt();
-            interrupt_send_eoi(INT_IRQ_PS2_MOUSE);
-            return p_rsp;
-        // temp for e1000
-        case interrupt_type_t::HARDWARE_FFP_SSCI_NIC2:
-            e1000_handle_interrupt();
-            interrupt_send_eoi(code - 0x20);
-            return p_rsp;
-        // software
-        case interrupt_type_t::SOFTWARE_SCHEDULER:
-            return vthread_handle_interrupt(p_rsp);
-    }
-
-    // for uncaught irq s
-    if (code >= 0x20 && code < 0x2F)
-        interrupt_send_eoi(code - 0x20);
-
-    printf(DBG, "unkown interrupt triggerd: 0x%uh\n", code);
-    return p_rsp;
-}
-
-// void trigger_pf() {
-//     volatile int* ptr = (int*)0x1234564478;
-//     int val = *ptr;
-// }
-
-// void trigger_gpf() {
-//     asm volatile (
-//         "mov $0xFFFF, %%ax\n"
-//         "ltr %%ax\n"
-//         :
-//         :
-//         : "rax"
-//     );
-// }
 
 void on_key_down(const ps2_key_state_t* p_state) {
     static char s_ascii_table[128] = {
@@ -272,6 +145,11 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
     set_global_heap(&heap);
 
     // initialze the interrupt line(s)
+    set_interrupt_callback(interrupt_t::HARDWARE_PIT, pit_handle_interrupt);
+    set_interrupt_callback(interrupt_t::HARDWARE_KEYBOARD, ps2_keyboard_handle_interrupt);
+    set_interrupt_callback(interrupt_t::HARDWARE_PS2_MOUSE, ps2_mouse_handle_interrupt);
+    set_interrupt_callback(interrupt_t::SOFTWARE_SCHEDULER, vthread_handle_interrupt);
+
     interrupt_set_handler(handle_interrupt);
     ps2_mouse_init();
     pit_init(PIT_TIMER_INTERVAL);

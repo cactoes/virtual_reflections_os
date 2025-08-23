@@ -1,0 +1,89 @@
+#include "interrupt_manager.hpp"
+#include "utils/map.hpp"
+#include "utils/bitmap.hpp"
+#include "crash_handler.hpp"
+#include "arch/interrupt.hpp"
+
+enum print_mode_t {
+    STD,
+    DBG
+};
+
+extern void printf(print_mode_t mode, const char* p_str, ...);
+
+static linear_map<interrupt_t, interrupt_callback_t> g_interrupt_callbacks {};
+
+bool is_interrupt_exception(uint64_t code) {
+    return (code >= 0 && code <= 21);
+}
+
+bool is_interrupt_exception(interrupt_t code) {
+    return is_interrupt_exception((uint64_t)code);
+}
+
+bool is_interrupt_hardware(uint64_t code) {
+    code -= 10;
+    return (code >= 22 && code <= 37);
+}
+
+bool is_interrupt_hardware(interrupt_t code) {
+    return is_interrupt_hardware((uint64_t)code + 10);
+}
+
+interrupt_t convert_to_interrupt(uint64_t code) {
+    // exceptions
+    if (is_interrupt_exception(code))
+        return (interrupt_t)code;
+
+    // hardware
+    if (is_interrupt_hardware(code))
+        return (interrupt_t)(code - 10);
+
+    // software
+    if (code >= 48 && code <= 255) {
+        switch (code) {
+            case 128: return interrupt_t::SOFTWARE_SYSTEMCALL;
+            case 129: return interrupt_t::SOFTWARE_SCHEDULER;
+            case 130: return interrupt_t::SOFTWARE_CRASH_HANDLER;
+        }
+    }
+
+    return interrupt_t::UNKOWN;
+}
+
+bool set_interrupt_callback(interrupt_t code, interrupt_callback_t callback) {
+    if ((uint64_t)code > 255)
+        return false;
+
+    if (g_interrupt_callbacks.contains(code))
+        return false;
+
+    return g_interrupt_callbacks.insert(code, callback);
+}
+
+uint64_t interrupt_irq_to_int(uint64_t irq) {
+    // very simple for now :)
+    return irq + 32;
+}
+
+void* handle_interrupt(uint64_t code, cpu_state_t* p_rsp) {
+    const auto interrupt_type = convert_to_interrupt(code);
+
+    if (is_interrupt_exception(interrupt_type))
+        __kernel_fatal(code, "critical interrupt triggerd", p_rsp);
+
+    if (is_interrupt_hardware(interrupt_type)) {
+        auto it = g_interrupt_callbacks.get(interrupt_type);
+        if (it != g_interrupt_callbacks.end()) {
+            p_rsp = it->value(p_rsp);
+            interrupt_send_eoi(code - 0x20);
+            return p_rsp;
+        }
+
+        // still eoi but dont early end it
+        interrupt_send_eoi(code - 0x20);
+    }
+
+    printf(DBG, "unhandled interrupt triggerd: 0x%uh\n", code);
+    return p_rsp;
+}

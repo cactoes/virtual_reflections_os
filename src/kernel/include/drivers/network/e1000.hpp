@@ -87,7 +87,7 @@ struct e1000_t {
 };
 
 int e1000_init_device(const pci_device_t* p_pcie_device, e1000_t* p_network_device);
-void e1000_handle_interrupt();
+cpu_state_t* e1000_handle_interrupt(cpu_state_t* p_rsp);
 
 e1000_t* e1000_get_global_device();
 void e1000_set_global_device(e1000_t* p_device);

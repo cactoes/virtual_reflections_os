@@ -2,6 +2,7 @@
 #include "memory/heap.hpp"
 #include "arch/generic.hpp"
 #include "memory/vmem.hpp"
+#include "interrupt_manager.hpp"
 
 enum print_mode_t {
     STD,
@@ -171,14 +172,15 @@ int e1000_init_device(const pci_device_t* p_pcie_device, e1000_t* p_network_devi
     // re-enable specific interrupts
     e1000_enable_interrupts(p_network_device);
 
-    auto irq = pci_config_read(p_pcie_device, PCI_CONFIG_IRQ_LINE) & MAX_UINT8;
-    UNUSED(irq);
+    const uint32_t irq = pci_config_read(p_pcie_device, PCI_CONFIG_IRQ_LINE) & MAX_UINT8;
+    if (!set_interrupt_callback(convert_to_interrupt(interrupt_irq_to_int(irq)), e1000_handle_interrupt))
+        return 8;
 
     // done
     return 0;
 }
 
-void e1000_handle_interrupt() {
+cpu_state_t* e1000_handle_interrupt(cpu_state_t* p_rsp) {
     auto p_device = e1000_get_global_device();
 
     // get & clear the interrupt
@@ -193,6 +195,8 @@ void e1000_handle_interrupt() {
         uint32_t status = e1000_read_reg(p_device, E1000_STATUS);
         printf(DBG, "Link status changed: 0x%uh\n", status);
     }
+
+    return p_rsp;
 }
 
 e1000_t* e1000_get_global_device() {
