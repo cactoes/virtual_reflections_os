@@ -235,6 +235,33 @@ cpu_state_t* e1000_handle_interrupt(cpu_state_t* p_rsp) {
     return p_rsp;
 }
 
+int e1000_send_packet(e1000_t* p_device, const void* data, size_t size) {
+    if (size > E1000_BUFFER_SIZE)
+        return 1;
+
+    const uint32_t next_tail = (p_device->tx_tail + 1) % E1000_TRANSMIT_DESC_COUNT;
+    const uint32_t head = e1000_read_reg(p_device, E1000_TDH);
+    
+    if (next_tail == head)
+        return 2;
+
+    uint8_t* buffer = p_device->tdesc_buffer_array + (p_device->tx_tail * E1000_BUFFER_SIZE);
+    memcpy(buffer, data, size);
+        
+    e1000_tdesc_t* desc = &p_device->tdesc_array[p_device->tx_tail];
+    desc->length = size;
+    desc->cso = 0;
+    desc->cmd = E1000_CMD_EOP | E1000_CMD_IFCS | E1000_CMD_RS;
+    desc->status = 0;
+    desc->css = 0;
+    desc->special = 0;
+
+    p_device->tx_tail = next_tail;
+    e1000_write_reg(p_device, E1000_TDT, p_device->tx_tail);
+
+    return 0;
+}
+
 e1000_t* e1000_get_global_device() {
     return g_e1000;
 }

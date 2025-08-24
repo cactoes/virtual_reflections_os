@@ -61,7 +61,12 @@
 #define E1000_IMS_RXDMT0                    (1 << 4)
 #define E1000_IMS_RXT0                      (1 << 7)
 
+#define E1000_CMD_EOP (1 << 0)
+#define E1000_CMD_IFCS (1 << 1)
+#define E1000_CMD_RS  (1 << 3)
+
 #define E1000_RDESC_STATUS_DONE             (1 << 0)
+#define E1000_TDESC_STATUS_DONE             (1 << 0)
 
 #include "common.hpp"
 #include "drivers/pcie.hpp"
@@ -100,6 +105,7 @@ struct e1000_t {
 
 int e1000_init_device(const pci_device_t* p_pcie_device, e1000_t* p_network_device);
 cpu_state_t* e1000_handle_interrupt(cpu_state_t* p_rsp);
+int e1000_send_packet(e1000_t* p_device, const void* data, size_t size);
 
 e1000_t* e1000_get_global_device();
 void e1000_set_global_device(e1000_t* p_device);
