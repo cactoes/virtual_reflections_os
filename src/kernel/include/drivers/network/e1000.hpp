@@ -110,4 +110,6 @@ int e1000_send_packet(e1000_t* p_device, const void* data, size_t size);
 e1000_t* e1000_get_global_device();
 void e1000_set_global_device(e1000_t* p_device);
 
+int e1000_nidm_send_packet(const void* data, size_t size);
+
 #endif // __DRIVER_NETWORK_E1000_HPP__

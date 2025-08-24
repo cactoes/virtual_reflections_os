@@ -11,6 +11,7 @@
 #include "drivers/ps2/ps2.hpp"
 #include "drivers/storage/ide.hpp"
 #include "drivers/network/e1000.hpp"
+#include "drivers/network/nidm.hpp"
 
 #include "interrupt_manager.hpp"
 
@@ -228,6 +229,14 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
     printf(DBG, "e1000_init_result: %i\n", e1000_init_result);
     if (e1000_init_result == 0) {
         printf(DBG, "MAC: %uh:%uh:%uh:%uh:%uh:%uh\n", e1000.mac[0], e1000.mac[1], e1000.mac[2], e1000.mac[3], e1000.mac[4], e1000.mac[5]);
+
+        network_interface_device_t e1000_nid {};
+        e1000_nid.name = "eth0 (Intel e1000)";
+        e1000_nid.ip4 = 0x0a00020f; // 10.0.2.15
+        e1000_nid.is_up = true;
+        memcpy(e1000_nid.mac, e1000.mac, sizeof(e1000_nid.mac));
+        e1000_nid.send_packet = e1000_nidm_send_packet;
+        nidm_register_device(e1000_nid);
     }
 
     virtual_file_system vfs {};

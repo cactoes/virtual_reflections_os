@@ -99,6 +99,25 @@ bool is_aligned(uint64_t addr, uint64_t align);
 uint64_t align_up(uint64_t addr, uint64_t align);
 uint64_t align_down(uint64_t addr, uint64_t align);
 
+constexpr uint16_t ntohs(uint16_t netshort) {
+    return ((netshort & 0xFF) << 8) | ((netshort >> 8) & 0xFF);
+}
+
+constexpr uint16_t htons(uint16_t hostshort) {
+    return ntohs(hostshort);
+}
+
+constexpr uint32_t ntohl(uint32_t netlong) {
+    return ((netlong & 0xFF) << 24) | 
+           (((netlong >> 8) & 0xFF) << 16) |
+           (((netlong >> 16) & 0xFF) << 8) |
+           ((netlong >> 24) & 0xFF);
+}
+
+constexpr uint32_t htonl(uint32_t hostlong) {
+    return ntohl(hostlong);
+}
+
 // NOLINTNEXTLINE
 constexpr uint64_t hash_fnv1a_64(const char* p_str, uint64_t hash = 14695981039346656037ULL) {
     return (*p_str == '\0') ? hash :

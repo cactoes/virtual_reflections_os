@@ -52,6 +52,10 @@ public:
         return ptr;
     }
 
+    T& operator[](size_t index) const {
+        return ptr[index];
+    };
+
     T* get() const {
         return ptr;
     }

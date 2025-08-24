@@ -3,6 +3,7 @@
 #include "arch/generic.hpp"
 #include "memory/vmem.hpp"
 #include "interrupt_manager.hpp"
+#include "drivers/network/nidm.hpp"
 
 enum print_mode_t {
     STD,
@@ -117,12 +118,7 @@ void e1000_recieve_packet(e1000_t* p_device) {
         
         // TODO @since 21/08/2025 -- 17:45
         // send to network stack
-
-        printf(DBG, "got packet: [length=%i] [ ", length);
-        for (size_t i = 0; i < length; i++) {
-            printf(DBG, "%c", packet[i]);
-        }
-        printf(DBG, "]\n");
+        nidm_packet_recieve(packet, length);
         
         desc->status = 0;
         desc->length = 0;
@@ -268,4 +264,8 @@ e1000_t* e1000_get_global_device() {
 
 void e1000_set_global_device(e1000_t* p_device) {
     g_e1000 = p_device;
+}
+
+int e1000_nidm_send_packet(const void* data, size_t size) {
+    return e1000_send_packet(e1000_get_global_device(), data, size);
 }
