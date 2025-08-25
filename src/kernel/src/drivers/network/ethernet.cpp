@@ -41,12 +41,10 @@ void arp_receive(network_interface_device_t* p_device, uint8_t* p_packet, size_t
 
     auto arp_op = ntohs(arp_packet->operation);
 
-    // if (arp_op == 1 && target_ip == ntohl(p_device->ip4)) {
-        printf(DBG, "someone is looking for: %uh\n", ntohl(arp_packet->target_ip));
-    if (arp_op == 1 && ntohl(arp_packet->target_ip) == 0x0a00020f) {
+    printf(DBG, "someone is looking for: %uh\n", ntohl(arp_packet->target_ip));
+    if (arp_op == 1 && ntohl(arp_packet->target_ip) == p_device->ip4) {
         printf(DBG, "someone is looking for us\n");
     }
-
 }
 
 // ARP SHIT END

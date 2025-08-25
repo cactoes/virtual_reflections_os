@@ -116,9 +116,10 @@ void e1000_recieve_packet(e1000_t* p_device) {
         uint8_t* packet = p_device->rdesc_buffer_array + (p_device->rx_tail * E1000_BUFFER_SIZE);
         size_t length = desc->length;
         
-        // TODO @since 21/08/2025 -- 17:45
-        // send to network stack
-        nidm_packet_recieve(packet, length);
+        // FIXME @since 26/08/2025 -- 01:05
+        // "eth0" is hardcoded here
+
+        nidm_packet_recieve(ndim_get_device("eth0 (Intel e1000)"), packet, length);
         
         desc->status = 0;
         desc->length = 0;

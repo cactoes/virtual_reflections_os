@@ -27,8 +27,9 @@ struct nidm_network_packet_t {
     size_t size;
 };
 
-int nidm_packet_recieve(const void* data, size_t size);
-int nidm_send_data(const void* data, size_t size);
+int nidm_packet_recieve(network_interface_device_t* p_device, const void* p_data, size_t size);
+int nidm_send_data(const void* p_data, size_t size);
 void nidm_register_device(network_interface_device_t device);
+network_interface_device_t* ndim_get_device(const string& name);
 
 #endif // __DRIVERS_NETWORK_NIDM_HPP__
