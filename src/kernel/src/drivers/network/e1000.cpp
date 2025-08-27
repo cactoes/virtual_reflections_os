@@ -3,7 +3,6 @@
 #include "arch/generic.hpp"
 #include "memory/vmem.hpp"
 #include "interrupt_manager.hpp"
-#include "drivers/network/nidm.hpp"
 
 enum print_mode_t {
     STD,
@@ -118,7 +117,6 @@ void e1000_recieve_packet(e1000_t* p_device) {
         
         // FIXME @since 26/08/2025 -- 01:05
         // "eth0" is hardcoded here
-
         nidm_packet_recieve(ndim_get_device("eth0 (Intel e1000)"), packet, length);
         
         desc->status = 0;
@@ -267,6 +265,6 @@ void e1000_set_global_device(e1000_t* p_device) {
     g_e1000 = p_device;
 }
 
-int e1000_nidm_send_packet(const void* data, size_t size) {
-    return e1000_send_packet(e1000_get_global_device(), data, size);
+int e1000_nidm_send_packet(network_interface_device_t* p_nid, const void* data, size_t size) {
+    return e1000_send_packet((e1000_t*)p_nid->device_data, data, size);
 }

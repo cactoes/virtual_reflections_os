@@ -223,7 +223,6 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
     };
     const pci_device_t* network_controller = pci_find_device(&pci_devices, &network_device_class_info);
     
-    // TODO @since 14/07/2025 -- 21:52
     e1000_t e1000 {};
     const auto e1000_init_result = e1000_init_device(network_controller, &e1000);
     printf(DBG, "e1000_init_result: %i\n", e1000_init_result);
@@ -232,8 +231,11 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
 
         network_interface_device_t e1000_nid {};
         e1000_nid.name = "eth0 (Intel e1000)";
-        e1000_nid.ip4 = 0x0a00020f; // 10.0.2.15
+        // TODO @since 27/08/2025 -- 03:49
+        // dhcp :)
+        e1000_nid.ip4 = TO_IP(10, 0, 2, 15);
         e1000_nid.is_up = true;
+        e1000_nid.device_data = &e1000;
         memcpy(e1000_nid.mac, e1000.mac, sizeof(e1000_nid.mac));
         e1000_nid.send_packet = e1000_nidm_send_packet;
         nidm_register_device(e1000_nid);

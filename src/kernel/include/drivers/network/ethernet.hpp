@@ -20,6 +20,7 @@ struct ethernet_header_t {
     uint16_t ethernet_type;
 };
 
+void ethernet_send(network_interface_device_t* p_device, uint8_t p_dst_mac[6], uint16_t type, const uint8_t* p_packet, size_t size);
 int ethernet_receive(network_interface_device_t* p_device, uint8_t* p_frame, size_t size);
 
 #endif // __DRIVERS_NETWORK_ETHERNET_HPP__
