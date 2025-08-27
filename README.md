@@ -27,6 +27,14 @@ When inside the build env. run the `build.sh` script to automatically `make clea
 $ ./build.sh
 ```
 
+## Setup windows TAP network
+Make sure to have openVPN for the tap interface.
+1. Rename the tap interface to tap0
+2. Change its ip to: `10.0.2.1`
+3. Change its subnet mask to: `255.255.255.0`
+
+QEMU has some defaults it expects.
+
 ## Building the ISO
 ### Windows host
 ```powershell
