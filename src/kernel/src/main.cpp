@@ -21,8 +21,6 @@
 #include "memory/vmem.hpp"
 #include "memory/heap.hpp"
 
-#include "hardware/vhd.hpp"
-
 #include "utils/debug.hpp"
 #include "utils/vector.hpp"
 #include "utils/event.hpp"
@@ -158,12 +156,10 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
 
     if (ps2_port_test_device(ps2_device_type_t::KEYBOARD)) {
         printf(DBG, "[+] ps2/keyboard\n");
-        mount_device("ps2/keyboard", nullptr);
     }
 
     if (ps2_port_test_device(ps2_device_type_t::MOUSE)) {
         printf(DBG, "[+] ps2/mouse\n");
-        mount_device("ps2/mouse", nullptr);
     }
 
     if (vthread_start_and_setup_main() == VTHREAD_HANDLE_INVALID)
@@ -196,7 +192,6 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
         char buffer[20];
         sprintf(buffer, 20, "ide/disk%i", ide_device_index++);
         printf(DBG, "[+] %s\n", buffer);
-        mount_device(buffer, nullptr);
     }
 
     // TODO @since 05/08/2025 -- 01:18
