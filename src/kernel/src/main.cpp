@@ -242,20 +242,17 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
     auto disk_storage = ptr::make_unique<vfs_disk_storage>(&mounted_iso9660_fs_instance);
     vfs.mount("/mnt/disk0", move(disk_storage));
 
-    dynamic_array<uint8_t> driver_file {};
-    vfs.create_file_cache("/mnt/disk0/TestDriver.sys");
-    auto file = vfs.open_file("/mnt/disk0/TestDriver.sys");
-    vfs.read_file(file, &driver_file);
+    // dynamic_array<uint8_t> inet_driver_file {};
+    // vfs.create_file_cache("/mnt/disk0/INetDrivers.sys");
+    // auto inet_driver_file_handle = vfs.open_file("/mnt/disk0/INetDrivers.sys");
+    // vfs.read_file(inet_driver_file_handle, &inet_driver_file);
 
-    uint8_t* driver_data = driver_file.get_data();
-    size_t driver_data_size = driver_file.length();
-
-    // elf_driver_test(driver_data, driver_data_size);
-
-    // printf(DBG, "vfs file debug test:\n");
-    // for (const auto& ch : file_content)
-    //     printf(DBG, "%c", ch);
-    // printf(DBG, "END\n");
+    // auto handle = driver_load("INetDrivers", inet_driver_file.get_data());
+    // driver_start(handle);
+    // void* check_driver_function = driver_get_function(handle, "check_driver");
+    // typedef bool(*check_driver_function_t)(const char*);
+    // auto result = ((check_driver_function_t)check_driver_function)("e1000");
+    // printf(DBG, "has e1000 driver: %s\n", result ? "true" : "false");
 
     ps2_keyboard_event_subscribe(on_key_down);
     ps2_mouse_event_subscribe(on_mouse);

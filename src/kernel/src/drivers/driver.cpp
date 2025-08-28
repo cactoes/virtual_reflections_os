@@ -35,7 +35,8 @@ system_driver_handle_t driver_load(const char* p_name, void* p_driver_file) {
         return SYSTEM_DRIVER_HANDLE_INVALID;
 
     auto system_driver = ptr::make_unique<system_driver_t>();
-    system_driver->driver_code = (void*)base_address;
+    system_driver->base_address = (void*)base_address;
+    system_driver->file_data_ptr = p_driver_file;
     system_driver->name = p_name;
     system_driver->functions.driver_init = elf_get_function<int>((uint8_t*)p_driver_file, base_address, &tables, &program_section_info, "driver_init");
     system_driver->functions.driver_exit = elf_get_function<int>((uint8_t*)p_driver_file, base_address, &tables, &program_section_info, "driver_exit");
@@ -52,8 +53,8 @@ int driver_unload(system_driver_handle_t handle) {
     if (driver_it == g_loaded_drivers.end())
         return 1;
 
-    if (driver_it->value->driver_code)
-        heap_free(get_global_heap(), driver_it->value->driver_code);
+    if (driver_it->value->base_address)
+        heap_free(get_global_heap(), driver_it->value->base_address);
 
     return g_loaded_drivers.remove(handle) ? 0 : 2;
 }
@@ -75,4 +76,20 @@ int driver_stop(system_driver_handle_t handle) {
         return 1;
     
     return driver_it->value->functions.driver_exit();
+}
+
+void* driver_get_function(system_driver_handle_t handle, const char* p_name) {
+    auto driver_it = g_loaded_drivers.get(handle);
+    if (driver_it == g_loaded_drivers.end())
+        return nullptr;
+
+    system_driver_t* driver = driver_it->value.get();
+
+    auto program_section_info = elf_parse_program_sections((uint8_t*)driver->file_data_ptr);
+
+    auto tables = elf_get_tables((uint8_t*)driver->file_data_ptr);
+    if (!tables.string_table || !tables.symbol_table)
+        return nullptr;
+
+    return (void*)elf_get_function<void>((uint8_t*)driver->file_data_ptr, (uint8_t*)driver->base_address, &tables, &program_section_info, p_name);
 }

@@ -1,13 +1,13 @@
 #==========================================
 ## @file       Makefile
-## @brief      build script
+## @brief      build script for the network drivers
 #==========================================
 
 # makefile config
 .RECIPEPREFIX = >
 
 # directories & files
-TARGET_NAME                 := TestDriver
+TARGET_NAME                 := INetDrivers
 PROJECT_PATH                := .
 SOURCE_FILES_PATH           := $(PROJECT_PATH)/src
 HEADER_FILES_PATH           := $(PROJECT_PATH)/include
