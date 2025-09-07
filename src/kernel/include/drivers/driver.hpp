@@ -20,7 +20,8 @@ struct system_driver_functions_t {
 
 struct system_driver_t {
     string name;
-    void* driver_code;
+    void* base_address;
+    void* file_data_ptr;
     system_driver_functions_t functions;
 };
 
@@ -31,5 +32,7 @@ int driver_unload(system_driver_handle_t handle);
 
 int driver_start(system_driver_handle_t handle);
 int driver_stop(system_driver_handle_t handle);
+
+void* driver_get_function(system_driver_handle_t handle, const char* p_name);
 
 #endif // __DRIVERS_DRIVER_HPP__

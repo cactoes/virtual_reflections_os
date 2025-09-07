@@ -2,8 +2,8 @@
 
 # ~~ build script to automate the building process on docker
 
-# test driver
-cd src/test_driver
+# network drivers
+cd src/network_drivers
 make -j$(nproc) build
 cd ../..
 
