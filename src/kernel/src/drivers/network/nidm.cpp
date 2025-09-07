@@ -1,5 +1,6 @@
 #include "drivers/network/nidm.hpp"
 #include "utils/vector.hpp"
+#include "utils/map.hpp"
 #include "drivers/network/ethernet.hpp"
 
 enum print_mode_t {
@@ -10,7 +11,7 @@ enum print_mode_t {
 extern void printf(print_mode_t mode, const char* p_str, ...);
 
 static dynamic_array<network_interface_device_t> g_nid_list {};
-// static dynamic_array<nidm_network_packet_t> g_network_packets {};
+static linear_map<uint64_t, network_callback_t> g_udpnetcallback_map {};
 
 int nidm_packet_recieve(network_interface_device_t* p_device, const void* p_data, size_t size) {
     // nidm_network_packet_t packet {};
@@ -58,4 +59,27 @@ network_interface_device_t* ndim_get_device(const string& name) {
     }
 
     return nullptr;
+}
+
+int nidm_udp_bind(uint64_t port, network_callback_t p_callback) {
+    if (port >= MAX_UINT16)
+        return 1;
+
+    if (g_udpnetcallback_map.contains(port))
+        return 2;
+
+    g_udpnetcallback_map[port] = p_callback;
+    return 0;
+}
+
+int ndim_udp_send_to_handler(uint64_t port, uint8_t* p_packet, size_t length) {
+    if (port >= MAX_UINT16)
+        return 1;
+
+    auto it = g_udpnetcallback_map.get(port);
+    if (it == g_udpnetcallback_map.end())
+        return 2;
+
+    it->value(p_packet, length);
+    return 0;
 }
