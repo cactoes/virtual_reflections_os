@@ -10,10 +10,10 @@ extern void printf(print_mode_t mode, const char* p_str, ...);
 
 void udp_receive(network_interface_device_t* p_device, uint8_t* p_payload, size_t payload_length) {
     udp_header_t* header = (udp_header_t*)p_payload;
-    uint16_t src_port = ntohs(header->src_port);
-    uint16_t dst_port = ntohs(header->dst_port);
-    uint16_t length = ntohs(header->length);
-    uint16_t checksum = ntohs(header->checksum);
+    uint16_t src_port = net_to_host(header->src_port);
+    uint16_t dst_port = net_to_host(header->dst_port);
+    uint16_t length = net_to_host(header->length);
+    uint16_t checksum = net_to_host(header->checksum);
 
     if (length != payload_length)
         printf(DBG, "[INET - UDP: %s] payload length mismatch!\n", p_device->name.c_str());
@@ -21,7 +21,7 @@ void udp_receive(network_interface_device_t* p_device, uint8_t* p_payload, size_
     uint8_t* udp_payload = p_payload + sizeof(udp_header_t);
     size_t udp_payload_length = payload_length - sizeof(udp_header_t);
 
-    printf(DBG, "[INET - UDP: %s]: got packet for port (%u bytes): %u\n", p_device->name.c_str(), udp_payload_length, dst_port);
+    ndim_udp_send_to_handler(dst_port, udp_payload, udp_payload_length);
 }
 
 int udp_send(network_interface_device_t* p_device, uint32_t dst_ip, uint16_t src_port, uint16_t dst_port, const uint8_t* p_payload, size_t size) {
@@ -35,11 +35,11 @@ int udp_send(network_interface_device_t* p_device, uint32_t dst_ip, uint16_t src
         return 2;
 
     udp_header_t* header = (udp_header_t*)packet;
-    header->src_port = htons(src_port);
-    header->dst_port = htons(dst_port);
+    header->src_port = host_to_net<uint16_t>(src_port);
+    header->dst_port = host_to_net<uint16_t>(dst_port);
     // TODO @since 29/08/2025 -- 19:39
     header->checksum = 0;
-    header->length = htons(packet_size);
+    header->length = host_to_net<uint16_t>(packet_size);
 
     memcpy(packet + sizeof(udp_header_t), p_payload, size);
     

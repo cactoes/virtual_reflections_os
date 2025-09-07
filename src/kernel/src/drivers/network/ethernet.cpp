@@ -16,7 +16,7 @@ void ethernet_send(network_interface_device_t* p_device, uint8_t p_dst_mac[6], u
     auto frame_ethernet_header = (ethernet_header_t*)frame;
     memcpy(frame_ethernet_header->dst_mac, p_dst_mac, 6);
     memcpy(frame_ethernet_header->src_mac, p_device->mac, 6);
-    frame_ethernet_header->ethernet_type = htons(type);
+    frame_ethernet_header->ethernet_type = host_to_net<uint16_t>(type);
 
     auto frame_packet = (uint8_t*)(frame + sizeof(ethernet_header_t));
     memcpy(frame_packet, p_packet, size);
@@ -34,7 +34,7 @@ int ethernet_receive(network_interface_device_t* p_device, uint8_t* p_frame, siz
     uint8_t* payload = p_frame + sizeof(ethernet_header_t);
     const size_t payload_size = size - sizeof(ethernet_header_t);
 
-    uint16_t ethertype = ntohs(header->ethernet_type);
+    uint16_t ethertype = net_to_host(header->ethernet_type);
     switch (ethertype) {
         case ETHERNET_TYPE_IPV4:
             ip_receive(p_device, payload, payload_size);

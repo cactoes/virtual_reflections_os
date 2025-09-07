@@ -118,6 +118,32 @@ constexpr uint32_t htonl(uint32_t hostlong) {
     return ntohl(hostlong);
 }
 
+template <typename T>
+constexpr T net_to_host(T n);
+
+template <>
+constexpr uint16_t net_to_host(uint16_t n) {
+    return ntohs(n);
+}
+
+template <>
+constexpr uint32_t net_to_host(uint32_t n) {
+    return ntohl(n);
+}
+
+template <typename T>
+constexpr T host_to_net(T n);
+
+template <>
+constexpr uint16_t host_to_net(uint16_t n) {
+    return htons(n);
+}
+
+template <>
+constexpr uint32_t host_to_net(uint32_t n) {
+    return htonl(n);
+}
+
 // NOLINTNEXTLINE
 constexpr uint64_t hash_fnv1a_64(const char* p_str, uint64_t hash = 14695981039346656037ULL) {
     return (*p_str == '\0') ? hash :

@@ -17,7 +17,7 @@ void ip_receive(network_interface_device_t* p_device, uint8_t* p_packet, size_t 
     if (ntohl(ip->dst_addr) != p_device->ip4 && ntohl(ip->dst_addr) != 0xFFFFFFFF)
         return;
     
-    uint16_t ip_len = ntohs(ip->total_length);
+    uint16_t ip_len = net_to_host(ip->total_length);
     uint8_t* payload = p_packet + (ip->version_ihl & 0x0F) * 4;
     // BUG @since 28/08/2025 -- 18:30
     // size can differ from actual length
@@ -39,7 +39,7 @@ void ip_send(network_interface_device_t* p_device, uint32_t dst_ip, uint8_t prot
     ip_header_t ip {};
     ip.version_ihl  = 0x45;
     ip.tos  = 0;
-    ip.total_length = htons(total_length);
+    ip.total_length = host_to_net<uint16_t>(total_length);
     ip.identification = 0;
     ip.flags_fragment = 0;
     ip.ttl  = 64;
