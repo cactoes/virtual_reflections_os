@@ -84,6 +84,21 @@ void* handle_interrupt(uint64_t code, cpu_state_t* p_rsp) {
         interrupt_send_eoi(code - 0x20);
     }
 
+    // FIXME @since 08/09/2025 -- 18:53
+    // make better handler for software
+    switch (interrupt_type) {
+        case interrupt_t::SOFTWARE_SCHEDULER:
+        case interrupt_t::SOFTWARE_CRASH_HANDLER:
+        case interrupt_t::SOFTWARE_SYSTEMCALL: {
+            auto it = g_interrupt_callbacks.get(interrupt_type);
+            if (it != g_interrupt_callbacks.end()) {
+                p_rsp = it->value(p_rsp);
+                return p_rsp;
+            }
+            break;
+        }
+    }
+
     printf(DBG, "unhandled interrupt triggerd: 0x%uh\n", code);
     return p_rsp;
 }
