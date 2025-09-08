@@ -25,11 +25,14 @@
 #include "utils/vector.hpp"
 #include "utils/event.hpp"
 
+#include "time/clock.hpp"
+
 #include "multiboot.hpp"
 #include "string.hpp"
 #include "common.hpp"
 #include "crash_handler.hpp"
 #include "virtual_thread.hpp"
+#include "random.hpp"
 
 #define HEAP_START_SIZE 0x100000 * 32 // 32 mb
 #define PIT_TIMER_INTERVAL 1000 // times per second
@@ -97,21 +100,193 @@ void on_key_down(const ps2_key_state_t* p_state) {
     printf(DBG, "%c", ch);
 }
 
-void on_mouse(const ps2_mouse_state_t* p_state) {
-    printf(DBG, "L: %i, M: %i, R: %i, S: %i\n", p_state->buttons.left, p_state->buttons.middle, p_state->buttons.right, p_state->ds);
+static int64_t g_desktop_mouse_pos_x = 0;
+static int64_t g_desktop_mouse_pos_y = 0;
+static int64_t g_desktop_mouse_scroll = 1;
+static bool g_desktop_lmb_pressed = false;
+
+void desktop_handle_mouse_input(const ps2_mouse_state_t* p_state) {
+    // printf(DBG, "L: %i, M: %i, R: %i, S: %i\n", p_state->buttons.left, p_state->buttons.middle, p_state->buttons.right, p_state->ds);
+
+    g_desktop_mouse_pos_x += p_state->dx;
+    g_desktop_mouse_pos_y += p_state->dy;
+    g_desktop_mouse_scroll += p_state->ds;
+
+    g_desktop_lmb_pressed = p_state->buttons.left;
+
+    g_desktop_mouse_pos_x = CLAMP(g_desktop_mouse_pos_x, 0, VGA_GM_BUFFER_WIDTH - 1);
+    g_desktop_mouse_pos_y = CLAMP(g_desktop_mouse_pos_y, 0, VGA_GM_BUFFER_HEIGHT - 1);
+    g_desktop_mouse_scroll = CLAMP(g_desktop_mouse_scroll, 1, 20);
 }
 
-#include "drivers/driver.hpp"
-void elf_driver_test(uint8_t* p_file, size_t file_size) {
-    printf(DBG, "\n\nELF DIRVER LOAD TEST\n\n");
-
-    auto handle = driver_load("TestDriver", p_file);
-    printf(DBG, "driver handle: %ul", handle);
-    driver_start(handle);
-    driver_stop(handle);
-    driver_unload(handle);
+void desktop_draw_cursor(vga_buffer_t* p_buffer, uint64_t x, uint64_t y) {
+    vga_gm_draw::linev(p_buffer, x, y, 10, vga_gm_color_index_t::BLACK);
+    vga_gm_draw::pixel(p_buffer, x + 1, y + 1, vga_gm_color_index_t::BLACK);
+    vga_gm_draw::pixel(p_buffer, x + 2, y + 2, vga_gm_color_index_t::BLACK);
+    vga_gm_draw::pixel(p_buffer, x + 3, y + 3, vga_gm_color_index_t::BLACK);
+    vga_gm_draw::pixel(p_buffer, x + 4, y + 4, vga_gm_color_index_t::BLACK);
+    vga_gm_draw::pixel(p_buffer, x + 5, y + 5, vga_gm_color_index_t::BLACK);
+    vga_gm_draw::pixel(p_buffer, x + 6, y + 6, vga_gm_color_index_t::BLACK);
     
-    printf(DBG, "\n\nELF DIRVER LOAD TEST SUCCESS\n\n");
+    vga_gm_draw::lineh(p_buffer, x + 4, y + 7, 3, vga_gm_color_index_t::BLACK);
+
+    vga_gm_draw::pixel(p_buffer, x + 1, y + 9, vga_gm_color_index_t::BLACK);
+    vga_gm_draw::pixel(p_buffer, x + 2, y + 8, vga_gm_color_index_t::BLACK);
+    vga_gm_draw::pixel(p_buffer, x + 3, y + 7, vga_gm_color_index_t::BLACK);
+}
+
+static uint64_t g_last_tick = 0;
+constexpr uint64_t game_board_width = 16;
+constexpr uint64_t game_board_height = 16;
+constexpr uint64_t tile_size = 10;
+constexpr uint64_t bomb_count = 40;
+
+struct tile_t {
+    int bomb_count;
+    int mark_count;
+
+    bool is_bomb;
+    bool is_marked;
+    bool is_revealed;
+    
+    uint64_t grid_x;
+    uint64_t grid_y;
+};
+
+const vga_gm_color_index_t g_tile_empty[10][10] {
+    vga_gm_color_index_t::DARK_GRAY, vga_gm_color_index_t::DARK_GRAY, vga_gm_color_index_t::DARK_GRAY, vga_gm_color_index_t::DARK_GRAY, vga_gm_color_index_t::DARK_GRAY, vga_gm_color_index_t::DARK_GRAY, vga_gm_color_index_t::DARK_GRAY, vga_gm_color_index_t::DARK_GRAY, vga_gm_color_index_t::DARK_GRAY, vga_gm_color_index_t::DARK_GRAY,
+    vga_gm_color_index_t::DARK_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY,
+    vga_gm_color_index_t::DARK_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY,
+    vga_gm_color_index_t::DARK_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY,
+    vga_gm_color_index_t::DARK_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY,
+    vga_gm_color_index_t::DARK_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY,
+    vga_gm_color_index_t::DARK_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY,
+    vga_gm_color_index_t::DARK_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY,
+    vga_gm_color_index_t::DARK_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY,
+    vga_gm_color_index_t::DARK_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY,
+};
+
+const vga_gm_color_index_t g_tile_bomb[10][10] {
+    vga_gm_color_index_t::DARK_GRAY, vga_gm_color_index_t::DARK_GRAY, vga_gm_color_index_t::DARK_GRAY, vga_gm_color_index_t::DARK_GRAY, vga_gm_color_index_t::DARK_GRAY, vga_gm_color_index_t::DARK_GRAY, vga_gm_color_index_t::DARK_GRAY, vga_gm_color_index_t::DARK_GRAY, vga_gm_color_index_t::DARK_GRAY, vga_gm_color_index_t::DARK_GRAY,
+    vga_gm_color_index_t::DARK_GRAY, vga_gm_color_index_t::BLACK, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::BLACK, vga_gm_color_index_t::LIGHT_GRAY,
+    vga_gm_color_index_t::DARK_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::BLACK, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::BLACK, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY,
+    vga_gm_color_index_t::DARK_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::BLACK, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::BLACK, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY,
+    vga_gm_color_index_t::DARK_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::BLACK, vga_gm_color_index_t::BLACK, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY,
+    vga_gm_color_index_t::DARK_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::BLACK, vga_gm_color_index_t::BLACK, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY,
+    vga_gm_color_index_t::DARK_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::BLACK, vga_gm_color_index_t::BLACK, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::BLACK, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY,
+    vga_gm_color_index_t::DARK_GRAY, vga_gm_color_index_t::BLACK, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::BLACK, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY,
+    vga_gm_color_index_t::BLACK, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::BLACK, vga_gm_color_index_t::LIGHT_GRAY,
+    vga_gm_color_index_t::DARK_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY,
+};
+
+const vga_gm_color_index_t g_tile_unrevealed[10][10] {
+    vga_gm_color_index_t::WHITE, vga_gm_color_index_t::WHITE, vga_gm_color_index_t::WHITE, vga_gm_color_index_t::WHITE, vga_gm_color_index_t::WHITE, vga_gm_color_index_t::WHITE, vga_gm_color_index_t::WHITE, vga_gm_color_index_t::WHITE, vga_gm_color_index_t::WHITE, vga_gm_color_index_t::WHITE,
+    vga_gm_color_index_t::WHITE, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::DARK_GRAY,
+    vga_gm_color_index_t::WHITE, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::DARK_GRAY,
+    vga_gm_color_index_t::WHITE, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::DARK_GRAY,
+    vga_gm_color_index_t::WHITE, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::DARK_GRAY,
+    vga_gm_color_index_t::WHITE, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::DARK_GRAY,
+    vga_gm_color_index_t::WHITE, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::DARK_GRAY,
+    vga_gm_color_index_t::WHITE, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::DARK_GRAY,
+    vga_gm_color_index_t::WHITE, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::LIGHT_GRAY, vga_gm_color_index_t::DARK_GRAY,
+    vga_gm_color_index_t::DARK_GRAY, vga_gm_color_index_t::DARK_GRAY, vga_gm_color_index_t::DARK_GRAY, vga_gm_color_index_t::DARK_GRAY, vga_gm_color_index_t::DARK_GRAY, vga_gm_color_index_t::DARK_GRAY, vga_gm_color_index_t::DARK_GRAY, vga_gm_color_index_t::DARK_GRAY, vga_gm_color_index_t::DARK_GRAY, vga_gm_color_index_t::DARK_GRAY,
+};
+
+void draw_tile(vga_buffer_t* p_buffer, tile_t* p_tile, uint64_t offset_x, uint64_t offset_y) {
+    if (!p_tile->is_revealed) {
+        for (size_t x = 0; x < tile_size; x++) {
+            for (size_t y = 0; y < tile_size; y++) {
+                vga_gm_draw::pixel(p_buffer, tile_size * p_tile->grid_x + offset_x + x, tile_size * p_tile->grid_y + offset_y + y, g_tile_unrevealed[x][y]);
+            }
+        }
+    } else {
+
+        if (p_tile->is_bomb) {
+            for (size_t x = 0; x < tile_size; x++) {
+                for (size_t y = 0; y < tile_size; y++) {
+                    vga_gm_draw::pixel(p_buffer, tile_size * p_tile->grid_x + offset_x + x, tile_size * p_tile->grid_y + offset_y + y, g_tile_bomb[x][y]);
+                }
+            }
+        } else {
+            for (size_t x = 0; x < tile_size; x++) {
+                for (size_t y = 0; y < tile_size; y++) {
+                    vga_gm_draw::pixel(p_buffer, tile_size * p_tile->grid_x + offset_x + x, tile_size * p_tile->grid_y + offset_y + y, g_tile_empty[x][y]);
+                }
+            }
+        }
+
+    }
+}
+
+int desktop_init() {
+    g_last_tick = clock_get_time_since_boot();
+    vga_buffer_t buff {};
+    vga_gm_buffer_create(&buff);
+    vga_gm_startup(&buff);
+    vga_gm_draw::clear(&buff, vga_gm_color_index_t::WHITE);
+    
+    seed_random(1234);
+
+    ps2_mouse_event_subscribe(desktop_handle_mouse_input);
+
+    constexpr uint64_t frame_time_ms = 1000 / 60;
+
+    tile_t game_board[game_board_width][game_board_height] {};
+
+    for (int i = 0; i < game_board_width; i++) {
+        for (int j = 0; j < game_board_height; j++) {
+            auto& tile = game_board[i][j];
+            tile.grid_x = i;
+            tile.grid_y = j;
+        }
+    }
+
+    dynamic_array<dynamic_array<int>> bomb_spots {};
+    for (int i = 0; i < game_board_width; i++) {
+        for (int j = 0; j < game_board_height; j++) {
+            bomb_spots.insert_back( dynamic_array<int>{ i, j } );
+        }
+    }
+
+    for (int n = 0; n < bomb_count; n++) {
+        int index = random_number() % bomb_spots.length();
+        int x = bomb_spots[index][0];
+        int y = bomb_spots[index][1];
+        bomb_spots.delete_at(index);
+        game_board[x][y].is_bomb = true;
+    }
+
+    while (true) {      
+        uint64_t now = clock_get_time_since_boot();
+
+        if (now - g_last_tick < frame_time_ms) {
+            // vthread_sleep(frame_time_ms - (now - g_last_tick));
+            continue;
+        }
+
+        vga_gm_draw::clear(&buff, vga_gm_color_index_t::WHITE);
+
+        for (int i = 0; i < game_board_width; i++) {
+            for (int j = 0; j < game_board_height; j++) {
+                tile_t* p_tile = &game_board[i][j];
+
+                if (g_desktop_lmb_pressed &&
+                    g_desktop_mouse_pos_x > p_tile->grid_x * tile_size && g_desktop_mouse_pos_x < p_tile->grid_x * tile_size + tile_size &&
+                    g_desktop_mouse_pos_y > p_tile->grid_y * tile_size && g_desktop_mouse_pos_y < p_tile->grid_y * tile_size + tile_size)
+                    game_board[i][j].is_revealed = true;
+
+                draw_tile(&buff, p_tile, 0, 0);
+            }
+        }
+
+        desktop_draw_cursor(&buff, g_desktop_mouse_pos_x, g_desktop_mouse_pos_y);
+
+        vga_gm_render();
+
+        g_last_tick = now;
+    }
+
+    return true;
 }
 
 extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
@@ -241,9 +416,12 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
 
     auto disk_storage = ptr::make_unique<vfs_disk_storage>(&mounted_iso9660_fs_instance);
     vfs.mount("/mnt/disk0", move(disk_storage));
+    vfs.create_file_cache("/mnt/disk0/INetDrivers.sys");
+    vfs.create_file_cache("/mnt/disk0/.env");
+    vfs.create_file_cache("/mnt/disk0/media/eva-title-0.bmp");
+    vfs.create_file_cache("/mnt/disk0/media/eva-title-0.png");
 
     // dynamic_array<uint8_t> inet_driver_file {};
-    // vfs.create_file_cache("/mnt/disk0/INetDrivers.sys");
     // auto inet_driver_file_handle = vfs.open_file("/mnt/disk0/INetDrivers.sys");
     // vfs.read_file(inet_driver_file_handle, &inet_driver_file);
 
@@ -254,12 +432,15 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
     // auto result = ((check_driver_function_t)check_driver_function)("e1000");
     // printf(DBG, "has e1000 driver: %s\n", result ? "true" : "false");
 
-    ps2_keyboard_event_subscribe(on_key_down);
-    ps2_mouse_event_subscribe(on_mouse);
+    // ps2_keyboard_event_subscribe(on_key_down);
+    // ps2_mouse_event_subscribe(on_mouse);
 
     // kernel finished
     printf(STD, "> SYSTEM READY\n");
     printf(DBG, "Kernel finished initializing\n");
+
+    // vthread_create(desktop_init);
+    desktop_init();
 
     // we shoudn t reach this point since the kernel should never stop
     // incase we do just hang here so we dont break anything
