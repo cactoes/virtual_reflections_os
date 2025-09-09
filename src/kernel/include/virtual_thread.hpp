@@ -11,7 +11,7 @@
 #ifndef __VIRTUAL_THREAD_HPP__
 #define __VIRTUAL_THREAD_HPP__
 
-#define VTHREAD_STACK_SIZE          8192 * 125 // 8kb * 125 ~= 1m
+#define VTHREAD_STACK_SIZE          1000000 // 1M
 #define VTHREAD_TLS_ENTRY_COUNT     64
 
 #define VTHREAD_HANDLE_INVALID (vthread_handle_t)-1

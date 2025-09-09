@@ -119,7 +119,9 @@ cpu_state_t* vthread_handle_interrupt(cpu_state_t* p_cpu_state) {
 }
 
 cpu_state_t* vthread_schedule(cpu_state_t* p_cpu_state) {  
-    mutex_lock_guard guard(&g_mutex);
+    // BUG @since 09/09/2025 -- 20:59
+    // using the lock here can cause a deadlock?
+    // mutex_lock_guard guard(&g_mutex);
     if (g_threads.size() == 0)
         return nullptr;
 
