@@ -220,6 +220,7 @@ void vga_gm_startup(vga_buffer_t* p_back_buffer) {
     for (uint8_t i = 0; i < 16; ++i)
         vga_gm_set_palette_color(i, s_ega16[i][0], s_ega16[i][1], s_ega16[i][2]);
 
+    memzero((void*)VGA_GM_BUFFER_ADDR, VGA_GM_BUFFER_WIDTH * VGA_GM_BUFFER_HEIGHT * sizeof(uint8_t));
     g_vga_gm_buffer = const_cast<vga_buffer_t*>(p_back_buffer);
 }
 
