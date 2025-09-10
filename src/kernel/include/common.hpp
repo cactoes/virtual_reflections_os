@@ -46,6 +46,11 @@
 #define MAX_UINT32          (uint32_t)-1
 #define MAX_UINT64          (uint64_t)-1
 
+#define MAX_INT8            ((int8_t)(MAX_UINT8 >> 1))
+#define MAX_INT16           ((int16_t)(MAX_UINT16 >> 1))
+#define MAX_INT32           ((int32_t)(MAX_UINT32 >> 1))
+#define MAX_INT64           ((int64_t)(MAX_UINT64 >> 1))
+
 template<typename T>
 struct remove_reference {
     using type_t = T;
