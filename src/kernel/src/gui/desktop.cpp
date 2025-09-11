@@ -16,6 +16,7 @@ enum print_mode_t {
 extern void printf(print_mode_t mode, const char* p_str, ...);
 
 static vga_buffer_t* g_desktop_back_buffer = nullptr;
+static bool g_desktop_ready = false;
 static int g_desktop_mouse_pos[2] { 0, 0 };
 static linear_map<uint64_t, event_manager_t<void*>> g_desktop_event_container {};
 static linked_list<desktop_render_target_t> g_render_targets {};
@@ -38,7 +39,7 @@ void desktop_handle_ps2_mouse_input(const ps2_mouse_state_t* p_state) {
         desktop_event_on_mouse_move_t event {};
         event.x = g_desktop_mouse_pos[0];
         event.y = g_desktop_mouse_pos[1];
-        g_desktop_event_container[hash_fnv1a_64("on_mouse_move")].fire_event((void*)&event);
+        g_desktop_event_container[hash_fnv1a_64(DESKTOP_EVENT_MOUSE_MOVE)].fire_event((void*)&event);
     }
     
     // on mouse button press & release
@@ -48,9 +49,9 @@ void desktop_handle_ps2_mouse_input(const ps2_mouse_state_t* p_state) {
         event.key = desktop_event_mouse_button_type_t::LEFT;
 
         if (p_state->buttons.left)
-            g_desktop_event_container[hash_fnv1a_64("on_mouse_pressed")].fire_event((void*)&event);
+            g_desktop_event_container[hash_fnv1a_64(DESKTOP_EVENT_MOUSE_PRESSED)].fire_event((void*)&event);
         else
-            g_desktop_event_container[hash_fnv1a_64("on_mouse_released")].fire_event((void*)&event);
+            g_desktop_event_container[hash_fnv1a_64(DESKTOP_EVENT_MOUSE_RELEASED)].fire_event((void*)&event);
 
         s_lmb_last = p_state->buttons.left;
     }
@@ -61,9 +62,9 @@ void desktop_handle_ps2_mouse_input(const ps2_mouse_state_t* p_state) {
         event.key = desktop_event_mouse_button_type_t::RIGHT;
 
         if (p_state->buttons.right)
-            g_desktop_event_container[hash_fnv1a_64("on_mouse_pressed")].fire_event((void*)&event);
+            g_desktop_event_container[hash_fnv1a_64(DESKTOP_EVENT_MOUSE_PRESSED)].fire_event((void*)&event);
         else
-            g_desktop_event_container[hash_fnv1a_64("on_mouse_released")].fire_event((void*)&event);
+            g_desktop_event_container[hash_fnv1a_64(DESKTOP_EVENT_MOUSE_RELEASED)].fire_event((void*)&event);
 
         s_rmb_last = p_state->buttons.right;
     }
@@ -74,9 +75,9 @@ void desktop_handle_ps2_mouse_input(const ps2_mouse_state_t* p_state) {
         event.key = desktop_event_mouse_button_type_t::RIGHT;
 
         if (p_state->buttons.middle)
-            g_desktop_event_container[hash_fnv1a_64("on_mouse_pressed")].fire_event((void*)&event);
+            g_desktop_event_container[hash_fnv1a_64(DESKTOP_EVENT_MOUSE_PRESSED)].fire_event((void*)&event);
         else
-            g_desktop_event_container[hash_fnv1a_64("on_mouse_released")].fire_event((void*)&event);
+            g_desktop_event_container[hash_fnv1a_64(DESKTOP_EVENT_MOUSE_RELEASED)].fire_event((void*)&event);
 
         s_mmb_last = p_state->buttons.middle;
     }
@@ -86,7 +87,7 @@ void desktop_handle_ps2_mouse_input(const ps2_mouse_state_t* p_state) {
         // call event
         desktop_event_on_mouse_scroll_t event {};
         event.d = p_state->ds;
-        g_desktop_event_container[hash_fnv1a_64("on_mouse_scroll")].fire_event((void*)&event);
+        g_desktop_event_container[hash_fnv1a_64(DESKTOP_EVENT_MOUSE_SCROLL)].fire_event((void*)&event);
     }
 }
 
@@ -103,10 +104,10 @@ bool desktop_event_subscribe(const char* p_name, void(*p_callback)(void*)) {
 
 void desktop_init_hardware_handlers() {
     // setup events
-    g_desktop_event_container.insert(hash_fnv1a_64("on_mouse_move"), event_manager_t<void*>{});
-    g_desktop_event_container.insert(hash_fnv1a_64("on_mouse_scroll"), event_manager_t<void*>{});
-    g_desktop_event_container.insert(hash_fnv1a_64("on_mouse_pressed"), event_manager_t<void*>{});
-    g_desktop_event_container.insert(hash_fnv1a_64("on_mouse_release"), event_manager_t<void*>{});
+    g_desktop_event_container.insert(hash_fnv1a_64(DESKTOP_EVENT_MOUSE_MOVE), event_manager_t<void*>{});
+    g_desktop_event_container.insert(hash_fnv1a_64(DESKTOP_EVENT_MOUSE_SCROLL), event_manager_t<void*>{});
+    g_desktop_event_container.insert(hash_fnv1a_64(DESKTOP_EVENT_MOUSE_PRESSED), event_manager_t<void*>{});
+    g_desktop_event_container.insert(hash_fnv1a_64(DESKTOP_EVENT_MOUSE_RELEASED), event_manager_t<void*>{});
 
     // start with mouse in the middle
     g_desktop_mouse_pos[0] = VGA_GM_BUFFER_WIDTH / 2;
@@ -166,8 +167,12 @@ void desktop_render_end() {
     vga_gm_render();
 }
 
+bool desktop_render_pixel(int x, int y, uint8_t vga_color_index) {
+    return vga_gm_draw::pixel(desktop_render_get_buffer(), x, y, (vga_gm_color_index_t)vga_color_index);
+}
+
 bool desktop_render_pixel(int x, int y, const desktop_render_color_t& color) {
-    return vga_gm_draw::pixel(desktop_render_get_buffer(), x, y, rgb_to_vga(color));
+    return desktop_render_pixel(x, y, (uint8_t)rgb_to_vga(color));
 }
 
 bool desktop_render_linev(int x, int y, size_t l, const desktop_render_color_t& color) {
@@ -218,6 +223,8 @@ int desktop_init() {
     // setup input devices
     desktop_init_hardware_handlers();
 
+    g_desktop_ready = true;
+
     // main render loop
     uint64_t g_last_tick = 0;
     while (true) {
@@ -244,4 +251,13 @@ int desktop_init() {
     }
 
     return 0;
+}
+
+void desktop_get_cursor_pos(int* p_x, int* p_y) {
+    *p_x = g_desktop_mouse_pos[0];
+    *p_y = g_desktop_mouse_pos[1];
+}
+
+bool is_desktop_ready() {
+    return g_desktop_ready;
 }

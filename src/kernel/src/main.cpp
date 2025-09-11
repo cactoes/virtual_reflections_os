@@ -256,6 +256,8 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
     if (vthread_create(desktop_init) == VTHREAD_HANDLE_INVALID)
         printf(DBG, "failed to create desktop thread\n");
 
+    while (!is_desktop_ready());
+    
     minesweeper_init();
 
     // we shoudn t reach this point since the kernel should never stop
