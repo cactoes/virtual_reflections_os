@@ -11,6 +11,9 @@ struct tile_t {
     bool is_bomb;
     bool is_marked;
     bool is_revealed;
+    bool is_peeking;
+
+    bool has_clicked;
     
     uint64_t grid_x;
     uint64_t grid_y;
@@ -41,8 +44,9 @@ static constexpr game_config_t k_game_configs[3] {
 };
 
 constexpr int k_tile_size = 10;
-constexpr int k_current_config = 1;
+constexpr int k_current_config = 0;
 static tile_t g_game_board[k_game_configs[k_current_config].size.width][k_game_configs[k_current_config].size.height] {};
+static bool g_is_game_running = false;
 
 const uint8_t k_tile_empty[k_tile_size][k_tile_size] {
     8u, 8u, 8u, 8u, 8u, 8u, 8u, 8u, 8u, 8u,
@@ -200,6 +204,18 @@ const uint8_t k_tile_marked[k_tile_size][k_tile_size] {
     15, 7u, 7u, 7u, 7u, 7u, 7u, 7u, 7u, 8u,
     8u, 8u, 8u, 8u, 8u, 8u, 8u, 8u, 8u, 8u,
 };
+const uint8_t k_tile_marked_wrong[k_tile_size][k_tile_size] {
+    15, 15, 15, 15, 15, 15, 15, 15, 15, 15,
+    15, 12, 12, 12, 12, 12, 12, 12, 12, 8u,
+    15, 12, 12, 12, 4u, 4u, 12, 12, 12, 8u,
+    15, 12, 4u, 4u, 4u, 4u, 12, 12, 12, 8u,
+    15, 12, 12, 4u, 4u, 0u, 12, 12, 12, 8u,
+    15, 12, 12, 12, 12, 0u, 12, 12, 12, 8u,
+    15, 12, 12, 12, 0u, 0u, 0u, 12, 12, 8u,
+    15, 12, 12, 0u, 0u, 0u, 0u, 0u, 12, 8u,
+    15, 12, 12, 12, 12, 12, 12, 12, 12, 8u,
+    8u, 8u, 8u, 8u, 8u, 8u, 8u, 8u, 8u, 8u,
+};
 
 template <typename func>
 void loop_game_board(func&& callback) {
@@ -224,11 +240,24 @@ bool is_in_tile_hitbox(tile_t* p_tile, int x, int y) {
            y > p_tile->grid_y * k_tile_size && y < p_tile->grid_y * k_tile_size + k_tile_size;
 }
 
+void minesweeper_end_game() {
+    g_is_game_running = false;
+    loop_game_board([](tile_t* p_tile, int x, int y) {
+        if (p_tile->is_bomb && !p_tile->is_marked)
+            p_tile->is_revealed = true;
+    });
+}
+
 void tile_reveal(tile_t* p_tile) {
     if (p_tile->is_revealed || p_tile->is_marked)
         return;
 
     p_tile->is_revealed = true;
+
+    if (p_tile->is_bomb) {
+        minesweeper_end_game();
+        return;
+    }
 
     if (p_tile->bomb_count >= 1)
         return;
@@ -252,15 +281,61 @@ void tile_mark(tile_t* p_tile) {
     p_tile->is_marked = !p_tile->is_marked;
 }
 
-void minesweeper_on_mouse_down(const desktop_event_on_mouse_button_t* p_event) {
+void tile_peek_nearby(tile_t* p_tile, int x, int y) {
+    for (int i = -1; i < 2; i++) {
+        for (int j = -1; j < 2; j++) {
+            if (!is_pos_valid(x + i, y + j) || (i == 0 && j == 0))
+                continue;
+
+            tile_t& tile_other = g_game_board[x + i][y + j];
+            if (!tile_other.is_revealed && !tile_other.is_marked)
+                tile_other.is_peeking = true;
+        }
+    }
+}
+
+void minesweeper_on_mouse_up(const desktop_event_on_mouse_button_t* p_event) {
+    constexpr auto& game_config = k_game_configs[k_current_config];
+
+    if (!g_is_game_running)
+        return;
+
     int mouse_x, mouse_y;
     desktop_get_cursor_pos(&mouse_x, &mouse_y);
 
     switch (p_event->key) {
         case desktop_event_mouse_button_type_t::LEFT:
             loop_game_board([mouse_x, mouse_y](tile_t* p_tile, int x, int y) {
-                if (is_in_tile_hitbox(p_tile, mouse_x, mouse_y))
+                if (is_in_tile_hitbox(p_tile, mouse_x, mouse_y)) {
+                    if (p_tile->is_revealed) {
+                        tile_peek_nearby(p_tile, x, y);
+                    } else {
+                        p_tile->is_peeking = true;
+                    }
+                }
+            });
+            break;
+        default:
+            break;
+    }
+}
+
+void minesweeper_on_mouse_down(const desktop_event_on_mouse_button_t* p_event) {
+    constexpr auto& game_config = k_game_configs[k_current_config];
+
+    if (!g_is_game_running)
+        return;
+
+    int mouse_x, mouse_y;
+    desktop_get_cursor_pos(&mouse_x, &mouse_y);
+
+    switch (p_event->key) {
+        case desktop_event_mouse_button_type_t::LEFT:
+            loop_game_board([mouse_x, mouse_y](tile_t* p_tile, int x, int y) {
+                if (is_in_tile_hitbox(p_tile, mouse_x, mouse_y)) {
+                    p_tile->has_clicked = true;
                     tile_reveal(p_tile);
+                }
             });
             break;
         case desktop_event_mouse_button_type_t::RIGHT:
@@ -272,6 +347,32 @@ void minesweeper_on_mouse_down(const desktop_event_on_mouse_button_t* p_event) {
         default:
             break;
     }
+
+    int total_unrevealed = 0;
+    loop_game_board([&total_unrevealed](tile_t* p_tile, int x, int y) {
+        if (!p_tile->is_revealed)
+            total_unrevealed++;
+    });
+
+    if (total_unrevealed == game_config.bomb_count)
+        minesweeper_end_game();
+
+    // remove peeking
+    loop_game_board([](tile_t* p_tile, int x, int y) {
+        if (p_tile->is_bomb)
+            return;
+
+        for (int i = -1; i < 2; i++) {
+            for (int j = -1; j < 2; j++) {
+                if (!is_pos_valid(x + i, y + j) || (i == 0 && j == 0))
+                    continue;
+
+                tile_t& tile_other = g_game_board[x + i][y + j];
+                if (tile_other.is_peeking)
+                    tile_other.is_peeking = false;
+            }
+        }
+    });
 }
 
 void minesweeper_init() {
@@ -279,6 +380,7 @@ void minesweeper_init() {
     
     // register desktop stuff
     desktop_event_subscribe(DESKTOP_EVENT_MOUSE_RELEASED, minesweeper_on_mouse_down);
+    desktop_event_subscribe(DESKTOP_EVENT_MOUSE_PRESSED, minesweeper_on_mouse_up);
     desktop_register_target(minesweeper_render_target);
 
     // random
@@ -304,7 +406,7 @@ void minesweeper_init() {
 
     loop_game_board([&bomb_spots](tile_t* p_tile, int x, int y) { bomb_spots.insert_back({ x, y }); });
 
-    for (int n = 0; n < game_config.bomb_count; n++) {
+    for (int n = 0; n <= game_config.bomb_count; n++) {
         int index = random_number() % bomb_spots.length();
         int x = bomb_spots[index][0];
         int y = bomb_spots[index][1];
@@ -328,6 +430,8 @@ void minesweeper_init() {
             }
         }
     });
+
+    g_is_game_running = true;
 }
 
 void tile_render(tile_t* p_tile, uint64_t offset_x, uint64_t offset_y, const uint8_t p_sprite[k_tile_size][k_tile_size]) {
@@ -339,8 +443,19 @@ void tile_render(tile_t* p_tile, uint64_t offset_x, uint64_t offset_y, const uin
 }
 
 void minesweeper_render_tile(tile_t* p_tile, uint64_t offset_x, uint64_t offset_y) {
+    if (p_tile->is_peeking) {
+        tile_render(p_tile, offset_x, offset_y, k_tile_empty);
+        return;
+    }
+
     // not revealed
     if (!p_tile->is_revealed) {
+        // wrong marked eog
+        if (!g_is_game_running && p_tile->is_marked && !p_tile->is_bomb) {
+            tile_render(p_tile, offset_x, offset_y, k_tile_marked_wrong);
+            return;
+        }
+
         // marked
         if (p_tile->is_marked) {
             tile_render(p_tile, offset_x, offset_y, k_tile_marked);
@@ -356,7 +471,10 @@ void minesweeper_render_tile(tile_t* p_tile, uint64_t offset_x, uint64_t offset_
 
     // is bomb
     if (p_tile->is_bomb) {
-        tile_render(p_tile, offset_x, offset_y, k_tile_bomb_exploded);
+        if (p_tile->has_clicked)
+            tile_render(p_tile, offset_x, offset_y, k_tile_bomb_exploded);
+        else
+            tile_render(p_tile, offset_x, offset_y, k_tile_bomb);
         return;
     }
 
@@ -381,22 +499,4 @@ void minesweeper_render_target(uint64_t dt) {
     loop_game_board([](tile_t* p_tile, int x, int y) {
         minesweeper_render_tile(p_tile, 0, 0);
     });
-
-//         for (int i = 0; i < game_board_width; i++) {
-//             for (int j = 0; j < game_board_height; j++) {
-//                 tile_t* p_tile = &game_board[i][j];
-
-//                 if (g_desktop_lmb_pressed && g_lmb_just_pressed &&
-//                     g_desktop_mouse_pos_x > p_tile->grid_x * tile_size && g_desktop_mouse_pos_x < p_tile->grid_x * tile_size + tile_size &&
-//                     g_desktop_mouse_pos_y > p_tile->grid_y * tile_size && g_desktop_mouse_pos_y < p_tile->grid_y * tile_size + tile_size)
-//                     tile_reveal(game_board, p_tile);
-
-//                 if (g_desktop_rmb_pressed && g_rmb_just_pressed &&
-//                     g_desktop_mouse_pos_x > p_tile->grid_x * tile_size && g_desktop_mouse_pos_x < p_tile->grid_x * tile_size + tile_size &&
-//                     g_desktop_mouse_pos_y > p_tile->grid_y * tile_size && g_desktop_mouse_pos_y < p_tile->grid_y * tile_size + tile_size)
-//                     tile_mark(p_tile);
-
-//                 draw_tile(&buff, p_tile, 0, 0);
-//             }
-//         }
 }
