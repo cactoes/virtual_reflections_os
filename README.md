@@ -2,7 +2,6 @@
 A 64-bit custom made operating system, using grub as bootloader
 
 ## TODO
-- [ ] network driver (intel e1000)
 - [ ] shell
 - [ ] buffers / streams (lockable / mutex)
 - [ ] filesystem
