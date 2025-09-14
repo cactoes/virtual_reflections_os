@@ -210,6 +210,13 @@ const uint8_t tile_marked_wrong[tile_size][tile_size] {
     8u, 8u, 8u, 8u, 8u, 8u, 8u, 8u, 8u, 8u,
 };
 
+bool is_valid_grid_pos(int x, int y) {
+    if (x < 0 || y < 0)
+        return false;
+
+    return x < game_config.size.width && y < game_config.size.height;
+}
+
 template <typename func>
 void loop_game_board(func&& callback) {
     for (int i = 0; i < game_config.size.width; i++)
@@ -217,11 +224,17 @@ void loop_game_board(func&& callback) {
             callback(&game_board[i][j]);
 }
 
-bool is_pos_valid(int x, int y) {
-    if (x < 0 || y < 0)
-        return false;
+template <typename func>
+void loop_neighbour_tiles(tile_t* tile, func&& callback) {
+    for (int i = -1; i < 2; i++) {
+        for (int j = -1; j < 2; j++) {
+            if (!is_valid_grid_pos(tile->grid_x + i, tile->grid_y + j) || (i == 0 && j == 0))
+                continue;
 
-    return x < game_config.size.width && y < game_config.size.height;
+            tile_t* tile_other = &game_board[tile->grid_x + i][tile->grid_y + j];
+            callback(tile_other);
+        }
+    }
 }
 
 bool is_in_tile_hitbox(tile_t* tile, int x, int y) {
@@ -231,7 +244,8 @@ bool is_in_tile_hitbox(tile_t* tile, int x, int y) {
 
 tile_t* get_tile_from_pos(int x, int y) {
     if (x > game_config.size.width * tile_size ||
-        y > game_config.size.height * tile_size)
+        y > game_config.size.height * tile_size ||
+        x < 0 || y < 0)
         return nullptr;
 
     return &game_board[x / tile_size][y / tile_size];
@@ -259,16 +273,10 @@ void tile_reveal(tile_t* tile) {
     if (tile->bomb_count >= 1)
         return;
 
-    for (int i = -1; i < 2; i++) {
-        for (int j = -1; j < 2; j++) {
-            if (!is_pos_valid(tile->grid_x + i, tile->grid_y + j) || (i == 0 && j == 0))
-                continue;
-
-            tile_t* tile_other = &game_board[tile->grid_x + i][tile->grid_y + j];
-            if (!tile_other->is_bomb && !tile_other->is_marked)
-                tile_reveal(tile_other);
-        }
-    }
+    loop_neighbour_tiles(tile, [](tile_t* other) {
+        if (!other->is_bomb && !other->is_marked)
+            tile_reveal(other);
+    });
 }
 
 void tile_mark(tile_t* tile) {
@@ -279,16 +287,10 @@ void tile_mark(tile_t* tile) {
 }
 
 void tile_peek_nearby(tile_t* tile) {
-    for (int i = -1; i < 2; i++) {
-        for (int j = -1; j < 2; j++) {
-            if (!is_pos_valid(tile->grid_x + i, tile->grid_y + j) || (i == 0 && j == 0))
-                continue;
-
-            tile_t& tile_other = game_board[tile->grid_x + i][tile->grid_y + j];
-            if (!tile_other.is_revealed && !tile_other.is_marked)
-                tile_other.is_peeking = true;
-        }
-    }
+    loop_neighbour_tiles(tile, [](tile_t* other) {
+        if (!other->is_revealed && !other->is_marked)
+            other->is_peeking = true;
+    });
 }
 
 void minesweeper_on_mouse_up(const desktop_event_on_mouse_button_t* event) {
@@ -347,16 +349,10 @@ void minesweeper_on_mouse_down(const desktop_event_on_mouse_button_t* event) {
         if (tile->is_bomb)
             return;
 
-        for (int i = -1; i < 2; i++) {
-            for (int j = -1; j < 2; j++) {
-                if (!is_pos_valid(tile->grid_x + i, tile->grid_y + j) || (i == 0 && j == 0))
-                    continue;
-
-                tile_t& tile_other = game_board[tile->grid_x + i][tile->grid_y + j];
-                if (tile_other.is_peeking)
-                    tile_other.is_peeking = false;
-            }
-        }
+        loop_neighbour_tiles(tile, [](tile_t* other) {
+            if (other->is_peeking)
+                other->is_peeking = false;
+        });
     });
 }
 
@@ -367,7 +363,7 @@ void minesweeper_init() {
     desktop_register_target(minesweeper_render_target);
 
     // random
-    seed_random(1234);
+    seed_random(809429);
 
     // setup game board
     // if (g_game_board)
@@ -405,16 +401,10 @@ void minesweeper_init() {
         if (tile->is_bomb)
             return;
 
-        for (int i = -1; i < 2; i++) {
-            for (int j = -1; j < 2; j++) {
-                if (!is_pos_valid(tile->grid_x + i, tile->grid_y + j) || (i == 0 && j == 0))
-                    continue;
-
-                tile_t& tile_other = game_board[tile->grid_x + i][tile->grid_y + j];
-                if (tile_other.is_bomb)
-                    tile->bomb_count++;
-            }
-        }
+        loop_neighbour_tiles(tile, [tile](tile_t* other) {
+            if (other->is_bomb)
+                tile->bomb_count++;
+        });
     });
 
     is_game_running = true;
