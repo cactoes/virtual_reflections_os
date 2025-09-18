@@ -3,6 +3,7 @@
 #include "drivers/network/icmp.hpp"
 #include "drivers/network/udp.hpp"
 #include "drivers/network/arp.hpp"
+#include "drivers/network/tcp.hpp"
 
 enum print_mode_t {
     STD,
@@ -14,7 +15,7 @@ extern void printf(print_mode_t mode, const char* p_str, ...);
 void ip_receive(network_interface_device_t* p_device, uint8_t* p_packet, size_t size) {
     ip_header_t* ip = (ip_header_t*)p_packet;
 
-    if (ntohl(ip->dst_addr) != p_device->ip4 && ntohl(ip->dst_addr) != 0xFFFFFFFF)
+    if (net_to_host(ip->dst_addr) != p_device->ip4 && net_to_host(ip->dst_addr) != 0xFFFFFFFF)
         return;
     
     uint16_t ip_len = net_to_host(ip->total_length);
@@ -26,6 +27,9 @@ void ip_receive(network_interface_device_t* p_device, uint8_t* p_packet, size_t 
     switch (ip->protocol) {
         case IP_PROTOCOL_ICMP:
             icmp_receive(p_device, payload, payload_len);
+            break;
+        case IP_PROTOCOL_TCP:
+            tcp_receive(p_device, payload, payload_len, net_to_host(ip->src_addr));
             break;
         case IP_PROTOCOL_UDP:
             udp_receive(p_device, payload, payload_len);

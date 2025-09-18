@@ -20,8 +20,6 @@ CheckOptions:
     value: lower_case
   - key: readability-identifier-naming.PointerParameterCase
     value: lower_case
-  - key: readability-identifier-naming.PointerParameterPrefix
-    value: p_
   - key: readability-identifier-naming.TypeAliasCase
     value: lower_case
   - key: readability-identifier-naming.ClassCase
@@ -36,23 +34,6 @@ CheckOptions:
     value: UPPER_CASE
   - key: readability-identifier-naming.NamespaceCase
     value: lower_case
-
-  - key: readability-identifier-naming.GlobalConstantPrefix
-    value: k_
-  - key: readability-identifier-naming.GlobalVariablePrefix
-    value: g_
-  - key: readability-identifier-naming.StaticVariablePrefix
-    value: s_
-  - key: readability-identifier-naming.MemberPrefix
-    value: ''
-  - key: readability-identifier-naming.ClassMemberPrefix
-    value: ''
-  - key: readability-identifier-naming.ParameterPrefix
-    value: ''
-  - key: readability-identifier-naming.PointerPrefix
-    value: p_
-  - key: readability-identifier-naming.ReferencePrefix
-    value: r_
 
   - key: readability-identifier-naming.TypeAliasSuffix
     value: _t

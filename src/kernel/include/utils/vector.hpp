@@ -321,6 +321,10 @@ public:
         }
     }
 
+    dynamic_array(const T& data) {
+        insert_back(data);
+    }
+
     dynamic_array& operator=(const dynamic_array<T>& other) {
         if (this == &other)
             return *this;

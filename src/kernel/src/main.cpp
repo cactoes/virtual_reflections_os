@@ -253,12 +253,12 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
     printf(STD, "> SYSTEM READY\n");
     printf(DBG, "Kernel finished initializing\n");
 
-    if (vthread_create(desktop_init) == VTHREAD_HANDLE_INVALID)
-        printf(DBG, "failed to create desktop thread\n");
+    // if (vthread_create(desktop_init) == VTHREAD_HANDLE_INVALID)
+    //     printf(DBG, "failed to create desktop thread\n");
 
-    while (!is_desktop_ready());
+    // while (!is_desktop_ready());
     
-    minesweeper_init();
+    // minesweeper_init();
 
     // we shoudn t reach this point since the kernel should never stop
     // incase we do just hang here so we dont break anything
