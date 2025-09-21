@@ -16,15 +16,59 @@ tcp_connection_t connections[1] {
         .remote_ip = TO_IP(10, 0, 2, 1),
         .remote_port = 1234,
 
-        .snd_nxt = 0 + 1,
+        .snd_nxt = 0,
         .snd_una = 0,
-        .rcv_nxt = 0 + 1,
+        .rcv_nxt = 0,
         .iss = 0,
         .irs = 0,
 
         .state = tcp_state_t::LISTEN,
     }
 };
+
+// uint16_t tcp_checksum(uint32_t src_ip, uint32_t dst_ip, const tcp_header_t* tcp_header, 
+//                       const uint8_t* payload, size_t payload_len, size_t total_tcp_len) {
+//     // TCP checksum includes a "pseudo-header" with IP addresses
+//     struct {
+//         uint32_t src_ip;
+//         uint32_t dst_ip;
+//         uint8_t zero;
+//         uint8_t protocol;
+//         uint16_t tcp_length;
+//     } PACKED pseudo_header;
+    
+//     pseudo_header.src_ip = host_to_net(src_ip);
+//     pseudo_header.dst_ip = host_to_net(dst_ip);
+//     pseudo_header.zero = 0;
+//     pseudo_header.protocol = IP_PROTOCOL_TCP;
+//     pseudo_header.tcp_length = host_to_net<uint16_t>(total_tcp_len);
+    
+//     // Calculate checksum over pseudo-header + TCP header + payload
+//     uint32_t sum = 0;
+    
+//     // Pseudo-header
+//     uint16_t* ptr = (uint16_t*)&pseudo_header;
+//     for (size_t i = 0; i < sizeof(pseudo_header); i += 2) {
+//         sum += *ptr++;
+//     }
+    
+//     // TCP header
+//     ptr = (uint16_t*)tcp_header;
+//     for (size_t i = 0; i < sizeof(tcp_header_t); i += 2) {
+//         sum += *ptr++;
+//     }
+    
+//     // Payload
+//     ptr = (uint16_t*)payload;
+//     size_t len = payload_len;
+//     for (; len > 1; len -= 2) sum += *ptr++;
+//     if (len == 1) sum += *(uint8_t*)ptr;
+    
+//     // Fold carry bits
+//     while (sum >> 16) sum = (sum & 0xFFFF) + (sum >> 16);
+    
+//     return ~sum;
+// }
 
 void tcp_send(network_interface_device_t* p_device, uint8_t* p_payload, size_t payload_length, uint8_t flags, tcp_connection_t* connection) {
     // TODO @since 18/09/2025 -- 16:12
@@ -71,6 +115,9 @@ void tcp_send(network_interface_device_t* p_device, uint8_t* p_payload, size_t p
     uint8_t* tcp_payload = tcp_packet + tcp_header_len;
     if (p_payload && payload_length > 0)
         memcpy(tcp_payload, p_payload, payload_length);
+
+    // tcp_hdr->checksum = tcp_checksum(p_device->ip4, connection->remote_ip, tcp_hdr, 
+    //                             tcp_payload, payload_length, total_tcp_len);
 
     ip_send(p_device, connection->remote_ip, IP_PROTOCOL_TCP, tcp_packet, total_tcp_len);
 }
@@ -119,10 +166,12 @@ void tcp_receive(network_interface_device_t* device, uint8_t* payload, size_t pa
             return;
         }
 
+        connection->irs = seq_num;
+        connection->rcv_nxt = seq_num + 1;
+        connection->iss = 1000;
+        connection->snd_nxt = connection->iss;
         connection->state = tcp_state_t::SYN_RECEIVED;
         printf(DBG, "[INET - TCP: %s] new SYN request\n", device->name.c_str());
-        // TODO @since 18/09/2025 -- 21:36
-        // send proper syn-ack??
         tcp_send(device, nullptr, 0, TCP_FLAG_SYN | TCP_FLAG_ACK, connection);
         return;
     }
@@ -134,10 +183,20 @@ void tcp_receive(network_interface_device_t* device, uint8_t* payload, size_t pa
         return;
     }
 
-    printf(DBG, "[INET - TCP: %s] new unhandled packet\n", device->name.c_str());
+    if (connection->state == tcp_state_t::SYN_RECEIVED && (flags & TCP_FLAG_ACK)) {
+        if (ack_num == connection->snd_nxt) {
+            printf(DBG, "[INET - TCP: %s] connection established!\n", device->name.c_str());
+            connection->state = tcp_state_t::ESTABLISHED;
+            connection->snd_una = ack_num;
+        } else {
+            printf(DBG, "[INET - TCP: %s] invalid ACK number, expected %u got %u\n", device->name.c_str(), connection->snd_nxt, ack_num);
+        }
+        return;
+    }
 
-
-    if (flags & TCP_FLAG_ACK) {
-        printf(DBG, "[INET - TCP: %s] new ACK\n", device->name.c_str());
+    if (connection->state == tcp_state_t::ESTABLISHED) {
+        for (int i = 0; i < tcp_data_len; i++) {
+            printf(DBG, "%c", tcp_data[i]);
+        }
     }
 }
