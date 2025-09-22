@@ -2,8 +2,8 @@ from scapy.all import *
 from time import sleep
 
 # ====== CONFIG ======
-# iface = r"\Device\NPF_{467B5C6D-0FFE-4B63-AB44-96C26ECD9D69}"
-iface = r"\Device\NPF_{DA8915B7-4E0D-415D-98BE-8D7CF3757533}"
+iface = r"\Device\NPF_{467B5C6D-0FFE-4B63-AB44-96C26ECD9D69}"
+# iface = r"\Device\NPF_{DA8915B7-4E0D-415D-98BE-8D7CF3757533}"
 src_mac = "02:00:00:00:00:01"
 src_ip  = "10.0.2.1"
 src_port = 1234

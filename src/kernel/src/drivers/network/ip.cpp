@@ -37,26 +37,36 @@ void ip_receive(network_interface_device_t* p_device, uint8_t* p_packet, size_t 
     }
 }
 
+bool is_local_network(uint32_t target_ip, uint32_t our_ip, uint32_t subnet_mask) {
+    return (target_ip & subnet_mask) == (our_ip & subnet_mask);
+}
+
+uint32_t get_next_hop_ip(network_interface_device_t* device, uint32_t target_ip) {
+    return is_local_network(target_ip, device->ip4, device->subnet_mask) ? target_ip : device->gateway_ip;
+}
+
 void ip_send(network_interface_device_t* p_device, uint32_t dst_ip, uint8_t protocol, const uint8_t* p_payload, size_t payload_len) {
     const auto total_length = sizeof(ip_header_t) + (payload_len > 1500 ? 1500 : payload_len);
 
     ip_header_t ip {};
-    ip.version_ihl  = 0x45;
-    ip.tos  = 0;
+    ip.version_ihl = 0x45;
+    ip.tos = 0;
     ip.total_length = host_to_net<uint16_t>(total_length);
     ip.identification = 0;
     ip.flags_fragment = 0;
-    ip.ttl  = 64;
+    ip.ttl = 64;
     ip.protocol = protocol;
     ip.src_addr = htonl(p_device->ip4);
     ip.dst_addr = htonl(dst_ip);
     ip.header_checksum = 0;
     ip.header_checksum = ip_checksum(&ip, sizeof(ip));
 
+    uint32_t next_net_hop_ip = get_next_hop_ip(p_device, dst_ip);
+
     uint8_t dst_mac[6];
-    if (!arp_lookup(dst_ip, dst_mac)) {
-        printf(DBG, "[INET - IP: %s] arp lookup for %u.%u.%u.%u\n", p_device->name.c_str(), (dst_ip >> 24) & 0xff, (dst_ip >> 16) & 0xff, (dst_ip >> 8) & 0xff, (dst_ip) & 0xff);
-        arp_discover_request_ipv4(p_device, dst_ip);
+    if (!arp_lookup(next_net_hop_ip, dst_mac)) {
+        printf(DBG, "[INET - IP: %s] arp lookup for %u.%u.%u.%u\n", p_device->name.c_str(), (next_net_hop_ip >> 24) & 0xff, (next_net_hop_ip >> 16) & 0xff, (next_net_hop_ip >> 8) & 0xff, (next_net_hop_ip) & 0xff);
+        arp_discover_request_ipv4(p_device, next_net_hop_ip);
         return;
     }
 

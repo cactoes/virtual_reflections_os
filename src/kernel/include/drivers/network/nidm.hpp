@@ -21,6 +21,8 @@ struct network_interface_device_t {
 
     uint8_t mac[6];
     uint32_t ip4;
+    uint32_t gateway_ip;
+    uint32_t subnet_mask;
     
     void* device_data;
 

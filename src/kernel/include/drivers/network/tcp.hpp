@@ -65,6 +65,7 @@ struct tcp_connection_t {
     tcp_state_t state;
 };
 
+void tcp_connect(network_interface_device_t* device, uint32_t ip, uint32_t port);
 void tcp_send(network_interface_device_t* p_device, uint8_t* p_payload, size_t payload_length, uint8_t flags, tcp_connection_t* connection);
 void tcp_receive(network_interface_device_t* p_device, uint8_t* p_payload, size_t payload_length, uint32_t src_ip);
 
