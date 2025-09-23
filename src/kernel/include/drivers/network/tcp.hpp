@@ -8,21 +8,22 @@
 #ifndef __DRIVERS_NETWORK_TCP_HPP__
 #define __DRIVERS_NETWORK_TCP_HPP__
 
-#define TCP_FLAG_FIN    0x01
-#define TCP_FLAG_SYN    0x02
-#define TCP_FLAG_RST    0x04
-#define TCP_FLAG_PSH    0x08
-#define TCP_FLAG_ACK    0x10
-#define TCP_FLAG_URG    0x20
-#define TCP_FLAG_ECE    0x40
-#define TCP_FLAG_CWR    0x80
+#define TCP_FLAG_FIN    (1 << 0)
+#define TCP_FLAG_SYN    (1 << 1)
+#define TCP_FLAG_RST    (1 << 2)
+#define TCP_FLAG_PSH    (1 << 3)
+#define TCP_FLAG_ACK    (1 << 4)
+#define TCP_FLAG_URG    (1 << 5)
+#define TCP_FLAG_ECE    (1 << 6)
+#define TCP_FLAG_CWR    (1 << 7)
 
 #define TCP_DATA_OFFSET(hdr) ((hdr)->data_offset_reserved >> 4)
-#define TCP_SET_DATA_OFFSET(hdr, offset) \
-    ((hdr)->data_offset_reserved = ((offset) << 4) | ((hdr)->data_offset_reserved & 0x0F))
+#define TCP_SET_DATA_OFFSET(hdr, offset) ((hdr)->data_offset_reserved = ((offset) << 4) | ((hdr)->data_offset_reserved & 0x0F))
 
 #include "common.hpp"
 #include "drivers/network/nidm.hpp"
+
+typedef void(*tcp_connect_callback_t)(const uint8_t* data, size_t size);
 
 enum class tcp_state_t {
     CLOSED,
@@ -63,10 +64,12 @@ struct tcp_connection_t {
     uint32_t irs;
 
     tcp_state_t state;
+    tcp_connect_callback_t callback;
 };
 
-void tcp_connect(network_interface_device_t* device, uint32_t ip, uint32_t port);
-void tcp_send(network_interface_device_t* p_device, uint8_t* p_payload, size_t payload_length, uint8_t flags, tcp_connection_t* connection);
+tcp_connection_t* tcp_connect(network_interface_device_t* device, uint32_t ip, uint32_t port, tcp_connect_callback_t callback);
+tcp_connection_t* tcp_listen(network_interface_device_t* device, uint32_t port, tcp_connect_callback_t callback);
+bool tcp_send_packet(network_interface_device_t* p_device, uint8_t* p_payload, size_t payload_length, uint8_t flags, tcp_connection_t* connection);
 void tcp_receive(network_interface_device_t* p_device, uint8_t* p_payload, size_t payload_length, uint32_t src_ip);
 
 #endif // __DRIVERS_NETWORK_TCP_HPP__

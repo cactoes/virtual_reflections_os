@@ -105,6 +105,13 @@ void on_key_down(const ps2_key_state_t* p_state) {
     printf(DBG, "%c", ch);
 }
 
+void tcp_callback(const uint8_t* data, size_t size) {
+    for (size_t i = 0; i < size; i++)
+        printf(DBG, "%c", data[i]);
+
+    printf(DBG, "\n");
+}
+
 extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
     // validate multiboot
     if (!mb_has_valid_magic((multiboot_t*)p_multiboot_struct))
@@ -211,7 +218,6 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
     
     e1000_t e1000 {};
     const auto e1000_init_result = e1000_init_device(network_controller, &e1000);
-    printf(DBG, "e1000_init_result: %i\n", e1000_init_result);
     if (e1000_init_result == 0) {
         printf(DBG, "MAC: %uh:%uh:%uh:%uh:%uh:%uh\n", e1000.mac[0], e1000.mac[1], e1000.mac[2], e1000.mac[3], e1000.mac[4], e1000.mac[5]);
 
@@ -238,16 +244,27 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
         // }
 
         // tcp_connect(&e1000_nid, TO_IP(84, 107, 174, 113), 80);
-        uint8_t mac[6];
-        uint64_t frame = clock_get_time_since_boot() + 1000;
+        // uint8_t mac[6];
+        // uint64_t frame = clock_get_time_since_boot() + 1000;
 
-        while (!arp_lookup(TO_IP(192, 168, 178, 219), mac)) {
-            arp_discover_request_ipv4(&e1000_nid, TO_IP(192, 168, 178, 219));
-            while (frame > clock_get_time_since_boot()) {}
-            frame = clock_get_time_since_boot() + 1000;
-        }
+        // while (!arp_lookup(TO_IP(192, 168, 178, 219), mac)) {
+        //     arp_discover_request_ipv4(&e1000_nid, TO_IP(192, 168, 178, 219));
+        //     while (frame > clock_get_time_since_boot()) {}
+        //     frame = clock_get_time_since_boot() + 1000;
+        // }
 
-        tcp_connect(&e1000_nid, TO_IP(192, 168, 178, 219), 8090);
+        // auto connection = tcp_connect(&e1000_nid, TO_IP(192, 168, 178, 219), 8090);
+
+        // while (connection->state != tcp_state_t::ESTABLISHED);
+        
+        // const char* http_request = 
+        //     "GET / HTTP/1.1\r\n"
+        //     "Connection: close\r\n"
+        //     "User-Agent: virtual reflections e0\r\n"
+        //     "\r\n";
+        // printf(DBG, "[HTTP] Sending request:\n%s", http_request);
+        // tcp_send_packet(&e1000_nid, (uint8_t*)http_request, strlen(http_request), TCP_FLAG_ACK | TCP_FLAG_PSH, connection);
+        tcp_listen(&e1000_nid, 1234, tcp_callback);
     }
 
     virtual_file_system vfs {};

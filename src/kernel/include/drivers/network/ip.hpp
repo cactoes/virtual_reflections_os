@@ -29,7 +29,7 @@ struct ip_header_t {
 } PACKED;
 
 void ip_receive(network_interface_device_t* p_device, uint8_t* p_packet, size_t size);
-void ip_send(network_interface_device_t* p_device, uint32_t dst_ip, uint8_t protocol, const uint8_t* p_payload, size_t payload_len);
+bool ip_send(network_interface_device_t* p_device, uint32_t dst_ip, uint8_t protocol, const uint8_t* p_payload, size_t payload_len);
 uint16_t ip_checksum(void* p_data, size_t len);
 
 #endif // __DRIVERS_NETWORK_IP_HPP__

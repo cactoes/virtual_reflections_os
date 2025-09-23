@@ -12,5 +12,6 @@
 
 void seed_random(uint64_t seed);
 uint64_t random_number();
+uint64_t random_number(uint64_t min, uint64_t max);
 
 #endif // __RANDOM_HPP__

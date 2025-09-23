@@ -45,7 +45,7 @@ uint32_t get_next_hop_ip(network_interface_device_t* device, uint32_t target_ip)
     return is_local_network(target_ip, device->ip4, device->subnet_mask) ? target_ip : device->gateway_ip;
 }
 
-void ip_send(network_interface_device_t* p_device, uint32_t dst_ip, uint8_t protocol, const uint8_t* p_payload, size_t payload_len) {
+bool ip_send(network_interface_device_t* p_device, uint32_t dst_ip, uint8_t protocol, const uint8_t* p_payload, size_t payload_len) {
     const auto total_length = sizeof(ip_header_t) + (payload_len > 1500 ? 1500 : payload_len);
 
     ip_header_t ip {};
@@ -67,7 +67,7 @@ void ip_send(network_interface_device_t* p_device, uint32_t dst_ip, uint8_t prot
     if (!arp_lookup(next_net_hop_ip, dst_mac)) {
         printf(DBG, "[INET - IP: %s] arp lookup for %u.%u.%u.%u\n", p_device->name.c_str(), (next_net_hop_ip >> 24) & 0xff, (next_net_hop_ip >> 16) & 0xff, (next_net_hop_ip >> 8) & 0xff, (next_net_hop_ip) & 0xff);
         arp_discover_request_ipv4(p_device, next_net_hop_ip);
-        return;
+        return false;
     }
 
     struct {
@@ -79,6 +79,7 @@ void ip_send(network_interface_device_t* p_device, uint32_t dst_ip, uint8_t prot
     memcpy(ip_payload.payload, p_payload, payload_len > 1500 ? 1500 : payload_len);
 
     ethernet_send(p_device, dst_mac, ETHERNET_TYPE_IPV4, (uint8_t*)&ip_payload, total_length);
+    return true;
 }
 
 uint16_t ip_checksum(void* p_data, size_t len) {
