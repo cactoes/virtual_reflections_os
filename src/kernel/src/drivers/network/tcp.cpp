@@ -43,55 +43,38 @@ void tcp_connect(network_interface_device_t* device, uint32_t ip, uint32_t port)
 }
 
 uint16_t tcp_checksum(uint32_t src_ip, uint32_t dst_ip, const tcp_header_t* tcp_header, const uint8_t* payload, size_t payload_len, size_t total_tcp_len) {
-    // TCP checksum includes a "pseudo-header" with IP addresses
-    struct {
-        uint32_t src_ip;
-        uint32_t dst_ip;
-        uint8_t zero;
-        uint8_t protocol;
-        uint16_t tcp_length;
-    } PACKED pseudo_header;
-    
-    pseudo_header.src_ip = host_to_net(src_ip);
-    pseudo_header.dst_ip = host_to_net(dst_ip);
-    pseudo_header.zero = 0;
-    pseudo_header.protocol = IP_PROTOCOL_TCP;
-    pseudo_header.tcp_length = host_to_net<uint16_t>(total_tcp_len);
-    
     uint32_t sum = 0;
+    size_t total_len = sizeof(tcp_header_t) + payload_len;
     
-    // Pseudo-header checksum (byte-by-byte to avoid alignment issues)
-    const uint8_t* pseudo_bytes = (const uint8_t*)&pseudo_header;
-    for (size_t i = 0; i < sizeof(pseudo_header); i += 2) {
-        uint16_t word = (pseudo_bytes[i] << 8) + pseudo_bytes[i + 1];
+    // Pseudo header contribution  
+    sum += (src_ip >> 16) & 0xFFFF;
+    sum += src_ip & 0xFFFF;
+    sum += (dst_ip >> 16) & 0xFFFF;
+    sum += dst_ip & 0xFFFF;
+    sum += 6;  // Protocol
+    sum += total_len;
+    
+    // TCP header + payload - process byte by byte to avoid alignment issues
+    const uint8_t* data = (const uint8_t*)tcp_header;
+    size_t len = sizeof(tcp_header_t) + payload_len;
+    
+    // Process 16-bit words
+    for (size_t i = 0; i < len - 1; i += 2) {
+        uint16_t word = (data[i] << 8) + data[i + 1];  // Big endian
         sum += word;
     }
     
-    // TCP header checksum (byte-by-byte)
-    const uint8_t* tcp_bytes = (const uint8_t*)tcp_header;
-    for (size_t i = 0; i < sizeof(tcp_header_t); i += 2) {
-        uint16_t word = (tcp_bytes[i] << 8) + tcp_bytes[i + 1];
-        sum += word;
+    // Handle odd byte
+    if (len & 1) {
+        sum += data[len - 1] << 8;
     }
     
-    // Payload checksum (byte-by-byte)
-    for (size_t i = 0; i < payload_len; i += 2) {
-        uint16_t word;
-        if (i + 1 < payload_len) {
-            word = (payload[i] << 8) + payload[i + 1];
-        } else {
-            // Odd byte - pad with zero
-            word = payload[i] << 8;
-        }
-        sum += word;
-    }
-    
-    // Fold carry bits
+    // Fold carries
     while (sum >> 16) {
         sum = (sum & 0xFFFF) + (sum >> 16);
     }
     
-    return ~sum;
+    return htons(~sum);  // Return in network byte order
 }
 
 void tcp_send(network_interface_device_t* p_device, uint8_t* p_payload, size_t payload_length, uint8_t flags, tcp_connection_t* connection) {
@@ -189,6 +172,28 @@ void tcp_receive(network_interface_device_t* device, uint8_t* payload, size_t pa
             return;
         }
 
+        if (connection->state == tcp_state_t::SYN_SENT && (flags & TCP_FLAG_ACK)) {
+            if (ack_num == connection->snd_nxt) {
+                connection->state = tcp_state_t::ESTABLISHED;
+                connection->rcv_nxt = seq_num + 1;
+                connection->snd_una = ack_num;
+                tcp_send(device, nullptr, 0, TCP_FLAG_ACK, connection);
+
+                // NOW SEND HTTP REQUEST!
+                const char* http_request = 
+                    "GET / HTTP/1.1\r\n"
+                    "Host: 192.168.178.219:8090\r\n"
+                    "Connection: close\r\n"
+                    "User-Agent: MyOS/1.0\r\n"
+                    "\r\n";
+                
+                printf(DBG, "[HTTP] Sending request:\n%s", http_request);
+                tcp_send(device, (uint8_t*)http_request, strlen(http_request), TCP_FLAG_ACK | TCP_FLAG_PSH, connection);
+            }
+
+            return;
+        }
+
         connection->irs = seq_num;
         connection->rcv_nxt = seq_num + 1;
         connection->iss = 1000;
@@ -206,17 +211,6 @@ void tcp_receive(network_interface_device_t* device, uint8_t* payload, size_t pa
         return;
     }
 
-    if (connection->state == tcp_state_t::SYN_SENT && (flags & TCP_FLAG_SYN) && (flags & TCP_FLAG_ACK)) {
-        if (ack_num == connection->snd_nxt) {
-            connection->state = tcp_state_t::ESTABLISHED;
-            connection->rcv_nxt = seq_num + 1;
-            connection->snd_una = ack_num;
-            tcp_send(device, nullptr, 0, TCP_FLAG_ACK, connection);
-        }
-
-        return;
-    }
-
     if (connection->state == tcp_state_t::SYN_RECEIVED && (flags & TCP_FLAG_ACK)) {
         if (ack_num == connection->snd_nxt) {
             printf(DBG, "[INET - TCP: %s] connection established!\n", device->name.c_str());
@@ -229,14 +223,22 @@ void tcp_receive(network_interface_device_t* device, uint8_t* payload, size_t pa
     }
 
     if (connection->state == tcp_state_t::ESTABLISHED) {
-        for (int i = 0; i < tcp_data_len; i++) {
-            printf(DBG, "%c", tcp_data[i]);
+        if (tcp_data_len > 0) {
+            for (int i = 0; i < tcp_data_len; i++) {
+                printf(DBG, "%c", tcp_data[i]);
+            }
+    
+            connection->rcv_nxt += tcp_data_len;
+            tcp_send(device, nullptr, 0, TCP_FLAG_ACK, connection);
         }
 
         if (flags & TCP_FLAG_FIN) {
             connection->state = tcp_state_t::CLOSE_WAIT;
             connection->rcv_nxt++;
             tcp_send(device, nullptr, 0, TCP_FLAG_ACK, connection);
+
+            tcp_send(device, nullptr, 0, TCP_FLAG_FIN | TCP_FLAG_ACK, connection);
+            connection->state = tcp_state_t::LAST_ACK;
         }
 
         return;

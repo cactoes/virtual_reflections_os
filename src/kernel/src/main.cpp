@@ -228,16 +228,26 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
         e1000_nid.send_packet = e1000_nidm_send_packet;
         nidm_register_device(e1000_nid);
 
+        // uint8_t mac[6];
+        // uint64_t frame = clock_get_time_since_boot() + 1000;
+
+        // while (!arp_lookup(e1000_nid.gateway_ip, mac)) {
+        //     arp_discover_request_ipv4(&e1000_nid, e1000_nid.gateway_ip);
+        //     while (frame > clock_get_time_since_boot()) {}
+        //     frame = clock_get_time_since_boot() + 1000;
+        // }
+
+        // tcp_connect(&e1000_nid, TO_IP(84, 107, 174, 113), 80);
         uint8_t mac[6];
         uint64_t frame = clock_get_time_since_boot() + 1000;
 
-        while (!arp_lookup(e1000_nid.gateway_ip, mac)) {
-            arp_discover_request_ipv4(&e1000_nid, e1000_nid.gateway_ip);
+        while (!arp_lookup(TO_IP(192, 168, 178, 219), mac)) {
+            arp_discover_request_ipv4(&e1000_nid, TO_IP(192, 168, 178, 219));
             while (frame > clock_get_time_since_boot()) {}
             frame = clock_get_time_since_boot() + 1000;
         }
 
-        tcp_connect(&e1000_nid, TO_IP(84, 107, 174, 113), 80);
+        tcp_connect(&e1000_nid, TO_IP(192, 168, 178, 219), 8090);
     }
 
     virtual_file_system vfs {};
