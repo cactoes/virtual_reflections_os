@@ -42,26 +42,34 @@
 #define HEAP_START_SIZE 0x100000 * 32 // 32 mb
 #define PIT_TIMER_INTERVAL 1000 // times per second
 
+virtual_file_system* vfs_ptr = nullptr;
+
 enum print_mode_t {
     STD,
     DBG
 };
 
 void printf(print_mode_t mode, const char* p_str, ...) {
-    char buffer[256] = { 0 };
+    uint8_t buffer[256] = { 0 };
 
     va_list args;
     va_start(args, p_str);
-    size_t strlen = sprintf(buffer, (unsigned long int)sizeof(buffer), p_str, args);
+    size_t strlen = sprintf((char*)buffer, (unsigned long int)sizeof(buffer), p_str, args);
     va_end(args);
+
+    static file_descriptor_t dbg_out_stream_fd = FILE_DESCRIPTOR_INVALID;
+    if (dbg_out_stream_fd == FILE_DESCRIPTOR_INVALID && vfs_ptr)
+        dbg_out_stream_fd = vfs_ptr->open_file("/dev/dbg");
+
+    auto buffer_array = dynamic_array(buffer);
 
     switch (mode) {
         case DBG:
-            debug_puts(buffer);
+            vfs_ptr->write_file(dbg_out_stream_fd, &buffer_array);
             break;
         case STD:
         default:
-            vga_tm_puts(&g_vga_tm_buffer, buffer);
+            vga_tm_puts(&g_vga_tm_buffer, (char*)buffer);
             break;
     }
 }
@@ -151,6 +159,13 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
     ps2_mouse_init();
     pit_init(PIT_TIMER_INTERVAL);
     interrupt_init(gdt_get_kernel_code_selector());
+
+    virtual_file_system vfs {};
+    vfs_ptr = &vfs;
+    vfs.create_directory("/mnt");
+    vfs.create_directory("/dev");
+
+    vfs.mount("/dev/dbg", ptr::make_unique<vfs_dbg_stream>());
 
     if (ps2_port_test_device(ps2_device_type_t::KEYBOARD)) {
         printf(DBG, "[+] ps2/keyboard\n");
@@ -266,9 +281,6 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
         // tcp_send_packet(&e1000_nid, (uint8_t*)http_request, strlen(http_request), TCP_FLAG_ACK | TCP_FLAG_PSH, connection);
         tcp_listen(&e1000_nid, 1234, tcp_callback);
     }
-
-    virtual_file_system vfs {};
-    vfs.create_directory("/mnt");
 
     auto disk_storage = ptr::make_unique<vfs_disk_storage>(&mounted_iso9660_fs_instance);
     vfs.mount("/mnt/disk0", move(disk_storage));

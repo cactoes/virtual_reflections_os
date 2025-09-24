@@ -296,14 +296,12 @@ class dynamic_array {
 public:
     dynamic_array() = default;
 
-    template <typename... Args>
-    dynamic_array(Args&&... args) {
-        (insert_back(forward<Args>(args)), ...);
-    }
-
     dynamic_array(const T* p_arr, size_t arr_size) {
+        resize(arr_size);
+        size = arr_size;
+
         for (size_t i = 0; i < arr_size; ++i)
-            insert_back(p_arr[i]);
+            new (&data[i]) T(p_arr[i]);
     }
 
     template <size_t arr_size>

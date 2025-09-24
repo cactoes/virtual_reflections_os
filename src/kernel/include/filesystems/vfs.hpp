@@ -15,6 +15,7 @@
 #include "utils/mutex.hpp"
 #include "utils/vector.hpp"
 #include "utils/map.hpp"
+#include "utils/debug.hpp"
 
 #include "filesystems/filesystem.hpp"
 
@@ -131,6 +132,31 @@ public:
 
 private:
     filesystem_api_t* fs_api;
+    mutex_t mutex;
+};
+
+class vfs_dbg_stream : public vfs_storage_interface_t {
+public:
+    vfs_dbg_stream() {
+        debug_init();
+        mutex_init(&mutex);
+    }
+
+    bool read_file(const string& path, dynamic_array<uint8_t>* p_content) override {
+        return false;
+    }
+
+    bool write_file(const string& path, dynamic_array<uint8_t>* p_content) override {
+        for (char ch : *p_content)
+            debug_putc(ch);
+        return true;
+    }
+
+    bool create_directory(const string& path) override {
+        return false;
+    }
+
+private:
     mutex_t mutex;
 };
 
