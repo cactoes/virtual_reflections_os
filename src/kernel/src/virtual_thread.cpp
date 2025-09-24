@@ -164,10 +164,6 @@ void vthread_sleep(uint64_t time_ms) {
 }
 
 int vthread_wait_for_close(vthread_handle_t handle) {
-    while (true) {
-        if (auto current_thread_it = g_threads.get(g_current_thread->handle); current_thread_it == g_threads.end())
-            return 0;
-    }
-
+    while (g_threads.contains(handle));
     return 0;
 }

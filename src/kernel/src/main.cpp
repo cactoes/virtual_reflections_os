@@ -79,6 +79,26 @@ void printf(print_mode_t mode, const char* p_str, ...) {
 }
 
 int terminal() {
+    dynamic_array<char> current_input {};
+    printf(STD, "> ");
+
+
+    while (true) {
+        switch (char ch = wait_for_key()) {
+            case '\n':
+                printf(STD, "\n> ");
+                // TODO @since 24/09/2025 -- 16:55
+                // command handler
+                current_input.clear();
+                break;
+            default:
+                printf(STD, "%c", ch);
+                current_input.insert_back(ch);
+                break;
+        }
+    }
+
+
     return 0;
 }
 
@@ -285,7 +305,6 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
         vthread_wait_for_close(vth);
         printf(DBG, "terminal closed\n");
     }
-
 
     // we shoudn t reach this point since the kernel should never stop
     // incase we do just hang here so we dont break anything
