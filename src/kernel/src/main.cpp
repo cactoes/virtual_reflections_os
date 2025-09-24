@@ -6,6 +6,7 @@
 #include "drivers/vga.hpp"
 #include "drivers/pcie.hpp"
 #include "drivers/pit.hpp"
+#include "drivers/keyboard.hpp"
 #include "drivers/ps2/keyboard.hpp"
 #include "drivers/ps2/mouse.hpp"
 #include "drivers/ps2/ps2.hpp"
@@ -61,7 +62,10 @@ void printf(print_mode_t mode, const char* p_str, ...) {
     if (dbg_out_stream_fd == FILE_DESCRIPTOR_INVALID && vfs_ptr)
         dbg_out_stream_fd = vfs_ptr->open_file("/dev/dbg");
 
-    auto buffer_array = dynamic_array(buffer);
+    auto buffer_array = dynamic_array<uint8_t>();
+    buffer_array.resize(256);
+    for (size_t i = 0; i < strlen; i++)
+        buffer_array.insert_back(buffer[i]);
 
     switch (mode) {
         case DBG:
@@ -74,43 +78,8 @@ void printf(print_mode_t mode, const char* p_str, ...) {
     }
 }
 
-void on_key_down(const ps2_key_state_t* p_state) {
-    static char s_ascii_table[128] = {
-        0,  27, '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '-', '=', '\b',
-        '\t', 'q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p', '[', ']', '\n',
-        0, 'a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l', ';', '\'', '`', 0,
-        '\\', 'z', 'x', 'c', 'v', 'b', 'n', 'm', ',', '.', '/', 0, '*',
-        0, ' ', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, '7', '8', '9', '-',
-        '4', '5', '6', '+', '1', '2', '3', '0', '.'
-    };
-
-    static char s_ascii_table_upper[128] = {
-        0,  27, '!', '@', '#', '$', '%', '^', '&', '*', '(', ')', '_', '+', '\b',
-        '\t', 'Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P', '{', '}', '\n',
-        0, 'A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L', ':', '"', '~', 0,
-        '|', 'Z', 'X', 'C', 'V', 'B', 'N', 'M', '<', '>', '?', 0, '*',
-        0, ' ', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, '7', '8', '9', '-',
-        '4', '5', '6', '+', '1', '2', '3', '0', '.'
-    };
-
-    if (p_state->scan_code > 128 || !p_state->is_pressed)
-        return;
-
-    auto shift_key = ps2_keyboard_get_key_state(PS2_KEYBOARD_SC_LSHIFT);
-    auto caps_key = ps2_keyboard_get_key_state(PS2_KEYBOARD_SC_CAPS_LOCK);
-
-    char ch;
-
-    if (shift_key->is_pressed && !caps_key->is_pressed)
-        ch = s_ascii_table_upper[p_state->scan_code];
-    else if (shift_key->is_pressed && caps_key->is_pressed)
-        ch = s_ascii_table[p_state->scan_code];
-    else if (!shift_key->is_pressed && caps_key->is_pressed)
-        ch = s_ascii_table_upper[p_state->scan_code];
-    else
-        ch = s_ascii_table[p_state->scan_code];
-
-    printf(DBG, "%c", ch);
+int terminal() {
+    return 0;
 }
 
 void tcp_callback(const uint8_t* data, size_t size) {
@@ -300,19 +269,23 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
     // auto result = ((check_driver_function_t)check_driver_function)("e1000");
     // printf(DBG, "has e1000 driver: %s\n", result ? "true" : "false");
 
-    // ps2_keyboard_event_subscribe(on_key_down);
-    // ps2_mouse_event_subscribe(on_mouse);
-
     // kernel finished
-    printf(STD, "> SYSTEM READY\n");
+    // printf(STD, "> SYSTEM READY\n");
     printf(DBG, "Kernel finished initializing\n");
 
     // if (vthread_create(desktop_init) == VTHREAD_HANDLE_INVALID)
     //     printf(DBG, "failed to create desktop thread\n");
-
     // while (!is_desktop_ready());
-    
     // minesweeper_init();
+
+    vthread_handle_t vth = vthread_create(terminal);
+    if (vth == VTHREAD_HANDLE_INVALID) {
+        printf(DBG, "failed to start terminal");
+    } else {
+        vthread_wait_for_close(vth);
+        printf(DBG, "terminal closed\n");
+    }
+
 
     // we shoudn t reach this point since the kernel should never stop
     // incase we do just hang here so we dont break anything

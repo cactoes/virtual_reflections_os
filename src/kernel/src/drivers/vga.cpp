@@ -108,7 +108,7 @@ int vga_tm_clear_row(vga_buffer_t* p_buffer, uint32_t row) {
 int vga_tm_clear_buffer(vga_buffer_t* p_buffer) {
     for (uint32_t r = 0; r < p_buffer->size.height; r++)
         (void)vga_tm_clear_row(p_buffer, r);
-    
+
     return vga_tm_set_cursor(p_buffer, 0, 0);
 }
 

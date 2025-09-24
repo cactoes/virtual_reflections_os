@@ -17,9 +17,11 @@ static mutex_t g_mutex {};
 
 void vthread_entry_point(thread_entry_t p_thread_entry) {
     g_current_thread->vt_state = vthread_state_t::STARTING;
+    while (g_current_thread->vt_state == vthread_state_t::STARTING)
+        vthread_yield();
     g_current_thread->exit_code = p_thread_entry();
     g_current_thread->vt_state = vthread_state_t::STOPPING;
-    
+
     // catch & wait for deletion
     while (true);
 }
@@ -159,4 +161,13 @@ void vthread_sleep(uint64_t time_ms) {
     g_current_thread->sleep_until_ms = clock_get_time_since_boot() + time_ms;
     g_current_thread->vt_state = vthread_state_t::SLEEPING;
     vthread_yield();
+}
+
+int vthread_wait_for_close(vthread_handle_t handle) {
+    while (true) {
+        if (auto current_thread_it = g_threads.get(g_current_thread->handle); current_thread_it == g_threads.end())
+            return 0;
+    }
+
+    return 0;
 }

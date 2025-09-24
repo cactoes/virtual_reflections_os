@@ -14,7 +14,7 @@ enum class keyboard_selector_t {
 
 #include "common.hpp"
 
-char key_to_ascii();
+char key_to_ascii(uint32_t scan_code, bool shift, bool caps);
 char wait_for_key();
 
 #endif // __DRIVERS_KEYBOARD_HPP__
