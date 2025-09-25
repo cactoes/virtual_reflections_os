@@ -41,5 +41,6 @@ uint32_t ps2_keyboard_get_last_scancode();
 void ps2_keyboard_clear_last_scancode();
 void ps2_keyboard_event_subscribe(void(*p_handler)(const ps2_key_state_t*));
 const ps2_key_state_t* ps2_keyboard_get_key_state(uint32_t scan_code);
+bool ps2_keyboard_is_scan_code_extended(uint32_t scan_code);
 
 #endif // __DRIVERS_PS2_KEYBOARD_HPP__

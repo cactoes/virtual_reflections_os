@@ -78,26 +78,40 @@ void printf(print_mode_t mode, const char* p_str, ...) {
     }
 }
 
+void exec(const char* path, const char* args) {
+    printf(DBG, "executing: %s\n", path);
+}
+
 int terminal() {
     dynamic_array<char> current_input {};
     printf(STD, "> ");
 
-
     while (true) {
-        switch (char ch = wait_for_key()) {
-            case '\n':
+        switch (virtual_key_t vk = wait_for_key()) {
+            case VK_ENTER: {
                 printf(STD, "\n> ");
-                // TODO @since 24/09/2025 -- 16:55
-                // command handler
+                current_input.insert_back(0);
+
+                auto parts = str_split(current_input.get_data(), ' ');
+
+                exec(parts.get_at(0)->c_str(), "");
                 current_input.clear();
                 break;
+            }
+            case VK_BACKSPACE:
+                if (current_input.length() > 0) {
+                    printf(STD, "%c", '\b');
+                    current_input.delete_at(current_input.length() - 1);
+                }
+                break;
             default:
-                printf(STD, "%c", ch);
-                current_input.insert_back(ch);
+                if (char ch = vk_to_ascii(vk, holding_shift(), holding_caps())) {
+                    printf(STD, "%c", ch);
+                    current_input.insert_back(ch);
+                }
                 break;
         }
     }
-
 
     return 0;
 }
