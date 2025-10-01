@@ -5,10 +5,8 @@ A 64-bit custom made operating system, using grub as bootloader
 - [ ] shell
 - [ ] buffers / streams (lockable / mutex)
 - [ ] filesystem
-    - [x] ISO9660
-        - [x] read
     - [ ] fat32
-        - [x] read
+        - [ ] read
         - [ ] write
 
 ## Goal
@@ -17,13 +15,7 @@ Bootable desktop that can play a minesweeper game
 ## Setup build environment
 ### Windows host
 ```powershell
-PS> docker build . -t virtual_reflections_os_buildenv
-```
-
-### Usage
-When inside the build env. run the `build.sh` script to automatically `make clean && make build`.
-```bash
-$ ./build.sh
+PS> .\docker_install.ps1
 ```
 
 ## Setup windows TAP network
@@ -48,10 +40,18 @@ Start the QEMU environment with the required startup flags.
 PS> .\qemu_start.ps1
 ```
 
-## Diagram
+## Diagram (Out of Date)
 ![](docs/svg/kernel%20diagram.svg)
 
+## Contributing
+This project is not accepting contributions or pull requests.  
+It is public for reference and educational purposes only.
+
 ## Resources
+## General
+[OSDev - https://wiki.osdev.org/Expanded_Main_Page](https://wiki.osdev.org/Expanded_Main_Page) <br>
+[stackoverflow - https://stackoverflow.com](https://stackoverflow.com) <br>
+
 ### YouTube
 [Write Your Own 64-bit Operating System Kernel - https://www.youtube.com/watch?v=wz9CZBeXR6U](https://www.youtube.com/watch?v=wz9CZBeXR6U) <br>
 
@@ -63,17 +63,3 @@ PS> .\qemu_start.ps1
 [uefi-os - https://github.com/sansoune/uefi-os](https://github.com/sansoune/uefi-os)<br>
 [MmdOS - https://github.com/Rostamborn/MmdOS](https://github.com/Rostamborn/MmdOS)<br>
 [cavOS - https://github.com/malwarepad/cavOS](https://github.com/malwarepad/cavOS)<br>
-
-+-----------------------------------------+
-| harware layer (cpu) -> x86_64, ...      |
-| harware layer (other) -> SATA, VGA, ... |
-+-----------------------------------------+
-| kernel layer -> mm, interupts, ...      |
-+-----------------------------------------+
-| user layer -> webbrowser, ...           |
-+-----------------------------------------+
-
-[ what exe file is this ]
-[ known start of program ]
-[ syscalls ]
-[ sections: .code, .text, ... ]
