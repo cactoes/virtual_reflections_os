@@ -83,16 +83,22 @@ void exec(const char* path, const char* args) {
 }
 
 int terminal() {
+    static bool keep_running = true;
+
     dynamic_array<char> current_input {};
     printf(STD, "> ");
 
-    while (true) {
+    while (keep_running) {
         switch (virtual_key_t vk = wait_for_key()) {
             case VK_ENTER: {
                 printf(STD, "\n> ");
                 current_input.insert_back(0);
 
                 auto parts = str_split(current_input.get_data(), ' ');
+
+                if (*parts.get_at(0) == "exit") {
+                    keep_running = false;
+                }
 
                 exec(parts.get_at(0)->c_str(), "");
                 current_input.clear();
@@ -312,7 +318,7 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
     // while (!is_desktop_ready());
     // minesweeper_init();
 
-    vthread_handle_t vth = vthread_create(terminal);
+    vthread_handle_t vth = vthread_create(terminal, p_kpml4);
     if (vth == VTHREAD_HANDLE_INVALID) {
         printf(DBG, "failed to start terminal");
     } else {

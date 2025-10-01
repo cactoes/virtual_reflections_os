@@ -68,13 +68,14 @@ vthread_handle_t vthread_start_and_setup_main() {
     ptr::unique<vthread_t> p_vthread = ptr::make_unique<vthread_t>();
 
     p_vthread->handle = 0;
+    p_vthread->pml4 = get_pml4();
     ((tls_base_t*)p_vthread->tls)->handle = 0;
     g_current_thread = p_vthread.get();
 
     return vthread_add(move(p_vthread)) ? 0 : VTHREAD_HANDLE_INVALID;
 }
 
-vthread_handle_t vthread_create(thread_entry_t p_thread_entry) {
+vthread_handle_t vthread_create(thread_entry_t p_thread_entry, void* pml4) {
     mutex_lock_guard guard(&g_mutex);
 
     uint64_t* stack = (uint64_t*)heap_alloc(get_global_heap(), VTHREAD_STACK_SIZE);
@@ -106,6 +107,7 @@ vthread_handle_t vthread_create(thread_entry_t p_thread_entry) {
     p_vthread->stack = stack_top;
     p_vthread->handle = new_handle;
     p_vthread->vt_state = vthread_state_t::RUNNING;
+    p_vthread->pml4 = pml4;
     ((tls_base_t*)p_vthread->tls)->handle = new_handle;
 
     if (vthread_add(move(p_vthread)))
@@ -141,6 +143,7 @@ cpu_state_t* vthread_schedule(cpu_state_t* p_cpu_state) {
     } while (g_current_thread->vt_state != vthread_state_t::RUNNING);
 
     gdt_set_stack_pointer0(g_current_thread->stack);
+    set_pml4(g_current_thread->pml4);
 
     return (cpu_state_t*)g_current_thread->stack;
 }
