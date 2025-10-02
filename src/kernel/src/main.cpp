@@ -69,6 +69,11 @@ void printf(print_mode_t mode, const char* p_str, ...) {
 
     switch (mode) {
         case DBG:
+            // fallback
+            if (dbg_out_stream_fd == FILE_DESCRIPTOR_INVALID || !vfs_ptr) {
+                debug_puts((char*)buffer);
+                break;
+            }
             vfs_ptr->write_file(dbg_out_stream_fd, &buffer_array);
             break;
         case STD:
@@ -133,6 +138,15 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
     // validate multiboot
     if (!mb_has_valid_magic((multiboot_t*)p_multiboot_struct))
         kernel_fatal(KERNEL_FATAL_MULTIBOOT_MAGIC_VALIDATE, "multiboot magic was not valid");
+
+    // parse memory size
+    // size_t total_memory_size = 0;
+    // for (auto mm_entry = mb_get_first_entry((multiboot_t*)p_multiboot_struct); mm_entry; mm_entry = mb_get_next_entry((multiboot_t*)p_multiboot_struct, mm_entry)) {
+    //     // reserve physical pages for reserved memory
+    //     if (mm_entry->type == (uint32_t)memory_map_type_t::USABLE) {
+    //         total_memory_size += mm_entry->len;
+    //     }
+    // }
 
     // initialize the gdt / tss
     gdt_init();
@@ -317,6 +331,20 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
     //     printf(DBG, "failed to create desktop thread\n");
     // while (!is_desktop_ready());
     // minesweeper_init();
+
+    uint8_t* smbios_start = (uint8_t*)0x000F0000;
+    uint8_t* smbios_end = (uint8_t*)0x000FFFFF;
+    const char sig[] { '_', 'S', 'M', '_', };
+    uint8_t* smbios_struct = nullptr;
+
+    for (uint8_t* i = smbios_start; i < smbios_end; i += 16) {
+        if (memeq(i, sig, ARRAY_SIZE(sig))) {
+            smbios_struct = i;
+            break;
+        }
+    }
+
+    printf(DBG, "struct: %p\n", smbios_struct);
 
     vthread_handle_t vth = vthread_create(terminal, p_kpml4);
     if (vth == VTHREAD_HANDLE_INVALID) {

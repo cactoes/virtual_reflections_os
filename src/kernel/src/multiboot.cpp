@@ -23,8 +23,8 @@ memory_map_entry_t* mb_get_next_entry(multiboot_t* p_multiboot_struct, memory_ma
 
     const auto p_memory_map_entry = (memory_map_entry_t*)((uint64_t)p_prev + p_prev->size + sizeof(p_prev->size));
 
-    if ((uint64_t)p_memory_map_entry < (uint64_t)(mbi->mmap_addr + mbi->mmap_length))
+    if ((uint64_t)p_memory_map_entry < (uint64_t)((uint64_t)mbi->mmap_addr + mbi->mmap_length))
         return p_memory_map_entry;
-    
+
     return nullptr;
 }
