@@ -42,10 +42,11 @@ struct vthread_t {
     vthread_state_t vt_state;
     int exit_code;
     uint64_t sleep_until_ms;
+    void* pml4;
 };
 
 vthread_handle_t vthread_start_and_setup_main();
-vthread_handle_t vthread_create(thread_entry_t p_thread_entry);
+vthread_handle_t vthread_create(thread_entry_t p_thread_entry, void* pml4);
 cpu_state_t* vthread_handle_interrupt(cpu_state_t* p_cpu_state);
 cpu_state_t* vthread_schedule(cpu_state_t* p_cpu_state);
 void vthread_yield();
