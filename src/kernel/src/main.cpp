@@ -43,8 +43,6 @@
 #define HEAP_START_SIZE 0x100000 * 32 // 32 mb
 #define PIT_TIMER_INTERVAL 1000 // times per second
 
-// virtual_file_system* vfs_ptr = nullptr;
-
 enum print_mode_t {
     STD,
     DBG
@@ -58,23 +56,9 @@ void printf(print_mode_t mode, const char* p_str, ...) {
     size_t strlen = sprintf((char*)buffer, (unsigned long int)sizeof(buffer), p_str, args);
     va_end(args);
 
-    // static file_descriptor_t dbg_out_stream_fd = FILE_DESCRIPTOR_INVALID;
-    // if (dbg_out_stream_fd == FILE_DESCRIPTOR_INVALID && vfs_ptr)
-    //     dbg_out_stream_fd = vfs_ptr->open_file("/dev/dbg");
-
-    // auto buffer_array = dynamic_array<uint8_t>();
-    // buffer_array.resize(256);
-    // for (size_t i = 0; i < strlen; i++)
-    //     buffer_array.insert_back(buffer[i]);
-
     switch (mode) {
         case DBG:
-            // fallback
-            // if (dbg_out_stream_fd == FILE_DESCRIPTOR_INVALID || !vfs_ptr) {
-                debug_puts((char*)buffer);
-            //     break;
-            // }
-            // vfs_ptr->write_file(dbg_out_stream_fd, &buffer_array);
+            debug_puts((char*)buffer);
             break;
         case STD:
         default:
@@ -148,6 +132,20 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
     //     }
     // }
 
+    // uint8_t* smbios_start = (uint8_t*)0x000F0000;
+    // uint8_t* smbios_end = (uint8_t*)0x000FFFFF;
+    // const char sig[] { '_', 'S', 'M', '_', };
+    // uint8_t* smbios_struct = nullptr;
+
+    // for (uint8_t* i = smbios_start; i < smbios_end; i += 16) {
+    //     if (memeq(i, sig, ARRAY_SIZE(sig))) {
+    //         smbios_struct = i;
+    //         break;
+    //     }
+    // }
+
+    // printf(DBG, "struct: %p\n", smbios_struct);
+
     // initialize the gdt / tss
     gdt_init();
 
@@ -183,12 +181,11 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
     pit_init(PIT_TIMER_INTERVAL);
     interrupt_init(gdt_get_kernel_code_selector());
 
-    // virtual_file_system vfs {};
-    // vfs_ptr = &vfs;
-    // vfs.create_directory("/mnt");
-    // vfs.create_directory("/dev");
-
-    // vfs.mount("/dev/dbg", ptr::make_unique<vfs_dbg_stream>());
+    vfs_t vfs {};
+    vfs_init(&vfs);
+    set_global_vfs(&vfs);
+    vfs_create_directory(get_global_vfs(), "/mnt");
+    vfs_create_directory(get_global_vfs(), "/dev");
 
     if (ps2_port_test_device(ps2_device_type_t::KEYBOARD)) {
         printf(DBG, "[+] ps2/keyboard\n");
@@ -305,12 +302,12 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
         tcp_listen(&e1000_nid, 1234, tcp_callback);
     }
 
-    // auto disk_storage = ptr::make_unique<vfs_disk_storage>(&mounted_iso9660_fs_instance);
-    // vfs.mount("/mnt/disk0", move(disk_storage));
-    // vfs.create_file_cache("/mnt/disk0/INetDrivers.sys");
-    // vfs.create_file_cache("/mnt/disk0/.env");
-    // vfs.create_file_cache("/mnt/disk0/media/eva-title-0.bmp");
-    // vfs.create_file_cache("/mnt/disk0/media/eva-title-0.png");
+    auto disk_storage = ptr::make_unique<vfs_disk_storage_interface>(&mounted_iso9660_fs_instance);
+    vfs_mount(get_global_vfs(), "/mnt/disk0", move(disk_storage));
+    vfs_add_file_cache(get_global_vfs(), "/mnt/disk0/INetDrivers.sys");
+    vfs_add_file_cache(get_global_vfs(), "/mnt/disk0/.env");
+    vfs_add_file_cache(get_global_vfs(), "/mnt/disk0/media/eva-title-0.bmp");
+    vfs_add_file_cache(get_global_vfs(), "/mnt/disk0/media/eva-title-0.png");
 
     // dynamic_array<uint8_t> inet_driver_file {};
     // auto inet_driver_file_handle = vfs.open_file("/mnt/disk0/INetDrivers.sys");
@@ -331,27 +328,6 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
     //     printf(DBG, "failed to create desktop thread\n");
     // while (!is_desktop_ready());
     // minesweeper_init();
-
-    uint8_t* smbios_start = (uint8_t*)0x000F0000;
-    uint8_t* smbios_end = (uint8_t*)0x000FFFFF;
-    const char sig[] { '_', 'S', 'M', '_', };
-    uint8_t* smbios_struct = nullptr;
-
-    for (uint8_t* i = smbios_start; i < smbios_end; i += 16) {
-        if (memeq(i, sig, ARRAY_SIZE(sig))) {
-            smbios_struct = i;
-            break;
-        }
-    }
-
-    printf(DBG, "struct: %p\n", smbios_struct);
-
-    vfs_t vfs {};
-    vfs_init(&vfs);
-    set_global_vfs(&vfs);
-
-    const bool create_result = vfs_create_directory(get_global_vfs(), "/dev");
-    printf(DBG, "create_result: %i\n", create_result);
 
     vthread_handle_t vth = vthread_create(terminal, p_kpml4);
     if (vth == VTHREAD_HANDLE_INVALID) {
