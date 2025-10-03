@@ -139,56 +139,6 @@ bool vfs_write_file(vfs_t* vfs, file_descriptor_t fd, dynamic_array<uint8_t>* co
 bool vfs_write_file(vfs_t* vfs, file_descriptor_t fd, uint8_t* content, size_t size);
 bool vfs_mount(vfs_t* vfs, const string& path, ptr::unique<vfs_storage_interface_t> storage_interface);
 bool vfs_add_file_cache(vfs_t* vfs, const string& path);
-
-// class vfs_dbg_stream : public vfs_storage_interface_t {
-// public:
-//     vfs_dbg_stream() {
-//         debug_init();
-//         mutex_init(&mutex);
-//     }
-
-//     bool read_file(const string& path, dynamic_array<uint8_t>* p_content) override {
-//         return false;
-//     }
-
-//     bool write_file(const string& path, dynamic_array<uint8_t>* p_content) override {
-//         for (char ch : *p_content)
-//             debug_putc(ch);
-//         return true;
-//     }
-
-//     bool create_directory(const string& path) override {
-//         return false;
-//     }
-
-// private:
-//     mutex_t mutex;
-// };
-
-// class virtual_file_system {
-// public:
-//     dynamic_array<string> list_folder_entries(const string& path) {
-//         dynamic_array<string> dirs {};
-
-//         vfs_node_t* target = resolve_path(path);
-//         if (!target)
-//             return dirs;
-
-//         for (auto& child : target->children)
-//             dirs.insert_back(child->meta.name);
-
-//         return dirs;
-//     }
-
-//     const vfs_node_meta_t* get_meta(file_descriptor_t fd) {
-//         auto entry = open_files.get(fd);
-//         if (entry == open_files.end())
-//             return nullptr;
-
-//         return &resolve_path(entry->value)->meta;
-//     }
-
-// private:
-// };
+const vfs_node_meta_t* vfs_get_meta(vfs_t* vfs, file_descriptor_t fd, const string& path);
 
 #endif // __FILESYSTEMS_VFS_HPP__
