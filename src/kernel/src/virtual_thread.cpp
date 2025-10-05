@@ -170,3 +170,7 @@ int vthread_wait_for_close(vthread_handle_t handle) {
     while (g_threads.contains(handle));
     return 0;
 }
+
+size_t vthread_get_count() {
+    return g_threads.size();
+}

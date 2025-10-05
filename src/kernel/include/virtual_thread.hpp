@@ -53,5 +53,6 @@ void vthread_yield();
 tls_base_t* vthread_get_tls();
 void vthread_sleep(uint64_t time_ms);
 int vthread_wait_for_close(vthread_handle_t handle);
+size_t vthread_get_count();
 
 #endif // __VIRTUAL_THREAD_HPP__

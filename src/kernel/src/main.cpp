@@ -158,11 +158,19 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
     pit_init(PIT_TIMER_INTERVAL);
     interrupt_init(gdt_get_kernel_code_selector());
 
+    // initialize threading
+    if (vthread_start_and_setup_main() == VTHREAD_HANDLE_INVALID)
+        kernel_fatal(KERNEL_FATAL_VHREAD_INIT, "virtual threads failed to intialize");
+
+    pit_add_interrupt_function(vthread_handle_interrupt);
+
     vfs_t vfs {};
     vfs_init(&vfs);
     set_global_vfs(&vfs);
     vfs_create_directory(get_global_vfs(), "/mnt");
     vfs_create_directory(get_global_vfs(), "/dev");
+
+    // finished core startup
 
     if (ps2_port_test_device(ps2_device_type_t::KEYBOARD)) {
         printf(DBG, "[+] ps2/keyboard\n");
@@ -171,11 +179,6 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
     if (ps2_port_test_device(ps2_device_type_t::MOUSE)) {
         printf(DBG, "[+] ps2/mouse\n");
     }
-
-    if (vthread_start_and_setup_main() == VTHREAD_HANDLE_INVALID)
-        kernel_fatal(KERNEL_FATAL_VHREAD_INIT, "virtual threads failed to intialize");
-
-    pit_add_interrupt_function(vthread_handle_interrupt);
 
     linked_list<pci_device_t> pci_devices {};
     pci_enumerate_devices(&pci_devices);
@@ -301,18 +304,19 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
     // printf(STD, "> SYSTEM READY\n");
     printf(DBG, "Kernel finished initializing\n");
 
-    // if (vthread_create(desktop_init) == VTHREAD_HANDLE_INVALID)
-    //     printf(DBG, "failed to create desktop thread\n");
-    // while (!is_desktop_ready());
-    // minesweeper_init();
+    if (vthread_create(desktop_init, p_kpml4) == VTHREAD_HANDLE_INVALID)
+        printf(DBG, "failed to create desktop thread\n");
+    
+    while (!is_desktop_ready());
+    minesweeper_init();
 
-    vthread_handle_t vth = vthread_create(terminal, p_kpml4);
-    if (vth == VTHREAD_HANDLE_INVALID) {
-        printf(DBG, "failed to start terminal");
-    } else {
-        vthread_wait_for_close(vth);
-        printf(DBG, "terminal closed\n");
-    }
+    // vthread_handle_t vth = vthread_create(terminal, p_kpml4);
+    // if (vth == VTHREAD_HANDLE_INVALID) {
+    //     printf(DBG, "failed to start terminal");
+    // } else {
+    //     vthread_wait_for_close(vth);
+    //     printf(DBG, "terminal closed\n");
+    // }
 
     // we shoudn t reach this point since the kernel should never stop
     // incase we do just hang here so we dont break anything
