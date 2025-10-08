@@ -284,23 +284,10 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
 
     auto disk_storage = ptr::make_unique<vfs_disk_storage_interface>(&mounted_iso9660_fs_instance);
     vfs_mount(get_global_vfs(), "/mnt/disk0", move(disk_storage));
-    vfs_add_file_cache(get_global_vfs(), "/mnt/disk0/INetDrivers.sys");
-    vfs_add_file_cache(get_global_vfs(), "/mnt/disk0/.env");
-    vfs_add_file_cache(get_global_vfs(), "/mnt/disk0/media/eva-title-0.bmp");
-    vfs_add_file_cache(get_global_vfs(), "/mnt/disk0/media/eva-title-0.png");
 
     // dynamic_array<uint8_t> inet_driver_file {};
     // auto inet_driver_file_handle = vfs.open_file("/mnt/disk0/INetDrivers.sys");
     // vfs.read_file(inet_driver_file_handle, &inet_driver_file);
-    dynamic_array<uint8_t> inet_driver_file {};
-    auto inet_driver_file_handle = vfs_open_file(get_global_vfs(), "/mnt/disk0/.env");
-    vfs_read_file(get_global_vfs(), inet_driver_file_handle, &inet_driver_file);
-
-    for (const auto ch : inet_driver_file) {
-        printf(DBG, "%c", ch);
-    }
-
-    printf(DBG, "\n");
 
     // auto handle = driver_load("INetDrivers", inet_driver_file.get_data());
     // driver_start(handle);
@@ -313,19 +300,19 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
     // printf(STD, "> SYSTEM READY\n");
     printf(DBG, "Kernel finished initializing\n");
 
-    if (vthread_create(desktop_init, p_kpml4) == VTHREAD_HANDLE_INVALID)
-        printf(DBG, "failed to create desktop thread\n");
+    // if (vthread_create(desktop_init, p_kpml4) == VTHREAD_HANDLE_INVALID)
+    //     printf(DBG, "failed to create desktop thread\n");
     
-    while (!is_desktop_ready());
-    minesweeper_init();
+    // while (!is_desktop_ready());
+    // minesweeper_init();
 
-    // vthread_handle_t vth = vthread_create(terminal, p_kpml4);
-    // if (vth == VTHREAD_HANDLE_INVALID) {
-    //     printf(DBG, "failed to start terminal");
-    // } else {
-    //     vthread_wait_for_close(vth);
-    //     printf(DBG, "terminal closed\n");
-    // }
+    vthread_handle_t vth = vthread_create(terminal, p_kpml4);
+    if (vth == VTHREAD_HANDLE_INVALID) {
+        printf(DBG, "failed to start terminal");
+    } else {
+        vthread_wait_for_close(vth);
+        printf(DBG, "terminal closed\n");
+    }
 
     // we shoudn t reach this point since the kernel should never stop
     // incase we do just hang here so we dont break anything

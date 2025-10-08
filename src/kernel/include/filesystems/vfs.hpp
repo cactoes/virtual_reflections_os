@@ -21,6 +21,8 @@
 
 #define FILE_DESCRIPTOR_INVALID (int)-1
 
+struct vfs_node_t;
+
 typedef int file_descriptor_t;
 
 struct vfs_storage_interface_t {
@@ -30,6 +32,8 @@ struct vfs_storage_interface_t {
 
     virtual bool write_file(const string& path, dynamic_array<uint8_t>* content) = 0;
     virtual bool write_file(const string& path, uint8_t* content, size_t size) = 0;
+
+    virtual bool enumerate_directory(const string& path, dynamic_array<ptr::unique<vfs_node_t>>* out_array) = 0;
 
     virtual bool create_directory(const string& path) = 0;
 };
@@ -42,6 +46,10 @@ public:
 
     bool write_file(const string& path, dynamic_array<uint8_t>* content) override;
     bool write_file(const string& path, uint8_t* content, size_t size) override;
+
+    bool enumerate_directory(const string& path, dynamic_array<ptr::unique<vfs_node_t>>* out_array) {
+        return false;
+    }
 
     bool create_directory(const string& path) override;
 
@@ -58,6 +66,8 @@ public:
 
     bool write_file(const string& path, dynamic_array<uint8_t>* content) override;
     bool write_file(const string& path, uint8_t* content, size_t size) override;
+
+    bool enumerate_directory(const string& path, dynamic_array<ptr::unique<vfs_node_t>>* out_array) override;
 
     bool create_directory(const string& path) override;
 

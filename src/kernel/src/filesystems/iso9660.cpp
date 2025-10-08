@@ -5,11 +5,12 @@
 #include "utils/pointer.hpp"
 
 int iso9660_drive_init(storage_driver_api_t* p_storage_driver, iso9660_fs_data_t* p_iso_data) {
-    const size_t size = 2048;
+    const size_t size = SECTOR_SIZE;
     uint8_t data[size];
 
     p_iso_data->read = iso9660_fs_api_read;
     p_iso_data->write = nullptr;
+    p_iso_data->enumerate_directory = iso9660_fs_api_enumerate_directory;
 
     p_iso_data->p_storage_driver = p_storage_driver;
     if (p_storage_driver->read(p_storage_driver, 16, data, size))
@@ -103,8 +104,6 @@ void get_name(iso9660_dir_record_t* p_record, char* p_out, size_t out_size) {
 }
 
 ptr::unique<uint8_t> iso9660_read_from_disk(storage_driver_api_t* storage_driver, size_t sector_count, uint64_t lba, bool* error) {
-    constexpr auto SECTOR_SIZE = 2048;
-
     ptr::unique<uint8_t> data = ptr::unique<uint8_t>((uint8_t*)heap_alloc(get_global_heap(), sector_count * SECTOR_SIZE));
 
     *error = false;
@@ -129,7 +128,7 @@ bool iso9660_find_node(iso9660_fs_data_t* iso_data, uint64_t lba, uint64_t size,
     }
 
     // read target disk section
-    size_t num_sectors = (size + 2048 - 1) / 2048;
+    const size_t num_sectors = (size + SECTOR_SIZE - 1) / SECTOR_SIZE;
     bool error;
     ptr::unique<uint8_t> dir_data = iso9660_read_from_disk(iso_data->p_storage_driver, num_sectors, lba, &error);
     if (error)
@@ -149,7 +148,7 @@ bool iso9660_find_node(iso9660_fs_data_t* iso_data, uint64_t lba, uint64_t size,
 
         // avoid padding
         if (record->length == 0) {
-            offset = ((offset / 2048) + 1) * 2048;
+            offset = ((offset / SECTOR_SIZE) + 1) * SECTOR_SIZE;
             continue;
         }
 
@@ -197,23 +196,70 @@ int iso9660_read_file(iso9660_fs_data_t* p_iso_data, const char* p_path, void** 
     if (!iso9660_find_node(p_iso_data, p_iso_data->root.lba, p_iso_data->root.size, (char*)p_path, &node_data))
         return 1;
 
-    const uint64_t raw_size = align_up(node_data.size, 2048);
-    uint8_t* buff = (uint8_t*)GALLOC(raw_size);
-    if (!buff)
+    const uint64_t raw_size = align_up(node_data.size, SECTOR_SIZE);
+    const ptr::unique<uint8_t> buff = ptr::unique<uint8_t>((uint8_t*)heap_alloc(get_global_heap(), raw_size));
+    if (!buff.get())
         return 2;
 
-    p_iso_data->p_storage_driver->read(p_iso_data->p_storage_driver, node_data.lba, buff, raw_size);
+    p_iso_data->p_storage_driver->read(p_iso_data->p_storage_driver, node_data.lba, buff.get(), raw_size);
 
     *p_data = (void*)GALLOC(node_data.size);
-    *p_size = node_data.size;
-    
-    if (!*p_data) {
-        GFREE(buff);
+    if (!*p_data)
         return 3;
-    }
 
-    memcpy(*p_data, buff, node_data.size);
-    GFREE(buff);
+    *p_size = node_data.size;
+
+    memcpy(*p_data, buff.get(), node_data.size);
 
     return 0;
+}
+
+bool iso9660_enumerate_directory(iso9660_fs_data_t* iso_data, const char* path, dynamic_array<filesystem_node_t>* out_array) {
+    iso9660_node_data_t node_data {};
+    if (!iso9660_find_node(iso_data, iso_data->root.lba, iso_data->root.size, (char*)path, &node_data))
+        return false;
+
+    if (!node_data.is_directory)
+        return false;
+
+    const size_t num_sectors = (node_data.size + SECTOR_SIZE - 1) / SECTOR_SIZE;
+    bool error;
+    ptr::unique<uint8_t> dir_data = iso9660_read_from_disk(iso_data->p_storage_driver, num_sectors, node_data.lba, &error);
+    if (error)
+        return false;
+
+    size_t offset = 0;
+    while (offset < node_data.size) {
+        iso9660_dir_record_t* record = (iso9660_dir_record_t*)(dir_data.get() + offset);
+
+        // avoid padding
+        if (record->length == 0) {
+            offset = ((offset / SECTOR_SIZE) + 1) * SECTOR_SIZE;
+            continue;
+        }
+
+        if (record->length + offset > node_data.size)
+            break;
+
+        char name[256] = { 0 };
+        get_name(record, name, 256);
+        if ((record->name_len == 1 && (record->name[0] == 0 || record->name[0] == 1))) {
+            offset += record->length;
+            continue;
+        }
+
+        bool is_directory = (record->file_flags & 0x02) != 0;
+
+        filesystem_node_t node {
+            .name = name,
+            .is_directory = is_directory,
+            .filesize = is_directory ? 0 : record->data_length.le,
+        };
+
+        out_array->insert_back(node);
+
+        offset += record->length;
+    }
+
+    return true;
 }

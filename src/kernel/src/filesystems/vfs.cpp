@@ -74,6 +74,23 @@ bool vfs_disk_storage_interface::create_directory(const string& path) {
     return true;
 }
 
+bool vfs_disk_storage_interface::enumerate_directory(const string& path, dynamic_array<ptr::unique<vfs_node_t>>* out_array) {
+    dynamic_array<filesystem_node_t> nodes {};
+    if (!api->enumerate_directory(api, path.c_str(), &nodes))
+        return false;
+
+    out_array->resize(nodes.length());
+
+    for (const auto& node : nodes) {
+        auto vfs_node = ptr::make_unique<vfs_node_t>();
+        vfs_node->type = node.is_directory ? vfs_node_type_t::DIRECTORY : vfs_node_type_t::FILE;
+        vfs_node->meta.name = node.name;
+        out_array->insert_back(move(vfs_node));
+    }
+
+    return true;
+}
+
 void set_global_vfs(vfs_t* vfs) {
     global_vfs_instance = vfs;
 }
@@ -291,6 +308,25 @@ bool vfs_write_file(vfs_t* vfs, file_descriptor_t fd, uint8_t* content, size_t s
     return storage_interface->write_file(relative_path, content, size);
 }
 
+void vfs_enumerate_and_append_child_nodes(vfs_storage_interface_t* storage_interface, const string& path, vfs_node_t* parent_node) {
+    dynamic_array<ptr::unique<vfs_node_t>> directories {};
+    storage_interface->enumerate_directory(path, &directories);
+
+    for (auto& node : directories) {
+        node->parent = parent_node;
+        node->root_mount_point = parent_node->root_mount_point;
+        node->root_storage_interface = parent_node->root_mount_point;
+
+        if (node->type == vfs_node_type_t::DIRECTORY) {
+            vfs_enumerate_and_append_child_nodes(storage_interface, string(path) + "/" + node->meta.name, node.get());
+        }
+
+        // its OK to move it out of the array since the destructor checks if the ptr is valid
+        // it is sketchy tho ...
+        parent_node->children.insert_back(move(node));
+    }
+}
+
 bool vfs_mount(vfs_t* vfs, const string& path, ptr::unique<vfs_storage_interface_t> storage_interface) {
     for (const auto& mount : vfs->mount_points)
         if (mount->mount_point_path == path)
@@ -299,6 +335,8 @@ bool vfs_mount(vfs_t* vfs, const string& path, ptr::unique<vfs_storage_interface
     vfs_node_t* new_node = vfs_create_cache_directories(vfs, path);
     if (!new_node) // || new_node->root_storage_interface
         return false;
+
+    vfs_storage_interface_t* storage_interface_pointer = storage_interface.get();
 
     ptr::unique<vfs_mount_point_t> mp = ptr::make_unique<vfs_mount_point_t>();
     mp->mount_point_path = path;
@@ -313,8 +351,7 @@ bool vfs_mount(vfs_t* vfs, const string& path, ptr::unique<vfs_storage_interface
     new_node->meta.flags.is_mount_point = true;
     new_node->meta.flags.is_interface_root = true;
 
-    // TODO @since 03/10/2025 -- 03:21
-    // drive enumeration
+    vfs_enumerate_and_append_child_nodes(storage_interface_pointer, "", new_node);
 
     return true;
 }
