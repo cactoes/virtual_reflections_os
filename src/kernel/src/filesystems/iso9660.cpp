@@ -1,6 +1,8 @@
 #include "filesystems/iso9660.hpp"
 #include "memory/heap.hpp"
 #include "string.hpp"
+#include "utils/vector.hpp"
+#include "utils/pointer.hpp"
 
 int iso9660_drive_init(storage_driver_api_t* p_storage_driver, iso9660_fs_data_t* p_iso_data) {
     const size_t size = 2048;
@@ -100,75 +102,99 @@ void get_name(iso9660_dir_record_t* p_record, char* p_out, size_t out_size) {
     fmt_name(p_record->name, p_record->name_len, p_out);
 }
 
-bool recurse_loop_dir(iso9660_fs_data_t* p_iso_data, uint64_t lba, uint64_t size, char* p_path, iso9660_node_data_t* p_node_data) {
-    char* target = (char*)GALLOC(strlen(p_path) * sizeof(char));
-    memzero(target,  strlen(p_path));
+ptr::unique<uint8_t> iso9660_read_from_disk(storage_driver_api_t* storage_driver, size_t sector_count, uint64_t lba, bool* error) {
+    constexpr auto SECTOR_SIZE = 2048;
 
-    int index = strff(p_path + 1, '/');
-    if (index > 0) memcpy(target, p_path + 1, index);
-    else           memcpy(target, p_path + 1, strlen(p_path));
+    ptr::unique<uint8_t> data = ptr::unique<uint8_t>((uint8_t*)heap_alloc(get_global_heap(), sector_count * SECTOR_SIZE));
 
-    size_t num_sectors = (size + 2048 - 1) / 2048;
-    uint8_t* dir_data = (uint8_t*)GALLOC(num_sectors * 2048);
-
-    for (uint32_t i = 0; i < num_sectors; i++) {
-        size_t ss = 2048;
-        if (p_iso_data->p_storage_driver->read(p_iso_data->p_storage_driver, lba + i, dir_data + i * 2048, ss) != 0) {
-            heap_free(get_global_heap(), dir_data);
-            heap_free(get_global_heap(), target);
-            return false;
+    *error = false;
+    for (size_t i = 0; i < sector_count; i++) {
+        const int read_result = storage_driver->read(storage_driver, lba + i, data.get() + (i * SECTOR_SIZE), SECTOR_SIZE);
+        if (read_result != 0) {
+            *error = true;
+            break;
         }
     }
 
+    return data;
+}
+
+bool iso9660_find_node(iso9660_fs_data_t* iso_data, uint64_t lba, uint64_t size, const char* path, iso9660_node_data_t* node_data) {
+    // check for "root" path
+    if (path == nullptr || strlen(path) == 0) {
+        node_data->lba = lba;
+        node_data->size = size;
+        node_data->is_directory = true;
+        return true;
+    }
+
+    // read target disk section
+    size_t num_sectors = (size + 2048 - 1) / 2048;
+    bool error;
+    ptr::unique<uint8_t> dir_data = iso9660_read_from_disk(iso_data->p_storage_driver, num_sectors, lba, &error);
+    if (error)
+        return false;
+
+    // split string to get the next node to look for
+    dynamic_array<string> path_parts = str_split(path, '/');
+    if (path_parts.length() == 0)
+        return false;
+
+    string& target = *path_parts.get_at(0);
+
+    // find target section
     size_t offset = 0;
     while (offset < size) {
-        iso9660_dir_record_t* dir_record = reinterpret_cast<iso9660_dir_record_t*>(dir_data + offset);
-        if (dir_record->length == 0) {
+        iso9660_dir_record_t* record = (iso9660_dir_record_t*)(dir_data.get() + offset);
+
+        // avoid padding
+        if (record->length == 0) {
             offset = ((offset / 2048) + 1) * 2048;
             continue;
         }
-        
-        if (dir_record->length + offset > size)
+
+        if (record->length + offset > size)
             break;
 
-        char name[256] { 0 };
-        get_name(dir_record, name, 256);
-
-        bool is_directory = (dir_record->file_flags & 0x02) != 0;
-        bool is_target = streq(name, target);
-
-        if (is_target && !is_directory) {
-            p_node_data->lba = dir_record->extent_lba.le;
-            p_node_data->size = dir_record->data_length.le;
-            p_node_data->is_directory = false;
-            
-            GFREE(dir_data);
-            GFREE(target);
-            return true;
+        char name[256] = { 0 };
+        get_name(record, name, 256);
+        if ((record->name_len == 1 && (record->name[0] == 0 || record->name[0] == 1))) {
+            offset += record->length;
+            continue;
         }
 
-        if (is_target && is_directory &&
-            !(dir_record->name_len == 1 && (dir_record->name[0] == 0 || dir_record->name[0] == 1))) {
-            uint32_t child_extent_lba = dir_record->extent_lba.le;
-            uint32_t child_extent_size = dir_record->data_length.le;
+        if (target == name) {
+            bool is_directory = (record->file_flags & 0x02) != 0;
 
-            const auto result = recurse_loop_dir(p_iso_data, child_extent_lba, child_extent_size, &p_path[strlen(target) + 1], p_node_data);
-            GFREE(dir_data);
-            GFREE(target);
-            return result;
+            // found target node
+            if (!is_directory && (path_parts.length() == 1)) {
+                node_data->lba = record->extent_lba.le;
+                node_data->size = record->data_length.le;
+                node_data->is_directory = false;
+                return true;
+            }
+
+            // recurse, if the directory was the target the function will catch it at the beginning
+            if (is_directory) {
+                string remaining_path = "";
+                for (size_t i = 1; i < path_parts.length(); i++) {
+                    remaining_path += "/";
+                    remaining_path += *path_parts.get_at(i);
+                }
+
+                return iso9660_find_node(iso_data, record->extent_lba.le, record->data_length.le, remaining_path.c_str(), node_data);
+            }
         }
 
-        offset += dir_record->length;
+        offset += record->length;
     }
 
-    GFREE(dir_data);
-    GFREE(target);
     return false;
 }
 
 int iso9660_read_file(iso9660_fs_data_t* p_iso_data, const char* p_path, void** p_data, size_t* p_size) {
     iso9660_node_data_t node_data {};
-    if (!recurse_loop_dir(p_iso_data, p_iso_data->root.lba, p_iso_data->root.size, (char*)p_path, &node_data))
+    if (!iso9660_find_node(p_iso_data, p_iso_data->root.lba, p_iso_data->root.size, (char*)p_path, &node_data))
         return 1;
 
     const uint64_t raw_size = align_up(node_data.size, 2048);

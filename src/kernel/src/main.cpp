@@ -292,6 +292,15 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
     // dynamic_array<uint8_t> inet_driver_file {};
     // auto inet_driver_file_handle = vfs.open_file("/mnt/disk0/INetDrivers.sys");
     // vfs.read_file(inet_driver_file_handle, &inet_driver_file);
+    dynamic_array<uint8_t> inet_driver_file {};
+    auto inet_driver_file_handle = vfs_open_file(get_global_vfs(), "/mnt/disk0/.env");
+    vfs_read_file(get_global_vfs(), inet_driver_file_handle, &inet_driver_file);
+
+    for (const auto ch : inet_driver_file) {
+        printf(DBG, "%c", ch);
+    }
+
+    printf(DBG, "\n");
 
     // auto handle = driver_load("INetDrivers", inet_driver_file.get_data());
     // driver_start(handle);
