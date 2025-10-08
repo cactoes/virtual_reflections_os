@@ -13,6 +13,7 @@ $ENABLE_SERIAL_IO   = $true
 $ENABLE_VHD         = $true
 $ENABLE_ISO         = $true # required
 $ENABLE_NETWORKING  = $true
+$ENABLE_DEBUG       = $false # to force debug state
 
 # system specs
 $SYSTEM_MEMORY      = "4G"
@@ -59,7 +60,7 @@ if ($ENABLE_NETWORKING) {
     )
 }
 
-if ($mode -eq "debug") {
+if ($mode -eq "debug" -or $ENABLE_DEBUG) {
     $ARG_LIST += @(
         "-S",
         "-gdb", "tcp::1234",
