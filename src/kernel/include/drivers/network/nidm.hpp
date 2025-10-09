@@ -12,6 +12,7 @@
 
 #include "common.hpp"
 #include "utils/vector.hpp"
+#include "utils/map.hpp"
 #include "string.hpp"
 #include "utils/pointer.hpp"
 
@@ -58,12 +59,24 @@ struct network_interface_device_t {
 
 typedef void(*network_callback_t)(uint8_t* p_packet, size_t length);
 
-int nidm_packet_recieve(network_interface_device_t* p_device, const void* p_data, size_t size);
-int nidm_send_data(const string& name, const void* p_data, size_t size);
-int nidm_send_data(network_interface_device_t* p_device, const void* p_data, size_t size);
-void nidm_register_device(network_interface_device_t device);
-int nidm_udp_bind(uint64_t port, network_callback_t p_callback);
-int ndim_udp_send_to_handler(uint64_t port, uint8_t* p_packet, size_t length);
-network_interface_device_t* ndim_get_device(const string& name);
+struct nidm_t {
+    dynamic_array<network_interface_device_t> devices;
+    linear_map<uint16_t, network_callback_t> udp_callbacks;
+};
+
+void set_global_nidm(nidm_t* nidm);
+nidm_t* get_global_nidm();
+
+void nidm_init(nidm_t* nidm);
+void nidm_shutdown(nidm_t* nidm);
+
+int nidm_register_device(nidm_t* nidm, const network_interface_device_t& device);
+network_interface_device_t* nidm_get_device(nidm_t* nidm, const string& name);
+
+int nidm_packet_recieve(nidm_t* nidm, network_interface_device_t* p_device, const void* p_data, size_t size);
+int nidm_packet_send(nidm_t* nidm, network_interface_device_t* p_device, const void* p_data, size_t size);
+
+int nidm_udp_bind(nidm_t* nidm, uint16_t port, network_callback_t p_callback);
+int nidm_udp_dispatch(nidm_t* nidm, uint16_t port, uint8_t* p_packet, size_t length);
 
 #endif // __DRIVERS_NETWORK_NIDM_HPP__

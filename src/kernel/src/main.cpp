@@ -82,7 +82,7 @@ void exec(const char* path, const char* args) {
             break;
         }
         case hash_fnv1a_64("netstat"): {
-            auto device = ndim_get_device("eth0 (Intel e1000)");
+            auto device = nidm_get_device(get_global_nidm(), "eth0 (Intel e1000)");
             printf(STD, "%s:\n", device->name.c_str());
             printf(STD, "    mac:            %uh:%uh:%uh:%uh:%uh:%uh\n", device->mac[0], device->mac[1], device->mac[2], device->mac[3], device->mac[4], device->mac[5]);
             printf(STD, "    ipv4:           %u.%u.%u.%u\n", device->ipv4_3, device->ipv4_2, device->ipv4_1, device->ipv4_0);
@@ -208,6 +208,10 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
 
     keyboard_initialize();
 
+    nidm_t nidm {};
+    nidm_init(&nidm);
+    set_global_nidm(&nidm);
+
     linked_list<pci_device_t> pci_devices {};
     pci_enumerate_devices(&pci_devices);
 
@@ -239,24 +243,17 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
     // detect file system
     iso9660_fs_data_t mounted_iso9660_fs_instance {};
     iso9660_drive_init(&ide_devices[0], &mounted_iso9660_fs_instance);
+    
+    auto disk_storage = ptr::make_unique<vfs_disk_storage_interface>(&mounted_iso9660_fs_instance);
+    vfs_mount(get_global_vfs(), "/mnt/disk0", move(disk_storage));
 
     // ahci device
-    pci_class_info_t ahci_device_class_info {
-        .revision_id = (uint8_t)PCI_UNKNOWN,
-        .prog_if = (uint8_t)1,
-        .sub_class = (uint8_t)6,
-        .class_code = (uint8_t)1
-    };
+    pci_class_info_t ahci_device_class_info { .revision_id = (uint8_t)PCI_UNKNOWN, .prog_if = (uint8_t)1, .sub_class = (uint8_t)6, .class_code = (uint8_t)1 };
     const pci_device_t* ahci_controller = pci_find_device(&pci_devices, &ahci_device_class_info);
     // TODO @since 14/07/2025 -- 21:52
     
     // network device
-    pci_class_info_t network_device_class_info {
-        .revision_id = (uint8_t)PCI_UNKNOWN,
-        .prog_if = (uint8_t)PCI_UNKNOWN,
-        .sub_class = (uint8_t)0,
-        .class_code = (uint8_t)2
-    };
+    pci_class_info_t network_device_class_info { .revision_id = (uint8_t)PCI_UNKNOWN, .prog_if = (uint8_t)PCI_UNKNOWN, .sub_class = (uint8_t)0, .class_code = (uint8_t)2 };
     const pci_device_t* network_controller = pci_find_device(&pci_devices, &network_device_class_info);
     
     e1000_t e1000 {};
@@ -275,7 +272,7 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
         e1000_nid.subnet_mask = TO_IP(255, 255, 255, 0);
         memcpy(e1000_nid.mac, e1000.mac, sizeof(e1000_nid.mac));
         e1000_nid.send_packet = e1000_nidm_send_packet;
-        nidm_register_device(e1000_nid);
+        nidm_register_device(&nidm, e1000_nid);
 
         // uint8_t mac[6];
         // uint64_t frame = clock_get_time_since_boot() + 1000;
@@ -309,9 +306,6 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
         // tcp_send_packet(&e1000_nid, (uint8_t*)http_request, strlen(http_request), TCP_FLAG_ACK | TCP_FLAG_PSH, connection);
         tcp_listen(&e1000_nid, 1234, tcp_callback);
     }
-
-    auto disk_storage = ptr::make_unique<vfs_disk_storage_interface>(&mounted_iso9660_fs_instance);
-    vfs_mount(get_global_vfs(), "/mnt/disk0", move(disk_storage));
 
     // dynamic_array<uint8_t> inet_driver_file {};
     // auto inet_driver_file_handle = vfs.open_file("/mnt/disk0/INetDrivers.sys");

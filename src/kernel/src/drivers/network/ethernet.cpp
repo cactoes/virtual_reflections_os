@@ -21,7 +21,7 @@ void ethernet_send(network_interface_device_t* p_device, uint8_t p_dst_mac[6], u
     auto frame_packet = (uint8_t*)(frame + sizeof(ethernet_header_t));
     memcpy(frame_packet, p_packet, size);
 
-    UNUSED(nidm_send_data(p_device, frame, frame_size));
+    UNUSED(nidm_packet_send(get_global_nidm(), p_device, frame, frame_size));
 
     heap_free(get_global_heap(), frame);
 }

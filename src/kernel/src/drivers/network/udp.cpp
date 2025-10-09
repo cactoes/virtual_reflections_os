@@ -21,7 +21,7 @@ void udp_receive(network_interface_device_t* p_device, uint8_t* p_payload, size_
     uint8_t* udp_payload = p_payload + sizeof(udp_header_t);
     size_t udp_payload_length = payload_length - sizeof(udp_header_t);
 
-    ndim_udp_send_to_handler(dst_port, udp_payload, udp_payload_length);
+    nidm_udp_dispatch(get_global_nidm(), dst_port, udp_payload, udp_payload_length);
 }
 
 int udp_send(network_interface_device_t* p_device, uint32_t dst_ip, uint16_t src_port, uint16_t dst_port, const uint8_t* p_payload, size_t size) {

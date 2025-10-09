@@ -117,7 +117,7 @@ void e1000_recieve_packet(e1000_t* p_device) {
         
         // FIXME @since 26/08/2025 -- 01:05
         // "eth0" is hardcoded here
-        nidm_packet_recieve(ndim_get_device("eth0 (Intel e1000)"), packet, length);
+        nidm_packet_recieve(get_global_nidm(), nidm_get_device(get_global_nidm(), "eth0 (Intel e1000)"), packet, length);
         
         desc->status = 0;
         desc->length = 0;
