@@ -68,46 +68,72 @@ void printf(print_mode_t mode, const char* p_str, ...) {
 }
 
 void exec(const char* path, const char* args) {
-    printf(DBG, "executing: %s\n", path);
+    switch (hash_fnv1a_64(path)) {
+        case hash_fnv1a_64("memstat"): {
+            auto heap = get_global_heap();
+            size_t used_mem = 0;
+            for (size_t i = 0; i < heap->heap_block_array_size; i++) {
+                if (!heap->heap_block_array[i].free)
+                    used_mem += heap->heap_block_array[i].size;
+            }
+
+            printf(STD, "memory allocated:   %uB/%uB (%i%)\n", used_mem, heap->size, (int)(((double)used_mem / (double)heap->size) * 100));
+            printf(STD, "total available:    ?B\n");
+            break;
+        }
+        case hash_fnv1a_64("netstat"): {
+            auto device = ndim_get_device("eth0 (Intel e1000)");
+            printf(STD, "%s:\n", device->name.c_str());
+            printf(STD, "    mac:            %uh:%uh:%uh:%uh:%uh:%uh\n", device->mac[0], device->mac[1], device->mac[2], device->mac[3], device->mac[4], device->mac[5]);
+            printf(STD, "    ipv4:           %u.%u.%u.%u\n", device->ipv4_3, device->ipv4_2, device->ipv4_1, device->ipv4_0);
+            printf(STD, "    gateway:        %u.%u.%u.%u\n", device->gateway_ip_3, device->gateway_ip_2, device->gateway_ip_1, device->gateway_ip_0);
+            printf(STD, "    subnet mask:    %u.%u.%u.%u\n", device->subnet_mask_3, device->subnet_mask_2, device->subnet_mask_1, device->subnet_mask_0);
+            break;
+        }
+        default:
+            printf(STD, "command not found");
+            break;
+    }
+}
+
+dynamic_array<char> terminal_current_input {};
+bool keep_terminal_alive = true;
+
+void terminal_keydown_callback(virtual_key_t vk) {
+    switch (vk) {
+        case VK_ENTER: {
+            printf(STD, "\n");
+            terminal_current_input.insert_back(0);
+
+            auto parts = str_split(terminal_current_input.get_data(), ' ');
+
+            exec(parts.get_at(0)->c_str(), "");
+            terminal_current_input.clear();
+            printf(STD, "\n> ");
+            break;
+        }
+        case VK_BACKSPACE:
+            if (terminal_current_input.length() > 0) {
+                printf(STD, "%c", '\b');
+                terminal_current_input.delete_at(terminal_current_input.length() - 1);
+            }
+            break;
+        default:
+            if (char ch = vk_to_ascii(vk, holding_shift(), holding_caps())) {
+                printf(STD, "%c", ch);
+                terminal_current_input.insert_back(ch);
+            }
+            break;
+    }
 }
 
 int terminal() {
-    static bool keep_running = true;
-
-    dynamic_array<char> current_input {};
-    printf(STD, "> ");
-
-    while (keep_running) {
-        switch (virtual_key_t vk = wait_for_key()) {
-            case VK_ENTER: {
-                printf(STD, "\n> ");
-                current_input.insert_back(0);
-
-                auto parts = str_split(current_input.get_data(), ' ');
-
-                if (*parts.get_at(0) == "exit") {
-                    keep_running = false;
-                }
-
-                exec(parts.get_at(0)->c_str(), "");
-                current_input.clear();
-                break;
-            }
-            case VK_BACKSPACE:
-                if (current_input.length() > 0) {
-                    printf(STD, "%c", '\b');
-                    current_input.delete_at(current_input.length() - 1);
-                }
-                break;
-            default:
-                if (char ch = vk_to_ascii(vk, holding_shift(), holding_caps())) {
-                    printf(STD, "%c", ch);
-                    current_input.insert_back(ch);
-                }
-                break;
-        }
-    }
-
+    printf(STD, "VirtualReflectionsOS Interacive Terminal [v0.1:327]\n");
+    printf(STD, "System booted succesfully\n");
+    printf(STD, "Type 'help' for a list of commands.\n");
+    printf(STD, "\n> ");
+    subscribe_on_key_down(terminal_keydown_callback);
+    while (keep_terminal_alive) {}
     return 0;
 }
 
@@ -179,6 +205,8 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
     if (ps2_port_test_device(ps2_device_type_t::MOUSE)) {
         printf(DBG, "[+] ps2/mouse\n");
     }
+
+    keyboard_initialize();
 
     linked_list<pci_device_t> pci_devices {};
     pci_enumerate_devices(&pci_devices);

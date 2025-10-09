@@ -20,9 +20,36 @@ struct network_interface_device_t {
     bool is_up;
 
     uint8_t mac[6];
-    uint32_t ip4;
-    uint32_t gateway_ip;
-    uint32_t subnet_mask;
+    
+    union {
+        uint32_t ip4;
+        struct {
+            uint8_t ipv4_0;
+            uint8_t ipv4_1;
+            uint8_t ipv4_2;
+            uint8_t ipv4_3;
+        } PACKED;
+    };
+    
+    union {
+        uint32_t gateway_ip;
+        struct {
+            uint8_t gateway_ip_0;
+            uint8_t gateway_ip_1;
+            uint8_t gateway_ip_2;
+            uint8_t gateway_ip_3;
+        } PACKED;
+    };
+
+    union {
+        uint32_t subnet_mask;
+        struct {
+            uint8_t subnet_mask_0;
+            uint8_t subnet_mask_1;
+            uint8_t subnet_mask_2;
+            uint8_t subnet_mask_3;
+        } PACKED;
+    };
     
     void* device_data;
 

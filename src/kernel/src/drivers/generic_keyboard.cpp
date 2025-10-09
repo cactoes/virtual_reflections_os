@@ -1,39 +1,7 @@
 #include "drivers/keyboard.hpp"
 #include "drivers/ps2/keyboard.hpp"
 
-// char key_to_ascii(uint32_t scan_code, bool shift, bool caps) {
-//     static char ascii_table[128] = {
-//         0,  27, '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '-', '=', '\b',
-//         '\t', 'q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p', '[', ']', '\n',
-//         0, 'a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l', ';', '\'', '`', 0,
-//         '\\', 'z', 'x', 'c', 'v', 'b', 'n', 'm', ',', '.', '/', 0, '*',
-//         0, ' ', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, '7', '8', '9', '-',
-//         '4', '5', '6', '+', '1', '2', '3', '0', '.'
-//     };
-
-//     static char ascii_table_upper[128] = {
-//         0,  27, '!', '@', '#', '$', '%', '^', '&', '*', '(', ')', '_', '+', '\b',
-//         '\t', 'Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P', '{', '}', '\n',
-//         0, 'A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L', ':', '"', '~', 0,
-//         '|', 'Z', 'X', 'C', 'V', 'B', 'N', 'M', '<', '>', '?', 0, '*',
-//         0, ' ', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, '7', '8', '9', '-',
-//         '4', '5', '6', '+', '1', '2', '3', '0', '.'
-//     };
-
-//     if (scan_code > 128)
-//         return 0;
-
-//     if (shift && !caps)
-//         return ascii_table_upper[scan_code];
-
-//     if (shift && caps)
-//         return ascii_table[scan_code];
-
-//     if (!shift && caps)
-//         return ascii_table_upper[scan_code];
-
-//     return ascii_table[scan_code];
-// }
+static event_manager_t<virtual_key_t> keyboard_callbacks {};
 
 bool holding_shift() {
     return ps2_keyboard_get_key_state(PS2_KEYBOARD_SC_LSHIFT)->is_pressed || ps2_keyboard_get_key_state(PS2_KEYBOARD_SC_RSHIFT)->is_pressed;
@@ -192,6 +160,17 @@ char vk_to_ascii(virtual_key_t vk, bool shift, bool caps) {
     }
 }
 
+void ps2_callback(const ps2_key_state_t* state) {
+    if (state->scan_code == MAX_UINT32 || !state->is_pressed || state->is_escaped)
+        return;
+
+    keyboard_callbacks.fire_event(scan_to_virtual(state->scan_code, state->is_escaped));
+}
+
+void keyboard_initialize() {
+    ps2_keyboard_event_subscribe(ps2_callback);
+}
+
 virtual_key_t wait_for_key() {
     uint32_t scan_code = 0;
     virtual_key_t vk = VK_NONE;
@@ -207,4 +186,8 @@ virtual_key_t wait_for_key() {
 
     ps2_keyboard_clear_last_scancode();
     return vk;
+}
+
+void subscribe_on_key_down(void(*callback)(virtual_key_t vk)) {
+    keyboard_callbacks.subscribe(callback);
 }

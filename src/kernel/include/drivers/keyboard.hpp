@@ -1,12 +1,17 @@
 //==========================================
 /// @file       keyboard.hpp
 /// @brief      generalised keyboard i/o
+/// TODO        refactor keyboard_initialize, subscribe_on_key_down
+///             & the rest of this entire generic virtual keybaord driver
 //==========================================
 
 #pragma once
 
 #ifndef __DRIVERS_KEYBOARD_HPP__
 #define __DRIVERS_KEYBOARD_HPP__
+
+#include "common.hpp"
+#include "utils/event.hpp"
 
 enum virtual_key_t {
     VK_NONE = 0,
@@ -82,11 +87,13 @@ enum virtual_key_t {
     VK_NUMPAD_ENTER,
     VK_NUMPAD_PERIOD
 };
-#include "common.hpp"
+
+void keyboard_initialize();
 
 bool holding_shift();
 bool holding_caps();
 char vk_to_ascii(virtual_key_t vk, bool shift, bool caps);
 virtual_key_t wait_for_key();
+void subscribe_on_key_down(void(*callback)(virtual_key_t vk));
 
 #endif // __DRIVERS_KEYBOARD_HPP__
