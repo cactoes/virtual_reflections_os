@@ -153,6 +153,8 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
     gdt_init();
 
     // initialze vga text mode
+    // TODO @since 10/10/2025 -- 01:24
+    // vga (device) manager
     vga_tm_init_buffer(&g_vga_tm_buffer, (void*)VGA_TM_BUFFER_ADDR, VGA_TM_NUM_COLS, VGA_TM_NUM_ROWS);
     vga_tm_clear_buffer(&g_vga_tm_buffer);
 
@@ -211,6 +213,9 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
     nidm_t nidm {};
     nidm_init(&nidm);
     set_global_nidm(&nidm);
+
+    // TODO @since 10/10/2025 -- 01:23
+    // pci(e) device manager
 
     linked_list<pci_device_t> pci_devices {};
     pci_enumerate_devices(&pci_devices);
