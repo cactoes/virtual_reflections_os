@@ -24,6 +24,12 @@ virtual_key_t scan_to_virtual(uint32_t scan_code, bool escaped) {
             case 0x51: return VK_PAGE_DOWN;
             case 0x52: return VK_INSERT;
             case 0x53: return VK_DELETE;
+
+            case 0x1D: return VK_CTRL;
+            case 0x38: return VK_ALT;
+            case 0x35: return VK_NUMPAD_DIVIDE;
+            case 0x1C: return VK_NUMPAD_ENTER;
+
             default:   return VK_NONE;
         }
     }
@@ -79,6 +85,18 @@ virtual_key_t scan_to_virtual(uint32_t scan_code, bool escaped) {
         case 0x38: return VK_ALT;
         case 0x3A: return VK_CAPSLOCK;
 
+        case 0x0C: return VK_MINUS;
+        case 0x0D: return VK_EQUALS;
+        case 0x1A: return VK_LEFT_BRACKET;
+        case 0x1B: return VK_RIGHT_BRACKET; 
+        case 0x2B: return VK_BACKSLASH; 
+        case 0x27: return VK_SEMICOLON;
+        case 0x28: return VK_APOSTROPHE;
+        case 0x29: return VK_GRAVE; 
+        case 0x33: return VK_COMMA;
+        case 0x34: return VK_PERIOD;
+        case 0x35: return VK_SLASH;
+
         case 0x3B: return VK_F1;
         case 0x3C: return VK_F2;
         case 0x3D: return VK_F3;
@@ -91,6 +109,21 @@ virtual_key_t scan_to_virtual(uint32_t scan_code, bool escaped) {
         case 0x44: return VK_F10;
         case 0x57: return VK_F11;
         case 0x58: return VK_F12;
+
+        case 0x52: return VK_NUMPAD0;
+        case 0x4F: return VK_NUMPAD1;
+        case 0x50: return VK_NUMPAD2;
+        case 0x51: return VK_NUMPAD3;
+        case 0x4B: return VK_NUMPAD4;
+        case 0x4C: return VK_NUMPAD5;
+        case 0x4D: return VK_NUMPAD6;
+        case 0x47: return VK_NUMPAD7;
+        case 0x48: return VK_NUMPAD8;
+        case 0x49: return VK_NUMPAD9;
+        case 0x4A: return VK_NUMPAD_MINUS;
+        case 0x4E: return VK_NUMPAD_PLUS;
+        case 0x37: return VK_NUMPAD_MULTIPLY;
+        case 0x53: return VK_NUMPAD_PERIOD;
 
         default:   return VK_NONE;
     }
@@ -155,6 +188,23 @@ char vk_to_ascii(virtual_key_t vk, bool shift, bool caps) {
         case VK_TAB:     return '\t';
         case VK_BACKSPACE: return '\b';
         case VK_ESCAPE:  return 27;
+
+        case VK_NUMPAD0: return '0';
+        case VK_NUMPAD1: return '1';
+        case VK_NUMPAD2: return '2';
+        case VK_NUMPAD3: return '3';
+        case VK_NUMPAD4: return '4';
+        case VK_NUMPAD5: return '5';
+        case VK_NUMPAD6: return '6';
+        case VK_NUMPAD7: return '7';
+        case VK_NUMPAD8: return '8';
+        case VK_NUMPAD9: return '9';
+        case VK_NUMPAD_PLUS:      return '+';
+        case VK_NUMPAD_MINUS:     return '-';
+        case VK_NUMPAD_MULTIPLY:  return '*';
+        case VK_NUMPAD_DIVIDE:    return '/';
+        case VK_NUMPAD_PERIOD:    return '.';
+        case VK_NUMPAD_ENTER:     return '\n';
 
         default: return 0;
     }
