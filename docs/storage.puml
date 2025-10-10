@@ -1,0 +1,26 @@
+@startuml storage diagram
+title storage diagram
+
+interface storage_driver_interface_t {
+    virtual read(...) = 0;
+    virtual write(...) = 0;
+}
+
+interface filesystem_interface_t {
+    virtual read(...) = 0;
+    virtual write(...) = 0;
+    virtual enumerate_directory(...) = 0;
+}
+
+interface vfs_storage_interface_t {
+    virtual read_file(...) = 0
+    virtual write_file(...) = 0
+    virtual write_file(...) = 0
+    virtual enumerate_directory(...) = 0
+    virtual create_directory(...) = 0
+}
+
+vfs_storage_interface_t <-- filesystem_interface_t
+filesystem_interface_t <-- storage_driver_interface_t
+
+@enduml
