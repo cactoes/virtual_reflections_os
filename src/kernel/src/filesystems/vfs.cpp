@@ -375,7 +375,7 @@ bool vfs_add_file_cache(vfs_t* vfs, const string& path) {
     return true;
 }
 
-const vfs_node_meta_t* vfs_get_meta(vfs_t* vfs, file_descriptor_t fd, const string& path) {
+const vfs_node_meta_t* vfs_get_meta(vfs_t* vfs, file_descriptor_t fd) {
     auto it = vfs->open_files.get(fd);
     if (it == vfs->open_files.end())
         return nullptr;

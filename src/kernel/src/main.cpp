@@ -67,8 +67,8 @@ void printf(print_mode_t mode, const char* p_str, ...) {
     }
 }
 
-void exec(const char* path, const char* args) {
-    switch (hash_fnv1a_64(path)) {
+void exec(const string& path, const dynamic_array<string>& args) {
+    switch (hash_fnv1a_64(path.c_str())) {
         case hash_fnv1a_64("memstat"): {
             auto heap = get_global_heap();
             size_t used_mem = 0;
@@ -82,12 +82,13 @@ void exec(const char* path, const char* args) {
             break;
         }
         case hash_fnv1a_64("netstat"): {
-            auto device = nidm_get_device(get_global_nidm(), "eth0 (Intel e1000)");
-            printf(STD, "%s:\n", device->name.c_str());
-            printf(STD, "    mac:            %uh:%uh:%uh:%uh:%uh:%uh\n", device->mac[0], device->mac[1], device->mac[2], device->mac[3], device->mac[4], device->mac[5]);
-            printf(STD, "    ipv4:           %u.%u.%u.%u\n", device->ipv4_3, device->ipv4_2, device->ipv4_1, device->ipv4_0);
-            printf(STD, "    gateway:        %u.%u.%u.%u\n", device->gateway_ip_3, device->gateway_ip_2, device->gateway_ip_1, device->gateway_ip_0);
-            printf(STD, "    subnet mask:    %u.%u.%u.%u\n", device->subnet_mask_3, device->subnet_mask_2, device->subnet_mask_1, device->subnet_mask_0);
+            for (auto& device : get_global_nidm()->devices) {
+                printf(STD, "%s:\n", device.name.c_str());
+                printf(STD, "    mac:            %uh:%uh:%uh:%uh:%uh:%uh\n", device.mac[0], device.mac[1], device.mac[2], device.mac[3], device.mac[4], device.mac[5]);
+                printf(STD, "    ipv4:           %u.%u.%u.%u\n", device.ipv4_3, device.ipv4_2, device.ipv4_1, device.ipv4_0);
+                printf(STD, "    gateway:        %u.%u.%u.%u\n", device.gateway_ip_3, device.gateway_ip_2, device.gateway_ip_1, device.gateway_ip_0);
+                printf(STD, "    subnet mask:    %u.%u.%u.%u\n", device.subnet_mask_3, device.subnet_mask_2, device.subnet_mask_1, device.subnet_mask_0);
+            }
             break;
         }
         case hash_fnv1a_64("pcistat"): {
@@ -95,31 +96,56 @@ void exec(const char* path, const char* args) {
                 const char* cd = pci_get_class_description(&device);
                 printf(STD, "[%u:%u.%u] %s:\n", device.bus, device.device, device.function, cd);
                 printf(STD, "    Vendor ID: 0x%uh, Device ID: 0x%uh\n", device.vendor_device_id.vendor_id, device.vendor_device_id.device_id);
-
             }
             break;
         }
         case hash_fnv1a_64("ls"): {
             dynamic_array<vfs_node_t*> entries {};
-            bool result = vfs_list_directory(get_global_vfs(), args, &entries);
+            string arg_path = "";
+            if (args.length() >= 1)
+                arg_path = *args.get_at(0);
+
+            bool result = vfs_list_directory(get_global_vfs(), arg_path, &entries);
             if (!result) {
                 printf(STD, "directory not found");
                 break;
             }
 
             for (auto& dir : entries) {
-                string type = "unknown";
-                switch (dir->type) {
-                    case vfs_node_type_t::FILE:
-                        type = "file";
-                        break;
-                    case vfs_node_type_t::DIRECTORY:
-                        type = "directory";
-                        break;
-                }
-                printf(STD, "[%s] %s\n", type.c_str(), dir->meta.name.c_str());
+                printf(STD, "%s ", dir->meta.name.c_str());
             }
+            printf(STD, "\n");
             break;
+        }
+        case hash_fnv1a_64("cat"): {
+            // TODO @since 11/10/2025 -- 01:09
+            // check if is directory
+            dynamic_array<vfs_node_t*> entries {};
+            string arg_path = "";
+            if (args.length() >= 1)
+                arg_path = *args.get_at(0);
+
+            file_descriptor_t result = vfs_open_file(get_global_vfs(), arg_path);
+            if (result == FILE_DESCRIPTOR_INVALID) {
+                printf(STD, "file not found");
+                break;
+            }
+
+            dynamic_array<uint8_t> data {};
+            vfs_read_file(get_global_vfs(), result, &data);
+            for (auto& ch : data) {
+                printf(STD, "%c", ch);
+            }
+            printf(STD, "\n");
+            break;
+        }
+        case hash_fnv1a_64("help"): {
+            printf(STD, "memstat                        Memory info\n");
+            printf(STD, "netstat                        Network card info\n");
+            printf(STD, "pcistat                        PCI(e) info\n");
+            printf(STD, "ls                             Lists files and directories\n");
+            printf(STD, "cat                            Display file content\n");
+            printf(STD, "help                           Displays this help message\n");
         }
         default:
             printf(STD, "command not found");
@@ -137,10 +163,17 @@ void terminal_keydown_callback(virtual_key_t vk) {
             terminal_current_input.insert_back(0);
 
             auto parts = str_split(terminal_current_input.get_data(), ' ');
+            dynamic_array<string> args {};
+            args.resize(parts.length() - 1);
+            for (size_t i = 1; i < parts.length(); i++)
+                args.insert_back(*parts.get_at(i));
 
-            // TODO @since 10/10/2025 -- 21:37
-            // args
-            exec(parts.get_at(0)->c_str(), "");
+            if (parts.length() == 0) {
+                exec("", {});
+            } else {
+                exec(*parts.get_at(0), args);
+            }
+
             terminal_current_input.clear();
             printf(STD, "\n> ");
             break;
@@ -161,7 +194,7 @@ void terminal_keydown_callback(virtual_key_t vk) {
 }
 
 int terminal() {
-    printf(STD, "VirtualReflectionsOS Interacive Terminal [v0.1:327]\n");
+    printf(STD, "VirtualReflectionsOS Interacive Terminal [v0.1:334]\n");
     printf(STD, "System booted succesfully\n");
     printf(STD, "Type 'help' for a list of commands.\n");
     printf(STD, "\n> ");
@@ -287,15 +320,6 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
 
         vfs_mount(get_global_vfs(), disk_mount_name_buffer, move(disk_storage_interface));
     }
-
-    auto __handle = vfs_open_file(get_global_vfs(), "/mnt/disk0/.env");
-    dynamic_array<uint8_t> __data {};
-    vfs_read_file(get_global_vfs(), __handle, &__data);
-    for (const auto& ch : __data) {
-        printf(DBG, "%c", ch);
-    }
-
-    printf(DBG, "\n");
 
     // ahci device
     pci_class_info_t ahci_device_class_info { .revision_id = (uint8_t)PCI_UNKNOWN, .prog_if = (uint8_t)1, .sub_class = (uint8_t)6, .class_code = (uint8_t)1 };

@@ -149,7 +149,7 @@ bool vfs_write_file(vfs_t* vfs, file_descriptor_t fd, dynamic_array<uint8_t>* co
 bool vfs_write_file(vfs_t* vfs, file_descriptor_t fd, uint8_t* content, size_t size);
 bool vfs_mount(vfs_t* vfs, const string& path, ptr::unique<vfs_storage_interface_t> storage_interface);
 bool vfs_add_file_cache(vfs_t* vfs, const string& path);
-const vfs_node_meta_t* vfs_get_meta(vfs_t* vfs, file_descriptor_t fd, const string& path);
+const vfs_node_meta_t* vfs_get_meta(vfs_t* vfs, file_descriptor_t fd);
 bool vfs_list_directory(vfs_t* vfs, const string& path, dynamic_array<vfs_node_t*>* out_array);
 
 #endif // __FILESYSTEMS_VFS_HPP__
