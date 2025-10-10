@@ -49,15 +49,15 @@ bool vfs_memory_storage_interface::create_directory(const string& path) {
     return true;
 }
 
-vfs_disk_storage_interface::vfs_disk_storage_interface(filesystem_api_t* api) {
+vfs_disk_storage_interface::vfs_disk_storage_interface(ptr::unique<filesystem_interface_t> api) {
     mutex_init(&mutex);
-    this->api = api;
+    this->api = move(api);
 }
 
 bool vfs_disk_storage_interface::read_file(const string& path, dynamic_array<uint8_t>* content) {
     void* data;
     size_t size;
-    api->read(api, path.c_str(), &data, &size);
+    api->read(path.c_str(), &data, &size);
     content->assign((uint8_t*)data, size / sizeof(uint8_t));
     return true;
 }
@@ -67,7 +67,7 @@ bool vfs_disk_storage_interface::write_file(const string& path, dynamic_array<ui
 }
 
 bool vfs_disk_storage_interface::write_file(const string& path, uint8_t* content, size_t size) {
-    return api->write(api, path.c_str(), content, &size) == 0;
+    return api->write(path.c_str(), content, &size) == 0;
 }
 
 bool vfs_disk_storage_interface::create_directory(const string& path) {
@@ -76,7 +76,7 @@ bool vfs_disk_storage_interface::create_directory(const string& path) {
 
 bool vfs_disk_storage_interface::enumerate_directory(const string& path, dynamic_array<ptr::unique<vfs_node_t>>* out_array) {
     dynamic_array<filesystem_node_t> nodes {};
-    if (!api->enumerate_directory(api, path.c_str(), &nodes))
+    if (!api->enumerate_directory(path.c_str(), &nodes))
         return false;
 
     out_array->resize(nodes.length());
@@ -381,4 +381,16 @@ const vfs_node_meta_t* vfs_get_meta(vfs_t* vfs, file_descriptor_t fd, const stri
         return nullptr;
 
     return &vfs_resolve_path(vfs, it->value)->meta;
+}
+
+bool vfs_list_directory(vfs_t* vfs, const string& path, dynamic_array<vfs_node_t*>* out_array) {
+    vfs_node_t* root_node = vfs_resolve_path(vfs, path);
+    if (!root_node)
+        return false;
+
+    out_array->resize(root_node->children.length());
+    for (auto& child : root_node->children)
+        out_array->insert_back(child.get());
+
+    return true;
 }

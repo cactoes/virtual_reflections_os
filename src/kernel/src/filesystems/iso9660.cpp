@@ -4,37 +4,6 @@
 #include "utils/vector.hpp"
 #include "utils/pointer.hpp"
 
-int iso9660_drive_init(storage_driver_api_t* p_storage_driver, iso9660_fs_data_t* p_iso_data) {
-    const size_t size = SECTOR_SIZE;
-    uint8_t data[size];
-
-    p_iso_data->read = iso9660_fs_api_read;
-    p_iso_data->write = nullptr;
-    p_iso_data->enumerate_directory = iso9660_fs_api_enumerate_directory;
-
-    p_iso_data->p_storage_driver = p_storage_driver;
-    if (p_storage_driver->read(p_storage_driver, 16, data, size))
-        return 1;
-
-    iso9660_volume_descriptor_t* desc = (iso9660_volume_descriptor_t*)data;
-    if (desc->type != iso9660_volume_type_t::PRIMARY_VOLUME_DESCRIPTOR)
-        return 2;
-
-    memcpy(&p_iso_data->pvd, desc, sizeof(iso9660_volume_descriptor_t));
-    iso9660_volume_primary_volume_descriptor_t* pvd = (iso9660_volume_primary_volume_descriptor_t*)desc;
-
-    p_iso_data->block_size = pvd->logical_block_size.le;
-    p_iso_data->volume_size = pvd->volume_space_size.le * pvd->logical_block_size.le;
-
-    iso9660_dir_record_t* root = (iso9660_dir_record_t*)(pvd->directory_entry_root);
-
-    p_iso_data->root.is_directory = true;
-    p_iso_data->root.lba = root->extent_lba.le;
-    p_iso_data->root.size = root->data_length.le;
-
-    return 0;
-}
-
 void fmt_name(const char* p_name, uint8_t len, char* p_buffer) {
     if(len == 1 && (p_name[0] == 0 || p_name[0] == 1)) {
         if (p_name[0] == 0) {
@@ -103,13 +72,13 @@ void get_name(iso9660_dir_record_t* p_record, char* p_out, size_t out_size) {
     fmt_name(p_record->name, p_record->name_len, p_out);
 }
 
-ptr::unique<uint8_t> iso9660_read_from_disk(storage_driver_api_t* storage_driver, size_t sector_count, uint64_t lba, bool* error) {
+ptr::unique<uint8_t> iso9660_read_from_disk(storage_driver_interface_t* storage_interface, size_t sector_count, uint64_t lba, bool* error) {
     ptr::unique<uint8_t> data = ptr::unique<uint8_t>((uint8_t*)heap_alloc(get_global_heap(), sector_count * SECTOR_SIZE));
 
     *error = false;
     for (size_t i = 0; i < sector_count; i++) {
-        const int read_result = storage_driver->read(storage_driver, lba + i, data.get() + (i * SECTOR_SIZE), SECTOR_SIZE);
-        if (read_result != 0) {
+        const int read_result = storage_interface->read(lba + i, data.get() + (i * SECTOR_SIZE), SECTOR_SIZE);
+        if (!read_result) {
             *error = true;
             break;
         }
@@ -118,7 +87,7 @@ ptr::unique<uint8_t> iso9660_read_from_disk(storage_driver_api_t* storage_driver
     return data;
 }
 
-bool iso9660_find_node(iso9660_fs_data_t* iso_data, uint64_t lba, uint64_t size, const char* path, iso9660_node_data_t* node_data) {
+bool iso9660_find_node(storage_driver_interface_t* storage_interface, iso9660_data_t* iso_data, uint64_t lba, uint64_t size, const char* path, iso9660_node_data_t* node_data) {
     // check for "root" path
     if (path == nullptr || strlen(path) == 0) {
         node_data->lba = lba;
@@ -130,7 +99,7 @@ bool iso9660_find_node(iso9660_fs_data_t* iso_data, uint64_t lba, uint64_t size,
     // read target disk section
     const size_t num_sectors = (size + SECTOR_SIZE - 1) / SECTOR_SIZE;
     bool error;
-    ptr::unique<uint8_t> dir_data = iso9660_read_from_disk(iso_data->p_storage_driver, num_sectors, lba, &error);
+    ptr::unique<uint8_t> dir_data = iso9660_read_from_disk(storage_interface, num_sectors, lba, &error);
     if (error)
         return false;
 
@@ -181,7 +150,7 @@ bool iso9660_find_node(iso9660_fs_data_t* iso_data, uint64_t lba, uint64_t size,
                     remaining_path += *path_parts.get_at(i);
                 }
 
-                return iso9660_find_node(iso_data, record->extent_lba.le, record->data_length.le, remaining_path.c_str(), node_data);
+                return iso9660_find_node(storage_interface, iso_data, record->extent_lba.le, record->data_length.le, remaining_path.c_str(), node_data);
             }
         }
 
@@ -191,32 +160,41 @@ bool iso9660_find_node(iso9660_fs_data_t* iso_data, uint64_t lba, uint64_t size,
     return false;
 }
 
-int iso9660_read_file(iso9660_fs_data_t* p_iso_data, const char* p_path, void** p_data, size_t* p_size) {
+iso9660_filesystem_interface::iso9660_filesystem_interface(ptr::unique<storage_driver_interface_t> storage_interface, const iso9660_data_t& data) {
+    this->data = data;
+    this->storage_interface = move(storage_interface);
+}
+
+bool iso9660_filesystem_interface::read(const char* path, void** data, size_t* size) {
     iso9660_node_data_t node_data {};
-    if (!iso9660_find_node(p_iso_data, p_iso_data->root.lba, p_iso_data->root.size, (char*)p_path, &node_data))
-        return 1;
+    if (!iso9660_find_node(storage_interface.get(), &this->data, this->data.root.lba, this->data.root.size, (char*)path, &node_data))
+        return false;
 
     const uint64_t raw_size = align_up(node_data.size, SECTOR_SIZE);
     const ptr::unique<uint8_t> buff = ptr::unique<uint8_t>((uint8_t*)heap_alloc(get_global_heap(), raw_size));
     if (!buff.get())
-        return 2;
+        return false;
 
-    p_iso_data->p_storage_driver->read(p_iso_data->p_storage_driver, node_data.lba, buff.get(), raw_size);
+    storage_interface->read(node_data.lba, buff.get(), raw_size);
 
-    *p_data = (void*)GALLOC(node_data.size);
-    if (!*p_data)
-        return 3;
+    *data = (void*)GALLOC(node_data.size);
+    if (!*data)
+        return false;
 
-    *p_size = node_data.size;
+    *size = node_data.size;
 
-    memcpy(*p_data, buff.get(), node_data.size);
+    memcpy(*data, buff.get(), node_data.size);
 
-    return 0;
+    return true;
 }
 
-bool iso9660_enumerate_directory(iso9660_fs_data_t* iso_data, const char* path, dynamic_array<filesystem_node_t>* out_array) {
+bool iso9660_filesystem_interface::write(const char* path, void* data, size_t* size) {
+    return false;
+}
+
+bool iso9660_filesystem_interface::enumerate_directory(const char* path, dynamic_array<filesystem_node_t>* out_array) {
     iso9660_node_data_t node_data {};
-    if (!iso9660_find_node(iso_data, iso_data->root.lba, iso_data->root.size, (char*)path, &node_data))
+    if (!iso9660_find_node(storage_interface.get(), &this->data, this->data.root.lba, this->data.root.size, (char*)path, &node_data))
         return false;
 
     if (!node_data.is_directory)
@@ -224,7 +202,7 @@ bool iso9660_enumerate_directory(iso9660_fs_data_t* iso_data, const char* path, 
 
     const size_t num_sectors = (node_data.size + SECTOR_SIZE - 1) / SECTOR_SIZE;
     bool error;
-    ptr::unique<uint8_t> dir_data = iso9660_read_from_disk(iso_data->p_storage_driver, num_sectors, node_data.lba, &error);
+    ptr::unique<uint8_t> dir_data = iso9660_read_from_disk(storage_interface.get(), num_sectors, node_data.lba, &error);
     if (error)
         return false;
 
@@ -262,4 +240,30 @@ bool iso9660_enumerate_directory(iso9660_fs_data_t* iso_data, const char* path, 
     }
 
     return true;
+}
+
+int iso9660_init(storage_driver_interface_t* storage_interface, iso9660_data_t* fs_data) {
+    const size_t size = SECTOR_SIZE;
+    uint8_t data[size];
+
+    if (!storage_interface->read(16, data, size))
+        return 1;
+
+    iso9660_volume_descriptor_t* desc = (iso9660_volume_descriptor_t*)data;
+    if (desc->type != iso9660_volume_type_t::PRIMARY_VOLUME_DESCRIPTOR)
+        return 2;
+
+    memcpy(&fs_data->pvd, desc, sizeof(iso9660_volume_descriptor_t));
+    iso9660_volume_primary_volume_descriptor_t* pvd = (iso9660_volume_primary_volume_descriptor_t*)desc;
+
+    fs_data->block_size = pvd->logical_block_size.le;
+    fs_data->volume_size = pvd->volume_space_size.le * pvd->logical_block_size.le;
+
+    iso9660_dir_record_t* root = (iso9660_dir_record_t*)(pvd->directory_entry_root);
+
+    fs_data->root.is_directory = true;
+    fs_data->root.lba = root->extent_lba.le;
+    fs_data->root.size = root->data_length.le;
+
+    return 0;
 }

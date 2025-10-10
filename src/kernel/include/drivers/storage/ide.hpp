@@ -64,7 +64,7 @@ struct ide_channel_t {
     ide_channel_name_t channel_name;
 };
 
-struct ide_device_t : storage_driver_api_t {
+struct ide_device_t {
     bool is_atapi;
     ide_channel_name_t channel_name;
     ide_drive_type_t type;
@@ -81,35 +81,22 @@ struct ide_device_t : storage_driver_api_t {
     uint64_t physical_sector_size;
 };
 
+class ide_storage_driver_t : public storage_driver_interface_t {
+public:
+    ide_storage_driver_t(ide_device_t* device);
+
+    bool read(uint32_t lba, uint8_t* buffer, size_t size) override;
+    bool write(uint32_t lba, uint8_t* buffer, size_t size) override;
+
+private:
+    ide_device_t* device;
+};
+
 int ide_init(const pci_device_t* p_pcie_device, linked_list<ide_device_t>* p_ide_devices);
 
 int ide_send_identify(ide_device_t* p_device, uint16_t* p_out_buf);
 
 int ide_ata_identify_device(ide_device_t* p_device);
 int ide_atapi_identify_device(ide_device_t* p_device);
-
-int ide_read(ide_device_t* p_device, uint32_t lba, uint8_t* p_buffer);
-int ide_write(ide_device_t* p_device, uint32_t lba, uint8_t* p_buffer);
-
-inline int ide_storage_api_read(storage_driver_api_t* p_device, uint32_t lba, uint8_t* p_buffer, size_t size) {
-    if (size % IDE_SECTOR_SIZE != 0)
-        return 1;
-
-    size_t written_size = 0;
-    while (written_size < size) {
-        if (ide_read((ide_device_t*)p_device, lba, p_buffer + written_size) != 0)
-            return 2;
-
-        written_size += IDE_SECTOR_SIZE;
-        lba++;
-    }
-    
-    return 0;
-}
-
-inline int ide_storage_api_write(storage_driver_api_t* p_device, uint32_t lba, uint8_t* p_buffer, size_t size) {
-    // TODO @since 21/07/2025 -- 21:32
-    return 1;
-}
 
 #endif // __DRIVERS_STORAGE_IDE_HPP__

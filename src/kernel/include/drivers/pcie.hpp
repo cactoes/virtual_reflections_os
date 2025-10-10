@@ -56,6 +56,13 @@ struct pci_device_t {
     uint32_t function;
 };
 
+struct pcie_device_manager_t {
+    linked_list<pci_device_t> devices;
+};
+
+void set_global_pcie_device_manager(pcie_device_manager_t* pcie_device_manager);
+pcie_device_manager_t* get_global_pcie_device_manager();
+
 uint32_t pci_config_read(const pci_device_t* p_device, uint32_t offset);
 void pci_config_write(const pci_device_t* p_device, uint32_t offset, uint32_t value);
 
@@ -63,8 +70,8 @@ const char* pci_get_class_description(const pci_device_t* p_device);
 
 uint32_t pci_read_bar(const pci_device_t* p_device, uint32_t bar);
 
-bool pci_enumerate_devices(linked_list<pci_device_t>* p_list);
-pci_device_t* pci_find_device(linked_list<pci_device_t>* p_list, const pci_vendor_device_id_t* p_vendor_device_id_target);
-pci_device_t* pci_find_device(linked_list<pci_device_t>* p_list, const pci_class_info_t* p_class_info_target);
+bool pci_enumerate_devices(pcie_device_manager_t* device_manager);
+pci_device_t* pci_find_device(pcie_device_manager_t* device_manager, const pci_vendor_device_id_t* p_vendor_device_id_target);
+pci_device_t* pci_find_device(pcie_device_manager_t* device_manager, const pci_class_info_t* p_class_info_target);
 
 #endif // __DRIVERS_PCIE_HPP__

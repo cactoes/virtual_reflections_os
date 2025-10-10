@@ -102,8 +102,6 @@ int ide_init(const pci_device_t* p_pcie_device, linked_list<ide_device_t>* p_ide
             ide_device.type = is_slave ? ide_drive_type_t::SLAVE : ide_drive_type_t::MASTER;
             ide_device.io_base = channel->io_base;
             ide_device.ctrl_base = channel->ctrl_base;
-            ide_device.read = ide_storage_api_read;
-            ide_device.write = ide_storage_api_write;
 
             if (cl == 0x14 && ch == 0xEB) {
                 ide_device.is_atapi = true;
@@ -245,18 +243,30 @@ int atapi_read(ide_device_t* p_device, uint32_t lba, uint8_t* p_buffer) {
     return 0;
 }
 
-int ide_read(ide_device_t* p_device, uint32_t lba, uint8_t* p_buffer) {
-    if (p_device->is_atapi) {
-        return atapi_read(p_device, lba, p_buffer);
-    } else {
-        return 1;
-    }
+ide_storage_driver_t::ide_storage_driver_t(ide_device_t* device) {
+    this->device = device;
 }
 
-int ide_write(ide_device_t* p_device, uint32_t lba, uint8_t* p_buffer) {
-    if (p_device->is_atapi) {
-        return 1;
-    } else {
-        return 1;
+bool ide_storage_driver_t::read(uint32_t lba, uint8_t* buffer, size_t size) {
+    if (size % IDE_SECTOR_SIZE != 0)
+        return false;
+
+    size_t written_size = 0;
+    while (written_size < size) {
+        if (device->is_atapi)
+            if (!atapi_read(device, lba, buffer))
+                return false;
+        else
+            return false;
+
+        written_size += IDE_SECTOR_SIZE;
+        lba++;
     }
+    
+    return true;
+}
+
+bool ide_storage_driver_t::write(uint32_t lba, uint8_t* buffer, size_t size) {
+    // TODO @since 10/10/2025 -- 20:20
+    return 1;
 }

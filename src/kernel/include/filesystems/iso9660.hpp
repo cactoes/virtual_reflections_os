@@ -16,6 +16,7 @@
 #include "drivers/storage/storage.hpp"
 #include "utils/vector.hpp"
 #include "string.hpp"
+#include "utils/pointer.hpp"
 
 struct iso9660_lbs_msb_32 {
     uint32_t le;
@@ -131,25 +132,37 @@ struct iso9660_node_data_t {
     bool is_directory;
 };
 
-struct iso9660_fs_data_t : filesystem_api_t {
-    storage_driver_api_t* p_storage_driver;
+struct iso9660_data_t {
     iso9660_volume_primary_volume_descriptor_t pvd;
     uint32_t block_size;
     uint32_t volume_size;
     iso9660_node_data_t root;
 };
 
-int iso9660_drive_init(storage_driver_api_t* p_storage_driver, iso9660_fs_data_t* p_iso_data);
+class iso9660_filesystem_interface : public filesystem_interface_t {
+public:
+    iso9660_filesystem_interface(ptr::unique<storage_driver_interface_t> storage_interface, const iso9660_data_t& data);
 
-int iso9660_read_file(iso9660_fs_data_t* p_iso_data, const char* p_path, void** p_data, size_t* p_size);
-bool iso9660_enumerate_directory(iso9660_fs_data_t* iso_data, const char* path, dynamic_array<filesystem_node_t>* out_array);
+    bool read(const char* path, void** data, size_t* size) override;
+    bool write(const char* path, void* data, size_t* size) override;
+    bool enumerate_directory(const char* path, dynamic_array<filesystem_node_t>* out_array) override;
 
-inline int iso9660_fs_api_read(filesystem_api_t* p_api, const char* p_path, void** p_data, size_t* p_size) {
-    return iso9660_read_file((iso9660_fs_data_t*)p_api, p_path, p_data, p_size);
-}
+private:
+    iso9660_data_t data;
+    ptr::unique<storage_driver_interface_t> storage_interface;
+};
 
-inline bool iso9660_fs_api_enumerate_directory(filesystem_api_t* api, const char *path, dynamic_array<filesystem_node_t> *out_array) {
-    return iso9660_enumerate_directory((iso9660_fs_data_t*)api, path, out_array);
-}
+int iso9660_init(storage_driver_interface_t* storage_interface, iso9660_data_t* fs_interface);
+
+// int iso9660_read_file(storage_driver_interface_t* storage_interface, const char* p_path, void** p_data, size_t* p_size);
+// bool iso9660_enumerate_directory(storage_driver_interface_t* storage_interface, const char* path, dynamic_array<filesystem_node_t>* out_array);
+
+// inline int iso9660_fs_api_read(filesystem_api_t* p_api, const char* p_path, void** p_data, size_t* p_size) {
+//     return iso9660_read_file((iso9660_fs_data_t*)p_api, p_path, p_data, p_size);
+// }
+
+// inline bool iso9660_fs_api_enumerate_directory(filesystem_api_t* api, const char *path, dynamic_array<filesystem_node_t> *out_array) {
+//     return iso9660_enumerate_directory((iso9660_fs_data_t*)api, path, out_array);
+// }
 
 #endif // __FILESYSTEMS_ISO9660_HPP__

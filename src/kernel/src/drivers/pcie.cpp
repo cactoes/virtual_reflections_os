@@ -1,6 +1,16 @@
 #include "drivers/pcie.hpp"
 #include "arch/generic.hpp"
 
+pcie_device_manager_t* global_pcie_device_manager = nullptr;
+
+void set_global_pcie_device_manager(pcie_device_manager_t* pcie_device_manager) {
+    global_pcie_device_manager = pcie_device_manager;
+}
+
+pcie_device_manager_t* get_global_pcie_device_manager() {
+    return global_pcie_device_manager;
+}
+
 uint32_t pci_config_read(const pci_device_t* p_device, uint32_t offset) {
     const uint32_t address = PCI_CREATE_CONFIG_ADDRESS(p_device->bus, p_device->device, p_device->function, offset & ~0x3);
     out_port<uint32_t>(PCI_CONFIG_ADDRESS, address);
@@ -71,7 +81,7 @@ uint32_t pci_read_bar(const pci_device_t* p_device, uint32_t bar) {
     return pci_config_read(p_device, PCI_GET_BAR_OFFSET(bar));
 }
 
-bool pci_enumerate_devices(linked_list<pci_device_t>* p_list) {
+bool pci_enumerate_devices(pcie_device_manager_t* device_manager) {
         for (uint32_t bus = 0; bus < 256; bus++) {
         for (uint32_t device = 0; device < 32; device++) {
             for (uint32_t function = 0; function < 8; function++) {
@@ -86,7 +96,7 @@ bool pci_enumerate_devices(linked_list<pci_device_t>* p_list) {
                 if (pci_device.vendor_device_id.raw == PCI_VENDOR_DEVICE_ID_INVALID)
                     continue;
 
-                p_list->insert_back(pci_device);
+                device_manager->devices.insert_back(pci_device);
             }
         }
     }
@@ -106,8 +116,8 @@ bool find_device_class_info(const pci_device_t* p_device, const pci_class_info_t
            (p_req->revision_id == (uint8_t)PCI_UNKNOWN || p_device->class_info.revision_id == p_req->revision_id);
 }
 
-pci_device_t* pci_find_device(linked_list<pci_device_t>* p_list, const pci_vendor_device_id_t* p_vendor_device_id_target) {
-    for (auto& device : *p_list) {
+pci_device_t* pci_find_device(pcie_device_manager_t* device_manager, const pci_vendor_device_id_t* p_vendor_device_id_target) {
+    for (auto& device : device_manager->devices) {
         if (find_device_vendor_device_id(&device, p_vendor_device_id_target))
             return &device;
     }
@@ -115,8 +125,8 @@ pci_device_t* pci_find_device(linked_list<pci_device_t>* p_list, const pci_vendo
     return nullptr;
 }
 
-pci_device_t* pci_find_device(linked_list<pci_device_t>* p_list, const pci_class_info_t* p_class_info_target) {
-    for (auto& device : *p_list) {
+pci_device_t* pci_find_device(pcie_device_manager_t* device_manager, const pci_class_info_t* p_class_info_target) {
+    for (auto& device : device_manager->devices) {
         if (find_device_class_info(&device, p_class_info_target))
             return &device;
     }

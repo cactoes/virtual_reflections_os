@@ -90,6 +90,37 @@ void exec(const char* path, const char* args) {
             printf(STD, "    subnet mask:    %u.%u.%u.%u\n", device->subnet_mask_3, device->subnet_mask_2, device->subnet_mask_1, device->subnet_mask_0);
             break;
         }
+        case hash_fnv1a_64("pcistat"): {
+            for (auto& device : get_global_pcie_device_manager()->devices) {
+                const char* cd = pci_get_class_description(&device);
+                printf(STD, "[%u:%u.%u] %s:\n", device.bus, device.device, device.function, cd);
+                printf(STD, "    Vendor ID: 0x%uh, Device ID: 0x%uh\n", device.vendor_device_id.vendor_id, device.vendor_device_id.device_id);
+
+            }
+            break;
+        }
+        case hash_fnv1a_64("ls"): {
+            dynamic_array<vfs_node_t*> entries {};
+            bool result = vfs_list_directory(get_global_vfs(), args, &entries);
+            if (!result) {
+                printf(STD, "directory not found");
+                break;
+            }
+
+            for (auto& dir : entries) {
+                string type = "unknown";
+                switch (dir->type) {
+                    case vfs_node_type_t::FILE:
+                        type = "file";
+                        break;
+                    case vfs_node_type_t::DIRECTORY:
+                        type = "directory";
+                        break;
+                }
+                printf(STD, "[%s] %s\n", type.c_str(), dir->meta.name.c_str());
+            }
+            break;
+        }
         default:
             printf(STD, "command not found");
             break;
@@ -107,6 +138,8 @@ void terminal_keydown_callback(virtual_key_t vk) {
 
             auto parts = str_split(terminal_current_input.get_data(), ' ');
 
+            // TODO @since 10/10/2025 -- 21:37
+            // args
             exec(parts.get_at(0)->c_str(), "");
             terminal_current_input.clear();
             printf(STD, "\n> ");
@@ -214,16 +247,10 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
     nidm_init(&nidm);
     set_global_nidm(&nidm);
 
-    // TODO @since 10/10/2025 -- 01:23
-    // pci(e) device manager
-
-    linked_list<pci_device_t> pci_devices {};
-    pci_enumerate_devices(&pci_devices);
-
-    for (auto& device : pci_devices) {
-        const char* cd = pci_get_class_description(&device);
-        printf(DBG, "[+] %s\n", cd);
-    }
+    pcie_device_manager_t pciedm {};
+    set_global_pcie_device_manager(&pciedm);
+    
+    pci_enumerate_devices(get_global_pcie_device_manager());
 
     // ide device
     pci_class_info_t ide_device_class_info {
@@ -232,34 +259,52 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
         .sub_class = (uint8_t)1,
         .class_code = (uint8_t)1
     };
-    const pci_device_t* ide_controller = pci_find_device(&pci_devices, &ide_device_class_info);
+    const pci_device_t* ide_controller = pci_find_device(get_global_pcie_device_manager(), &ide_device_class_info);
 
     linked_list<ide_device_t> ide_devices {};
     ide_init(ide_controller, &ide_devices);
     
     size_t ide_device_index = 0;
     for (auto& drive : ide_devices) {
-        char buffer[20];
-        sprintf(buffer, 20, "ide/disk%i", ide_device_index++);
-        printf(DBG, "[+] %s\n", buffer);
+        // init device interface
+        auto ide_storage = ptr::make_unique<ide_storage_driver_t>(&drive);
+        
+        // TODO @since 05/08/2025 -- 01:18
+        // detect file system
+        // init file system
+        iso9660_data_t fs_data {};
+        iso9660_init((storage_driver_interface_t*)ide_storage.get(), &fs_data);
+
+        // init file system interface
+        auto iso9660_interface = ptr::make_unique<iso9660_filesystem_interface>(move(ide_storage), fs_data);
+
+        // init vfs storage interface
+        auto disk_storage_interface = ptr::make_unique<vfs_disk_storage_interface>(move(iso9660_interface));
+
+        // mount storage interface
+        char disk_mount_name_buffer[20];
+        sprintf(disk_mount_name_buffer, 20, "/mnt/disk%i", ide_device_index++);
+
+        vfs_mount(get_global_vfs(), disk_mount_name_buffer, move(disk_storage_interface));
     }
 
-    // TODO @since 05/08/2025 -- 01:18
-    // detect file system
-    iso9660_fs_data_t mounted_iso9660_fs_instance {};
-    iso9660_drive_init(&ide_devices[0], &mounted_iso9660_fs_instance);
-    
-    auto disk_storage = ptr::make_unique<vfs_disk_storage_interface>(&mounted_iso9660_fs_instance);
-    vfs_mount(get_global_vfs(), "/mnt/disk0", move(disk_storage));
+    auto __handle = vfs_open_file(get_global_vfs(), "/mnt/disk0/.env");
+    dynamic_array<uint8_t> __data {};
+    vfs_read_file(get_global_vfs(), __handle, &__data);
+    for (const auto& ch : __data) {
+        printf(DBG, "%c", ch);
+    }
+
+    printf(DBG, "\n");
 
     // ahci device
     pci_class_info_t ahci_device_class_info { .revision_id = (uint8_t)PCI_UNKNOWN, .prog_if = (uint8_t)1, .sub_class = (uint8_t)6, .class_code = (uint8_t)1 };
-    const pci_device_t* ahci_controller = pci_find_device(&pci_devices, &ahci_device_class_info);
+    const pci_device_t* ahci_controller = pci_find_device(get_global_pcie_device_manager(), &ahci_device_class_info);
     // TODO @since 14/07/2025 -- 21:52
     
     // network device
     pci_class_info_t network_device_class_info { .revision_id = (uint8_t)PCI_UNKNOWN, .prog_if = (uint8_t)PCI_UNKNOWN, .sub_class = (uint8_t)0, .class_code = (uint8_t)2 };
-    const pci_device_t* network_controller = pci_find_device(&pci_devices, &network_device_class_info);
+    const pci_device_t* network_controller = pci_find_device(get_global_pcie_device_manager(), &network_device_class_info);
     
     e1000_t e1000 {};
     const auto e1000_init_result = e1000_init_device(network_controller, &e1000);
@@ -277,7 +322,7 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
         e1000_nid.subnet_mask = TO_IP(255, 255, 255, 0);
         memcpy(e1000_nid.mac, e1000.mac, sizeof(e1000_nid.mac));
         e1000_nid.send_packet = e1000_nidm_send_packet;
-        nidm_register_device(&nidm, e1000_nid);
+        nidm_register_device(get_global_nidm(), e1000_nid);
 
         // uint8_t mac[6];
         // uint64_t frame = clock_get_time_since_boot() + 1000;
