@@ -254,7 +254,7 @@ bool ide_storage_driver_t::read(uint32_t lba, uint8_t* buffer, size_t size) {
     size_t written_size = 0;
     while (written_size < size) {
         if (device->is_atapi) {
-            if (atapi_read(device, lba, buffer) != 0)
+            if (atapi_read(device, lba, buffer + written_size) != 0)
                 return false;
         } else {
             return false;
