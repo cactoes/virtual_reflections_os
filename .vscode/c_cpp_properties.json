@@ -3,7 +3,8 @@
         {
             "name": "Linux",
             "includePath": [
-                "${workspaceFolder}/src/**"
+                "${workspaceFolder}/src/**",
+                "${workspaceFolder}/src/shared_headers"
             ],
             "defines": [],
             "compilerPath": "x86_64-w64-mingw32-g++.exe",

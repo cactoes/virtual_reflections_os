@@ -16,6 +16,7 @@ ROOT_PATH                   := ../..
 BUILD_PATH                  := $(ROOT_PATH)/build/$(TARGET_NAME)
 LINKER_SCRIPT               := $(PROJECT_PATH)/linker.ld
 KERNEL_API                  := $(ROOT_PATH)/src/kernel/include/
+SHARED_HEADERS              := $(ROOT_PATH)/src/shared_headers/
 
 # compilers
 COMPILER                    := x86_64-elf-g++
@@ -24,7 +25,7 @@ LINKER                      := x86_64-elf-ld
 
 # compiler flags
 # [!!!] -mno-sse2: SSE2 is disabled
-COMPILER_FLAGS              := -nostdlib -m64 -mno-red-zone -mno-sse2 -fno-rtti -fno-exceptions -Werror -Wunused-result -fno-use-cxa-atexit -ffreestanding -I$(HEADER_FILES_PATH) -I$(KERNEL_API) -g -z max-page-size=0x1000 -fPIC
+COMPILER_FLAGS              := -nostdlib -m64 -mno-red-zone -mno-sse2 -fno-rtti -fno-exceptions -Werror -Wunused-result -fno-use-cxa-atexit -ffreestanding -I$(HEADER_FILES_PATH) -I$(KERNEL_API) -I$(SHARED_HEADERS) -g -z max-page-size=0x1000 -fPIC
 NASM_FLAGS                  := -f elf64
 LINKER_FLAGS                := -shared -z max-page-size=0x1000 -T $(LINKER_SCRIPT) -static --unresolved-symbols=ignore-all
 
