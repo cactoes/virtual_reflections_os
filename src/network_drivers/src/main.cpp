@@ -1,34 +1,32 @@
-// TODO @since 28/08/2025 -- 17:23
-// export e1000 driver to here
+#define DHCP_VERSION    0
+#define E1000_VERSION   0
 
-typedef unsigned long long uint64_t;
+#include "common.hpp"
 
-constexpr uint64_t hash_string_64(const char* p_str, uint64_t hash = 0ULL) {
-    return (*p_str == '\0') ? hash :
-        hash_string_64(p_str + 1, (hash << 1) + static_cast<uint64_t>(*p_str));
-}
-
-extern "C" int kernel_test_function(const char* p_str);
-
+/// @brief kernel api functions
 extern "C" {
+    void* kalloc(size_t size);
+    void kfree(void* ptr);
+    void kprint(const char* str);
+}
 
-int driver_init() {
+extern "C" int DriverInit() {
     return 0;
 }
 
-int driver_exit() {
+extern "C" int DriverExit() {
     return 0;
 }
 
-bool check_driver(const char* p_name) {
-    const uint64_t name_hash = hash_string_64(p_name);
+/// @brief                  returns version of the feature
+/// @param szFeature        name of the feature
+/// @return                 feature version / capability of the feature
+extern "C" uint64_t QueryCapability(const char* szFeature) {
+    const uint64_t uHash = hash_fnv1a_64(szFeature);
 
-    switch (name_hash) {
-    case hash_string_64("e1000"):
-        return true;
-    default:
-        return false;
+    switch (uHash) {
+        case hash_fnv1a_64("dhcp"):     return DHCP_VERSION;
+        case hash_fnv1a_64("e1000"):    return E1000_VERSION;
+        default:                        return (uint64_t)-1;
     }
-}
-
 }

@@ -1,16 +1,29 @@
 #include "drivers/driver.hpp"
 #include "elf.hpp"
-#include "utils/map.hpp"
-#include "utils/pointer.hpp"
 
 // TODO @since 12/08/2025 -- 00:13
 // relocate this kernel api
 #include "kernel_api.hpp"
 
-static system_driver_handle_t g_current_handle = 0;
-static linear_map<system_driver_handle_t, ptr::unique<system_driver_t>> g_loaded_drivers {};
+driver_manager_t* global_driver_manager = nullptr;
 
-system_driver_handle_t driver_load(const char* p_name, void* p_driver_file) {
+void set_global_driver_manager(driver_manager_t* driver_manager) {
+    global_driver_manager = driver_manager;
+}
+
+driver_manager_t* get_global_driver_manager() {
+    return global_driver_manager;
+}
+
+system_driver_handle_t driver_manager_get_driver_handle(driver_manager_t* driver_manager, const char* driver_name) {
+    for (auto& driver : driver_manager->loaded_drivers)
+        if (driver.value->name == driver_name)
+            return driver.key;
+
+    return SYSTEM_DRIVER_HANDLE_INVALID;
+}
+
+system_driver_handle_t driver_load(driver_manager_t* driver_manager, const char* p_name, void* p_driver_file) {
     if (elf_check_file((uint8_t*)p_driver_file) != 0)
         return SYSTEM_DRIVER_HANDLE_INVALID;
 
@@ -29,7 +42,9 @@ system_driver_handle_t driver_load(const char* p_name, void* p_driver_file) {
     // TODO @since 13/08/2025 -- 22:55
     // make this more global / better manageable
     linear_map<string, void*> symbol_map {};
-    symbol_map["kernel_test_function"] = (void*)&kernel_test_function;
+    symbol_map["kalloc"] = (void*)&kalloc;
+    symbol_map["kfree"] = (void*)&kfree;
+    symbol_map["kprint"] = (void*)&kprint;
 
     if (elf_relocate_rel_sections((uint8_t*)p_driver_file, base_address, &tables, &symbol_map) != 0)
         return SYSTEM_DRIVER_HANDLE_INVALID;
@@ -38,49 +53,49 @@ system_driver_handle_t driver_load(const char* p_name, void* p_driver_file) {
     system_driver->base_address = (void*)base_address;
     system_driver->file_data_ptr = p_driver_file;
     system_driver->name = p_name;
-    system_driver->functions.driver_init = elf_get_function<int>((uint8_t*)p_driver_file, base_address, &tables, &program_section_info, "driver_init");
-    system_driver->functions.driver_exit = elf_get_function<int>((uint8_t*)p_driver_file, base_address, &tables, &program_section_info, "driver_exit");
+    system_driver->functions.driver_init = elf_get_function<int>((uint8_t*)p_driver_file, base_address, &tables, &program_section_info, "DriverInit");
+    system_driver->functions.driver_exit = elf_get_function<int>((uint8_t*)p_driver_file, base_address, &tables, &program_section_info, "DriverExit");
     
-    g_current_handle++;
+    driver_manager->current_handle++;
 
-    g_loaded_drivers[g_current_handle] = move(system_driver);
+    driver_manager->loaded_drivers[driver_manager->current_handle] = move(system_driver);
 
-    return g_current_handle;
+    return driver_manager->current_handle;
 }
 
-int driver_unload(system_driver_handle_t handle) {
-    auto driver_it = g_loaded_drivers.get(handle);
-    if (driver_it == g_loaded_drivers.end())
+int driver_unload(driver_manager_t* driver_manager, system_driver_handle_t handle) {
+    auto driver_it = driver_manager->loaded_drivers.get(handle);
+    if (driver_it == driver_manager->loaded_drivers.end())
         return 1;
 
     if (driver_it->value->base_address)
         heap_free(get_global_heap(), driver_it->value->base_address);
 
-    return g_loaded_drivers.remove(handle) ? 0 : 2;
+    return driver_manager->loaded_drivers.remove(handle) ? 0 : 2;
 }
 
-int driver_start(system_driver_handle_t handle) {
+int driver_start(driver_manager_t* driver_manager, system_driver_handle_t handle) {
     // TODO @since 12/08/2025 -- 00:29
     // spawn new thread etc
 
-    auto driver_it = g_loaded_drivers.get(handle);
-    if (driver_it == g_loaded_drivers.end())
+    auto driver_it = driver_manager->loaded_drivers.get(handle);
+    if (driver_it == driver_manager->loaded_drivers.end())
         return 1;
     
     return driver_it->value->functions.driver_init();
 }
 
-int driver_stop(system_driver_handle_t handle) {
-    auto driver_it = g_loaded_drivers.get(handle);
-    if (driver_it == g_loaded_drivers.end())
+int driver_stop(driver_manager_t* driver_manager, system_driver_handle_t handle) {
+    auto driver_it = driver_manager->loaded_drivers.get(handle);
+    if (driver_it == driver_manager->loaded_drivers.end())
         return 1;
     
     return driver_it->value->functions.driver_exit();
 }
 
-void* driver_get_function(system_driver_handle_t handle, const char* p_name) {
-    auto driver_it = g_loaded_drivers.get(handle);
-    if (driver_it == g_loaded_drivers.end())
+void* driver_get_function(driver_manager_t* driver_manager, system_driver_handle_t handle, const char* p_name) {
+    auto driver_it = driver_manager->loaded_drivers.get(handle);
+    if (driver_it == driver_manager->loaded_drivers.end())
         return nullptr;
 
     system_driver_t* driver = driver_it->value.get();
@@ -92,4 +107,12 @@ void* driver_get_function(system_driver_handle_t handle, const char* p_name) {
         return nullptr;
 
     return (void*)elf_get_function<void>((uint8_t*)driver->file_data_ptr, (uint8_t*)driver->base_address, &tables, &program_section_info, p_name);
+}
+
+uint64_t driver_query_capability(driver_manager_t* driver_manager, system_driver_handle_t handle, const char* feature) {
+    driver_query_capability_t driver_query_capability_fn = (driver_query_capability_t)driver_get_function(driver_manager, handle, "QueryCapability");
+    if (!driver_query_capability_fn)
+        return -1;
+    
+    return driver_query_capability_fn(feature);
 }

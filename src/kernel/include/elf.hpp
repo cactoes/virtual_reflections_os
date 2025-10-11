@@ -41,7 +41,6 @@ enum class elf_type_t {
     DYNAMIC = 3
 };
 
-
 #define ELF_SECTION_TYPE_NULL           0
 #define ELF_SECTION_TYPE_PROGRAM        1
 #define ELF_SECTION_TYPE_SYMBOL_TABLE   2
@@ -65,7 +64,7 @@ enum class elf_type_t {
 #define ELF_RELOCATION_TYPE_RELATIVE    8
 
 #define ELF_RELOCATE_SYMBOL(s)          ((s) >> 32)
-#define ELF_RELOCATE_TYPE(t)      ((t) & MAX_UINT32)
+#define ELF_RELOCATE_TYPE(t)            ((t) & MAX_UINT32)
 
 #define ELF_GET_SECTION_HEADER(header) ((elf_section_header_t*)((uint64_t)(header) + (header)->section_header_offset))
 #define ELF_GET_SECTION(header, index) &ELF_GET_SECTION_HEADER((header))[(index)]

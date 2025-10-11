@@ -1,7 +1,21 @@
 #include "kernel_api.hpp"
-#include "drivers/vga.hpp"
+#include "memory/heap.hpp"
 
-int kernel_test_function(const char* p_str) {
-    vga_tm_puts(&g_vga_tm_buffer, p_str);
-    return 0;
+enum print_mode_t {
+    STD,
+    DBG
+};
+
+extern void printf(print_mode_t mode, const char* p_str, ...);
+
+void* kalloc(size_t size) {
+    return heap_alloc(get_global_heap(), size);
+}
+
+void kfree(void* ptr) {
+    heap_free(get_global_heap(), ptr);
+}
+
+void kprint(const char* str) {
+    printf(DBG, "[DRIVER] %s\n", str);
 }

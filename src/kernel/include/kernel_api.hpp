@@ -7,6 +7,10 @@
 #ifndef __KERNEL_API_HPP__
 #define __KERNEL_API_HPP__
 
-int kernel_test_function(const char* p_str);
+#include "common.hpp"
+
+void* kalloc(size_t size);
+void kfree(void* ptr);
+void kprint(const char* str);
 
 #endif // __KERNEL_API_HPP__

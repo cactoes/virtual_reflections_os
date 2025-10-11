@@ -406,6 +406,16 @@ bool str_start_with(const char* p_str1, const char* p_target) {
     return true;
 }
 
+bool str_ends_with(const char* p_str, const char* p_target) {
+    size_t str_len = strlen(p_str);
+    size_t target_len = strlen(p_target);
+
+    if (target_len > str_len)
+        return false;
+
+    return streq(p_str + str_len - target_len, p_target);
+}
+
 void unpack_be16_string(const uint16_t* p_src, int word_count, char* p_dst, int max_len) {
     int pos = 0;
     for (int i = 0; i < word_count && pos + 1 < max_len; ++i) {

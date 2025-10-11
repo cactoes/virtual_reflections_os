@@ -10,6 +10,7 @@
 #include "drivers/ps2/keyboard.hpp"
 #include "drivers/ps2/mouse.hpp"
 #include "drivers/ps2/ps2.hpp"
+#include "drivers/driver.hpp"
 #include "drivers/storage/ide.hpp"
 #include "drivers/network/e1000.hpp"
 #include "drivers/network/nidm.hpp"
@@ -77,17 +78,17 @@ void exec(const string& path, const dynamic_array<string>& args) {
                     used_mem += heap->heap_block_array[i].size;
             }
 
-            printf(STD, "memory allocated:   %uB/%uB (%i%)\n", used_mem, heap->size, (int)(((double)used_mem / (double)heap->size) * 100));
-            printf(STD, "total available:    ?B\n");
+            printf(STD, "Memory allocated:   %uB/%uB (%i%)\n", used_mem, heap->size, (int)(((double)used_mem / (double)heap->size) * 100));
+            printf(STD, "Total available:    ?B\n");
             break;
         }
         case hash_fnv1a_64("netstat"): {
             for (auto& device : get_global_nidm()->devices) {
                 printf(STD, "%s:\n", device.name.c_str());
-                printf(STD, "    mac:            %uh:%uh:%uh:%uh:%uh:%uh\n", device.mac[0], device.mac[1], device.mac[2], device.mac[3], device.mac[4], device.mac[5]);
-                printf(STD, "    ipv4:           %u.%u.%u.%u\n", device.ipv4_3, device.ipv4_2, device.ipv4_1, device.ipv4_0);
-                printf(STD, "    gateway:        %u.%u.%u.%u\n", device.gateway_ip_3, device.gateway_ip_2, device.gateway_ip_1, device.gateway_ip_0);
-                printf(STD, "    subnet mask:    %u.%u.%u.%u\n", device.subnet_mask_3, device.subnet_mask_2, device.subnet_mask_1, device.subnet_mask_0);
+                printf(STD, "    MAC:            %uh:%uh:%uh:%uh:%uh:%uh\n", device.mac[0], device.mac[1], device.mac[2], device.mac[3], device.mac[4], device.mac[5]);
+                printf(STD, "    IPv4:           %u.%u.%u.%u\n", device.ipv4_3, device.ipv4_2, device.ipv4_1, device.ipv4_0);
+                printf(STD, "    Gateway:        %u.%u.%u.%u\n", device.gateway_ip_3, device.gateway_ip_2, device.gateway_ip_1, device.gateway_ip_0);
+                printf(STD, "    Subnet mask:    %u.%u.%u.%u\n", device.subnet_mask_3, device.subnet_mask_2, device.subnet_mask_1, device.subnet_mask_0);
             }
             break;
         }
@@ -107,13 +108,13 @@ void exec(const string& path, const dynamic_array<string>& args) {
 
             bool result = vfs_list_directory(get_global_vfs(), arg_path, &entries);
             if (!result) {
-                printf(STD, "directory not found");
+                printf(STD, "Directory not found");
                 break;
             }
 
-            for (auto& dir : entries) {
-                printf(STD, "%s ", dir->meta.name.c_str());
-            }
+            for (auto& dir : entries)
+                printf(STD, "%s\n", dir->meta.name.c_str());
+
             printf(STD, "\n");
             break;
         }
@@ -127,7 +128,7 @@ void exec(const string& path, const dynamic_array<string>& args) {
 
             file_descriptor_t result = vfs_open_file(get_global_vfs(), arg_path);
             if (result == FILE_DESCRIPTOR_INVALID) {
-                printf(STD, "file not found");
+                printf(STD, "File not found");
                 break;
             }
 
@@ -140,12 +141,48 @@ void exec(const string& path, const dynamic_array<string>& args) {
             break;
         }
         case hash_fnv1a_64("help"): {
+            printf(STD, "help                           Displays this help message\n");
             printf(STD, "memstat                        Memory info\n");
             printf(STD, "netstat                        Network card info\n");
             printf(STD, "pcistat                        PCI(e) info\n");
             printf(STD, "ls                             Lists files and directories\n");
             printf(STD, "cat                            Display file content\n");
-            printf(STD, "help                           Displays this help message\n");
+            printf(STD, "driverquery                    Query drivers for information\n");
+            printf(STD, "    list                       List all drivers\n");
+            printf(STD, "    <name> <feature>           List the capabiliy of a driver feature\n");
+            break;
+        }
+        case hash_fnv1a_64("driverquery"): {
+            if (args.length() >= 1) {
+                auto arg0 = *args.get_at(0);
+                if (arg0 == "list") {
+                    printf(STD, "List of loaded drivers:\n");
+                    for (const auto& driver : get_global_driver_manager()->loaded_drivers)
+                        printf(STD, "    %s\n", driver.value->name.c_str());
+                    
+                    break;
+                }
+
+                if (args.length() >= 2) {
+                    auto arg1 = *args.get_at(1);
+                    system_driver_handle_t handle = driver_manager_get_driver_handle(get_global_driver_manager(), arg0.c_str());
+                    if (handle == SYSTEM_DRIVER_HANDLE_INVALID) {
+                        printf(STD, "Invalid driver name\n");
+                        break;
+                    }
+
+                    printf(STD, "%s:\n", arg0.c_str());
+                    uint64_t capability = driver_query_capability(get_global_driver_manager(), handle, arg1.c_str());
+                    if (capability == MAX_UINT64) {
+                        printf(STD, "    Capability: %s not supported", arg1.c_str());
+                    } else if (capability == 0) {
+                        printf(STD, "    Capability: %s not implemented", arg1.c_str());
+                    } else {
+                        printf(STD, "    Capability: %s version %u", arg1.c_str(), capability);
+                    }
+                }
+            }
+            break;
         }
         default:
             printf(STD, "command not found");
@@ -194,7 +231,7 @@ void terminal_keydown_callback(virtual_key_t vk) {
 }
 
 int terminal() {
-    printf(STD, "VirtualReflectionsOS Interacive Terminal [v0.1:334]\n");
+    printf(STD, "VirtualReflectionsOS Interacive Terminal [v0.1:337]\n");
     printf(STD, "System booted succesfully\n");
     printf(STD, "Type 'help' for a list of commands.\n");
     printf(STD, "\n> ");
@@ -266,13 +303,13 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
 
     // finished core startup
 
-    if (ps2_port_test_device(ps2_device_type_t::KEYBOARD)) {
-        printf(DBG, "[+] ps2/keyboard\n");
-    }
+    // if (ps2_port_test_device(ps2_device_type_t::KEYBOARD)) {
+    //     printf(DBG, "[+] ps2/keyboard\n");
+    // }
 
-    if (ps2_port_test_device(ps2_device_type_t::MOUSE)) {
-        printf(DBG, "[+] ps2/mouse\n");
-    }
+    // if (ps2_port_test_device(ps2_device_type_t::MOUSE)) {
+    //     printf(DBG, "[+] ps2/mouse\n");
+    // }
 
     keyboard_initialize();
 
@@ -333,8 +370,6 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
     e1000_t e1000 {};
     const auto e1000_init_result = e1000_init_device(network_controller, &e1000);
     if (e1000_init_result == 0) {
-        printf(DBG, "MAC: %uh:%uh:%uh:%uh:%uh:%uh\n", e1000.mac[0], e1000.mac[1], e1000.mac[2], e1000.mac[3], e1000.mac[4], e1000.mac[5]);
-
         network_interface_device_t e1000_nid {};
         e1000_nid.name = "eth0 (Intel e1000)";
         // TODO @since 27/08/2025 -- 03:49
@@ -381,16 +416,46 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
         tcp_listen(&e1000_nid, 1234, tcp_callback);
     }
 
-    // dynamic_array<uint8_t> inet_driver_file {};
-    // auto inet_driver_file_handle = vfs.open_file("/mnt/disk0/INetDrivers.sys");
-    // vfs.read_file(inet_driver_file_handle, &inet_driver_file);
+    driver_manager_t driver_manager {};
+    set_global_driver_manager(&driver_manager);
 
-    // auto handle = driver_load("INetDrivers", inet_driver_file.get_data());
-    // driver_start(handle);
-    // void* check_driver_function = driver_get_function(handle, "check_driver");
-    // typedef bool(*check_driver_function_t)(const char*);
-    // auto result = ((check_driver_function_t)check_driver_function)("e1000");
-    // printf(DBG, "has e1000 driver: %s\n", result ? "true" : "false");
+    dynamic_array<vfs_node_t*> nodes {};
+    if (vfs_list_directory(get_global_vfs(), "/mnt/disk0", &nodes)) {
+        for (auto& node : nodes) {
+            if (str_ends_with(node->meta.name.c_str(), ".sys")) {
+                string driver_name = node->meta.name.substr(0, node->meta.name.length() - 4);
+
+                dynamic_array<uint8_t> driver_file {};
+                file_descriptor_t driver_file_handle = vfs_open_file(get_global_vfs(), string("/mnt/disk0/") + driver_name + ".sys");
+                if (driver_file_handle == FILE_DESCRIPTOR_INVALID) {
+                    printf(DBG, "failed to open handle to driver '%s'\n", driver_name.c_str());
+                    continue;
+                }
+
+                if (!vfs_read_file(get_global_vfs(), driver_file_handle, &driver_file)) {
+                    printf(DBG, "failed to read driver '%s'\n", driver_name.c_str());
+                    continue;
+                }
+
+                system_driver_handle_t driver_handle = driver_load(get_global_driver_manager(), driver_name.c_str(), driver_file.get_data());
+                if (driver_handle == SYSTEM_DRIVER_HANDLE_INVALID) {
+                    printf(DBG, "failed to load driver '%s'\n", driver_name.c_str());
+                    continue;
+                }
+
+                int result = driver_start(get_global_driver_manager(), driver_handle);
+                if (result != 0) {
+                    printf(DBG, "failed to start driver '%s'. code: %i\n", driver_name.c_str(), result);
+                    continue;
+                }
+
+                printf(DBG, "loaded driver '%s'. code: %i\n", driver_name.c_str(), result);
+            }
+        }
+    }
+
+
+
 
     // kernel finished
     // printf(STD, "> SYSTEM READY\n");
