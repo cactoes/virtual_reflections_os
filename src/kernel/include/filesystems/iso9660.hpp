@@ -152,17 +152,6 @@ private:
     ptr::unique<storage_driver_interface_t> storage_interface;
 };
 
-int iso9660_init(storage_driver_interface_t* storage_interface, iso9660_data_t* fs_interface);
-
-// int iso9660_read_file(storage_driver_interface_t* storage_interface, const char* p_path, void** p_data, size_t* p_size);
-// bool iso9660_enumerate_directory(storage_driver_interface_t* storage_interface, const char* path, dynamic_array<filesystem_node_t>* out_array);
-
-// inline int iso9660_fs_api_read(filesystem_api_t* p_api, const char* p_path, void** p_data, size_t* p_size) {
-//     return iso9660_read_file((iso9660_fs_data_t*)p_api, p_path, p_data, p_size);
-// }
-
-// inline bool iso9660_fs_api_enumerate_directory(filesystem_api_t* api, const char *path, dynamic_array<filesystem_node_t> *out_array) {
-//     return iso9660_enumerate_directory((iso9660_fs_data_t*)api, path, out_array);
-// }
+int iso9660_init(storage_driver_interface_t* storage_interface, iso9660_data_t* fs_data);
 
 #endif // __FILESYSTEMS_ISO9660_HPP__
