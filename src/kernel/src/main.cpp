@@ -40,6 +40,8 @@
 #include "crash_handler.hpp"
 #include "virtual_thread.hpp"
 #include "random.hpp"
+#include "system_info.hpp"
+#include "smbios.hpp"
 
 #define HEAP_START_SIZE 0x100000 * 32 // 32 mb
 #define PIT_TIMER_INTERVAL 1000 // times per second
@@ -78,8 +80,8 @@ void exec(const string& path, const dynamic_array<string>& args) {
                     used_mem += heap->heap_block_array[i].size;
             }
 
-            printf(STD, "Memory allocated:   %uB/%uB (%i%)\n", used_mem, heap->size, (int)(((double)used_mem / (double)heap->size) * 100));
-            printf(STD, "Total available:    ?B\n");
+            printf(STD, "Memory allocated:   %ulB/%ulB (%i%)\n", used_mem, heap->size, (int)(((double)used_mem / (double)heap->size) * 100));
+            printf(STD, "Total available:    %ulB\n", get_global_system_info_manager()->memory_size);
             break;
         }
         case hash_fnv1a_64("netstat"): {
@@ -294,6 +296,11 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
         kernel_fatal(KERNEL_FATAL_VHREAD_INIT, "virtual threads failed to intialize");
 
     pit_add_interrupt_function(vthread_handle_interrupt);
+
+    system_info_manager_t sim {};
+    set_global_system_info_manager(&sim);
+    system_info_parse_memory_size(get_global_system_info_manager(), (multiboot_t*)p_multiboot_struct);
+    system_info_parse_system_information(get_global_system_info_manager());
 
     vfs_t vfs {};
     vfs_init(&vfs);

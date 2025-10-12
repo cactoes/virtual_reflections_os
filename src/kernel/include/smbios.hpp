@@ -8,6 +8,9 @@
 #ifndef __SMBIOS_HPP__
 #define __SMBIOS_HPP__
 
+#define SMBIOS_SIGNATUE     "_SM_"
+#define SMBIOS64_SIGNATUE   "_SM3_"
+
 #include "common.hpp"
 
 enum class smbios_type_t : uint8_t {
@@ -43,6 +46,19 @@ struct smbios_t {
     uint8_t bcd_revision;
 } PACKED;
 
+struct smbios64_t {
+    uint8_t anchor[5];
+    uint8_t checksum;
+    uint8_t length;
+    uint8_t major_version;
+    uint8_t minor_version;
+    uint8_t docrev;
+    uint8_t entry_point_revision;
+    uint8_t reserved;
+    uint32_t table_max_size;
+    uint64_t table_address;
+} PACKED;
+
 struct smbios_entry_header_t {
     smbios_type_t type;
     uint8_t length;
@@ -53,9 +69,19 @@ struct smbios_entry_system_information_t {
     smbios_type_t type;
     uint8_t length;
     uint16_t handle;
+    
+    uint8_t manufacturer_str_index;
+    uint8_t product_name_str_index;
+    uint8_t version_str_index;
+    uint8_t serial_number_str_index;
+
+    uint8_t uuid[16];
+    uint8_t wakeup_type;
 };
 
 size_t smbios_entry_length(const smbios_entry_header_t* entry);
-void smbios_test();
+const char* smbios_get_string_at_index(const smbios_entry_header_t* entry, size_t i);
+void smbios_iterate(uint64_t table_address, void* extra, bool(*callback)(smbios_entry_header_t* entry, void* extra));
+void* smbios_find_struct_entry(const char* signature, size_t signature_size);
 
 #endif // __SMBIOS_HPP__
