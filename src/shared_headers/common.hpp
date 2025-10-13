@@ -134,6 +134,13 @@ static uint64_t align_down(uint64_t addr, uint64_t align) {
     return (addr) & ~(align - 1);
 }
 
+static double round(double x) {
+    if (x >= 0.0)
+        return (double)((long long)(x + 0.5));
+    else
+        return (double)((long long)(x - 0.5));
+}
+
 constexpr uint16_t ntohs(uint16_t netshort) {
     return ((netshort & 0xFF) << 8) | ((netshort >> 8) & 0xFF);
 }

@@ -85,8 +85,8 @@ void exec(const string& path, const dynamic_array<string>& args) {
             // TODO @since 13/10/2025 -- 12:35
             // add dma stuff & reserved memory for the kernel etc
 
-            printf(STD, "Memory allocated:   %ulB/%ulB (%i%)\n", used_mem, heap->size, (int)(((double)used_mem / (double)heap->size) * 100));
-            printf(STD, "Total available:    %ulB\n", get_global_system_info_manager()->memory_size);\
+            printf(STD, "Memory allocated:   %s/%s (%i%)\n", str_format_size(used_mem).c_str(), str_format_size(heap->size).c_str(), (int)(((double)used_mem / (double)heap->size) * 100));
+            printf(STD, "Total available:    %s\n", str_format_size(get_global_system_info_manager()->memory_size).c_str());
             printf(STD, "Total comitted:     %f%\n", (double)(((double)heap->size / (double)get_global_system_info_manager()->memory_size) * 100));
             break;
         }
@@ -156,6 +156,8 @@ void exec(const string& path, const dynamic_array<string>& args) {
             printf(STD, "pcistat                        PCI(e) info\n");
             printf(STD, "ls                             Lists files and directories\n");
             printf(STD, "cat                            Display file content\n");
+            printf(STD, "diskstat                       Displays disk info\n");
+            printf(STD, "    <path>                     Target disk path\n");
             printf(STD, "driverquery                    Query drivers for information\n");
             printf(STD, "    list                       List all drivers\n");
             printf(STD, "    <name> <feature>           List the capabiliy of a driver feature\n");
@@ -206,7 +208,7 @@ void exec(const string& path, const dynamic_array<string>& args) {
                 printf(STD, "%s:\n", storage_info.model.c_str());
                 printf(STD, "    Serial: %s\n", storage_info.serial.c_str());
                 printf(STD, "    Firmware: %s\n", storage_info.firmare.c_str());
-                printf(STD, "    Disk size: %ulB\n", storage_info.capacity);
+                printf(STD, "    Disk size: %s\n", str_format_size(storage_info.capacity).c_str());
             }
             break;
         }
@@ -245,6 +247,12 @@ void terminal_keydown_callback(virtual_key_t vk) {
             if (terminal_current_input.length() > 0) {
                 printf(STD, "%c", '\b');
                 terminal_current_input.delete_at(terminal_current_input.length() - 1);
+            }
+            break;
+        case VK_TAB:
+            for (size_t i = 0; i < 4; i++) {
+                printf(STD, " ");
+                terminal_current_input.insert_back(' ');
             }
             break;
         default:

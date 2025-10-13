@@ -175,4 +175,18 @@ inline dynamic_array<string> str_split(const string& instr, char ch) {
     return parts;
 }
 
+inline string str_format_size(size_t size) {
+    constexpr const char* sizes[] { "B", "KB", "MB", "GB", "TB" };
+    size_t size_index = 0;
+    double size_current = size;
+    while (size_current > 1000.0 && size_index < ARRAY_LENGTH(sizes) - 1) {
+        size_index++;
+        size_current /= 1000.0;
+    }
+
+    char buffer[256];
+    sprintf(buffer, 256, "%f%s", size_current, sizes[size_index]);
+    return string(buffer);
+}
+
 #endif // __STRING_HPP__
