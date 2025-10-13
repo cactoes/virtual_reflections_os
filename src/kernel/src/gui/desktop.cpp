@@ -1,7 +1,7 @@
 #include "gui/desktop.hpp"
 #include "drivers/vga.hpp"
 #include "drivers/ps2/mouse.hpp"
-#include "utils/vector.hpp"
+#include "std/array.hpp"
 #include "utils/map.hpp"
 #include "utils/event.hpp"
 #include "random.hpp"

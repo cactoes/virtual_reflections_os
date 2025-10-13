@@ -28,7 +28,7 @@
 #include "memory/heap.hpp"
 
 #include "utils/debug.hpp"
-#include "utils/vector.hpp"
+#include "std/array.hpp"
 #include "utils/event.hpp"
 
 #include "time/clock.hpp"
@@ -72,7 +72,7 @@ void printf(print_mode_t mode, const char* p_str, ...) {
     }
 }
 
-void exec(const string& path, const dynamic_array<string>& args) {
+void exec(const string& path, const std::dynamic_array<string>& args) {
     switch (hash_fnv1a_64(path.c_str())) {
         case hash_fnv1a_64("memstat"): {
             auto heap = get_global_heap();
@@ -111,7 +111,7 @@ void exec(const string& path, const dynamic_array<string>& args) {
         case hash_fnv1a_64("ls"): {
             // TODO @since 11/10/2025 -- 01:09
             // check if is file
-            dynamic_array<vfs_node_t*> entries {};
+            std::dynamic_array<vfs_node_t*> entries {};
             string arg_path = "";
             if (args.length() >= 1)
                 arg_path = *args.get_at(0);
@@ -130,7 +130,7 @@ void exec(const string& path, const dynamic_array<string>& args) {
         case hash_fnv1a_64("cat"): {
             // TODO @since 11/10/2025 -- 01:09
             // check if is directory
-            dynamic_array<vfs_node_t*> entries {};
+            std::dynamic_array<vfs_node_t*> entries {};
             string arg_path = "";
             if (args.length() >= 1)
                 arg_path = *args.get_at(0);
@@ -141,7 +141,7 @@ void exec(const string& path, const dynamic_array<string>& args) {
                 break;
             }
 
-            dynamic_array<uint8_t> data {};
+            std::dynamic_array<uint8_t> data {};
             vfs_read_file(get_global_vfs(), result, &data);
             for (auto& ch : data) {
                 printf(STD, "%c", ch);
@@ -218,7 +218,7 @@ void exec(const string& path, const dynamic_array<string>& args) {
     }
 }
 
-dynamic_array<char> terminal_current_input {};
+std::dynamic_array<char> terminal_current_input {};
 bool keep_terminal_alive = true;
 
 void terminal_keydown_callback(virtual_key_t vk) {
@@ -228,7 +228,7 @@ void terminal_keydown_callback(virtual_key_t vk) {
             terminal_current_input.insert_back(0);
 
             auto parts = str_split(terminal_current_input.get_data(), ' ');
-            dynamic_array<string> args {};
+            std::dynamic_array<string> args {};
             args.resize(parts.length() - 1);
             for (size_t i = 1; i < parts.length(); i++)
                 args.insert_back(*parts.get_at(i));
@@ -382,7 +382,7 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
         if (!mount_disk(move(ide_storage), disk_mount_name_buffer)) {
             printf(DBG, "failed to mount disk: %s\n", disk_mount_name_buffer);
         } else {
-            printf(DBG, "mounted disk: %s\n", disk_mount_name_buffer);
+            printf(DBG, "mounted: %s\n", disk_mount_name_buffer);
         }
     }
 
@@ -404,7 +404,7 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
             if (!mount_disk(move(ahci_storage), disk_mount_name_buffer)) {
                 printf(DBG, "failed to mount drive: %s\n", disk_mount_name_buffer);
             } else {
-                printf(DBG, "mounted drive: %s\n", disk_mount_name_buffer);
+                printf(DBG, "mounted: %s\n", disk_mount_name_buffer);
             }
         }
     }
@@ -465,13 +465,13 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
     driver_manager_t driver_manager {};
     set_global_driver_manager(&driver_manager);
 
-    dynamic_array<vfs_node_t*> nodes {};
+    std::dynamic_array<vfs_node_t*> nodes {};
     if (vfs_list_directory(get_global_vfs(), "/mnt/disk0", &nodes)) {
         for (auto& node : nodes) {
             if (str_ends_with(node->meta.name.c_str(), ".sys")) {
                 string driver_name = node->meta.name.substr(0, node->meta.name.length() - 4);
 
-                dynamic_array<uint8_t> driver_file {};
+                std::dynamic_array<uint8_t> driver_file {};
                 file_descriptor_t driver_file_handle = vfs_open_file(get_global_vfs(), string("/mnt/disk0/") + driver_name + ".sys");
                 if (driver_file_handle == FILE_DESCRIPTOR_INVALID) {
                     printf(DBG, "failed to open handle to driver '%s'\n", driver_name.c_str());

@@ -11,10 +11,10 @@
 #define TO_IP(a0, a1, a2, a3) ((((uint32_t)(a0) & 0xff) << 24) | (((uint32_t)(a1) & 0xff) << 16) | (((uint32_t)(a2) & 0xff) << 8) | (((uint32_t)(a3) & 0xff) << 0))
 
 #include "common.hpp"
-#include "utils/vector.hpp"
 #include "utils/map.hpp"
 #include "string.hpp"
 #include "std/pointer.hpp"
+#include "std/array.hpp"
 
 struct network_interface_device_t {
     string name;
@@ -60,7 +60,7 @@ struct network_interface_device_t {
 typedef void(*network_callback_t)(uint8_t* p_packet, size_t length);
 
 struct nidm_t {
-    dynamic_array<network_interface_device_t> devices;
+    std::dynamic_array<network_interface_device_t> devices;
     linear_map<uint16_t, network_callback_t> udp_callbacks;
 };
 

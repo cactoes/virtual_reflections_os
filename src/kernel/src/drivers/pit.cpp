@@ -1,8 +1,8 @@
 #include "drivers/pit.hpp"
-#include "utils/vector.hpp"
+#include "std/array.hpp"
 
 static uint64_t g_tick_count = 0;
-static dynamic_array<pit_interrupt_function_t> g_interrupt_functions {};
+static std::dynamic_array<pit_interrupt_function_t> g_interrupt_functions {};
 
 cpu_state_t* pit_handle_interrupt(cpu_state_t* p_cpu_state) {
     g_tick_count++;

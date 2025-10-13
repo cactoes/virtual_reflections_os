@@ -1,5 +1,6 @@
 #include "filesystems/filesystem.hpp"
 #include "std/pointer.hpp"
+#include "memory/heap.hpp"
 
 filesystem_type_t filesystem_identify(storage_driver_interface_t* storage_interface) {
     std::unique_ptr<uint8_t> buffer = std::unique_ptr<uint8_t>((uint8_t*)heap_alloc(get_global_heap(), storage_interface->get_block_size()));

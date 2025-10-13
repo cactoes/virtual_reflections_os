@@ -1,4 +1,5 @@
 #include "filesystems/fat32.hpp"
+#include "memory/heap.hpp"
 
 bool fat32_bpb_is_valid(const fat32_bpb_extended_t* bpb) {
     if (bpb->bpb.bytes_per_sector != 512 &&
@@ -113,7 +114,7 @@ bool fat32_find_node(storage_driver_interface_t* storage_interface, fat32_data_t
     }
 
     // split string to get the next node to look for
-    dynamic_array<string> path_parts = str_split(path, '/');
+    std::dynamic_array<string> path_parts = str_split(path, '/');
     if (path_parts.length() == 0)
         return false;
 
@@ -256,7 +257,7 @@ bool fat32_filesystem_interface_t::write(const char* path, void* data, size_t* s
     return false;
 }
 
-bool fat32_filesystem_interface_t::enumerate_directory(const char* path, dynamic_array<filesystem_node_t>* out_array) {
+bool fat32_filesystem_interface_t::enumerate_directory(const char* path, std::dynamic_array<filesystem_node_t>* out_array) {
     fat32_node_data_t node {};
     if (!fat32_find_node(storage_interface.get(), &this->data, this->data.root_cluster, this->data.bytes_per_sector * this->data.sectors_per_cluster, path, &node))
         return false;

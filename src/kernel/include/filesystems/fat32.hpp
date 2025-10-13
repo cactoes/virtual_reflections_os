@@ -30,7 +30,7 @@
 #include "common.hpp"
 #include "drivers/storage/storage.hpp"
 #include "filesystems/filesystem.hpp"
-#include "utils/vector.hpp"
+#include "std/array.hpp"
 #include "string.hpp"
 #include "std/pointer.hpp"
 
@@ -121,7 +121,7 @@ public:
 
     bool read(const char* path, void** data, size_t* size) override;
     bool write(const char* path, void* data, size_t* size) override;
-    bool enumerate_directory(const char* path, dynamic_array<filesystem_node_t>* out_array) override;
+    bool enumerate_directory(const char* path, std::dynamic_array<filesystem_node_t>* out_array) override;
     const storage_driver_interface_t* get_storage_interface() const override;
 
 private:

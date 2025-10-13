@@ -9,7 +9,7 @@
 #define __UTILS_MAP_HPP__
 
 #include "memory/heap.hpp"
-#include "utils/vector.hpp"
+#include "std/array.hpp"
 
 template <typename T, typename U>
 struct key_value_pair_t {
@@ -144,7 +144,7 @@ public:
     }
 
 private:
-    dynamic_array<key_value_pair_t<T, U>> data {};
+    std::dynamic_array<key_value_pair_t<T, U>> data {};
 };
 
 #endif // __UTILS_MAP_HPP__

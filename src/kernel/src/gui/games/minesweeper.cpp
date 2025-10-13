@@ -1,6 +1,6 @@
 #include "gui/games/minesweeper.hpp"
 #include "gui/desktop.hpp"
-#include "utils/vector.hpp"
+#include "std/array.hpp"
 #include "std/array.hpp"
 #include "memory/heap.hpp"
 #include "random.hpp"
@@ -384,7 +384,7 @@ void minesweeper_init() {
     }
 
     // setup bombs
-    dynamic_array<std::static_array<int, 2>> bomb_spots {};
+    std::dynamic_array<std::static_array<int, 2>> bomb_spots {};
     bomb_spots.resize(game_config.size.width * game_config.size.height);
 
     loop_game_board([&bomb_spots](tile_t* tile) { bomb_spots.insert_back({ tile->grid_x, tile->grid_y }); });

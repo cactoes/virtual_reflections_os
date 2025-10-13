@@ -13,7 +13,7 @@
 #include "common.hpp"
 #include "drivers/storage/storage.hpp"
 #include "string.hpp"
-#include "utils/vector.hpp"
+#include "std/array.hpp"
 
 struct mbr_partition_entry_t {
     uint8_t boot_flag;
@@ -42,7 +42,7 @@ struct filesystem_interface_t {
 
     virtual bool read(const char* path, void** data, size_t* size) = 0;
     virtual bool write(const char* path, void* data, size_t* size) = 0;
-    virtual bool enumerate_directory(const char* path, dynamic_array<filesystem_node_t>* out_array) = 0;
+    virtual bool enumerate_directory(const char* path, std::dynamic_array<filesystem_node_t>* out_array) = 0;
     virtual const storage_driver_interface_t* get_storage_interface() const = 0;
 };
 

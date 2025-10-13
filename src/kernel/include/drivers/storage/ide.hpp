@@ -43,7 +43,7 @@
 
 #include "drivers/storage/storage.hpp"
 #include "drivers/pcie.hpp"
-#include "utils/vector.hpp"
+#include "std/array.hpp"
 
 enum class ide_channel_name_t {
     NONE = 0,

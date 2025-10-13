@@ -1,7 +1,7 @@
 #include "filesystems/iso9660.hpp"
 #include "memory/heap.hpp"
 #include "string.hpp"
-#include "utils/vector.hpp"
+#include "std/array.hpp"
 #include "std/pointer.hpp"
 
 void fmt_name(const char* p_name, uint8_t len, char* p_buffer) {
@@ -104,7 +104,7 @@ bool iso9660_find_node(storage_driver_interface_t* storage_interface, iso9660_da
         return false;
 
     // split string to get the next node to look for
-    dynamic_array<string> path_parts = str_split(path, '/');
+    std::dynamic_array<string> path_parts = str_split(path, '/');
     if (path_parts.length() == 0)
         return false;
 
@@ -197,7 +197,7 @@ bool iso9660_filesystem_interface_t::write(const char* path, void* data, size_t*
     return false;
 }
 
-bool iso9660_filesystem_interface_t::enumerate_directory(const char* path, dynamic_array<filesystem_node_t>* out_array) {
+bool iso9660_filesystem_interface_t::enumerate_directory(const char* path, std::dynamic_array<filesystem_node_t>* out_array) {
     iso9660_node_data_t node_data {};
     if (!iso9660_find_node(storage_interface.get(), &this->data, this->data.root.lba, this->data.root.size, (char*)path, &node_data))
         return false;

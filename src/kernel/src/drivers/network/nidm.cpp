@@ -19,7 +19,7 @@ nidm_t* get_global_nidm() {
 }
 
 void nidm_init(nidm_t* nidm) {
-    nidm->devices = dynamic_array<network_interface_device_t>();
+    nidm->devices = std::dynamic_array<network_interface_device_t>();
     nidm->udp_callbacks = linear_map<uint16_t, network_callback_t>();
 }
 

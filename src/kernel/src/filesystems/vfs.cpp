@@ -6,7 +6,7 @@ vfs_memory_storage_interface::vfs_memory_storage_interface() {
     mutex_init(&mutex);
 }
 
-bool vfs_memory_storage_interface::read_file(const string& path, dynamic_array<uint8_t>* content) {
+bool vfs_memory_storage_interface::read_file(const string& path, std::dynamic_array<uint8_t>* content) {
     if (auto it = storage.get(path); it != storage.end()) {
         for (auto& v : *it->value)
             content->insert_back(v);
@@ -17,19 +17,19 @@ bool vfs_memory_storage_interface::read_file(const string& path, dynamic_array<u
     return false;
 }
 
-bool vfs_memory_storage_interface::write_file(const string& path, dynamic_array<uint8_t>* content) {
+bool vfs_memory_storage_interface::write_file(const string& path, std::dynamic_array<uint8_t>* content) {
     return write_file(path, content->get_data(), content->length());
 }
 
 bool vfs_memory_storage_interface::write_file(const string& path, uint8_t* content, size_t size) {
     mutex_lock_guard guard(&mutex);
 
-    std::unique_ptr<dynamic_array<uint8_t>> target_storage_file;
+    std::unique_ptr<std::dynamic_array<uint8_t>> target_storage_file;
 
     if (auto it = storage.get(path); it != storage.end())
         target_storage_file = move(it->value);
     else
-        target_storage_file = std::make_unique<dynamic_array<uint8_t>>();
+        target_storage_file = std::make_unique<std::dynamic_array<uint8_t>>();
 
     if (target_storage_file.get() == nullptr)
         return false;
@@ -54,7 +54,7 @@ vfs_disk_storage_interface::vfs_disk_storage_interface(std::unique_ptr<filesyste
     this->api = move(api);
 }
 
-bool vfs_disk_storage_interface::read_file(const string& path, dynamic_array<uint8_t>* content) {
+bool vfs_disk_storage_interface::read_file(const string& path, std::dynamic_array<uint8_t>* content) {
     void* data;
     size_t size;
     if (!api->read(path.c_str(), &data, &size))
@@ -63,7 +63,7 @@ bool vfs_disk_storage_interface::read_file(const string& path, dynamic_array<uin
     return true;
 }
 
-bool vfs_disk_storage_interface::write_file(const string& path, dynamic_array<uint8_t>* content) {
+bool vfs_disk_storage_interface::write_file(const string& path, std::dynamic_array<uint8_t>* content) {
     return write_file(path, content->get_data(), content->length());
 }
 
@@ -75,8 +75,8 @@ bool vfs_disk_storage_interface::create_directory(const string& path) {
     return true;
 }
 
-bool vfs_disk_storage_interface::enumerate_directory(const string& path, dynamic_array<std::unique_ptr<vfs_node_t>>* out_array) {
-    dynamic_array<filesystem_node_t> nodes {};
+bool vfs_disk_storage_interface::enumerate_directory(const string& path, std::dynamic_array<std::unique_ptr<vfs_node_t>>* out_array) {
+    std::dynamic_array<filesystem_node_t> nodes {};
     if (!api->enumerate_directory(path.c_str(), &nodes))
         return false;
 
@@ -131,7 +131,7 @@ vfs_node_t* vfs_resolve_path(vfs_t* vfs, const string& path) {
     if (path == "/" || path.length() == 0)
         return vfs->root_node.get();
 
-    dynamic_array<string> path_parts = str_split(path, '/');
+    std::dynamic_array<string> path_parts = str_split(path, '/');
     vfs_node_t* current_node = vfs->root_node.get();
 
     for (const auto& part : path_parts) {
@@ -161,7 +161,7 @@ vfs_node_t* vfs_create_cache_directories(vfs_t* vfs, const string& path) {
     if (path == "/" || path.length() == 0)
         return vfs->root_node.get();
 
-    dynamic_array<string> path_parts = str_split(path, '/');
+    std::dynamic_array<string> path_parts = str_split(path, '/');
     vfs_node_t* current_node = vfs->root_node.get();
 
     for (const auto& part : path_parts) {
@@ -280,7 +280,7 @@ bool vfs_close_file(vfs_t* vfs, file_descriptor_t fd) {
     return vfs->open_files.remove(fd);
 }
 
-bool vfs_read_file(vfs_t* vfs, file_descriptor_t fd, dynamic_array<uint8_t>* content) {
+bool vfs_read_file(vfs_t* vfs, file_descriptor_t fd, std::dynamic_array<uint8_t>* content) {
     auto it = vfs->open_files.get(fd);
     if (it == vfs->open_files.end())
         return false;
@@ -290,7 +290,7 @@ bool vfs_read_file(vfs_t* vfs, file_descriptor_t fd, dynamic_array<uint8_t>* con
     return storage_interface->read_file(relative_path, content);
 }
 
-bool vfs_write_file(vfs_t* vfs, file_descriptor_t fd, dynamic_array<uint8_t>* content) {
+bool vfs_write_file(vfs_t* vfs, file_descriptor_t fd, std::dynamic_array<uint8_t>* content) {
     auto it = vfs->open_files.get(fd);
     if (it == vfs->open_files.end())
         return false;
@@ -311,7 +311,7 @@ bool vfs_write_file(vfs_t* vfs, file_descriptor_t fd, uint8_t* content, size_t s
 }
 
 void vfs_enumerate_and_append_child_nodes(vfs_storage_interface_t* storage_interface, const string& path, vfs_node_t* parent_node) {
-    dynamic_array<std::unique_ptr<vfs_node_t>> directories {};
+    std::dynamic_array<std::unique_ptr<vfs_node_t>> directories {};
     storage_interface->enumerate_directory(path, &directories);
 
     for (auto& node : directories) {
@@ -385,7 +385,7 @@ const vfs_node_meta_t* vfs_get_meta(vfs_t* vfs, file_descriptor_t fd) {
     return &vfs_resolve_path(vfs, it->value)->meta;
 }
 
-bool vfs_list_directory(vfs_t* vfs, const string& path, dynamic_array<vfs_node_t*>* out_array) {
+bool vfs_list_directory(vfs_t* vfs, const string& path, std::dynamic_array<vfs_node_t*>* out_array) {
     vfs_node_t* root_node = vfs_resolve_path(vfs, path);
     if (!root_node)
         return false;

@@ -13,7 +13,7 @@
 #include "common.hpp"
 
 #include <stdarg.h>
-#include "utils/vector.hpp"
+#include "std/array.hpp"
 
 /// @brief          returns length of string
 /// @param[in] str  string to get length of
@@ -144,8 +144,8 @@ private:
     size_t len = 0;
 };
 
-inline dynamic_array<string> str_split(const string& instr, char ch) {
-    dynamic_array<string> parts {};
+inline std::dynamic_array<string> str_split(const string& instr, char ch) {
+    std::dynamic_array<string> parts {};
     // on average there will most likely be at least 5 items in the array
     // we can kinda optimize it here, mostly for the vfs :)
     parts.resize(5);

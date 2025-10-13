@@ -102,7 +102,7 @@
 #include "common.hpp"
 #include "drivers/storage/storage.hpp"
 #include "drivers/pcie.hpp"
-#include "utils/vector.hpp"
+#include "std/array.hpp"
 
 struct hba_port_t {
     uint32_t clb;
