@@ -15,7 +15,7 @@ bool mount_disk(ptr::unique<storage_driver_interface_t> interface, const char* p
                 return false;
 
             // init file system interface
-            fs_interface = ptr::make_unique<iso9660_filesystem_interface>(move(interface), fs_data);
+            fs_interface = ptr::make_unique<iso9660_filesystem_interface_t>(move(interface), fs_data);
             break;
         }
         case filesystem_type_t::FAT32: {
@@ -25,7 +25,7 @@ bool mount_disk(ptr::unique<storage_driver_interface_t> interface, const char* p
                 return false;
 
             // init file system interface
-            fs_interface = ptr::make_unique<fat32_filesystem_interface>(move(interface), fs_data);
+            fs_interface = ptr::make_unique<fat32_filesystem_interface_t>(move(interface), fs_data);
             break;
         }
         default:

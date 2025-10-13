@@ -71,13 +71,13 @@ uint64_t ahci_storage_driver_t::get_root_lba() {
     return root_lba;
 }
 
-void decode_string(const uint16_t* src, int word_count, char* dest, int max_len) {
-    int pos = 0;
-    for (int i = 0; i < word_count && pos + 1 < max_len; ++i) {
-        dest[pos++] = (char)(src[i] >> 8);
-        dest[pos++] = (char)(src[i] & 0xFF);
-    }
-    dest[pos] = '\0';
+storage_info_t ahci_storage_driver_t::get_storage_info() const {
+    storage_info_t info {};
+    info.model = drive->model;
+    info.serial = drive->serial;
+    info.firmare = drive->firmware;
+    info.capacity = drive->capacity;
+    return info;
 }
 
 int ahci_init(const pci_device_t* pice_device, linked_list<ahci_drive_t>* device_list) {
@@ -197,9 +197,9 @@ int ahci_sata_identify_device(ahci_drive_t* drive) {
 
     const uint16_t* data = (const uint16_t*)ctx.data_buffer;
 
-    decode_string(&data[27], 20, drive->model, sizeof(drive->model));
-    decode_string(&data[10], 10, drive->serial, sizeof(drive->serial));
-    decode_string(&data[23], 4, drive->firmware, sizeof(drive->firmware));
+    unpack_be16_string(&data[27], 20, drive->model, sizeof(drive->model));
+    unpack_be16_string(&data[10], 10, drive->serial, sizeof(drive->serial));
+    unpack_be16_string(&data[23], 4, drive->firmware, sizeof(drive->firmware));
 
     // lba28 fallback
     drive->lba = (uint32_t)data[60] | ((uint32_t)data[61] << 16);
@@ -361,9 +361,9 @@ int ahci_atapi_identify_device(ahci_drive_t* drive) {
 
     const uint16_t* data = (const uint16_t*)ctx.data_buffer;
 
-    decode_string(&data[10], 10, drive->model, sizeof(drive->model));
-    decode_string(&data[23], 4, drive->serial, sizeof(drive->serial));
-    decode_string(&data[27], 20, drive->firmware, sizeof(drive->firmware));
+    unpack_be16_string(&data[10], 10, drive->model, sizeof(drive->model));
+    unpack_be16_string(&data[23], 4, drive->serial, sizeof(drive->serial));
+    unpack_be16_string(&data[27], 20, drive->firmware, sizeof(drive->firmware));
 
     // lba28 fallback
     drive->lba = (uint32_t)data[60] | ((uint32_t)data[61] << 16);

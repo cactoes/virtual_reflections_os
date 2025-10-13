@@ -25,6 +25,14 @@ struct vfs_node_t;
 
 typedef int file_descriptor_t;
 
+struct vfs_storage_info_t {
+    string model;
+    string serial;
+    string firmare;
+
+    size_t capacity;
+};
+
 struct vfs_storage_interface_t {
     virtual ~vfs_storage_interface_t() = default;
 
@@ -36,6 +44,8 @@ struct vfs_storage_interface_t {
     virtual bool enumerate_directory(const string& path, dynamic_array<ptr::unique<vfs_node_t>>* out_array) = 0;
 
     virtual bool create_directory(const string& path) = 0;
+
+    virtual vfs_storage_info_t get_storage_info() const = 0;
 };
 
 class vfs_memory_storage_interface : public vfs_storage_interface_t {
@@ -52,6 +62,10 @@ public:
     }
 
     bool create_directory(const string& path) override;
+
+    vfs_storage_info_t get_storage_info() const {
+        return vfs_storage_info_t{};
+    }
 
 private:
     linear_map<string, ptr::unique<dynamic_array<uint8_t>>> storage;
@@ -70,6 +84,17 @@ public:
     bool enumerate_directory(const string& path, dynamic_array<ptr::unique<vfs_node_t>>* out_array) override;
 
     bool create_directory(const string& path) override;
+
+    vfs_storage_info_t get_storage_info() const {
+        storage_info_t storage_info = api->get_storage_interface()->get_storage_info();
+
+        vfs_storage_info_t info {};
+        info.model = move(storage_info.model);
+        info.serial = move(storage_info.serial);
+        info.firmare = move(storage_info.firmare);
+        info.capacity = storage_info.capacity;
+        return info;
+    }
 
 private:
     ptr::unique<filesystem_interface_t> api;
@@ -151,5 +176,6 @@ bool vfs_mount(vfs_t* vfs, const string& path, ptr::unique<vfs_storage_interface
 bool vfs_add_file_cache(vfs_t* vfs, const string& path);
 const vfs_node_meta_t* vfs_get_meta(vfs_t* vfs, file_descriptor_t fd);
 bool vfs_list_directory(vfs_t* vfs, const string& path, dynamic_array<vfs_node_t*>* out_array);
+bool vfs_get_disk_info(vfs_t* vfs, const string& path, vfs_storage_info_t* disk_info);
 
 #endif // __FILESYSTEMS_VFS_HPP__

@@ -416,13 +416,19 @@ bool str_ends_with(const char* p_str, const char* p_target) {
     return streq(p_str + str_len - target_len, p_target);
 }
 
-void unpack_be16_string(const uint16_t* p_src, int word_count, char* p_dst, int max_len) {
+void unpack_be16_string(const uint16_t* src, int word_count, char* dst, int max_len) {
     int pos = 0;
+    memzero(dst, max_len);
+
     for (int i = 0; i < word_count && pos + 1 < max_len; ++i) {
-        p_dst[pos++] = (char)(p_src[i] >> 8);
-        p_dst[pos++] = (char)(p_src[i] & 0xFF);
+        dst[pos++] = (char)(src[i] >> 8);
+        dst[pos++] = (char)(src[i] & 0xFF);
     }
-    p_dst[pos] = '\0';
+    
+    while (pos > 0 && dst[pos - 1] == ' ')
+        pos--;
+
+    dst[pos < max_len ? pos : max_len - 1] = '\0';
 }
 
 string::string() {

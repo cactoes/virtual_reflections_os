@@ -283,3 +283,12 @@ void ide_storage_driver_t::set_root_lba(uint64_t lba) {
 uint64_t ide_storage_driver_t::get_root_lba() {
     return root_lba;
 }
+
+storage_info_t ide_storage_driver_t::get_storage_info() const {
+    storage_info_t info {};
+    info.model = device->model;
+    info.serial = device->serial;
+    info.firmare = device->firmware;
+    info.capacity = device->capacity;
+    return info;
+}

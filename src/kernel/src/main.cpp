@@ -125,7 +125,6 @@ void exec(const string& path, const dynamic_array<string>& args) {
             for (auto& dir : entries)
                 printf(STD, "%s\n", dir->meta.name.c_str());
 
-            printf(STD, "\n");
             break;
         }
         case hash_fnv1a_64("cat"): {
@@ -191,6 +190,23 @@ void exec(const string& path, const dynamic_array<string>& args) {
                         printf(STD, "    Capability: %s version %u", arg1.c_str(), capability);
                     }
                 }
+            }
+            break;
+        }
+        case hash_fnv1a_64("diskstat"): {
+            if (args.length() >= 1) {
+                auto arg0 = *args.get_at(0);
+    
+                vfs_storage_info_t storage_info {};
+                if (!vfs_get_disk_info(get_global_vfs(), arg0.c_str(), &storage_info)) {
+                    printf(STD, "Disk or drive not found\n");
+                    break;
+                }
+    
+                printf(STD, "%s:\n", storage_info.model.c_str());
+                printf(STD, "    Serial: %s\n", storage_info.serial.c_str());
+                printf(STD, "    Firmware: %s\n", storage_info.firmare.c_str());
+                printf(STD, "    Disk size: %ulB\n", storage_info.capacity);
             }
             break;
         }

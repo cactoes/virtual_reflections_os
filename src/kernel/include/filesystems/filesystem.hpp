@@ -43,6 +43,7 @@ struct filesystem_interface_t {
     virtual bool read(const char* path, void** data, size_t* size) = 0;
     virtual bool write(const char* path, void* data, size_t* size) = 0;
     virtual bool enumerate_directory(const char* path, dynamic_array<filesystem_node_t>* out_array) = 0;
+    virtual const storage_driver_interface_t* get_storage_interface() const = 0;
 };
 
 filesystem_type_t filesystem_identify(storage_driver_interface_t* storage_interface);

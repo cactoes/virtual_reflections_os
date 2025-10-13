@@ -209,12 +209,12 @@ bool fat32_find_node(storage_driver_interface_t* storage_interface, fat32_data_t
     return false;
 }
 
-fat32_filesystem_interface::fat32_filesystem_interface(ptr::unique<storage_driver_interface_t> storage_interface, const fat32_data_t& data) {
+fat32_filesystem_interface_t::fat32_filesystem_interface_t(ptr::unique<storage_driver_interface_t> storage_interface, const fat32_data_t& data) {
     this->data = data;
     this->storage_interface = move(storage_interface);
 }
 
-bool fat32_filesystem_interface::read(const char* path, void** data, size_t* size) {
+bool fat32_filesystem_interface_t::read(const char* path, void** data, size_t* size) {
     fat32_node_data_t node {};
     if (!fat32_find_node(storage_interface.get(), &this->data, this->data.root_cluster, this->data.bytes_per_sector * this->data.sectors_per_cluster, path, &node))
         return false;
@@ -251,12 +251,12 @@ bool fat32_filesystem_interface::read(const char* path, void** data, size_t* siz
     return true;
 }
 
-bool fat32_filesystem_interface::write(const char* path, void* data, size_t* size) {
+bool fat32_filesystem_interface_t::write(const char* path, void* data, size_t* size) {
     // TODO @since 13/10/2025 -- 00:06
     return false;
 }
 
-bool fat32_filesystem_interface::enumerate_directory(const char* path, dynamic_array<filesystem_node_t>* out_array) {
+bool fat32_filesystem_interface_t::enumerate_directory(const char* path, dynamic_array<filesystem_node_t>* out_array) {
     fat32_node_data_t node {};
     if (!fat32_find_node(storage_interface.get(), &this->data, this->data.root_cluster, this->data.bytes_per_sector * this->data.sectors_per_cluster, path, &node))
         return false;
@@ -344,4 +344,8 @@ bool fat32_filesystem_interface::enumerate_directory(const char* path, dynamic_a
     }
 
     return true;
+}
+
+const storage_driver_interface_t* fat32_filesystem_interface_t::get_storage_interface() const {
+    return storage_interface.get();
 }

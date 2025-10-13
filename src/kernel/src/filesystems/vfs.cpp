@@ -107,6 +107,7 @@ bool vfs_init(vfs_t* vfs) {
     vfs->root_node->type = vfs_node_type_t::DIRECTORY;
     vfs->root_node->storage_interface = vfs->root_storage_interface.get();
     vfs->root_node->root_mount_point = nullptr;
+    vfs->root_node->mount_point = nullptr;
     vfs->root_node->root_storage_interface = vfs->root_node.get();
     
     vfs->root_node->meta.name = "/";
@@ -393,5 +394,14 @@ bool vfs_list_directory(vfs_t* vfs, const string& path, dynamic_array<vfs_node_t
     for (auto& child : root_node->children)
         out_array->insert_back(child.get());
 
+    return true;
+}
+
+bool vfs_get_disk_info(vfs_t* vfs, const string& path, vfs_storage_info_t* disk_info) {
+    vfs_node_t* node = vfs_resolve_path(vfs, path);
+    if (!node || !node->meta.flags.is_mount_point)
+        return false;
+
+    *disk_info = move(node->storage_interface->get_storage_info());
     return true;
 }

@@ -115,13 +115,14 @@ struct fat32_data_t {
     uint32_t root_cluster;
 };
 
-class fat32_filesystem_interface : public filesystem_interface_t {
+class fat32_filesystem_interface_t : public filesystem_interface_t {
 public:
-    fat32_filesystem_interface(ptr::unique<storage_driver_interface_t> storage_interface, const fat32_data_t& data);
+    fat32_filesystem_interface_t(ptr::unique<storage_driver_interface_t> storage_interface, const fat32_data_t& data);
 
     bool read(const char* path, void** data, size_t* size) override;
     bool write(const char* path, void* data, size_t* size) override;
     bool enumerate_directory(const char* path, dynamic_array<filesystem_node_t>* out_array) override;
+    const storage_driver_interface_t* get_storage_interface() const override;
 
 private:
     fat32_data_t data;

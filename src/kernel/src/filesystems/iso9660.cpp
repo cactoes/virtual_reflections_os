@@ -162,12 +162,12 @@ bool iso9660_find_node(storage_driver_interface_t* storage_interface, iso9660_da
     return false;
 }
 
-iso9660_filesystem_interface::iso9660_filesystem_interface(ptr::unique<storage_driver_interface_t> storage_interface, const iso9660_data_t& data) {
+iso9660_filesystem_interface_t::iso9660_filesystem_interface_t(ptr::unique<storage_driver_interface_t> storage_interface, const iso9660_data_t& data) {
     this->data = data;
     this->storage_interface = move(storage_interface);
 }
 
-bool iso9660_filesystem_interface::read(const char* path, void** data, size_t* size) {
+bool iso9660_filesystem_interface_t::read(const char* path, void** data, size_t* size) {
     iso9660_node_data_t node_data {};
     if (!iso9660_find_node(storage_interface.get(), &this->data, this->data.root.lba, this->data.root.size, (char*)path, &node_data))
         return false;
@@ -193,11 +193,11 @@ bool iso9660_filesystem_interface::read(const char* path, void** data, size_t* s
     return true;
 }
 
-bool iso9660_filesystem_interface::write(const char* path, void* data, size_t* size) {
+bool iso9660_filesystem_interface_t::write(const char* path, void* data, size_t* size) {
     return false;
 }
 
-bool iso9660_filesystem_interface::enumerate_directory(const char* path, dynamic_array<filesystem_node_t>* out_array) {
+bool iso9660_filesystem_interface_t::enumerate_directory(const char* path, dynamic_array<filesystem_node_t>* out_array) {
     iso9660_node_data_t node_data {};
     if (!iso9660_find_node(storage_interface.get(), &this->data, this->data.root.lba, this->data.root.size, (char*)path, &node_data))
         return false;
@@ -245,6 +245,10 @@ bool iso9660_filesystem_interface::enumerate_directory(const char* path, dynamic
     }
 
     return true;
+}
+
+const storage_driver_interface_t* iso9660_filesystem_interface_t::get_storage_interface() const {
+    return storage_interface.get();
 }
 
 int iso9660_init(storage_driver_interface_t* storage_interface, iso9660_data_t* fs_data) {

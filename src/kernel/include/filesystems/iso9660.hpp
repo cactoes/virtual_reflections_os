@@ -139,13 +139,14 @@ struct iso9660_data_t {
     iso9660_node_data_t root;
 };
 
-class iso9660_filesystem_interface : public filesystem_interface_t {
+class iso9660_filesystem_interface_t : public filesystem_interface_t {
 public:
-    iso9660_filesystem_interface(ptr::unique<storage_driver_interface_t> storage_interface, const iso9660_data_t& data);
+    iso9660_filesystem_interface_t(ptr::unique<storage_driver_interface_t> storage_interface, const iso9660_data_t& data);
 
     bool read(const char* path, void** data, size_t* size) override;
     bool write(const char* path, void* data, size_t* size) override;
     bool enumerate_directory(const char* path, dynamic_array<filesystem_node_t>* out_array) override;
+    const storage_driver_interface_t* get_storage_interface() const override;
 
 private:
     iso9660_data_t data;

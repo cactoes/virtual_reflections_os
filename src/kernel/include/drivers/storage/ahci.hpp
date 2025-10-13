@@ -238,6 +238,7 @@ public:
     size_t get_block_size() override;
     void set_root_lba(uint64_t lba) override;
     uint64_t get_root_lba() override;
+    storage_info_t get_storage_info() const override;
 
 private:
     uint64_t root_lba = 0;
