@@ -47,7 +47,7 @@
             "dependsOrder": "sequence",
             "dependsOn": [
                 "build kernel",
-                "start qemu",
+                "start qemu"
             ],
             "options": {
                 "statusbar": {
