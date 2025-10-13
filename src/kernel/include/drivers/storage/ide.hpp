@@ -87,8 +87,12 @@ public:
 
     bool read(uint32_t lba, uint8_t* buffer, size_t size) override;
     bool write(uint32_t lba, uint8_t* buffer, size_t size) override;
+    size_t get_block_size() override;
+    void set_root_lba(uint64_t lba) override;
+    uint64_t get_root_lba() override;
 
 private:
+    uint64_t root_lba = 0;
     ide_device_t* device;
 };
 

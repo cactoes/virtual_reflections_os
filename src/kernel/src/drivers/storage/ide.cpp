@@ -271,3 +271,15 @@ bool ide_storage_driver_t::write(uint32_t lba, uint8_t* buffer, size_t size) {
     // TODO @since 10/10/2025 -- 20:20
     return 1;
 }
+
+size_t ide_storage_driver_t::get_block_size() {
+    return IDE_SECTOR_SIZE;
+}
+
+void ide_storage_driver_t::set_root_lba(uint64_t lba) {
+    root_lba = lba;
+}
+
+uint64_t ide_storage_driver_t::get_root_lba() {
+    return root_lba;
+}

@@ -351,68 +351,44 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
     for (auto& drive : ide_devices) {
         // init device interface
         auto ide_storage = ptr::make_unique<ide_storage_driver_t>(&drive);
-        
-        // TODO @since 05/08/2025 -- 01:18
-        // detect file system
 
-        // init file system
-        iso9660_data_t fs_data {};
-        iso9660_init((storage_driver_interface_t*)ide_storage.get(), &fs_data);
-
-        // init file system interface
-        auto iso9660_interface = ptr::make_unique<iso9660_filesystem_interface>(move(ide_storage), fs_data);
-
-        // init vfs storage interface
-        auto disk_storage_interface = ptr::make_unique<vfs_disk_storage_interface>(move(iso9660_interface));
-
-        // mount storage interface
         char disk_mount_name_buffer[20];
         sprintf(disk_mount_name_buffer, 20, "/mnt/disk%i", ide_device_index++);
 
-        vfs_mount(get_global_vfs(), disk_mount_name_buffer, move(disk_storage_interface));
+        if (!mount_disk(move(ide_storage), disk_mount_name_buffer)) {
+            printf(DBG, "failed to mount disk: %s\n", disk_mount_name_buffer);
+        } else {
+            printf(DBG, "mounted disk: %s\n", disk_mount_name_buffer);
+        }
     }
 
     // ahci device
     pci_class_info_t ahci_device_class_info { .revision_id = (uint8_t)PCI_UNKNOWN, .prog_if = (uint8_t)1, .sub_class = (uint8_t)6, .class_code = (uint8_t)1 };
     const pci_device_t* ahci_controller = pci_find_device(get_global_pcie_device_manager(), &ahci_device_class_info);
-    
+
     linked_list<ahci_drive_t> ahci_devices {};
     ahci_init(ahci_controller, &ahci_devices);
 
     size_t ahci_device_index = 0;
     for (auto& drive : ahci_devices) {
         if (drive.was_setup) {
-            printf(DBG, "model: %s\n", drive.model);
-            printf(DBG, "serial: %s\n", drive.serial);
-            printf(DBG, "firmware: %s\n", drive.firmware);
-
             auto ahci_storage = ptr::make_unique<ahci_storage_driver_t>(&drive);
 
-            // TODO @since 05/08/2025 -- 01:18
-            // detect file system
-
-            // init file system
-            fat32_data_t fs_data {};
-            fat32_init((storage_driver_interface_t*)ahci_storage.get(), &fs_data);
-
-            // init file system interface
-            auto fat32_interface = ptr::make_unique<fat32_filesystem_interface>(move(ahci_storage), fs_data);
-
-            // init vfs storage interface
-            auto disk_storage_interface = ptr::make_unique<vfs_disk_storage_interface>(move(fat32_interface));
-
-            // mount storage interface
             char disk_mount_name_buffer[20];
             sprintf(disk_mount_name_buffer, 20, "/mnt/drive%i", ahci_device_index++);
 
-            vfs_mount(get_global_vfs(), disk_mount_name_buffer, move(disk_storage_interface));
+            if (!mount_disk(move(ahci_storage), disk_mount_name_buffer)) {
+                printf(DBG, "failed to mount drive: %s\n", disk_mount_name_buffer);
+            } else {
+                printf(DBG, "mounted drive: %s\n", disk_mount_name_buffer);
+            }
         }
     }
-    
+
     // network device
     pci_class_info_t network_device_class_info { .revision_id = (uint8_t)PCI_UNKNOWN, .prog_if = (uint8_t)PCI_UNKNOWN, .sub_class = (uint8_t)0, .class_code = (uint8_t)2 };
     const pci_device_t* network_controller = pci_find_device(get_global_pcie_device_manager(), &network_device_class_info);
-    
+
     e1000_t e1000 {};
     const auto e1000_init_result = e1000_init_device(network_controller, &e1000);
     if (e1000_init_result == 0) {
@@ -504,19 +480,19 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
     // printf(STD, "> SYSTEM READY\n");
     printf(DBG, "Kernel finished initializing\n");
 
-    if (vthread_create(desktop_init, p_kpml4) == VTHREAD_HANDLE_INVALID)
-        printf(DBG, "failed to create desktop thread\n");
+    // if (vthread_create(desktop_init, p_kpml4) == VTHREAD_HANDLE_INVALID)
+    //     printf(DBG, "failed to create desktop thread\n");
     
-    while (!is_desktop_ready());
-    minesweeper_init();
+    // while (!is_desktop_ready());
+    // minesweeper_init();
 
-    // vthread_handle_t vth = vthread_create(terminal, p_kpml4);
-    // if (vth == VTHREAD_HANDLE_INVALID) {
-    //     printf(DBG, "failed to start terminal");
-    // } else {
-    //     vthread_wait_for_close(vth);
-    //     printf(DBG, "terminal closed\n");
-    // }
+    vthread_handle_t vth = vthread_create(terminal, p_kpml4);
+    if (vth == VTHREAD_HANDLE_INVALID) {
+        printf(DBG, "failed to start terminal");
+    } else {
+        vthread_wait_for_close(vth);
+        printf(DBG, "terminal closed\n");
+    }
 
     // we shoudn t reach this point since the kernel should never stop
     // incase we do just hang here so we dont break anything

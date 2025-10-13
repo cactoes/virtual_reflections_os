@@ -59,6 +59,18 @@ bool ahci_storage_driver_t::write(uint32_t lba, uint8_t* buffer, size_t size) {
     return false;
 }
 
+size_t ahci_storage_driver_t::get_block_size() {
+    return drive->logical_sector_size;
+}
+
+void ahci_storage_driver_t::set_root_lba(uint64_t lba) {
+    root_lba = lba;
+}
+
+uint64_t ahci_storage_driver_t::get_root_lba() {
+    return root_lba;
+}
+
 void decode_string(const uint16_t* src, int word_count, char* dest, int max_len) {
     int pos = 0;
     for (int i = 0; i < word_count && pos + 1 < max_len; ++i) {

@@ -251,7 +251,7 @@ int iso9660_init(storage_driver_interface_t* storage_interface, iso9660_data_t* 
     const size_t size = SECTOR_SIZE;
     uint8_t data[size];
 
-    if (!storage_interface->read(16, data, size))
+    if (!storage_interface->read(storage_interface->get_root_lba(), data, size))
         return 1;
 
     iso9660_volume_descriptor_t* desc = (iso9660_volume_descriptor_t*)data;

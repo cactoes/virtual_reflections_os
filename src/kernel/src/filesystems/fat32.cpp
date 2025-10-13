@@ -32,7 +32,7 @@ int fat32_init(storage_driver_interface_t* storage_interface, fat32_data_t* fs_d
     const size_t size = FAT32_SECTOR_SIZE;
     uint8_t data[FAT32_SECTOR_SIZE];
 
-    if (!storage_interface->read(128, data, size))
+    if (!storage_interface->read(storage_interface->get_root_lba(), data, size))
         return 1;
 
     const fat32_bpb_extended_t* bpb_extended = (fat32_bpb_extended_t*)data;
