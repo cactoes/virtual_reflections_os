@@ -57,7 +57,8 @@ vfs_disk_storage_interface::vfs_disk_storage_interface(ptr::unique<filesystem_in
 bool vfs_disk_storage_interface::read_file(const string& path, dynamic_array<uint8_t>* content) {
     void* data;
     size_t size;
-    api->read(path.c_str(), &data, &size);
+    if (!api->read(path.c_str(), &data, &size))
+        return false;
     content->assign((uint8_t*)data, size / sizeof(uint8_t));
     return true;
 }

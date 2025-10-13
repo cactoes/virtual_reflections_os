@@ -152,6 +152,8 @@ bool iso9660_find_node(storage_driver_interface_t* storage_interface, iso9660_da
 
                 return iso9660_find_node(storage_interface, iso_data, record->extent_lba.le, record->data_length.le, remaining_path.c_str(), node_data);
             }
+
+            return false;
         }
 
         offset += record->length;
@@ -168,6 +170,9 @@ iso9660_filesystem_interface::iso9660_filesystem_interface(ptr::unique<storage_d
 bool iso9660_filesystem_interface::read(const char* path, void** data, size_t* size) {
     iso9660_node_data_t node_data {};
     if (!iso9660_find_node(storage_interface.get(), &this->data, this->data.root.lba, this->data.root.size, (char*)path, &node_data))
+        return false;
+
+    if (node_data.is_directory)
         return false;
 
     const uint64_t raw_size = align_up(node_data.size, SECTOR_SIZE);

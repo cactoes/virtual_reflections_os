@@ -12,6 +12,7 @@
 #include "drivers/ps2/ps2.hpp"
 #include "drivers/driver.hpp"
 #include "drivers/storage/ide.hpp"
+#include "drivers/storage/ahci.hpp"
 #include "drivers/network/e1000.hpp"
 #include "drivers/network/nidm.hpp"
 #include "drivers/network/tcp.hpp"
@@ -20,6 +21,7 @@
 #include "interrupt_manager.hpp"
 
 #include "filesystems/iso9660.hpp"
+#include "filesystems/fat32.hpp"
 #include "filesystems/vfs.hpp"
 
 #include "memory/vmem.hpp"
@@ -236,6 +238,12 @@ int terminal() {
     printf(STD, "VirtualReflectionsOS Interacive Terminal [v0.1:337]\n");
     printf(STD, "System booted succesfully\n");
     printf(STD, "Type 'help' for a list of commands.\n");
+
+    if (!ps2_port_test_device(ps2_device_type_t::KEYBOARD)) {
+        printf(STD, "\nNo keyboard found, exiting ...\n");
+        return 1;
+    }
+
     printf(STD, "\n> ");
     subscribe_on_key_down(terminal_keydown_callback);
     while (keep_terminal_alive) {}
@@ -310,10 +318,6 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
 
     // finished core startup
 
-    // if (ps2_port_test_device(ps2_device_type_t::KEYBOARD)) {
-    //     printf(DBG, "[+] ps2/keyboard\n");
-    // }
-
     // if (ps2_port_test_device(ps2_device_type_t::MOUSE)) {
     //     printf(DBG, "[+] ps2/mouse\n");
     // }
@@ -348,6 +352,7 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
         
         // TODO @since 05/08/2025 -- 01:18
         // detect file system
+
         // init file system
         iso9660_data_t fs_data {};
         iso9660_init((storage_driver_interface_t*)ide_storage.get(), &fs_data);
@@ -368,7 +373,43 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
     // ahci device
     pci_class_info_t ahci_device_class_info { .revision_id = (uint8_t)PCI_UNKNOWN, .prog_if = (uint8_t)1, .sub_class = (uint8_t)6, .class_code = (uint8_t)1 };
     const pci_device_t* ahci_controller = pci_find_device(get_global_pcie_device_manager(), &ahci_device_class_info);
-    // TODO @since 14/07/2025 -- 21:52
+    
+    linked_list<ahci_drive_t> ahci_devices {};
+    ahci_init(ahci_controller, &ahci_devices);
+
+    size_t ahci_device_index = 0;
+    for (auto& drive : ahci_devices) {
+        if (drive.was_setup) {
+            printf(DBG, "model: %s\n", drive.model);
+            printf(DBG, "serial: %s\n", drive.serial);
+            printf(DBG, "firmware: %s\n", drive.firmware);
+
+            auto ahci_storage = ptr::make_unique<ahci_storage_driver_t>(&drive);
+
+            // TODO @since 05/08/2025 -- 01:18
+            // detect file system
+
+            // init file system
+            fat32_data_t fs_data {};
+            fat32_init((storage_driver_interface_t*)ahci_storage.get(), &fs_data);
+
+            // init file system interface
+            auto fat32_interface = ptr::make_unique<fat32_filesystem_interface>(move(ahci_storage), fs_data);
+
+            void* data;
+            size_t size;
+            fat32_interface->read("/test.txt", &data, &size);
+
+            // init vfs storage interface
+            auto disk_storage_interface = ptr::make_unique<vfs_disk_storage_interface>(move(fat32_interface));
+
+            // mount storage interface
+            char disk_mount_name_buffer[20];
+            sprintf(disk_mount_name_buffer, 20, "/mnt/drive%i", ahci_device_index++);
+
+            vfs_mount(get_global_vfs(), disk_mount_name_buffer, move(disk_storage_interface));
+        }
+    }
     
     // network device
     pci_class_info_t network_device_class_info { .revision_id = (uint8_t)PCI_UNKNOWN, .prog_if = (uint8_t)PCI_UNKNOWN, .sub_class = (uint8_t)0, .class_code = (uint8_t)2 };
