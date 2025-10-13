@@ -30,16 +30,7 @@
         {
             "label": "build kernel",
             "type": "shell",
-            "command": "docker",
-            "args": [
-                "run",
-                "--name",
-                "VirtualReflectionsOS",
-                "--rm",
-                "-v",
-                "${workspaceFolder}:/root/env",
-                "virtual_reflections_os_buildenv"
-            ],
+            "command": "./docker_build.ps1",
             "group": {
                 "kind": "build",
                 "isDefault": true
