@@ -396,10 +396,6 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
             // init file system interface
             auto fat32_interface = ptr::make_unique<fat32_filesystem_interface>(move(ahci_storage), fs_data);
 
-            void* data;
-            size_t size;
-            fat32_interface->read("/test.txt", &data, &size);
-
             // init vfs storage interface
             auto disk_storage_interface = ptr::make_unique<vfs_disk_storage_interface>(move(fat32_interface));
 
@@ -501,9 +497,6 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
             }
         }
     }
-
-
-
 
     // kernel finished
     // printf(STD, "> SYSTEM READY\n");

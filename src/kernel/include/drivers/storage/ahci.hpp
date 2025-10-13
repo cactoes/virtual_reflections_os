@@ -224,7 +224,7 @@ struct ahci_drive_t {
     uint64_t physical_sector_size;
 
     void* clb;
-    hba_port_t* port;
+    volatile hba_port_t* port;
 
     bool was_setup;
 };
@@ -242,8 +242,8 @@ private:
 
 int ahci_init(const pci_device_t* pice_device, linked_list<ahci_drive_t>* device_list);
 
-void* ahci_port_init(hba_port_t* port);
-int ahci_find_command_slot(hba_port_t* port);
+void* ahci_port_init(volatile hba_port_t* port);
+int ahci_find_command_slot(volatile hba_port_t* port);
 
 int ahci_sata_identify_device(ahci_drive_t* drive);
 int ahci_sata_prepare_command(ahci_cmd_context_t* ctx, ahci_drive_t* drive, uint64_t lba, uint16_t sector_count, uint8_t ata_command, bool write, uint8_t fis_device, uint8_t slot = 0);

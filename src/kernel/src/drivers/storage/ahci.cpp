@@ -70,17 +70,17 @@ void decode_string(const uint16_t* src, int word_count, char* dest, int max_len)
 
 int ahci_init(const pci_device_t* pice_device, linked_list<ahci_drive_t>* device_list) {
     // still sketchy to just randomly get the pml4 table but whtv
-    if (dma_heap_init(get_pml4(), &global_ahci_dma_heap, (void*)VMEM_E1000_DMA, PAGE_SIZE_LARGE) != 0)
+    if (dma_heap_init(get_pml4(), &global_ahci_dma_heap, (void*)VMEM_AHCI_DMA, PAGE_SIZE_LARGE) != 0)
         return 1;
 
     const uint64_t mmio_addr_physical = (uint64_t)pci_read_bar(pice_device, 5);
     const uint64_t mmio_addr_physical_page = align_down(mmio_addr_physical, PAGE_SIZE_LARGE);
     const uint64_t mmio_addr_offset = mmio_addr_physical - mmio_addr_physical_page;
 
-    if (!vmem_map_2mb_page(get_pml4(), (void*)VMEM_E1000_MMIO, (void*)mmio_addr_physical_page))
+    if (!vmem_map_2mb_page(get_pml4(), (void*)VMEM_AHCI_MMIO, (void*)mmio_addr_physical_page))
         return 2;
 
-    volatile hba_mem_t* hba = (volatile hba_mem_t*)((uint8_t*)VMEM_E1000_MMIO + mmio_addr_offset);
+    volatile hba_mem_t* hba = (volatile hba_mem_t*)((uint8_t*)VMEM_AHCI_MMIO + mmio_addr_offset);
 
     // for interupts enable:
     // hba->ghc |= AHCI_GHC_IE;
@@ -100,7 +100,7 @@ int ahci_init(const pci_device_t* pice_device, linked_list<ahci_drive_t>* device
             continue;
 
         ahci_drive_t drive {};
-        drive.port = (hba_port_t*)port;
+        drive.port = port;
         drive.was_setup = false;
         drive.clb = ahci_port_init(drive.port);
         if (!drive.clb)
@@ -125,7 +125,7 @@ int ahci_init(const pci_device_t* pice_device, linked_list<ahci_drive_t>* device
     return 0;
 }
 
-void* ahci_port_init(hba_port_t* port) {
+void* ahci_port_init(volatile hba_port_t* port) {
     port->cmd &= ~AHCI_PORT_CMD_ST;
     while (port->cmd & AHCI_PORT_CMD_CR);
     port->cmd &= ~AHCI_PORT_CMD_FRE;
@@ -158,7 +158,7 @@ void* ahci_port_init(hba_port_t* port) {
     return clb;
 }
 
-int ahci_find_command_slot(hba_port_t* port) {
+int ahci_find_command_slot(volatile hba_port_t* port) {
     uint32_t slots = port->sact | port->ci;
 
     for (int i = 0; i < 32; i++) {
@@ -276,7 +276,8 @@ int ahci_sata_read(ahci_drive_t* drive, uint64_t lba, uint16_t sector_count, uin
         return 1;
 
     ahci_cmd_context_t ctx {};
-    ahci_sata_prepare_command(&ctx, drive, lba, sector_count, ATA_CMD_READ_DMA_EXT, false, ATA_DEV_LBA, slot);
+    if (ahci_sata_prepare_command(&ctx, drive, lba, sector_count, ATA_CMD_READ_DMA_EXT, false, ATA_DEV_LBA, slot) != 0)
+        return 2;
 
     drive->port->is = (uint32_t)-1;
     drive->port->ci |= (1 << slot);
@@ -284,6 +285,8 @@ int ahci_sata_read(ahci_drive_t* drive, uint64_t lba, uint16_t sector_count, uin
     while (drive->port->ci & (1 << slot))
         if (drive->port->is & AHCI_PORT_INT_TFES)
             return 2;
+
+    while ((drive->port->tfd & (0x80 | 0x8)));
 
     if (drive->port->is & AHCI_PORT_INT_TFES)
 		return 3;
