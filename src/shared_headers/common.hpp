@@ -9,6 +9,10 @@
 #ifndef __COMMON_HPP__
 #define __COMMON_HPP__
 
+#ifndef GIT_COMMIT_HASH
+#define GIT_COMMIT_HASH ""
+#endif
+
 #define PAGE_SIZE           0x1000
 #define PAGE_SIZE_LARGE     0x200000
 #define PAGE_SIZE_HUGE      0x40000000

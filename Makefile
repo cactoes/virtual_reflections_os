@@ -30,6 +30,9 @@ COMPILER_FLAGS              := -nostdlib -m64 -mno-red-zone -mno-sse2 -fno-rtti 
 NASM_FLAGS                  := -f elf64
 LINKER_FLAGS                := -z max-page-size=0x1000 -n -T $(LINKER_SCRIPT)
 
+# compile time define
+COMPILER_FLAGS += -DGIT_COMMIT_HASH=\"$(GIT_COMMIT_HASH)\"
+
 # file sources & targets
 source_files                := $(shell find $(SOURCE_FILES_PATH) -name "*.cpp")
 object_files                := $(patsubst $(SOURCE_FILES_PATH)/%.cpp, $(BUILD_PATH)/objects/%.o, $(source_files))
