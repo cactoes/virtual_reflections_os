@@ -48,7 +48,7 @@ $(ROOT_PATH)/iso/$(TARGET_NAME).sys: $(BUILD_PATH)/$(TARGET_NAME).sys
 > @cp $< $@
 
 $(BUILD_PATH)/$(TARGET_NAME).sys: $(object_files) $(asm_object_files) $(LINKER_SCRIPT)
-> @echo "linking kernel binary"
+> @echo "linking $(TARGET_NAME) binary"
 > @mkdir -p $(dir $@)
 > $(SILENT_MODE)$(LINKER) $(LINKER_FLAGS) -o $@ $(object_files) $(asm_object_files)
 
@@ -65,6 +65,7 @@ $(BUILD_PATH)/objects/%.o: $(ASSEMBLY_FILES_PATH)/%.asm
 clean:
 > @echo "cleaning build directory"
 > @rm -rf $(BUILD_PATH)/*
+> @rm -f $(ROOT_PATH)/iso/$(TARGET_NAME).sys
 
 rebuild: clean build
 

@@ -17,6 +17,7 @@ ISO_PATH                    := $(ROOT_PATH)/iso
 LINKER_SCRIPT               := $(PROJECT_PATH)/linker.ld
 TARGET_NAME                 := VirtualReflectionsOS
 SHARED_HEADERS              := $(ROOT_PATH)/src/shared_headers/
+DRIVER_FILES                := $(wildcard $(ROOT_PATH)/build/**/*.sys)
 
 # compilers
 COMPILER                    := x86_64-elf-g++
@@ -51,7 +52,7 @@ $(BUILD_PATH)/$(TARGET_NAME).bin: $(object_files) $(asm_object_files) $(LINKER_S
 > @mkdir -p $(dir $@)
 > $(SILENT_MODE)$(LINKER) $(LINKER_FLAGS) -o $@ $(object_files) $(asm_object_files)
 
-$(BUILD_PATH)/$(TARGET_NAME).iso: $(BUILD_PATH)/$(TARGET_NAME).bin
+$(BUILD_PATH)/$(TARGET_NAME).iso: $(BUILD_PATH)/$(TARGET_NAME).bin $(DRIVER_FILES)
 > @echo "creating iso image"
 > @mkdir -p $(BUILD_PATH)/iso/boot
 > @cp -r $(ISO_PATH) $(BUILD_PATH) 2>/dev/null || true
