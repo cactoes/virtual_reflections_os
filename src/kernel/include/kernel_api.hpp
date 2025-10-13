@@ -9,8 +9,6 @@
 
 #include "common.hpp"
 
-void* kalloc(size_t size);
-void kfree(void* ptr);
 void kprint(const char* str);
 
 #endif // __KERNEL_API_HPP__

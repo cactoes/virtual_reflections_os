@@ -149,10 +149,17 @@ void set_global_heap(heap_t* p_heap);
 /// @return     pointer to global heap
 heap_t* get_global_heap();
 
+void* malloc(size_t size) noexcept;
+void free(void* ptr) noexcept;
+
 void* operator new(size_t size) noexcept;
 void* operator new(size_t size, void* p_ptr) noexcept;
+void* operator new[](size_t size) noexcept;
+void* operator new[](size_t size, void*) noexcept;
 
 void operator delete(void* p_ptr) noexcept;
 void operator delete(void* p_ptr, size_t) noexcept;
+void operator delete[](void* ptr) noexcept;
+void operator delete[](void* ptr, size_t) noexcept;
 
 #endif // __MEMORY_HEAP_HPP__

@@ -345,22 +345,55 @@ heap_t* get_global_heap() {
     return g_heap;
 }
 
+void* malloc(size_t size) noexcept {
+    if (auto heap = get_global_heap())
+        return heap_alloc(heap, size);
+    
+    return nullptr;
+}
+
+void free(void* ptr) noexcept {
+    if (auto heap = get_global_heap())
+       heap_free(heap, ptr);
+}
+
 void* operator new(size_t size) noexcept {
-    if (get_global_heap() == nullptr)
-        return nullptr;
-    return heap_alloc(get_global_heap(), size);
+    if (auto heap = get_global_heap())
+        return heap_alloc(heap, size);
+    
+    return nullptr;
 }
 
 void* operator new(size_t size, void* p_ptr) noexcept {
     return p_ptr;
 }
 
+void* operator new[](size_t size) noexcept {
+    if (auto heap = get_global_heap())
+        return heap_alloc(heap, size);
+    return nullptr;
+}
+
+void* operator new[](size_t size, void* ptr) noexcept {
+    return ptr;
+}
+
 void operator delete(void* p_ptr) noexcept {
-    if (get_global_heap() != nullptr)
-       heap_free(get_global_heap(), p_ptr);
+    if (auto heap = get_global_heap())
+       heap_free(heap, p_ptr);
 }
 
 void operator delete(void* p_ptr, size_t) noexcept {
-    if (get_global_heap() != nullptr)
-        heap_free(get_global_heap(), p_ptr);
+    if (auto heap = get_global_heap())
+       heap_free(heap, p_ptr);
+}
+
+void operator delete[](void* ptr) noexcept {
+    if (auto heap = get_global_heap())
+        heap_free(heap, ptr);
+}
+
+void operator delete[](void* ptr, size_t) noexcept {
+   if (auto heap = get_global_heap())
+        heap_free(heap, ptr);
 }
