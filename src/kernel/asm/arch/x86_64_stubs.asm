@@ -11,6 +11,8 @@ section .text
     ; globals
     global x86_64_get_cpu_state
     global x86_64_isr_stub_table
+    global x86_64_memcpy
+    global x86_64_memset
 
 ;==========================================
 ; @macro    push_all_regs
@@ -99,6 +101,81 @@ x86_64_get_cpu_state:
     mov rsp, rbx
 
     ; return to caller
+    ret
+
+
+;==========================================
+; @function                 x86_64_memcpy
+; @brief                    memory copy to target region
+; @param rdi, in            dst
+; @param rsi, in            src
+; @param rdx, in            length
+; @remarks                  destroyed registers: ?
+;==========================================
+align 32
+x86_64_memcpy:
+    mov     rax, rdi
+    test    rdx, rdx
+    jz      .done
+
+    cmp     rdx, 8
+    jb      .tiny_copy
+
+    mov     rcx, rdx
+    shr     rcx, 3 
+    rep movsq
+    mov     rcx, rdx
+    and     rcx, 7
+    jz      .done
+    rep movsb
+    jmp     .done
+
+.tiny_copy:
+    mov     rcx, rdx
+    rep movsb
+
+.done:
+    ret
+
+;==========================================
+; @function                 x86_64_memset
+; @brief                    set memory region
+; @param rdi, in            dst
+; @param rsi, in            value
+; @param rdx, in            length
+; @remarks                  destroyed registers: ?
+;==========================================
+align 32
+x86_64_memset:
+    mov     rax, rdi
+    test    rdx, rdx
+    jz      .done
+
+    movzx   rcx, sil
+    imul    rcx, 0x0101010101010101
+
+    cmp     rdx, 8
+    jb      .tiny_fill
+
+    mov     r8, rdx
+    shr     r8, 3
+.fill_qwords:
+    mov     [rdi], rcx
+    add     rdi, 8
+    dec     r8
+    jnz     .fill_qwords
+
+    and     rdx, 7
+    jz      .done
+.tiny_fill:
+    mov     r8, rdx
+.fill_bytes:
+    mov     [rdi], sil
+    inc     rdi
+    dec     r8
+    jnz     .fill_bytes
+
+.done:
     ret
 
 ;==========================================

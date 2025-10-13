@@ -82,8 +82,12 @@ void exec(const string& path, const dynamic_array<string>& args) {
                     used_mem += heap->heap_block_array[i].size;
             }
 
+            // TODO @since 13/10/2025 -- 12:35
+            // add dma stuff & reserved memory for the kernel etc
+
             printf(STD, "Memory allocated:   %ulB/%ulB (%i%)\n", used_mem, heap->size, (int)(((double)used_mem / (double)heap->size) * 100));
-            printf(STD, "Total available:    %ulB\n", get_global_system_info_manager()->memory_size);
+            printf(STD, "Total available:    %ulB\n", get_global_system_info_manager()->memory_size);\
+            printf(STD, "Total comitted:     %f%\n", (double)(((double)heap->size / (double)get_global_system_info_manager()->memory_size) * 100));
             break;
         }
         case hash_fnv1a_64("netstat"): {
@@ -105,6 +109,8 @@ void exec(const string& path, const dynamic_array<string>& args) {
             break;
         }
         case hash_fnv1a_64("ls"): {
+            // TODO @since 11/10/2025 -- 01:09
+            // check if is file
             dynamic_array<vfs_node_t*> entries {};
             string arg_path = "";
             if (args.length() >= 1)
@@ -318,10 +324,6 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
 
     // finished core startup
 
-    // if (ps2_port_test_device(ps2_device_type_t::MOUSE)) {
-    //     printf(DBG, "[+] ps2/mouse\n");
-    // }
-
     keyboard_initialize();
 
     nidm_t nidm {};
@@ -502,19 +504,19 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
     // printf(STD, "> SYSTEM READY\n");
     printf(DBG, "Kernel finished initializing\n");
 
-    // if (vthread_create(desktop_init, p_kpml4) == VTHREAD_HANDLE_INVALID)
-    //     printf(DBG, "failed to create desktop thread\n");
+    if (vthread_create(desktop_init, p_kpml4) == VTHREAD_HANDLE_INVALID)
+        printf(DBG, "failed to create desktop thread\n");
     
-    // while (!is_desktop_ready());
-    // minesweeper_init();
+    while (!is_desktop_ready());
+    minesweeper_init();
 
-    vthread_handle_t vth = vthread_create(terminal, p_kpml4);
-    if (vth == VTHREAD_HANDLE_INVALID) {
-        printf(DBG, "failed to start terminal");
-    } else {
-        vthread_wait_for_close(vth);
-        printf(DBG, "terminal closed\n");
-    }
+    // vthread_handle_t vth = vthread_create(terminal, p_kpml4);
+    // if (vth == VTHREAD_HANDLE_INVALID) {
+    //     printf(DBG, "failed to start terminal");
+    // } else {
+    //     vthread_wait_for_close(vth);
+    //     printf(DBG, "terminal closed\n");
+    // }
 
     // we shoudn t reach this point since the kernel should never stop
     // incase we do just hang here so we dont break anything

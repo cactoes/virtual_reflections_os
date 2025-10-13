@@ -39,29 +39,29 @@ entry:
     mov     cr0,    eax
 
     mov     eax,    cr4
-    or      eax,    0x200  ; OSFXSR
-    or      eax,    0x400  ; OSXMMEXCPT
+    or      eax,    0x200    ; OSFXSR
+    or      eax,    0x400    ; OSXMMEXCPT
     mov     cr4,    eax
 
     lgdt [gdt64.pointer]
     jmp gdt64.code_segment:boot_kernel
 
 setup_page_tables:
-    mov     eax,                    PDPT
-    or      eax,                    0b11 ; present, writable
+    mov     eax,            PDPT
+    or      eax,            0b11 ; present, writable
     mov     [PML4T],        eax
 
-    mov     eax,                    PDT
-    or      eax,                    0b11 ; present, writable
-    mov     [PDPT],        eax
+    mov     eax,            PDT
+    or      eax,            0b11 ; present, writable
+    mov     [PDPT],         eax
 
     mov ecx, 0 ; counter
 
 .loop:
-    mov     eax,                            0x200000 ; 2MB
+    mov     eax,                0x200000 ; 2MB
     mul     ecx
-    or      eax,                            0b10000011 ; present, writable, huge
-    mov     [PDT + ecx * 8],      eax
+    or      eax,                0b10000011 ; present, writable, huge
+    mov     [PDT + ecx * 8],    eax
 
     inc ecx ; increment counter
     cmp ecx, 512 ; check if table is mapped

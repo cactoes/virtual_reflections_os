@@ -95,33 +95,18 @@ typedef          short int16_t;
 typedef unsigned char uint8_t;
 typedef   signed char int8_t;
 
+extern "C" void* x86_64_memset(void* p_dest, uint8_t val, size_t size);
 static void* memset(void* p_dest, uint8_t val, size_t size) {
-    if (size == 0)
-        return p_dest;
-
-    uint8_t* p_dest_tmp = (uint8_t*)p_dest;
-
-    for (size_t i = 0; i < size; i++)
-        p_dest_tmp[i] = val;
-
-    return p_dest;
+    return x86_64_memset(p_dest, val, size);
 }
 
 static void* memzero(void* p_dest, size_t size) {
     return memset(p_dest, 0, size);
 }
 
+extern "C" void* x86_64_memcpy(void* p_dest, const void* p_src, size_t size);
 static void* memcpy(void* p_dest, const void* p_src, size_t size) {
-    if (size == 0)
-        return p_dest;
-
-    uint8_t* p_dest_tmp = (uint8_t*)p_dest;
-    const uint8_t* p_src_tmp = (uint8_t*)p_src;
-
-    for (size_t i = 0; i < size; i++)
-        p_dest_tmp[i] = p_src_tmp[i];
-
-    return p_dest;
+    return x86_64_memcpy(p_dest, p_src, size);
 }
 
 static bool memeq(const void* p_a1, const void* p_a2, size_t size) {
