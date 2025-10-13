@@ -16,7 +16,7 @@
 #include "drivers/storage/storage.hpp"
 #include "utils/vector.hpp"
 #include "string.hpp"
-#include "utils/pointer.hpp"
+#include "std/pointer.hpp"
 
 struct iso9660_lbs_msb_32 {
     uint32_t le;
@@ -141,7 +141,7 @@ struct iso9660_data_t {
 
 class iso9660_filesystem_interface_t : public filesystem_interface_t {
 public:
-    iso9660_filesystem_interface_t(ptr::unique<storage_driver_interface_t> storage_interface, const iso9660_data_t& data);
+    iso9660_filesystem_interface_t(std::unique_ptr<storage_driver_interface_t> storage_interface, const iso9660_data_t& data);
 
     bool read(const char* path, void** data, size_t* size) override;
     bool write(const char* path, void* data, size_t* size) override;
@@ -150,7 +150,7 @@ public:
 
 private:
     iso9660_data_t data;
-    ptr::unique<storage_driver_interface_t> storage_interface;
+    std::unique_ptr<storage_driver_interface_t> storage_interface;
 };
 
 int iso9660_init(storage_driver_interface_t* storage_interface, iso9660_data_t* fs_data);

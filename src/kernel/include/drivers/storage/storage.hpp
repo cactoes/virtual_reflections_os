@@ -9,7 +9,7 @@
 #define __DRIVERS_STORAGE_STORAGE_HPP__
 
 #include "common.hpp"
-#include "utils/pointer.hpp"
+#include "std/pointer.hpp"
 #include "string.hpp"
 
 struct storage_info_t {
@@ -31,6 +31,6 @@ struct storage_driver_interface_t {
     virtual storage_info_t get_storage_info() const = 0;
 };
 
-bool mount_disk(ptr::unique<storage_driver_interface_t> interface, const char* path);
+bool mount_disk(std::unique_ptr<storage_driver_interface_t> interface, const char* path);
 
 #endif // __DRIVERS_STORAGE_STORAGE_HPP__

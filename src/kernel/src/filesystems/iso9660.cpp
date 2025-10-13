@@ -2,7 +2,7 @@
 #include "memory/heap.hpp"
 #include "string.hpp"
 #include "utils/vector.hpp"
-#include "utils/pointer.hpp"
+#include "std/pointer.hpp"
 
 void fmt_name(const char* p_name, uint8_t len, char* p_buffer) {
     if(len == 1 && (p_name[0] == 0 || p_name[0] == 1)) {
@@ -72,8 +72,8 @@ void get_name(iso9660_dir_record_t* p_record, char* p_out, size_t out_size) {
     fmt_name(p_record->name, p_record->name_len, p_out);
 }
 
-ptr::unique<uint8_t> iso9660_read_from_disk(storage_driver_interface_t* storage_interface, size_t sector_count, uint64_t lba, bool* error) {
-    ptr::unique<uint8_t> data = ptr::unique<uint8_t>((uint8_t*)heap_alloc(get_global_heap(), sector_count * SECTOR_SIZE));
+std::unique_ptr<uint8_t> iso9660_read_from_disk(storage_driver_interface_t* storage_interface, size_t sector_count, uint64_t lba, bool* error) {
+    std::unique_ptr<uint8_t> data = std::unique_ptr<uint8_t>((uint8_t*)heap_alloc(get_global_heap(), sector_count * SECTOR_SIZE));
 
     *error = false;
     for (size_t i = 0; i < sector_count; i++) {
@@ -99,7 +99,7 @@ bool iso9660_find_node(storage_driver_interface_t* storage_interface, iso9660_da
     // read target disk section
     const size_t num_sectors = (size + SECTOR_SIZE - 1) / SECTOR_SIZE;
     bool error;
-    ptr::unique<uint8_t> dir_data = iso9660_read_from_disk(storage_interface, num_sectors, lba, &error);
+    std::unique_ptr<uint8_t> dir_data = iso9660_read_from_disk(storage_interface, num_sectors, lba, &error);
     if (error)
         return false;
 
@@ -162,7 +162,7 @@ bool iso9660_find_node(storage_driver_interface_t* storage_interface, iso9660_da
     return false;
 }
 
-iso9660_filesystem_interface_t::iso9660_filesystem_interface_t(ptr::unique<storage_driver_interface_t> storage_interface, const iso9660_data_t& data) {
+iso9660_filesystem_interface_t::iso9660_filesystem_interface_t(std::unique_ptr<storage_driver_interface_t> storage_interface, const iso9660_data_t& data) {
     this->data = data;
     this->storage_interface = move(storage_interface);
 }
@@ -176,7 +176,7 @@ bool iso9660_filesystem_interface_t::read(const char* path, void** data, size_t*
         return false;
 
     const uint64_t raw_size = align_up(node_data.size, SECTOR_SIZE);
-    const ptr::unique<uint8_t> buff = ptr::unique<uint8_t>((uint8_t*)heap_alloc(get_global_heap(), raw_size));
+    const std::unique_ptr<uint8_t> buff = std::unique_ptr<uint8_t>((uint8_t*)heap_alloc(get_global_heap(), raw_size));
     if (!buff.get())
         return false;
 
@@ -207,7 +207,7 @@ bool iso9660_filesystem_interface_t::enumerate_directory(const char* path, dynam
 
     const size_t num_sectors = (node_data.size + SECTOR_SIZE - 1) / SECTOR_SIZE;
     bool error;
-    ptr::unique<uint8_t> dir_data = iso9660_read_from_disk(storage_interface.get(), num_sectors, node_data.lba, &error);
+    std::unique_ptr<uint8_t> dir_data = iso9660_read_from_disk(storage_interface.get(), num_sectors, node_data.lba, &error);
     if (error)
         return false;
 

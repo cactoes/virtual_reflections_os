@@ -1,37 +1,37 @@
 //==========================================
 /// @file       pointer.hpp
-/// @brief      custom pointer class
+/// @brief      pointer impl
 //==========================================
 
 #pragma once
 
-#ifndef __UTILS_POINTER_HPP__
-#define __UTILS_POINTER_HPP__
+#ifndef __STD_POINTER_HPP__
+#define __STD_POINTER_HPP__
 
-#include "memory/heap.hpp"
+#include "common.hpp"
 
-namespace ptr {
+namespace std {
 
 template <typename T>
-class unique {
+class unique_ptr {
 public:
-    unique() : ptr(nullptr) {}
-    explicit unique(T* p_ptr) : ptr(p_ptr) {}
+    unique_ptr() : ptr(nullptr) {}
+    explicit unique_ptr(T* p_ptr) : ptr(p_ptr) {}
 
     // no copy
-    unique(const unique& other) = delete;
-    unique& operator=(const unique& other) = delete;
+    unique_ptr(const unique_ptr& other) = delete;
+    unique_ptr& operator=(const unique_ptr& other) = delete;
     
     template <typename U>
-    unique(unique<U>&& other) {
+    unique_ptr(unique_ptr<U>&& other) {
         ptr = other.ptr;
         other.ptr = nullptr;
     }
 
     template <typename U>
-    unique& operator=(unique<U>&& other) {
+    unique_ptr& operator=(unique_ptr<U>&& other) {
         if ((void*)(this) != (void*)(&other)) {
-            GFREE(ptr);
+            free(ptr);
             ptr = other.ptr;
             other.ptr = nullptr;
         }
@@ -39,9 +39,9 @@ public:
         return *this;
     }
     
-    ~unique() {
+    ~unique_ptr() {
         if (ptr)
-            GFREE(ptr);
+            free(ptr);
     }
 
     T& operator*() const {
@@ -71,17 +71,17 @@ public:
     }
 
 private:
-    template<typename> friend class unique;
+    template<typename> friend class unique_ptr;
     T* ptr;
 };
 
 template <typename T, typename... Args>
-ptr::unique<T> make_unique(Args&&... args) {
-    void* raw = GALLOC(sizeof(T));
+unique_ptr<T> make_unique(Args&&... args) {
+    void* raw = malloc(sizeof(T));
     T* obj = new (raw) T(forward<Args>(args)...);
-    return ptr::unique<T>(obj);
+    return unique_ptr<T>(obj);
 }
 
-} // namespace ptr
+} // namespace std
 
-#endif // __UTILS_POINTER_HPP__
+#endif // __STD_POINTER_HPP__

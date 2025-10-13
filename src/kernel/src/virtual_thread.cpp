@@ -5,10 +5,10 @@
 #include "arch/interrupt.hpp"
 #include "arch/generic.hpp"
 #include "crash_handler.hpp"
-#include "utils/pointer.hpp"
+#include "std/pointer.hpp"
 #include "time/clock.hpp"
 
-static linear_map<vthread_handle_t, ptr::unique<vthread_t>> g_threads {};
+static linear_map<vthread_handle_t, std::unique_ptr<vthread_t>> g_threads {};
 
 static vthread_handle_t     g_vth_counter = 1;
 static vthread_t*           g_current_thread = nullptr;
@@ -50,7 +50,7 @@ void vthread_handle_starting(vthread_t* p_vthread) {
     p_vthread->vt_state = vthread_state_t::RUNNING;
 }
 
-bool vthread_add(ptr::unique<vthread_t> p_vthread) {
+bool vthread_add(std::unique_ptr<vthread_t> p_vthread) {
     p_vthread->vt_state = vthread_state_t::RUNNING;
     
     if (!g_threads.insert(p_vthread->handle, move(p_vthread)))
@@ -65,7 +65,7 @@ vthread_handle_t vthread_start_and_setup_main() {
     if (g_current_thread)
         return false;
 
-    ptr::unique<vthread_t> p_vthread = ptr::make_unique<vthread_t>();
+    std::unique_ptr<vthread_t> p_vthread = std::make_unique<vthread_t>();
 
     p_vthread->handle = 0;
     p_vthread->pml4 = get_pml4();
@@ -83,7 +83,7 @@ vthread_handle_t vthread_create(thread_entry_t p_thread_entry, void* pml4) {
         return VTHREAD_HANDLE_INVALID;
 
     memzero(stack, VTHREAD_STACK_SIZE);
-    ptr::unique<vthread_t> p_vthread = ptr::make_unique<vthread_t>();
+    std::unique_ptr<vthread_t> p_vthread = std::make_unique<vthread_t>();
     p_vthread->stack_og = stack;
     uint64_t* stack_top = (uint64_t*)(((uint64_t)stack + VTHREAD_STACK_SIZE - sizeof(cpu_state_t)) & ~0xF);
 

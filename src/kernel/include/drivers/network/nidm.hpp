@@ -14,7 +14,7 @@
 #include "utils/vector.hpp"
 #include "utils/map.hpp"
 #include "string.hpp"
-#include "utils/pointer.hpp"
+#include "std/pointer.hpp"
 
 struct network_interface_device_t {
     string name;

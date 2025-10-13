@@ -4,8 +4,8 @@
 #include "filesystems/fat32.hpp"
 #include "filesystems/vfs.hpp"
 
-bool mount_disk(ptr::unique<storage_driver_interface_t> interface, const char* path) {
-    ptr::unique<filesystem_interface_t> fs_interface;
+bool mount_disk(std::unique_ptr<storage_driver_interface_t> interface, const char* path) {
+    std::unique_ptr<filesystem_interface_t> fs_interface;
 
     switch (filesystem_identify(interface.get())) {
         case filesystem_type_t::ISO9660: {
@@ -15,7 +15,7 @@ bool mount_disk(ptr::unique<storage_driver_interface_t> interface, const char* p
                 return false;
 
             // init file system interface
-            fs_interface = ptr::make_unique<iso9660_filesystem_interface_t>(move(interface), fs_data);
+            fs_interface = std::make_unique<iso9660_filesystem_interface_t>(move(interface), fs_data);
             break;
         }
         case filesystem_type_t::FAT32: {
@@ -25,7 +25,7 @@ bool mount_disk(ptr::unique<storage_driver_interface_t> interface, const char* p
                 return false;
 
             // init file system interface
-            fs_interface = ptr::make_unique<fat32_filesystem_interface_t>(move(interface), fs_data);
+            fs_interface = std::make_unique<fat32_filesystem_interface_t>(move(interface), fs_data);
             break;
         }
         default:
@@ -33,6 +33,6 @@ bool mount_disk(ptr::unique<storage_driver_interface_t> interface, const char* p
     }
 
     // init vfs storage interface
-    auto vfs_storage_interface = ptr::make_unique<vfs_disk_storage_interface>(move(fs_interface));
+    auto vfs_storage_interface = std::make_unique<vfs_disk_storage_interface>(move(fs_interface));
     return vfs_mount(get_global_vfs(), path, move(vfs_storage_interface));
 }

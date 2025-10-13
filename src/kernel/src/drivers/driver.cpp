@@ -60,7 +60,7 @@ system_driver_handle_t driver_load(driver_manager_t* driver_manager, const char*
     if (elf_relocate_rel_sections((uint8_t*)p_driver_file, base_address, &tables, &symbol_map) != 0)
         return SYSTEM_DRIVER_HANDLE_INVALID;
 
-    auto system_driver = ptr::make_unique<system_driver_t>();
+    auto system_driver = std::make_unique<system_driver_t>();
     system_driver->base_address = (void*)base_address;
     system_driver->file_data_ptr = p_driver_file;
     system_driver->name = p_name;

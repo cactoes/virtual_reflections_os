@@ -24,12 +24,12 @@ bool vfs_memory_storage_interface::write_file(const string& path, dynamic_array<
 bool vfs_memory_storage_interface::write_file(const string& path, uint8_t* content, size_t size) {
     mutex_lock_guard guard(&mutex);
 
-    ptr::unique<dynamic_array<uint8_t>> target_storage_file;
+    std::unique_ptr<dynamic_array<uint8_t>> target_storage_file;
 
     if (auto it = storage.get(path); it != storage.end())
         target_storage_file = move(it->value);
     else
-        target_storage_file = ptr::make_unique<dynamic_array<uint8_t>>();
+        target_storage_file = std::make_unique<dynamic_array<uint8_t>>();
 
     if (target_storage_file.get() == nullptr)
         return false;
@@ -49,7 +49,7 @@ bool vfs_memory_storage_interface::create_directory(const string& path) {
     return true;
 }
 
-vfs_disk_storage_interface::vfs_disk_storage_interface(ptr::unique<filesystem_interface_t> api) {
+vfs_disk_storage_interface::vfs_disk_storage_interface(std::unique_ptr<filesystem_interface_t> api) {
     mutex_init(&mutex);
     this->api = move(api);
 }
@@ -75,7 +75,7 @@ bool vfs_disk_storage_interface::create_directory(const string& path) {
     return true;
 }
 
-bool vfs_disk_storage_interface::enumerate_directory(const string& path, dynamic_array<ptr::unique<vfs_node_t>>* out_array) {
+bool vfs_disk_storage_interface::enumerate_directory(const string& path, dynamic_array<std::unique_ptr<vfs_node_t>>* out_array) {
     dynamic_array<filesystem_node_t> nodes {};
     if (!api->enumerate_directory(path.c_str(), &nodes))
         return false;
@@ -83,7 +83,7 @@ bool vfs_disk_storage_interface::enumerate_directory(const string& path, dynamic
     out_array->resize(nodes.length());
 
     for (const auto& node : nodes) {
-        auto vfs_node = ptr::make_unique<vfs_node_t>();
+        auto vfs_node = std::make_unique<vfs_node_t>();
         vfs_node->type = node.is_directory ? vfs_node_type_t::DIRECTORY : vfs_node_type_t::FILE;
         vfs_node->meta.name = node.name;
         out_array->insert_back(move(vfs_node));
@@ -101,9 +101,9 @@ vfs_t* get_global_vfs() {
 }
 
 bool vfs_init(vfs_t* vfs) {
-    vfs->root_storage_interface = ptr::make_unique<vfs_memory_storage_interface>();
+    vfs->root_storage_interface = std::make_unique<vfs_memory_storage_interface>();
 
-    vfs->root_node = ptr::make_unique<vfs_node_t>();
+    vfs->root_node = std::make_unique<vfs_node_t>();
     vfs->root_node->type = vfs_node_type_t::DIRECTORY;
     vfs->root_node->storage_interface = vfs->root_storage_interface.get();
     vfs->root_node->root_mount_point = nullptr;
@@ -167,7 +167,7 @@ vfs_node_t* vfs_create_cache_directories(vfs_t* vfs, const string& path) {
     for (const auto& part : path_parts) {
         vfs_node_t* child_node = vfs_node_get_child(current_node, part);
         if (!child_node) {
-            ptr::unique<vfs_node_t> new_node = ptr::make_unique<vfs_node_t>();
+            std::unique_ptr<vfs_node_t> new_node = std::make_unique<vfs_node_t>();
             new_node->meta.name = part;
             new_node->parent = current_node;
             new_node->root_mount_point = current_node->root_mount_point;
@@ -249,7 +249,7 @@ bool vfs_create_file(vfs_t* vfs, const string& path) {
     vfs_create_directory(vfs, dir_path);
     vfs_node_t* parent_dir = vfs_resolve_path(vfs, dir_path);
 
-    ptr::unique<vfs_node_t> new_node = ptr::make_unique<vfs_node_t>();
+    std::unique_ptr<vfs_node_t> new_node = std::make_unique<vfs_node_t>();
     new_node->meta.name = filename;
     new_node->parent = parent_dir;
 
@@ -311,7 +311,7 @@ bool vfs_write_file(vfs_t* vfs, file_descriptor_t fd, uint8_t* content, size_t s
 }
 
 void vfs_enumerate_and_append_child_nodes(vfs_storage_interface_t* storage_interface, const string& path, vfs_node_t* parent_node) {
-    dynamic_array<ptr::unique<vfs_node_t>> directories {};
+    dynamic_array<std::unique_ptr<vfs_node_t>> directories {};
     storage_interface->enumerate_directory(path, &directories);
 
     for (auto& node : directories) {
@@ -329,7 +329,7 @@ void vfs_enumerate_and_append_child_nodes(vfs_storage_interface_t* storage_inter
     }
 }
 
-bool vfs_mount(vfs_t* vfs, const string& path, ptr::unique<vfs_storage_interface_t> storage_interface) {
+bool vfs_mount(vfs_t* vfs, const string& path, std::unique_ptr<vfs_storage_interface_t> storage_interface) {
     for (const auto& mount : vfs->mount_points)
         if (mount->mount_point_path == path)
             return false;
@@ -340,7 +340,7 @@ bool vfs_mount(vfs_t* vfs, const string& path, ptr::unique<vfs_storage_interface
 
     vfs_storage_interface_t* storage_interface_pointer = storage_interface.get();
 
-    ptr::unique<vfs_mount_point_t> mp = ptr::make_unique<vfs_mount_point_t>();
+    std::unique_ptr<vfs_mount_point_t> mp = std::make_unique<vfs_mount_point_t>();
     mp->mount_point_path = path;
     mp->interface = move(storage_interface);
     vfs_mount_point_t* mp_pointer = mp.get();
@@ -366,7 +366,7 @@ bool vfs_add_file_cache(vfs_t* vfs, const string& path) {
     vfs_create_directory(vfs, dir_path);
     vfs_node_t* parent_dir = vfs_resolve_path(vfs, dir_path);
 
-    ptr::unique<vfs_node_t> new_node = ptr::make_unique<vfs_node_t>();
+    std::unique_ptr<vfs_node_t> new_node = std::make_unique<vfs_node_t>();
     new_node->meta.name = filename;
     new_node->parent = parent_dir;
     new_node->root_mount_point = parent_dir->root_mount_point;

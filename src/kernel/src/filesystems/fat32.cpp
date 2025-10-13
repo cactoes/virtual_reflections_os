@@ -54,8 +54,8 @@ uint32_t cluster_to_lba(const fat32_data_t* fs_data, uint32_t cluster) {
     return 128 + fs_data->first_data_sector + (cluster - 2) * fs_data->sectors_per_cluster;
 }
 
-ptr::unique<uint8_t> fat32_read_cluster_from_disk(storage_driver_interface_t* storage_interface, fat32_data_t* fat32_data, size_t cluster, bool* error) {
-    ptr::unique<uint8_t> data = ptr::unique<uint8_t>((uint8_t*)heap_alloc(get_global_heap(), fat32_data->bytes_per_sector * fat32_data->sectors_per_cluster));
+std::unique_ptr<uint8_t> fat32_read_cluster_from_disk(storage_driver_interface_t* storage_interface, fat32_data_t* fat32_data, size_t cluster, bool* error) {
+    std::unique_ptr<uint8_t> data = std::unique_ptr<uint8_t>((uint8_t*)heap_alloc(get_global_heap(), fat32_data->bytes_per_sector * fat32_data->sectors_per_cluster));
 
     *error = false;
     for (uint32_t sector = 0; sector < fat32_data->sectors_per_cluster; ++sector) {
@@ -122,7 +122,7 @@ bool fat32_find_node(storage_driver_interface_t* storage_interface, fat32_data_t
     while (cluster < FAT32_EOC32) {
         // read target disk cluster
         bool error;
-        ptr::unique<uint8_t> dir_data = fat32_read_cluster_from_disk(storage_interface, fat32_data, cluster, &error);
+        std::unique_ptr<uint8_t> dir_data = fat32_read_cluster_from_disk(storage_interface, fat32_data, cluster, &error);
         if (error)
             return false;
 
@@ -209,7 +209,7 @@ bool fat32_find_node(storage_driver_interface_t* storage_interface, fat32_data_t
     return false;
 }
 
-fat32_filesystem_interface_t::fat32_filesystem_interface_t(ptr::unique<storage_driver_interface_t> storage_interface, const fat32_data_t& data) {
+fat32_filesystem_interface_t::fat32_filesystem_interface_t(std::unique_ptr<storage_driver_interface_t> storage_interface, const fat32_data_t& data) {
     this->data = data;
     this->storage_interface = move(storage_interface);
 }
@@ -231,7 +231,7 @@ bool fat32_filesystem_interface_t::read(const char* path, void** data, size_t* s
     size_t bytes_read_total = 0;
     while (cluster < FAT32_EOC32 && bytes_read_total < *size) {
         bool error;
-        ptr::unique<uint8_t> cluster_data = fat32_read_cluster_from_disk(storage_interface.get(), &this->data, cluster, &error);
+        std::unique_ptr<uint8_t> cluster_data = fat32_read_cluster_from_disk(storage_interface.get(), &this->data, cluster, &error);
         if (error) {
             *data = nullptr;
             *size = 0;
@@ -268,7 +268,7 @@ bool fat32_filesystem_interface_t::enumerate_directory(const char* path, dynamic
     size_t bytes_read_total = 0;
     while (cluster < FAT32_EOC32) {
         bool error;
-        ptr::unique<uint8_t> cluster_data = fat32_read_cluster_from_disk(storage_interface.get(), &this->data, cluster, &error);
+        std::unique_ptr<uint8_t> cluster_data = fat32_read_cluster_from_disk(storage_interface.get(), &this->data, cluster, &error);
         if (error)
             return false;
 

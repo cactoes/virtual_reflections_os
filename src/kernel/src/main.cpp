@@ -374,7 +374,7 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
     size_t ide_device_index = 0;
     for (auto& drive : ide_devices) {
         // init device interface
-        auto ide_storage = ptr::make_unique<ide_storage_driver_t>(&drive);
+        auto ide_storage = std::make_unique<ide_storage_driver_t>(&drive);
 
         char disk_mount_name_buffer[20];
         sprintf(disk_mount_name_buffer, 20, "/mnt/disk%i", ide_device_index++);
@@ -396,7 +396,7 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
     size_t ahci_device_index = 0;
     for (auto& drive : ahci_devices) {
         if (drive.was_setup) {
-            auto ahci_storage = ptr::make_unique<ahci_storage_driver_t>(&drive);
+            auto ahci_storage = std::make_unique<ahci_storage_driver_t>(&drive);
 
             char disk_mount_name_buffer[20];
             sprintf(disk_mount_name_buffer, 20, "/mnt/drive%i", ahci_device_index++);

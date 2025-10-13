@@ -10,7 +10,7 @@ enum print_mode_t {
 
 extern void printf(print_mode_t mode, const char* p_str, ...);
 
-linked_list<ptr::unique<tcp_connection_t>> connections {};
+linked_list<std::unique_ptr<tcp_connection_t>> connections {};
 
 void tcp_init_connection(network_interface_device_t* device, tcp_connection_t* connection, uint32_t ip, uint32_t port, tcp_connect_callback_t callback) {
     connection->local_ip = device->ip4;
@@ -34,7 +34,7 @@ tcp_connection_t* tcp_connect(network_interface_device_t* device, uint32_t ip, u
     }
 
     if (!connection_ptr) {
-        auto connection = ptr::make_unique<tcp_connection_t>();
+        auto connection = std::make_unique<tcp_connection_t>();
         connection_ptr = connection.get();
         connections.insert_back(move(connection));
     }
@@ -54,7 +54,7 @@ tcp_connection_t* tcp_listen(network_interface_device_t* device, uint32_t port, 
     }
 
     if (!connection_ptr) {
-        auto connection = ptr::make_unique<tcp_connection_t>();
+        auto connection = std::make_unique<tcp_connection_t>();
         connection_ptr = connection.get();
         connections.insert_back(move(connection));
     }

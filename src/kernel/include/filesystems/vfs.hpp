@@ -11,7 +11,7 @@
 #include "common.hpp"
 #include "string.hpp"
 
-#include "utils/pointer.hpp"
+#include "std/pointer.hpp"
 #include "utils/mutex.hpp"
 #include "utils/vector.hpp"
 #include "utils/map.hpp"
@@ -41,7 +41,7 @@ struct vfs_storage_interface_t {
     virtual bool write_file(const string& path, dynamic_array<uint8_t>* content) = 0;
     virtual bool write_file(const string& path, uint8_t* content, size_t size) = 0;
 
-    virtual bool enumerate_directory(const string& path, dynamic_array<ptr::unique<vfs_node_t>>* out_array) = 0;
+    virtual bool enumerate_directory(const string& path, dynamic_array<std::unique_ptr<vfs_node_t>>* out_array) = 0;
 
     virtual bool create_directory(const string& path) = 0;
 
@@ -57,7 +57,7 @@ public:
     bool write_file(const string& path, dynamic_array<uint8_t>* content) override;
     bool write_file(const string& path, uint8_t* content, size_t size) override;
 
-    bool enumerate_directory(const string& path, dynamic_array<ptr::unique<vfs_node_t>>* out_array) {
+    bool enumerate_directory(const string& path, dynamic_array<std::unique_ptr<vfs_node_t>>* out_array) {
         return false;
     }
 
@@ -68,20 +68,20 @@ public:
     }
 
 private:
-    linear_map<string, ptr::unique<dynamic_array<uint8_t>>> storage;
+    linear_map<string, std::unique_ptr<dynamic_array<uint8_t>>> storage;
     mutex_t mutex;
 };
 
 class vfs_disk_storage_interface : public vfs_storage_interface_t {
 public:
-    vfs_disk_storage_interface(ptr::unique<filesystem_interface_t> api);
+    vfs_disk_storage_interface(std::unique_ptr<filesystem_interface_t> api);
 
     bool read_file(const string& path, dynamic_array<uint8_t>* content) override;
 
     bool write_file(const string& path, dynamic_array<uint8_t>* content) override;
     bool write_file(const string& path, uint8_t* content, size_t size) override;
 
-    bool enumerate_directory(const string& path, dynamic_array<ptr::unique<vfs_node_t>>* out_array) override;
+    bool enumerate_directory(const string& path, dynamic_array<std::unique_ptr<vfs_node_t>>* out_array) override;
 
     bool create_directory(const string& path) override;
 
@@ -97,13 +97,13 @@ public:
     }
 
 private:
-    ptr::unique<filesystem_interface_t> api;
+    std::unique_ptr<filesystem_interface_t> api;
     mutex_t mutex;
 };
 
 struct vfs_mount_point_t {
     string mount_point_path;
-    ptr::unique<vfs_storage_interface_t> interface;
+    std::unique_ptr<vfs_storage_interface_t> interface;
 };
 
 enum class vfs_node_type_t {
@@ -148,15 +148,15 @@ struct vfs_node_t {
     vfs_storage_interface_t* storage_interface;
 
     // list of children
-    linked_list<ptr::unique<vfs_node_t>> children {};
+    linked_list<std::unique_ptr<vfs_node_t>> children {};
 };
 
 struct vfs_t {
-    ptr::unique<vfs_storage_interface_t> root_storage_interface;
-    ptr::unique<vfs_node_t> root_node;
+    std::unique_ptr<vfs_storage_interface_t> root_storage_interface;
+    std::unique_ptr<vfs_node_t> root_node;
 
     linear_map<file_descriptor_t, string> open_files {};
-    linked_list<ptr::unique<vfs_mount_point_t>> mount_points {};
+    linked_list<std::unique_ptr<vfs_mount_point_t>> mount_points {};
 
     int fd_counter = 0;
 };
@@ -172,7 +172,7 @@ bool vfs_close_file(vfs_t* vfs, file_descriptor_t fd);
 bool vfs_read_file(vfs_t* vfs, file_descriptor_t fd, dynamic_array<uint8_t>* content);
 bool vfs_write_file(vfs_t* vfs, file_descriptor_t fd, dynamic_array<uint8_t>* content);
 bool vfs_write_file(vfs_t* vfs, file_descriptor_t fd, uint8_t* content, size_t size);
-bool vfs_mount(vfs_t* vfs, const string& path, ptr::unique<vfs_storage_interface_t> storage_interface);
+bool vfs_mount(vfs_t* vfs, const string& path, std::unique_ptr<vfs_storage_interface_t> storage_interface);
 bool vfs_add_file_cache(vfs_t* vfs, const string& path);
 const vfs_node_meta_t* vfs_get_meta(vfs_t* vfs, file_descriptor_t fd);
 bool vfs_list_directory(vfs_t* vfs, const string& path, dynamic_array<vfs_node_t*>* out_array);
