@@ -46,6 +46,9 @@ bool is_local_network(uint32_t target_ip, uint32_t our_ip, uint32_t subnet_mask)
 }
 
 uint32_t get_next_hop_ip(network_interface_device_t* device, uint32_t target_ip) {
+    if (target_ip == 0)
+        return 0;
+
     return is_local_network(target_ip, device->ip4, device->subnet_mask) ? target_ip : device->gateway_ip;
 }
 
@@ -68,7 +71,9 @@ bool ip_send(network_interface_device_t* p_device, uint32_t dst_ip, uint8_t prot
     uint32_t next_net_hop_ip = get_next_hop_ip(p_device, dst_ip);
 
     uint8_t dst_mac[6];
-    if (!arp_lookup(next_net_hop_ip, dst_mac)) {
+    if (dst_ip == TO_IP(255, 255, 255, 255)) {
+        memset(&dst_mac[0], 0xFF, 6);
+    } else if (!arp_lookup(next_net_hop_ip, dst_mac)) {
         printf(DBG, "[INET - IP: %s] arp lookup for %u.%u.%u.%u\n", p_device->name.c_str(), (next_net_hop_ip >> 24) & 0xff, (next_net_hop_ip >> 16) & 0xff, (next_net_hop_ip >> 8) & 0xff, (next_net_hop_ip) & 0xff);
         arp_discover_request_ipv4(p_device, next_net_hop_ip);
         return false;
