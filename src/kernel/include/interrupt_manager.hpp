@@ -61,13 +61,46 @@ enum class interrupt_t : uint64_t {
     UNKOWN = (uint64_t)-1,
 };
 
+/// @brief              checks if the given interrupt code is an exception
+/// @param code         interrupt code to check
+/// @return             true if code is in the exception range (0-21), false otherwise
 bool is_interrupt_exception(uint64_t code);
+
+/// @brief              checks if the given interrupt code is an exception
+/// @param code         interrupt code to check
+/// @return             true if code is in the exception range (0-21), false otherwise
 bool is_interrupt_exception(interrupt_t code);
+
+/// @brief              checks if the given interrupt code is a hardware interrupt
+/// @param code         interrupt code to check
+/// @return             true if code is a hardware interrupt, false otherwise
 bool is_interrupt_hardware(uint64_t code);
+
+/// @brief              checks if the given interrupt code is a hardware interrupt
+/// @param code         interrupt code to check
+/// @return             true if code is a hardware interrupt, false otherwise
 bool is_interrupt_hardware(interrupt_t code);
+
+/// @brief              converts a raw interrupt code to an interrupt_t enum value
+/// @param code         raw interrupt code to convert
+/// @return             interrupt_t
 interrupt_t convert_to_interrupt(uint64_t code);
+
+/// @brief                  set a callback for a specific interrupt code if not already set
+/// @param code             interrupt code to associate with the callback
+/// @param[in] callback     function to call when the interrupt occurs
+/// @return                 true if callback was set successfully, false if code is invalid or already set
 bool set_interrupt_callback(interrupt_t code, interrupt_callback_t callback);
+
+/// @brief          convert a hardware irq number to its corresponding interrupt vector
+/// @param irq      hardware irq number to convert
+/// @return         interrupt vector number corresponding to the given irq
 uint64_t interrupt_irq_to_int(uint64_t irq);
+
+/// @brief          handles an interrupt by dispatching to the correct callback or handler
+/// @param code     interrupt code to handle
+/// @param[in]      p_rsp   pointer to cpu state at time of interrupt
+/// @return         updated cpu state pointer after handling the interrupt
 void* handle_interrupt(uint64_t code, cpu_state_t* p_rsp);
 
 #endif // __INTERRUPT_MANAGER_HPP__
