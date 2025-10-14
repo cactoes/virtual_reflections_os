@@ -45,6 +45,14 @@ int nidm_packet_recieve(nidm_t* nidm, network_interface_device_t* p_device, cons
     return ethernet_receive(p_device, (uint8_t*)p_data, size);
 }
 
+int nidm_packet_recieve_on_device(nidm_t* nidm, void* device_data, const void* data, size_t size) {
+    for (auto& device : nidm->devices)
+        if (device.device_data == device_data)
+            return ethernet_receive(&device, (uint8_t*)data, size);
+
+    return 1;
+}
+
 int nidm_packet_send(nidm_t* nidm, network_interface_device_t* p_device, const void* p_data, size_t size) {
     return p_device->send_packet(p_device, p_data, size);
 }

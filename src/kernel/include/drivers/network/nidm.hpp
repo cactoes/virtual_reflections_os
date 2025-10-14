@@ -74,6 +74,7 @@ int nidm_register_device(nidm_t* nidm, const network_interface_device_t& device)
 network_interface_device_t* nidm_get_device(nidm_t* nidm, const string& name);
 
 int nidm_packet_recieve(nidm_t* nidm, network_interface_device_t* p_device, const void* p_data, size_t size);
+int nidm_packet_recieve_on_device(nidm_t* nidm, void* device_data, const void* data, size_t size);
 int nidm_packet_send(nidm_t* nidm, network_interface_device_t* p_device, const void* p_data, size_t size);
 
 int nidm_udp_bind(nidm_t* nidm, uint16_t port, network_callback_t p_callback);
