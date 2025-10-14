@@ -294,10 +294,6 @@ void tcp_callback(const uint8_t* data, size_t size) {
     printf(DBG, "\n");
 }
 
-void dhcp_callback(uint8_t* packet, size_t size) {
-    printf(DBG, "DHCP MESSAGE RECIEVED\n");
-}
-
 #define DHCP_OP_BOOTREQUEST                     1
 #define DHCP_OP_BOOTREPLY                       2
 
@@ -318,8 +314,15 @@ void dhcp_callback(uint8_t* packet, size_t size) {
 #define DHCP_MESSAGE_TYPE_DHCPLEASEUNKNOWN      12
 #define DHCP_MESSAGE_TYPE_DHCPLEASEACTIVE       13
 
+#define DHCP_OPTION_SUBNET_MASK                 1
+#define DHCP_OPTION_ROUTER                      3
+#define DHCP_OPTION_DNS                         6
 #define DHCP_OPTION_HOSTNAME                    12
+#define DHCP_OPTION_REQUESTED_IP_ADDR           50
+#define DHCP_OPTION_IP_LEASE_TIME               51
 #define DHCP_OPTION_DHCP_MESSAGE_TYPE           53
+#define DHCP_OPTION_DHCP_SERVER_ID              54
+#define DHCP_OPTION_CLIENT_ID                   61
 #define DHCP_OPTION_END                         255
 
 struct dhcp_packet_t {
@@ -342,6 +345,90 @@ struct dhcp_packet_t {
 
     uint32_t magic;
 } PACKED;
+
+uint8_t* dhcp_get_option(uint8_t* packet, uint8_t type) {
+    uint8_t* options = packet + sizeof(dhcp_packet_t);
+
+    while (true) {
+        if (options[0] == type)
+            return options;
+
+        if (options[0] == DHCP_OPTION_END)
+            return nullptr;
+
+        options += options[1] + 2;
+    }
+}
+
+void dhcp_callback(uint8_t* packet, size_t size) {
+    dhcp_packet_t* p = (dhcp_packet_t*)packet;
+
+    uint8_t* message_type_option = dhcp_get_option(packet, DHCP_OPTION_DHCP_MESSAGE_TYPE);
+
+    if (!message_type_option || message_type_option[2] != DHCP_MESSAGE_TYPE_DHCPOFFER) {
+        printf(DBG, "invalid dhcp packet\n");
+        return;
+    }
+
+    uint8_t* subnet_mask_option = dhcp_get_option(packet, DHCP_OPTION_SUBNET_MASK);
+    uint8_t* server_id_option = dhcp_get_option(packet, DHCP_OPTION_DHCP_SERVER_ID);
+    uint8_t* router_option = dhcp_get_option(packet, DHCP_OPTION_ROUTER);
+
+    dhcp_packet_t npacket {};
+    memcpy(&npacket, p, sizeof(dhcp_packet_t));
+    npacket.op = DHCP_OP_BOOTREQUEST;
+    npacket.flags = host_to_net<uint16_t>(0);
+    npacket.secs = host_to_net<uint16_t>(0);
+
+    uint8_t dhcp_packet[548];
+    memzero(&dhcp_packet[0], 548);
+    size_t write_ptr = 0;
+
+    uint8_t option_dhcp_discover[] {
+        DHCP_OPTION_DHCP_MESSAGE_TYPE,
+        1,
+        DHCP_MESSAGE_TYPE_DHCPREQUEST
+    };
+
+    uint8_t option_request_ip_addr[6] {
+        DHCP_OPTION_REQUESTED_IP_ADDR,
+        4,
+    };
+    memcpy(&option_request_ip_addr[2], &npacket.your_ip_address, 4);
+
+    uint8_t option_end[] {
+        DHCP_OPTION_END,
+    };
+
+    memcpy(&dhcp_packet[write_ptr], &npacket, sizeof(dhcp_packet_t));
+    write_ptr += sizeof(dhcp_packet_t);
+
+    memcpy(&dhcp_packet[write_ptr], option_dhcp_discover, sizeof(option_dhcp_discover));
+    write_ptr += sizeof(option_dhcp_discover);
+
+    memcpy(&dhcp_packet[write_ptr], option_request_ip_addr, sizeof(option_request_ip_addr));
+    write_ptr += sizeof(option_request_ip_addr);
+
+    // BUG @since 14/10/2025 -- 20:40
+    // serveridoption is abitrary
+    memcpy(&dhcp_packet[write_ptr], server_id_option, server_id_option[1] + 2);
+    write_ptr += server_id_option[1] + 2;
+
+    memcpy(&dhcp_packet[write_ptr], option_end, sizeof(option_end));
+    write_ptr += sizeof(option_end);
+
+    if (write_ptr < 300) {
+        write_ptr = 300;
+    }
+
+    auto device = nidm_get_device(get_global_nidm(), "eth0 (Intel e1000)");
+    device->ip4 = net_to_host(p->your_ip_address);
+    device->subnet_mask = TO_IP(subnet_mask_option[2], subnet_mask_option[3], subnet_mask_option[4], subnet_mask_option[5]);
+    device->gateway_ip = TO_IP(router_option[2], router_option[3], router_option[4], router_option[5]);
+
+    printf(DBG, "sending dhcp request (%ul bytes)\n", write_ptr);
+    udp_send(device, TO_IP(server_id_option[2], server_id_option[3], server_id_option[4], server_id_option[5]), 68, 67, dhcp_packet, write_ptr);
+}
 
 void dhcp_client(network_interface_device_t* device) {
     seed_random(clock_get_time_since_boot());
