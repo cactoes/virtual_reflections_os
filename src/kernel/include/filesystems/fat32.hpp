@@ -67,7 +67,7 @@ struct fat32_bpb_extended_t {
     uint8_t drive_number;
     uint8_t reserved1;
     uint8_t boot_signature;
-    uint32_t volumeID;
+    uint32_t volume_id;
     char volume_label[11];
     char fs_type[8];
     char boot_code[420];

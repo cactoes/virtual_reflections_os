@@ -5,6 +5,7 @@
 
 /// @brief kernel api functions
 extern "C" {
+    // NOLINTNEXTLINE
     void kprint(const char* str);
 }
 

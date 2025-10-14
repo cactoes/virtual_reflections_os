@@ -111,7 +111,7 @@ bool tcp_send_packet(network_interface_device_t* p_device, uint8_t* p_payload, s
     uint8_t tcp_packet[1480];
 
     tcp_header_t* tcp_hdr = (tcp_header_t*)tcp_packet;
-    memset(tcp_hdr, 0, sizeof(tcp_header_t));
+    memzero(tcp_hdr, sizeof(tcp_header_t));
 
     tcp_hdr->src_port = host_to_net(connection->local_port);
     tcp_hdr->dst_port = host_to_net(connection->remote_port);

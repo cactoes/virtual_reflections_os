@@ -11,7 +11,6 @@
 #include "common.hpp"
 
 constexpr uint64_t bitmap_get_size(size_t size) {
-    // NOLINTNEXTLINE
     return size * (sizeof(uint64_t) * 8);
 }
 

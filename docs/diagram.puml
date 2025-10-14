@@ -1,88 +1,89 @@
 @startuml kernel diagram
+title kernel diagram
 
-node "Hardware Compatibility Layer (Hardware API)" as HWCL {
-}
+' node "Hardware Compatibility Layer (Hardware API)" as HWCL {
+' }
 
-rectangle "Core" {
-    rectangle "Drivers" {
-        [PCI]
-        [PIT]
-        [VGA]
-        [PS/2 Keyboard]
-        [PS/2 Mouse]
-        [AHCI]
-        [IDE]
-    }
+' rectangle "Core" {
+'     rectangle "Drivers" {
+'         [PCI]
+'         [PIT]
+'         [VGA]
+'         [PS/2 Keyboard]
+'         [PS/2 Mouse]
+'         [AHCI]
+'         [IDE]
+'     }
 
-    rectangle "Core Functions" {
-        [Virtual Threads]
-        [Memory Manager]
-        [Interrupts]
-    }
+'     rectangle "Core Functions" {
+'         [Virtual Threads]
+'         [Memory Manager]
+'         [Interrupts]
+'     }
 
-    rectangle "Utilities" {
-        [Vector]
-        [Mutex]
-        [Events]
-        [Bitmap]
-    }
+'     rectangle "Utilities" {
+'         [Vector]
+'         [Mutex]
+'         [Events]
+'         [Bitmap]
+'     }
 
-    rectangle "Virtual File System" {
+'     rectangle "Virtual File System" {
 
-    }
+'     }
 
-    rectangle "File Systems" {
-        [ISO9660]
-        [FAT32]
-    }
-}
+'     rectangle "File Systems" {
+'         [ISO9660]
+'         [FAT32]
+'     }
+' }
 
-[Virtual Threads] --> [Mutex]
-[Virtual Threads] --> [Memory Manager]
+' [Virtual Threads] --> [Mutex]
+' [Virtual Threads] --> [Memory Manager]
 
-[Memory Manager] --> [Bitmap]
-[Memory Manager] --> [Mutex]
+' [Memory Manager] --> [Bitmap]
+' [Memory Manager] --> [Mutex]
 
-[Drivers] --> [Interrupts]
-[PCI] --> [Vector]
-[PIT] --> [Vector]
-[PIT] --> [Virtual Threads]
-[VGA] --> [Memory Manager]
-[PS/2 Keyboard] --> [Events]
-[PS/2 Mouse] ..> [Events]
-[AHCI] --> [Memory Manager]
-[AHCI] --> [Vector]
-[IDE] --> [Vector]
+' [Drivers] --> [Interrupts]
+' [PCI] --> [Vector]
+' [PIT] --> [Vector]
+' [PIT] --> [Virtual Threads]
+' [VGA] --> [Memory Manager]
+' [PS/2 Keyboard] --> [Events]
+' [PS/2 Mouse] ..> [Events]
+' [AHCI] --> [Memory Manager]
+' [AHCI] --> [Vector]
+' [IDE] --> [Vector]
 
-[Events] --> [Mutex]
-[Events] --> [Vector]
-[Vector] --> [Mutex]
+' [Events] --> [Mutex]
+' [Events] --> [Vector]
+' [Vector] --> [Mutex]
 
-"Virtual File System" --> [Vector]
-"Virtual File System" --> [ISO9660]
-"Virtual File System" --> [FAT32]
-"Virtual File System" --> [IDE]
-"Virtual File System" --> [Memory Manager]
+' "Virtual File System" --> [Vector]
+' "Virtual File System" --> [ISO9660]
+' "Virtual File System" --> [FAT32]
+' "Virtual File System" --> [IDE]
+' "Virtual File System" --> [Memory Manager]
 
-[ISO9660] --> [Memory Manager]
-[FAT32] --> [Memory Manager]
+' [ISO9660] --> [Memory Manager]
+' [FAT32] --> [Memory Manager]
 
-rectangle "Programs" {
-    rectangle "Shell" {
-        [Visual output]
-        [Text Input]
-    }
-}
+' rectangle "Programs" {
+'     rectangle "Shell" {
+'         [Visual output]
+'         [Text Input]
+'     }
+' }
 
-node "Compatibility Layer (Kernel API)" as CL {
-}
+' node "Compatibility Layer (Kernel API)" as CL {
+' }
 
-Programs ..> CL
-CL ..> Core
+' Programs ..> CL
+' CL ..> Core
 
-[Interrupts] --> HWCL
-Drivers ..> HWCL
-[Memory Manager] ..> HWCL
-[Virtual Threads] ..> HWCL
+' [Interrupts] --> HWCL
+' Drivers ..> HWCL
+' [Memory Manager] ..> HWCL
+' [Virtual Threads] ..> HWCL
 
 @enduml

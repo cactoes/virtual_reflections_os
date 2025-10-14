@@ -49,13 +49,13 @@ system_driver_handle_t driver_load(driver_manager_t* driver_manager, const char*
     symbol_map["x86_64_memset"] = (void*)&x86_64_memset;
     symbol_map["x86_64_memcpy"] = (void*)&x86_64_memcpy;
 
-    symbol_map["_Znwm"] = (void*)(void* (*)(size_t))&operator new;
-    symbol_map["_Znam"] = (void*)(void* (*)(size_t))&operator new[];
+    symbol_map["_Znwm"] = (void*)(void* (*)(__SIZE_TYPE__))&operator new;
+    symbol_map["_Znam"] = (void*)(void* (*)(__SIZE_TYPE__))&operator new[];
     symbol_map["_ZdlPv"] = (void*)(void (*)(void*))&operator delete;
     symbol_map["_ZdaPv"] = (void*)(void (*)(void*))&operator delete[];
-    symbol_map["_ZdlPvm"] = (void*)(void (*)(void*, size_t))&operator delete;
-    symbol_map["_ZdaPvm"] = (void*)(void (*)(void*, size_t))&operator delete[];
-    symbol_map["_ZnwmPv"] = (void*)(void* (*)(size_t, void*))&operator new;
+    symbol_map["_ZdlPvm"] = (void*)(void (*)(void*, __SIZE_TYPE__))&operator delete;
+    symbol_map["_ZdaPvm"] = (void*)(void (*)(void*, __SIZE_TYPE__))&operator delete[];
+    symbol_map["_ZnwmPv"] = (void*)(void* (*)(__SIZE_TYPE__, void*))&operator new;
 
     if (elf_relocate_rel_sections((uint8_t*)p_driver_file, base_address, &tables, &symbol_map) != 0)
         return SYSTEM_DRIVER_HANDLE_INVALID;

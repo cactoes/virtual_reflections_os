@@ -2,14 +2,9 @@
 A 64-bit custom made operating system, using grub as bootloader
 
 ## TODO
-- [ ] buffers / streams (lockable / mutex)
-- [ ] filesystem
-    - [ ] fat32
-        - [ ] read
-        - [ ] write
-
-## Goal
-Bootable desktop that can play a minesweeper game
+- [ ] fat32
+    - [x] read
+    - [ ] write
 
 ## Setup build environment
 ### Windows host
@@ -22,8 +17,6 @@ Make sure to have openVPN for the tap interface.
 1. Rename the tap interface to tap0
 2. Change its ip to: `10.0.2.1`
 3. Change its subnet mask to: `255.255.255.0`
-
-QEMU has some defaults it expects.
 
 ## Building the ISO
 ### Windows host
@@ -39,8 +32,9 @@ Start the QEMU environment with the required startup flags.
 PS> .\qemu_start.ps1
 ```
 
-## Diagram (Out of Date)
+## Diagrams
 ![](docs/svg/kernel%20diagram.svg)
+![](docs/svg/storage%20diagram.svg)
 
 ## Contributing
 This project is not accepting contributions or pull requests.  

@@ -85,7 +85,7 @@ T&& forward(typename remove_reference<T>::type_t&& arg) {
     return static_cast<T&&>(arg);
 }
 
-typedef long unsigned int size_t;
+typedef unsigned long long size_t;
 
 typedef unsigned long long uint64_t;
 typedef          long long int64_t;
@@ -186,10 +186,8 @@ constexpr uint32_t host_to_net(uint32_t n) {
     return htonl(n);
 }
 
-// NOLINTNEXTLINE
 constexpr uint64_t hash_fnv1a_64(const char* p_str, uint64_t hash = 14695981039346656037ULL) {
     return (*p_str == '\0') ? hash :
-        // NOLINTNEXTLINE
         hash_fnv1a_64(p_str + 1, (hash ^ static_cast<uint64_t>(*p_str)) * 1099511628211ULL);
 }
 
@@ -229,14 +227,14 @@ struct cpu_state_t {
 extern "C" void* malloc(size_t size) noexcept;
 extern "C" void free(void* ptr) noexcept;
 
-void* operator new(size_t size) noexcept;
-void* operator new(size_t size, void* p_ptr) noexcept;
-void* operator new[](size_t size) noexcept;
-void* operator new[](size_t size, void*) noexcept;
+void* operator new(__SIZE_TYPE__ size) noexcept;
+void* operator new(__SIZE_TYPE__ size, void* p_ptr) noexcept;
+void* operator new[](__SIZE_TYPE__ size) noexcept;
+void* operator new[](__SIZE_TYPE__ size, void*) noexcept;
 
 void operator delete(void* p_ptr) noexcept;
-void operator delete(void* p_ptr, size_t) noexcept;
+void operator delete(void* p_ptr, __SIZE_TYPE__) noexcept;
 void operator delete[](void* ptr) noexcept;
-void operator delete[](void* ptr, size_t) noexcept;
+void operator delete[](void* ptr, __SIZE_TYPE__) noexcept;
 
 #endif // __COMMON_HPP__

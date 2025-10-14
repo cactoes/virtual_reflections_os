@@ -1,6 +1,5 @@
 #include "arch/x86_64/interrupt.hpp"
 
-// NOLINTNEXTLINE
 extern "C" void* x86_64_isr_stub_table[];
 
 void*(*g_handler)(uint64_t, cpu_state_t*);

@@ -357,24 +357,24 @@ void free(void* ptr) noexcept {
        heap_free(heap, ptr);
 }
 
-void* operator new(size_t size) noexcept {
+void* operator new(__SIZE_TYPE__ size) noexcept {
     if (auto heap = get_global_heap())
         return heap_alloc(heap, size);
     
     return nullptr;
 }
 
-void* operator new(size_t size, void* p_ptr) noexcept {
+void* operator new(__SIZE_TYPE__ size, void* p_ptr) noexcept {
     return p_ptr;
 }
 
-void* operator new[](size_t size) noexcept {
+void* operator new[](__SIZE_TYPE__ size) noexcept {
     if (auto heap = get_global_heap())
         return heap_alloc(heap, size);
     return nullptr;
 }
 
-void* operator new[](size_t size, void* ptr) noexcept {
+void* operator new[](__SIZE_TYPE__ size, void* ptr) noexcept {
     return ptr;
 }
 
@@ -383,7 +383,7 @@ void operator delete(void* p_ptr) noexcept {
        heap_free(heap, p_ptr);
 }
 
-void operator delete(void* p_ptr, size_t) noexcept {
+void operator delete(void* p_ptr, __SIZE_TYPE__) noexcept {
     if (auto heap = get_global_heap())
        heap_free(heap, p_ptr);
 }
@@ -393,7 +393,7 @@ void operator delete[](void* ptr) noexcept {
         heap_free(heap, ptr);
 }
 
-void operator delete[](void* ptr, size_t) noexcept {
+void operator delete[](void* ptr, __SIZE_TYPE__) noexcept {
    if (auto heap = get_global_heap())
         heap_free(heap, ptr);
 }

@@ -15,7 +15,6 @@ struct nullopt_t {
     constexpr nullopt_t() = default;
 };
 
-// NOLINTNEXTLINE
 static constexpr nullopt_t nullopt {};
 
 template <typename T>
@@ -83,7 +82,7 @@ public:
         return value;
     }
 
-    constexpr const T& operator*() const 
+    constexpr const T& operator*() const {
         return value;
     }
 
