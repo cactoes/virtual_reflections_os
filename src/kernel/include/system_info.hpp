@@ -20,10 +20,21 @@ struct system_info_manager_t {
     string serial_number;
 };
 
-void set_global_system_info_manager(system_info_manager_t* boot_info_manager);
+/// @brief                          set the global system info manager
+/// @param[in] system_info_manager  pointer to the system info manager
+void set_global_system_info_manager(system_info_manager_t* system_info_manager);
+
+/// @brief              get the global system info manager
+/// @return             pointer to the current global system info manager
 system_info_manager_t* get_global_system_info_manager();
 
-void system_info_parse_memory_size(system_info_manager_t* boot_info_manager, multiboot_t* multiboot_struct);
-void system_info_parse_system_information(system_info_manager_t* boot_info_manager);
+/// @brief                              parse memory size from the multiboot memory map
+/// @param[inout] system_info_manager   system info manager to store memory info
+/// @param[in] multiboot_struct         pointer to the multiboot structure
+void system_info_parse_memory_size(system_info_manager_t* system_info_manager, multiboot_t* multiboot_struct);
+
+/// @brief                              parse system information from smbios tables
+/// @param[inout] system_info_manager   system info manager to store manufacturer, product, version & serial
+void system_info_parse_system_information(system_info_manager_t* system_info_manager);
 
 #endif // __SYSTEM_INFO_HPP__

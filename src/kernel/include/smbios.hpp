@@ -79,9 +79,27 @@ struct smbios_entry_system_information_t {
     uint8_t wakeup_type;
 };
 
+/// @brief              get the length of a smbios entry
+/// @param[in] entry    pointer to the smbios entry header
+/// @return             length of the entry in bytes
 size_t smbios_entry_length(const smbios_entry_header_t* entry);
+
+/// @brief              get string at index from a smbios entry
+/// @param[in] entry    pointer to the smbios entry header
+/// @param[in] i        string index
+/// @return             pointer to the string or nullptr if not found
 const char* smbios_get_string_at_index(const smbios_entry_header_t* entry, size_t i);
+
+/// @brief                      iterate over all smbios entries and call callback for each
+/// @param[in] table_address    address of the smbios table
+/// @param[inout] extra         user data passed to callback
+/// @param[in] callback         function called for each entry, return true to continue
 void smbios_iterate(uint64_t table_address, void* extra, bool(*callback)(smbios_entry_header_t* entry, void* extra));
+
+/// @brief                      find a struct entry in memory by signature
+/// @param[in] signature        pointer to the signature bytes
+/// @param[in] signature_size   size of the signature in bytes
+/// @return                     pointer to the found entry or nullptr if not found
 void* smbios_find_struct_entry(const char* signature, size_t signature_size);
 
 #endif // __SMBIOS_HPP__
