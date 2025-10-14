@@ -24,6 +24,40 @@ void udp_receive(network_interface_device_t* p_device, uint8_t* p_payload, size_
     nidm_udp_dispatch(get_global_nidm(), dst_port, udp_payload, udp_payload_length);
 }
 
+uint16_t udp_checksum(uint32_t src_ip, uint32_t dst_ip, const uint8_t* udp_packet, size_t udp_len) {
+    uint32_t sum = 0;
+    
+    sum += (src_ip >> 16) & 0xFFFF;
+    sum += src_ip & 0xFFFF;
+    sum += (dst_ip >> 16) & 0xFFFF;
+    sum += dst_ip & 0xFFFF;
+    sum += 17;
+    sum += udp_len;
+    
+    const uint8_t* ptr = udp_packet;
+    size_t len = udp_len;
+    
+    while (len > 1) {
+        sum += ((uint16_t)ptr[0] << 8) | ptr[1];
+        ptr += 2;
+        len -= 2;
+    }
+    
+    if (len > 0)
+        sum += (uint16_t)ptr[0] << 8;
+    
+    while (sum >> 16)
+        sum = (sum & 0xFFFF) + (sum >> 16);
+    
+    uint16_t result = (uint16_t)~sum;
+    
+    if (result == 0x0000)
+        result = 0xFFFF;
+    
+    return result;
+}
+
+
 int udp_send(network_interface_device_t* p_device, uint32_t dst_ip, uint16_t src_port, uint16_t dst_port, const uint8_t* p_payload, size_t size) {
     if (size > 1500 - sizeof(ip_header_t) - sizeof(udp_header_t))
         return 1;
@@ -37,11 +71,17 @@ int udp_send(network_interface_device_t* p_device, uint32_t dst_ip, uint16_t src
     udp_header_t* header = (udp_header_t*)packet;
     header->src_port = host_to_net<uint16_t>(src_port);
     header->dst_port = host_to_net<uint16_t>(dst_port);
-    // TODO @since 29/08/2025 -- 19:39
-    header->checksum = 0;
     header->length = host_to_net<uint16_t>(packet_size);
+    header->checksum = 0;
 
     memcpy(packet + sizeof(udp_header_t), p_payload, size);
+
+    header->checksum = host_to_net<uint16_t>(udp_checksum(
+        p_device->ip4,
+        dst_ip,
+        packet,
+        packet_size
+    ));
     
     ip_send(p_device, dst_ip, IP_PROTOCOL_UDP, packet, packet_size);
 
