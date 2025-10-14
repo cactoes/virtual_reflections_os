@@ -156,6 +156,7 @@ void exec(const string& path, const std::dynamic_array<string>& args) {
             printf(STD, "pcistat                        PCI(e) info\n");
             printf(STD, "ls                             Lists files and directories\n");
             printf(STD, "cat                            Display file content\n");
+            printf(STD, "systemstat                     Display system information\n");
             printf(STD, "diskstat                       Displays disk info\n");
             printf(STD, "    <path>                     Target disk path\n");
             printf(STD, "driverquery                    Query drivers for information\n");
@@ -210,6 +211,11 @@ void exec(const string& path, const std::dynamic_array<string>& args) {
                 printf(STD, "    Firmware: %s\n", storage_info.firmare.c_str());
                 printf(STD, "    Disk size: %s\n", str_format_size(storage_info.capacity).c_str());
             }
+            break;
+        }
+        case hash_fnv1a_64("systemstat"): {
+            system_info_manager_t* sysinfo = get_global_system_info_manager();
+            printf(STD, "%s %s %s %s\n", sysinfo->manufacturer.c_str(), sysinfo->product_name.c_str(), sysinfo->version.c_str(), sysinfo->serial_number.c_str());
             break;
         }
         default:
