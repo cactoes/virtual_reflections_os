@@ -69,7 +69,7 @@ void arp_receive(network_interface_device_t* p_device, uint8_t* p_packet, size_t
 
     if (net_to_host(arp_packet->operation) == 2) {
         printf(DBG, "[INET - ARP: %s] new arp table entry\n", p_device->name.c_str());
-        arp_table_insert(ntohl(arp_packet->sender_ip), arp_packet->sender_hw);
+        arp_table_insert(net_to_host(arp_packet->sender_ip), arp_packet->sender_hw);
     }
 }
 

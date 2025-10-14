@@ -2,13 +2,13 @@ from scapy.all import *
 from time import sleep
 
 # ====== CONFIG ======
-iface = r"\Device\NPF_{467B5C6D-0FFE-4B63-AB44-96C26ECD9D69}"
-# iface = r"\Device\NPF_{DA8915B7-4E0D-415D-98BE-8D7CF3757533}"
+# iface = r"\Device\NPF_{467B5C6D-0FFE-4B63-AB44-96C26ECD9D69}"
+iface = r"\Device\NPF_{DA8915B7-4E0D-415D-98BE-8D7CF3757533}"
 src_mac = "02:00:00:00:00:01"
-src_ip  = "10.0.2.1"
-src_port = 1234
-dst_ip = "10.0.2.15"
-dst_port = 4321
+src_ip  = "10.0.2.15"
+src_port = 4321
+dst_ip = "10.0.2.2"
+dst_port = 1234
 conf.verb = 0
 # ====================
 
@@ -78,13 +78,12 @@ def sniff_responses(state, timeout=2):
 
 # ---- main flow ----
 
+# pkt = Ether(dst="ff:ff:ff:ff:ff:ff", src=src_mac) / \
+#       ARP(op=2, hwsrc=src_mac, psrc=src_ip,
+#           hwdst="00:00:00:00:00:00", pdst=src_ip)
 
-pkt = Ether(dst="ff:ff:ff:ff:ff:ff", src=src_mac) / \
-      ARP(op=2, hwsrc=src_mac, psrc=src_ip,
-          hwdst="00:00:00:00:00:00", pdst=src_ip)
-
-sendp(pkt, iface=iface, verbose=1)
-sleep(1)
+# sendp(pkt, iface=iface, verbose=1)
+# sleep(1)
 
 print("Resolving MAC for", dst_ip)
 dst_mac = arp_resolve(dst_ip, iface)

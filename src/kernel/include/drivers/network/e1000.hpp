@@ -1,7 +1,6 @@
 //==========================================
 /// @file       e1000.hpp
 /// @brief      e1000 intel network card driver
-/// TODO        transmit stuff
 //==========================================
 
 #pragma once

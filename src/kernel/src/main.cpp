@@ -426,10 +426,12 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
         e1000_nid.name = "eth0 (Intel e1000)";
         // TODO @since 27/08/2025 -- 03:49
         // dhcp :)
-        e1000_nid.ip4 = TO_IP(192, 168, 178, 50);
+        // e1000_nid.ip4 = TO_IP(192, 168, 178, 50);
+        e1000_nid.ip4 = TO_IP(10, 0, 2, 2);
         e1000_nid.is_up = true;
         e1000_nid.device_data = &e1000;
-        e1000_nid.gateway_ip = TO_IP(192, 168, 178, 1);
+        // e1000_nid.gateway_ip = TO_IP(192, 168, 178, 1);
+        e1000_nid.gateway_ip = TO_IP(10, 0, 2, 1);
         e1000_nid.subnet_mask = TO_IP(255, 255, 255, 0);
         memcpy(e1000_nid.mac, e1000.mac, sizeof(e1000_nid.mac));
         e1000_nid.send_packet = e1000_nidm_send_packet;

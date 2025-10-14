@@ -23,6 +23,10 @@ void ip_receive(network_interface_device_t* p_device, uint8_t* p_packet, size_t 
     // BUG @since 28/08/2025 -- 18:30
     // size can differ from actual length
     size_t payload_len = ip_len - (ip->version_ihl & 0x0F) * 4;
+    
+    uint8_t mac[6];
+    if (!arp_lookup(net_to_host(ip->src_addr), mac))
+        arp_table_insert(net_to_host(ip->src_addr), mac);
 
     switch (ip->protocol) {
         case IP_PROTOCOL_ICMP:
