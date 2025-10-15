@@ -58,7 +58,7 @@ uint16_t udp_checksum(uint32_t src_ip, uint32_t dst_ip, const uint8_t* udp_packe
 }
 
 
-int udp_send(network_interface_device_t* p_device, uint32_t dst_ip, uint16_t src_port, uint16_t dst_port, const uint8_t* p_payload, size_t size) {
+int udp_send(uint32_t dst_ip, uint16_t src_port, uint16_t dst_port, const uint8_t* p_payload, size_t size) {
     if (size > 1500 - sizeof(ip_header_t) - sizeof(udp_header_t))
         return 1;
 
@@ -76,14 +76,16 @@ int udp_send(network_interface_device_t* p_device, uint32_t dst_ip, uint16_t src
 
     memcpy(packet + sizeof(udp_header_t), p_payload, size);
 
+    auto device = nidm_get_prefered_device(get_global_nidm());
+
     header->checksum = host_to_net<uint16_t>(udp_checksum(
-        p_device->ip4,
+        device->ip.raw,
         dst_ip,
         packet,
         packet_size
     ));
     
-    ip_send(p_device, dst_ip, IP_PROTOCOL_UDP, packet, packet_size);
+    ip_send(device, dst_ip, IP_PROTOCOL_UDP, packet, packet_size);
 
     heap_free(get_global_heap(), packet);
 

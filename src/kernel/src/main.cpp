@@ -18,6 +18,7 @@
 #include "drivers/network/tcp.hpp"
 #include "drivers/network/arp.hpp"
 #include "drivers/network/udp.hpp"
+#include "drivers/network/dhcp.hpp"
 
 #include "interrupt_manager.hpp"
 
@@ -94,11 +95,11 @@ void exec(const string& path, const std::dynamic_array<string>& args) {
         }
         case hash_fnv1a_64("netstat"): {
             for (auto& device : get_global_nidm()->devices) {
-                printf(STD, "%s:\n", device.name.c_str());
-                printf(STD, "    MAC:            %uh:%uh:%uh:%uh:%uh:%uh\n", device.mac[0], device.mac[1], device.mac[2], device.mac[3], device.mac[4], device.mac[5]);
-                printf(STD, "    IPv4:           %u.%u.%u.%u\n", device.ipv4_3, device.ipv4_2, device.ipv4_1, device.ipv4_0);
-                printf(STD, "    Gateway:        %u.%u.%u.%u\n", device.gateway_ip_3, device.gateway_ip_2, device.gateway_ip_1, device.gateway_ip_0);
-                printf(STD, "    Subnet mask:    %u.%u.%u.%u\n", device.subnet_mask_3, device.subnet_mask_2, device.subnet_mask_1, device.subnet_mask_0);
+                printf(STD, "%s:\n", device->name.c_str());
+                printf(STD, "    MAC:            %uh:%uh:%uh:%uh:%uh:%uh\n", device->mac[0], device->mac[1], device->mac[2], device->mac[3], device->mac[4], device->mac[5]);
+                printf(STD, "    IPv4:           %u.%u.%u.%u\n", device->ip.byte3, device->ip.byte2, device->ip.byte1, device->ip.byte0);
+                printf(STD, "    Gateway:        %u.%u.%u.%u\n", device->gateway.byte3, device->gateway.byte2, device->gateway.byte1, device->gateway.byte0);
+                printf(STD, "    Subnet mask:    %u.%u.%u.%u\n", device->subnet_mask.byte3, device->subnet_mask.byte2, device->subnet_mask.byte1, device->subnet_mask.byte0);
             }
             break;
         }
@@ -295,53 +296,6 @@ void tcp_callback(const uint8_t* data, size_t size) {
     printf(DBG, "\n");
 }
 
-#include "dhcp.hpp"
-
-void dhcp_callback(uint8_t* packet, size_t size) {
-    DHCPPacket* p = (DHCPPacket*)packet;
-
-    system_driver_handle_t driver_handle = driver_manager_get_driver_handle(get_global_driver_manager(), "INetDrivers");
-    auto dhcp_client_recieve_fn = (decltype(DHCPClientRecieve)*)driver_get_function(get_global_driver_manager(), driver_handle, "DHCPClientRecieve");
-    
-    auto device = nidm_get_device(get_global_nidm(), "eth0 (Intel e1000)");
-
-    uint32_t ip;
-    uint32_t subnet_mask;
-    uint32_t gateway;
-    uint32_t dhcp_server_id;
-    int result = dhcp_client_recieve_fn(p, p->m_nXID, &ip, &subnet_mask, &gateway, &dhcp_server_id);
-
-    if (result == DHCP_CLIENT_RECIEVE_ACK) {
-        device->ip4 = ip;
-        device->subnet_mask = subnet_mask;
-        device->gateway_ip = gateway;
-        printf(DBG, "dhcp ack\n");
-        return;
-    }
-
-    if (result == DHCP_CLIENT_RECIEVE_REQ) {
-        auto dhcp_create_request_packet_fn = (decltype(DHCPCreateRequestPacket)*)driver_get_function(get_global_driver_manager(), driver_handle, "DHCPCreateRequestPacket");
-        auto request = dhcp_create_request_packet_fn("test!", ip, dhcp_server_id, p->m_nXID, device->mac);
-        device->ip4 = ip;
-        device->subnet_mask = subnet_mask;
-        device->gateway_ip = gateway;
-        udp_send(device, dhcp_server_id, DHCP_PORT_CLIENT, DHCP_PORT_SERVER, (uint8_t*)&request, sizeof(DHCPPacket));
-        printf(DBG, "sending dhcp request\n");
-        return;
-    }
-
-    printf(DBG, "dhcp unkown\n");
-}
-
-void dhcp_client(network_interface_device_t* device) {
-    system_driver_handle_t driver_handle = driver_manager_get_driver_handle(get_global_driver_manager(), "INetDrivers");
-    auto dhcp_client_discover_fn = (decltype(DHCPClientDiscover)*)driver_get_function(get_global_driver_manager(), driver_handle, "DHCPClientDiscover");
-
-    printf(DBG, "sending dhcp discover\n");
-    auto xid = dhcp_client_discover_fn("hostname", device->mac);
-    nidm_udp_bind(get_global_nidm(), DHCP_PORT_CLIENT, dhcp_callback);
-}
-
 extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
     // validate multiboot
     if (!mb_has_valid_magic((multiboot_t*)p_multiboot_struct))
@@ -469,55 +423,13 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
     const pci_device_t* network_controller = pci_find_device(get_global_pcie_device_manager(), &network_device_class_info);
 
     e1000_t e1000 {};
-    network_interface_device_t e1000_nid {};
     const auto e1000_init_result = e1000_init_device(network_controller, &e1000);
     if (e1000_init_result == 0) {
-        e1000_nid.name = "eth0 (Intel e1000)";
-        // TODO @since 27/08/2025 -- 03:49
-        // dhcp :)
-        // e1000_nid.ip4 = TO_IP(192, 168, 178, 50);
-        // e1000_nid.ip4 = TO_IP(10, 0, 2, 2);
-        e1000_nid.ip4 = TO_IP(0, 0, 0, 0);
-        e1000_nid.is_up = true;
-        e1000_nid.device_data = &e1000;
-        // e1000_nid.gateway_ip = TO_IP(192, 168, 178, 1);
-        e1000_nid.gateway_ip = TO_IP(10, 0, 2, 1);
-        e1000_nid.subnet_mask = TO_IP(255, 255, 255, 0);
-        memcpy(e1000_nid.mac, e1000.mac, sizeof(e1000_nid.mac));
-        e1000_nid.send_packet = e1000_nidm_send_packet;
-        nidm_register_device(get_global_nidm(), e1000_nid);
-
-        // uint8_t mac[6];
-        // uint64_t frame = clock_get_time_since_boot() + 1000;
-
-        // while (!arp_lookup(e1000_nid.gateway_ip, mac)) {
-        //     arp_discover_request_ipv4(&e1000_nid, e1000_nid.gateway_ip);
-        //     while (frame > clock_get_time_since_boot()) {}
-        //     frame = clock_get_time_since_boot() + 1000;
-        // }
-
-        // tcp_connect(&e1000_nid, TO_IP(84, 107, 174, 113), 80);
-        // uint8_t mac[6];
-        // uint64_t frame = clock_get_time_since_boot() + 1000;
-
-        // while (!arp_lookup(TO_IP(192, 168, 178, 219), mac)) {
-        //     arp_discover_request_ipv4(&e1000_nid, TO_IP(192, 168, 178, 219));
-        //     while (frame > clock_get_time_since_boot()) {}
-        //     frame = clock_get_time_since_boot() + 1000;
-        // }
-
-        // auto connection = tcp_connect(&e1000_nid, TO_IP(192, 168, 178, 219), 8090);
-
-        // while (connection->state != tcp_state_t::ESTABLISHED);
-        
-        // const char* http_request = 
-        //     "GET / HTTP/1.1\r\n"
-        //     "Connection: close\r\n"
-        //     "User-Agent: virtual reflections e0\r\n"
-        //     "\r\n";
-        // printf(DBG, "[HTTP] Sending request:\n%s", http_request);
-        // tcp_send_packet(&e1000_nid, (uint8_t*)http_request, strlen(http_request), TCP_FLAG_ACK | TCP_FLAG_PSH, connection);
-        tcp_listen(&e1000_nid, 1234, tcp_callback);
+        std::unique_ptr<e1000_nid_t> e1000_nid = std::make_unique<e1000_nid_t>(e1000);
+        e1000_nid->is_up = true;
+        e1000_nid->is_prefered = true;
+        e1000_nid->interface = "eth0";
+        nidm_register_device(get_global_nidm(), move(e1000_nid));
     }
 
     driver_manager_t driver_manager {};
@@ -558,7 +470,28 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
         }
     }
 
-    dhcp_client(&e1000_nid);
+    dhcp_context_t dhcp_context {};
+    dhcp_client_start(&dhcp_context, nidm_get_prefered_device(get_global_nidm()));
+
+    {
+        auto device = nidm_get_prefered_device(get_global_nidm());
+        while (device->ip.raw == 0);
+
+        uint8_t mac[6];
+        uint64_t frame = clock_get_time_since_boot() + 1000;
+
+        auto connection = tcp_connect(TO_IP(192, 168, 178, 219), 8090, tcp_callback);
+
+        while (connection->state != tcp_state_t::ESTABLISHED);
+        
+        const char* http_request = 
+            "GET / HTTP/1.1\r\n"
+            "Connection: close\r\n"
+            "User-Agent: virtual reflections e0\r\n"
+            "\r\n";
+        printf(DBG, "[HTTP] Sending request:\n%s", http_request);
+        tcp_send_packet((uint8_t*)http_request, strlen(http_request), TCP_FLAG_ACK | TCP_FLAG_PSH, connection);
+    }
 
     // kernel finished
     // printf(STD, "> SYSTEM READY\n");

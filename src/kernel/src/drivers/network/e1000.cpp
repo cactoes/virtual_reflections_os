@@ -14,6 +14,20 @@ extern void printf(print_mode_t mode, const char* p_str, ...);
 static heap_t g_e1000_dma_heap {};
 static e1000_t* g_e1000 = nullptr;
 
+e1000_nid_t::e1000_nid_t(const e1000_t& e1000) {
+    e1000_data = e1000;
+    name = "Intel E1000";
+    memcpy(mac, e1000.mac, 6);
+
+    ip.raw = 0;
+    gateway.raw = 0;
+    subnet_mask.raw = 0;
+}
+
+int e1000_nid_t::send_packet(const void* data, size_t size) {
+    return e1000_send_packet((e1000_t*)&e1000_data, data, size);
+}
+
 void e1000_write_reg(e1000_t* p_device, uint32_t offset, uint32_t value) {
     *((volatile uint32_t*)((uint8_t*)p_device->mmio_region + offset)) = value;
 }
@@ -115,7 +129,7 @@ void e1000_recieve_packet(e1000_t* p_device) {
         uint8_t* packet = p_device->rdesc_buffer_array + (p_device->rx_tail * E1000_BUFFER_SIZE);
         size_t length = desc->length;
         
-        nidm_packet_recieve_on_device(get_global_nidm(), (void*)p_device, packet, length);
+        nidm_packet_recieve(get_global_nidm(), nidm_get_device(get_global_nidm(), "Intel E1000"), packet, length);
         
         desc->status = 0;
         desc->length = 0;
@@ -261,8 +275,4 @@ e1000_t* e1000_get_global_device() {
 
 void e1000_set_global_device(e1000_t* p_device) {
     g_e1000 = p_device;
-}
-
-int e1000_nidm_send_packet(network_interface_device_t* p_nid, const void* data, size_t size) {
-    return e1000_send_packet((e1000_t*)p_nid->device_data, data, size);
 }

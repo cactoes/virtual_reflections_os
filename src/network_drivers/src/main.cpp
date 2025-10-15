@@ -4,10 +4,6 @@
 #include "common.hpp"
 #include "dhcp.hpp"
 
-/// @brief driver exports
-extern "C" {
-}
-
 extern "C" int DriverInit() {
     return 0;
 }

@@ -103,13 +103,20 @@ struct e1000_t {
     size_t tx_tail;
 };
 
+class e1000_nid_t : public network_interface_device_t {
+public:
+    e1000_nid_t(const e1000_t& e1000);
+    int send_packet(const void* data, size_t size) override;
+
+private:
+    e1000_t e1000_data;
+};
+
 int e1000_init_device(const pci_device_t* p_pcie_device, e1000_t* p_network_device);
 cpu_state_t* e1000_handle_interrupt(cpu_state_t* p_rsp);
 int e1000_send_packet(e1000_t* p_device, const void* data, size_t size);
 
 e1000_t* e1000_get_global_device();
 void e1000_set_global_device(e1000_t* p_device);
-
-int e1000_nidm_send_packet(network_interface_device_t* p_nid, const void* data, size_t size);
 
 #endif // __DRIVER_NETWORK_E1000_HPP__

@@ -88,17 +88,36 @@ struct DHCPOption {
     uint8_t m_aValue[size];
 };
 
+struct DHCPClientState {
+    // general
+    uint8_t m_aMac[6];
+    char m_szHostname[128];
+
+    // sesion
+    uint32_t m_nXID;
+    uint32_t m_nDHCPServerIP;
+    uint32_t m_nOfferdIP;
+};
+
+typedef void(*DHCPSendPacketFN)(uint32_t nDstIp, uint16_t nDstPort, uint16_t nSrcPort, uint8_t* pData, size_t nSize);
+
 void DHCPOptionsWriterInit(DHCPOptionsWriter* pWriter, uint8_t* pBuffer, size_t nBufferSize);
 bool DHCPOptionsWriterAddOption(DHCPOptionsWriter* pWriter, uint8_t nType, uint8_t* pData, size_t nLength);
 bool DHCPOptionsWriterShutdown(DHCPOptionsWriter* pWriter);
 
-extern "C" uint32_t DHCPGenerateXID();
+uint32_t DHCPGenerateXID();
+uint8_t* DHCPGetOption(DHCPPacket* pPacket, uint8_t nType);
+DHCPPacket DHCPCreateDiscoverPacket(const char* szHostName, uint32_t nXID, uint8_t pMac[6]);
+DHCPPacket DHCPCreateRequestPacket(const char* szHostName, uint32_t nWantedIP, uint32_t nDHCPServerIP, uint32_t nXID, uint8_t pMac[6]);
 
-extern "C" uint8_t* DHCPGetOption(DHCPPacket* pPacket, uint8_t nType);
-extern "C" DHCPPacket DHCPCreateDiscoverPacket(const char* szHostName, uint32_t nXID, uint8_t pMac[6]);
-extern "C" DHCPPacket DHCPCreateRequestPacket(const char* szHostName, uint32_t nWantedIP, uint32_t nDHCPServerIP, uint32_t nXID, uint8_t pMac[6]);
+/// @brief dhcp exports
+extern "C" {
+    DHCPClientState* DHCPClientInit(const char* szHostName, uint8_t pMac[6]);
+    void DHCPClientNewSession(DHCPClientState* pClientState);
+    void DHCPClientShutdown(DHCPClientState* pClientState);
 
-extern "C" uint32_t DHCPClientDiscover(const char* szHostName, uint8_t pMac[6]);
-extern "C" int DHCPClientRecieve(DHCPPacket* pPacket, uint32_t nXID, uint32_t* pIP, uint32_t* pSubnetMask, uint32_t* pGatewayIp, uint32_t* pDHCPServerID);
+    void DHCPClientStart(DHCPClientState* pClientState, DHCPSendPacketFN pSendPacket);
+    int DHCPClientHandlePacket(DHCPClientState* pClientState, DHCPSendPacketFN pSendPacket, DHCPPacket* pPacket, uint32_t* pIP, uint32_t* pSubnetMask, uint32_t* pGatewayIp);
+}
 
 #endif // __DHCP_HPP__

@@ -67,9 +67,9 @@ struct tcp_connection_t {
     tcp_connect_callback_t callback;
 };
 
-tcp_connection_t* tcp_connect(network_interface_device_t* device, uint32_t ip, uint32_t port, tcp_connect_callback_t callback);
-tcp_connection_t* tcp_listen(network_interface_device_t* device, uint32_t port, tcp_connect_callback_t callback);
-bool tcp_send_packet(network_interface_device_t* p_device, uint8_t* p_payload, size_t payload_length, uint8_t flags, tcp_connection_t* connection);
+tcp_connection_t* tcp_connect(uint32_t ip, uint32_t port, tcp_connect_callback_t callback);
+tcp_connection_t* tcp_listen(uint32_t port, tcp_connect_callback_t callback);
+bool tcp_send_packet(uint8_t* p_payload, size_t payload_length, uint8_t flags, tcp_connection_t* connection);
 void tcp_receive(network_interface_device_t* p_device, uint8_t* p_payload, size_t payload_length, uint32_t src_ip);
 
 #endif // __DRIVERS_NETWORK_TCP_HPP__

@@ -28,7 +28,7 @@ void arp_discover_request_ipv4(network_interface_device_t* p_device, uint32_t ip
     arp_request.operation = host_to_net<uint16_t>(1);
 
     memcpy(arp_request.sender_hw, p_device->mac, 6);
-    arp_request.sender_ip = htonl(p_device->ip4);
+    arp_request.sender_ip = htonl(p_device->ip.raw);
 
     static uint8_t s_broadcast_mac[] { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff };
 
@@ -48,7 +48,7 @@ void arp_receive(network_interface_device_t* p_device, uint8_t* p_packet, size_t
         return;
     }
 
-    if (net_to_host(arp_packet->operation) == 1 && ntohl(arp_packet->target_ip) == p_device->ip4) {
+    if (net_to_host(arp_packet->operation) == 1 && ntohl(arp_packet->target_ip) == p_device->ip.raw) {
         printf(DBG, "[INET - ARP: %s] arp lookup for us\n", p_device->name.c_str());
 
         arp_packet_t arp_reply {};
@@ -59,7 +59,7 @@ void arp_receive(network_interface_device_t* p_device, uint8_t* p_packet, size_t
         arp_reply.operation = host_to_net<uint16_t>(2);
 
         memcpy(arp_reply.sender_hw, p_device->mac, 6);
-        arp_reply.sender_ip = htonl(p_device->ip4);
+        arp_reply.sender_ip = htonl(p_device->ip.raw);
 
         memcpy(arp_reply.target_hw, arp_packet->sender_hw, 6);
         arp_reply.target_ip = arp_packet->sender_ip;

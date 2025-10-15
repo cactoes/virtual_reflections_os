@@ -12,8 +12,8 @@ extern void printf(print_mode_t mode, const char* p_str, ...);
 
 linked_list<std::unique_ptr<tcp_connection_t>> connections {};
 
-void tcp_init_connection(network_interface_device_t* device, tcp_connection_t* connection, uint32_t ip, uint32_t port, tcp_connect_callback_t callback) {
-    connection->local_ip = device->ip4;
+void tcp_init_connection(tcp_connection_t* connection, uint32_t ip, uint32_t port, tcp_connect_callback_t callback) {
+    connection->local_ip = nidm_get_prefered_device(get_global_nidm())->ip.raw;
     connection->local_port = random_number(49152, 65535);
     connection->remote_ip = ip;
     connection->remote_port = port;
@@ -24,7 +24,7 @@ void tcp_init_connection(network_interface_device_t* device, tcp_connection_t* c
     connection->callback = callback;
 }
 
-tcp_connection_t* tcp_connect(network_interface_device_t* device, uint32_t ip, uint32_t port, tcp_connect_callback_t callback) {
+tcp_connection_t* tcp_connect(uint32_t ip, uint32_t port, tcp_connect_callback_t callback) {
     tcp_connection_t* connection_ptr = nullptr;
     for (auto& c : connections) {
         if (c->state == tcp_state_t::CLOSED) {
@@ -39,12 +39,12 @@ tcp_connection_t* tcp_connect(network_interface_device_t* device, uint32_t ip, u
         connections.insert_back(move(connection));
     }
 
-    tcp_init_connection(device, connection_ptr, ip, port, callback);
-    tcp_send_packet(device, nullptr, 0, TCP_FLAG_SYN, connection_ptr);
+    tcp_init_connection(connection_ptr, ip, port, callback);
+    tcp_send_packet(nullptr, 0, TCP_FLAG_SYN, connection_ptr);
     return connection_ptr;
 }
 
-tcp_connection_t* tcp_listen(network_interface_device_t* device, uint32_t port, tcp_connect_callback_t callback) {
+tcp_connection_t* tcp_listen(uint32_t port, tcp_connect_callback_t callback) {
     tcp_connection_t* connection_ptr = nullptr;
     for (auto& c : connections) {
         if (c->state == tcp_state_t::CLOSED) {
@@ -59,7 +59,7 @@ tcp_connection_t* tcp_listen(network_interface_device_t* device, uint32_t port, 
         connections.insert_back(move(connection));
     }
 
-    connection_ptr->local_ip = device->ip4;
+    connection_ptr->local_ip =  nidm_get_prefered_device(get_global_nidm())->ip.raw;
     connection_ptr->local_port = port;
     connection_ptr->remote_ip = 0;
     connection_ptr->remote_port = 0;
@@ -95,14 +95,14 @@ uint16_t tcp_checksum(uint32_t src_ip, uint32_t dst_ip, const tcp_header_t* tcp_
     return htons(~sum);
 }
 
-bool tcp_send_packet(network_interface_device_t* p_device, uint8_t* p_payload, size_t payload_length, uint8_t flags, tcp_connection_t* connection) {
+bool tcp_send_packet(uint8_t* p_payload, size_t payload_length, uint8_t flags, tcp_connection_t* connection) {
     // TODO @since 18/09/2025 -- 16:12
     // handle no connection stuff better
     if (!connection)
         return false;
 
     if (payload_length > 1460) {
-        printf(DBG, "[INET - TCP: %s] payload too large (%zu bytes)\n", p_device->name.c_str(), payload_length);
+        printf(DBG, "[INET - TCP] payload too large (%zu bytes)\n", payload_length);
         return false;
     }
 
@@ -138,9 +138,11 @@ bool tcp_send_packet(network_interface_device_t* p_device, uint8_t* p_payload, s
     if (p_payload && payload_length > 0)
         memcpy(tcp_payload, p_payload, payload_length);
 
-    tcp_hdr->checksum = tcp_checksum(p_device->ip4, connection->remote_ip, tcp_hdr, payload_length);
+    auto device = nidm_get_prefered_device(get_global_nidm());
 
-    return ip_send(p_device, connection->remote_ip, IP_PROTOCOL_TCP, tcp_packet, total_tcp_len);
+    tcp_hdr->checksum = tcp_checksum(device->ip.raw, connection->remote_ip, tcp_hdr, payload_length);
+
+    return ip_send(device, connection->remote_ip, IP_PROTOCOL_TCP, tcp_packet, total_tcp_len);
 }
 
 void tcp_receive(network_interface_device_t* device, uint8_t* payload, size_t payload_length, uint32_t src_ip) {
@@ -172,7 +174,7 @@ void tcp_receive(network_interface_device_t* device, uint8_t* payload, size_t pa
 
     tcp_connection_t* connection = nullptr;
     for (auto& con : connections) {
-        if (con->local_ip == device->ip4 &&
+        if (con->local_ip == device->ip.raw &&
             con->local_port == dst_port &&
             con->remote_ip == src_ip &&
             con->remote_port == src_port) {
@@ -180,7 +182,7 @@ void tcp_receive(network_interface_device_t* device, uint8_t* payload, size_t pa
             break;
         }
 
-        if (con->local_ip == device->ip4 &&
+        if (con->local_ip == device->ip.raw &&
             con->local_port == dst_port &&
             con->remote_ip == 0 &&
             con->remote_port == 0) {
@@ -195,7 +197,7 @@ void tcp_receive(network_interface_device_t* device, uint8_t* payload, size_t pa
     // for now if we dont have a specific listener just close the connection
     if (!connection) {
         printf(DBG, "[INET - TCP: %s] no handler\n", device->name.c_str());
-        tcp_send_packet(device, nullptr, 0, TCP_FLAG_RST, nullptr);
+        tcp_send_packet(nullptr, 0, TCP_FLAG_RST, nullptr);
         return;
     }
 
@@ -216,7 +218,7 @@ void tcp_receive(network_interface_device_t* device, uint8_t* payload, size_t pa
             connection->snd_nxt = connection->iss;
             connection->state = tcp_state_t::SYN_RECEIVED;
             printf(DBG, "[INET - TCP: %s] incoming connection attempt\n", device->name.c_str());
-            if (!tcp_send_packet(device, nullptr, 0, TCP_FLAG_SYN | TCP_FLAG_ACK, connection))
+            if (!tcp_send_packet(nullptr, 0, TCP_FLAG_SYN | TCP_FLAG_ACK, connection))
                 connection->state = tcp_state_t::LISTEN;
             break;
         case tcp_state_t::SYN_SENT:
@@ -229,7 +231,7 @@ void tcp_receive(network_interface_device_t* device, uint8_t* payload, size_t pa
             connection->rcv_nxt = seq_num + 1;
             connection->snd_una = ack_num;
             printf(DBG, "[INET - TCP: %s] accepted incoming connection\n", device->name.c_str());
-            tcp_send_packet(device, nullptr, 0, TCP_FLAG_ACK, connection);
+            tcp_send_packet(nullptr, 0, TCP_FLAG_ACK, connection);
             break;
         case tcp_state_t::SYN_RECEIVED:
             if (!(flags & TCP_FLAG_ACK))
@@ -252,12 +254,12 @@ void tcp_receive(network_interface_device_t* device, uint8_t* payload, size_t pa
                     connection->callback(tcp_data, tcp_data_len);
 
                 connection->rcv_nxt += tcp_data_len;
-                tcp_send_packet(device, nullptr, 0, TCP_FLAG_ACK, connection);
+                tcp_send_packet(nullptr, 0, TCP_FLAG_ACK, connection);
             }
 
             if (flags & TCP_FLAG_FIN) {
                 connection->rcv_nxt++;
-                tcp_send_packet(device, nullptr, 0, TCP_FLAG_ACK, connection);
+                tcp_send_packet(nullptr, 0, TCP_FLAG_ACK, connection);
                 connection->state = tcp_state_t::CLOSE_WAIT;
             }
             break;

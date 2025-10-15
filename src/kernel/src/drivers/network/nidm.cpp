@@ -19,7 +19,7 @@ nidm_t* get_global_nidm() {
 }
 
 void nidm_init(nidm_t* nidm) {
-    nidm->devices = std::dynamic_array<network_interface_device_t>();
+    nidm->devices = std::dynamic_array<std::unique_ptr<network_interface_device_t>>();
     nidm->udp_callbacks = linear_map<uint16_t, network_callback_t>();
 }
 
@@ -28,15 +28,15 @@ void nidm_shutdown(nidm_t* nidm) {
     nidm->udp_callbacks.clear();
 }
 
-int nidm_register_device(nidm_t* nidm, const network_interface_device_t& device) {
-    nidm->devices.insert_back(device);
+int nidm_register_device(nidm_t* nidm, std::unique_ptr<network_interface_device_t> device) {
+    nidm->devices.insert_back(move(device));
     return 0;
 }
 
 network_interface_device_t* nidm_get_device(nidm_t* nidm, const string& name) {
     for (auto& device : nidm->devices)
-        if (device.name == name)
-            return &device;
+        if (device->name == name)
+            return device.get();
 
     return nullptr;
 }
@@ -45,16 +45,11 @@ int nidm_packet_recieve(nidm_t* nidm, network_interface_device_t* p_device, cons
     return ethernet_receive(p_device, (uint8_t*)p_data, size);
 }
 
-int nidm_packet_recieve_on_device(nidm_t* nidm, void* device_data, const void* data, size_t size) {
-    for (auto& device : nidm->devices)
-        if (device.device_data == device_data)
-            return ethernet_receive(&device, (uint8_t*)data, size);
-
+int nidm_packet_send(nidm_t* nidm, const void* p_data, size_t size) {
+    if (auto device = nidm_get_prefered_device(nidm))
+        return device->send_packet(p_data, size);
+    
     return 1;
-}
-
-int nidm_packet_send(nidm_t* nidm, network_interface_device_t* p_device, const void* p_data, size_t size) {
-    return p_device->send_packet(p_device, p_data, size);
 }
 
 int nidm_udp_bind(nidm_t* nidm, uint16_t port, network_callback_t p_callback) {
@@ -72,4 +67,12 @@ int nidm_udp_dispatch(nidm_t* nidm, uint16_t port, uint8_t* p_packet, size_t len
 
     it->value(p_packet, length);
     return 0;
+}
+
+network_interface_device_t* nidm_get_prefered_device(nidm_t* nidm) {
+    for (auto& device : nidm->devices)
+        if (device->is_up & device->is_prefered)
+            return device.get();
+
+    return nullptr;
 }

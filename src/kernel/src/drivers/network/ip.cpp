@@ -15,9 +15,9 @@ extern void printf(print_mode_t mode, const char* p_str, ...);
 void ip_receive(network_interface_device_t* p_device, uint8_t* p_packet, size_t size) {
     ip_header_t* ip = (ip_header_t*)p_packet;
 
-    if (net_to_host(ip->dst_addr) != p_device->ip4 && net_to_host(ip->dst_addr) != 0xFFFFFFFF)
+    if (net_to_host(ip->dst_addr) != p_device->ip.raw && net_to_host(ip->dst_addr) != 0xFFFFFFFF)
         return;
-    
+
     uint16_t ip_len = net_to_host(ip->total_length);
     uint8_t* payload = p_packet + (ip->version_ihl & 0x0F) * 4;
     // BUG @since 28/08/2025 -- 18:30
@@ -49,7 +49,7 @@ uint32_t get_next_hop_ip(network_interface_device_t* device, uint32_t target_ip)
     if (target_ip == 0)
         return 0;
 
-    return is_local_network(target_ip, device->ip4, device->subnet_mask) ? target_ip : device->gateway_ip;
+    return is_local_network(target_ip, device->ip.raw, device->subnet_mask.raw) ? target_ip : device->gateway.raw;
 }
 
 bool ip_send(network_interface_device_t* p_device, uint32_t dst_ip, uint8_t protocol, const uint8_t* p_payload, size_t payload_len) {
@@ -63,7 +63,7 @@ bool ip_send(network_interface_device_t* p_device, uint32_t dst_ip, uint8_t prot
     ip.flags_fragment = 0;
     ip.ttl = 64;
     ip.protocol = protocol;
-    ip.src_addr = htonl(p_device->ip4);
+    ip.src_addr = htonl(p_device->ip.raw);
     ip.dst_addr = htonl(dst_ip);
     ip.header_checksum = 0;
     ip.header_checksum = ip_checksum(&ip, sizeof(ip));
