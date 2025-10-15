@@ -55,6 +55,8 @@
 #define MAX_INT32           ((int32_t)(MAX_UINT32 >> 1))
 #define MAX_INT64           ((int64_t)(MAX_UINT64 >> 1))
 
+#define TO_IP(a0, a1, a2, a3) ((((uint32_t)(a0) & 0xff) << 24) | (((uint32_t)(a1) & 0xff) << 16) | (((uint32_t)(a2) & 0xff) << 8) | (((uint32_t)(a3) & 0xff) << 0))
+
 template<typename T>
 struct remove_reference {
     using type_t = T;

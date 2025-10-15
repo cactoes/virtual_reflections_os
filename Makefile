@@ -18,6 +18,7 @@ LINKER_SCRIPT               := $(PROJECT_PATH)/linker.ld
 TARGET_NAME                 := VirtualReflectionsOS
 SHARED_HEADERS              := $(ROOT_PATH)/src/shared_headers/
 DRIVER_FILES                := $(wildcard $(ROOT_PATH)/build/**/*.sys)
+INETDRIVERS_INCLUDES        := $(ROOT_PATH)/src/network_drivers/include
 
 # compilers
 COMPILER                    := x86_64-elf-g++
@@ -27,7 +28,7 @@ GRUB_MKRESCUE               := grub-mkrescue
 
 # compiler flags
 # [!!!] -mno-sse2: SSE2 is disabled
-COMPILER_FLAGS              := -nostdlib -m64 -mno-red-zone -mno-sse2 -fno-rtti -fno-exceptions -Werror -Wunused-result -fno-use-cxa-atexit -ffreestanding -I$(HEADER_FILES_PATH) -I$(SHARED_HEADERS) -g -z max-page-size=0x1000
+COMPILER_FLAGS              := -nostdlib -m64 -mno-red-zone -mno-sse2 -fno-rtti -fno-exceptions -Werror -Wunused-result -fno-use-cxa-atexit -ffreestanding -I$(HEADER_FILES_PATH) -I$(SHARED_HEADERS) -I$(INETDRIVERS_INCLUDES) -g -z max-page-size=0x1000
 NASM_FLAGS                  := -f elf64
 LINKER_FLAGS                := -z max-page-size=0x1000 -n -T $(LINKER_SCRIPT)
 

@@ -37,12 +37,13 @@
 #include "gui/desktop.hpp"
 #include "gui/games/minesweeper.hpp"
 
+#include "std/random.hpp"
+
 #include "multiboot.hpp"
 #include "string.hpp"
 #include "common.hpp"
 #include "crash_handler.hpp"
 #include "virtual_thread.hpp"
-#include "random.hpp"
 #include "system_info.hpp"
 #include "smbios.hpp"
 
@@ -294,212 +295,51 @@ void tcp_callback(const uint8_t* data, size_t size) {
     printf(DBG, "\n");
 }
 
-#define DHCP_OP_BOOTREQUEST                     1
-#define DHCP_OP_BOOTREPLY                       2
-
-#define DHCP_HTYPE_ETHERNET                     1
-#define DHCP_HLEN_ETHERNET_ADDRESS              6
-
-#define DHCP_MESSAGE_TYPE_DHCPDISCOVER          1
-#define DHCP_MESSAGE_TYPE_DHCPOFFER             2
-#define DHCP_MESSAGE_TYPE_DHCPREQUEST           3
-#define DHCP_MESSAGE_TYPE_DHCPDECLINE           4
-#define DHCP_MESSAGE_TYPE_DHCPACK               5
-#define DHCP_MESSAGE_TYPE_DHCPNAK               6
-#define DHCP_MESSAGE_TYPE_DHCPRELEASE           7
-#define DHCP_MESSAGE_TYPE_DHCPINFORM            8
-#define DHCP_MESSAGE_TYPE_DHCPFORCERENEW        9
-#define DHCP_MESSAGE_TYPE_DHCPLEASEQUERY        10
-#define DHCP_MESSAGE_TYPE_DHCPLEASEUNASSIGNED   11
-#define DHCP_MESSAGE_TYPE_DHCPLEASEUNKNOWN      12
-#define DHCP_MESSAGE_TYPE_DHCPLEASEACTIVE       13
-
-#define DHCP_OPTION_SUBNET_MASK                 1
-#define DHCP_OPTION_ROUTER                      3
-#define DHCP_OPTION_DNS                         6
-#define DHCP_OPTION_HOSTNAME                    12
-#define DHCP_OPTION_REQUESTED_IP_ADDR           50
-#define DHCP_OPTION_IP_LEASE_TIME               51
-#define DHCP_OPTION_DHCP_MESSAGE_TYPE           53
-#define DHCP_OPTION_DHCP_SERVER_ID              54
-#define DHCP_OPTION_CLIENT_ID                   61
-#define DHCP_OPTION_END                         255
-
-struct dhcp_packet_t {
-    uint8_t op;
-    uint8_t htype;
-    uint8_t hlen;
-    uint8_t hops;
-    uint32_t xid;
-    uint16_t secs;
-    uint16_t flags;
-
-    uint32_t client_ip_address;
-    uint32_t your_ip_address;
-    uint32_t server_ip_address;
-    uint32_t gateway_ip_address;
-
-    uint8_t client_hw_address[16];
-    uint8_t server_name[64];
-    uint8_t file[128];
-
-    uint32_t magic;
-} PACKED;
-
-uint8_t* dhcp_get_option(uint8_t* packet, uint8_t type) {
-    uint8_t* options = packet + sizeof(dhcp_packet_t);
-
-    while (true) {
-        if (options[0] == type)
-            return options;
-
-        if (options[0] == DHCP_OPTION_END)
-            return nullptr;
-
-        options += options[1] + 2;
-    }
-}
+#include "dhcp.hpp"
 
 void dhcp_callback(uint8_t* packet, size_t size) {
-    dhcp_packet_t* p = (dhcp_packet_t*)packet;
+    DHCPPacket* p = (DHCPPacket*)packet;
 
-    uint8_t* message_type_option = dhcp_get_option(packet, DHCP_OPTION_DHCP_MESSAGE_TYPE);
+    system_driver_handle_t driver_handle = driver_manager_get_driver_handle(get_global_driver_manager(), "INetDrivers");
+    auto dhcp_client_recieve_fn = (decltype(DHCPClientRecieve)*)driver_get_function(get_global_driver_manager(), driver_handle, "DHCPClientRecieve");
+    
+    auto device = nidm_get_device(get_global_nidm(), "eth0 (Intel e1000)");
 
-    if (!message_type_option || message_type_option[2] != DHCP_MESSAGE_TYPE_DHCPOFFER) {
-        printf(DBG, "invalid dhcp packet\n");
+    uint32_t ip;
+    uint32_t subnet_mask;
+    uint32_t gateway;
+    uint32_t dhcp_server_id;
+    int result = dhcp_client_recieve_fn(p, p->m_nXID, &ip, &subnet_mask, &gateway, &dhcp_server_id);
+
+    if (result == DHCP_CLIENT_RECIEVE_ACK) {
+        device->ip4 = ip;
+        device->subnet_mask = subnet_mask;
+        device->gateway_ip = gateway;
+        printf(DBG, "dhcp ack\n");
         return;
     }
 
-    uint8_t* subnet_mask_option = dhcp_get_option(packet, DHCP_OPTION_SUBNET_MASK);
-    uint8_t* server_id_option = dhcp_get_option(packet, DHCP_OPTION_DHCP_SERVER_ID);
-    uint8_t* router_option = dhcp_get_option(packet, DHCP_OPTION_ROUTER);
-
-    dhcp_packet_t npacket {};
-    memcpy(&npacket, p, sizeof(dhcp_packet_t));
-    npacket.op = DHCP_OP_BOOTREQUEST;
-    npacket.flags = host_to_net<uint16_t>(0);
-    npacket.secs = host_to_net<uint16_t>(0);
-
-    uint8_t dhcp_packet[548];
-    memzero(&dhcp_packet[0], 548);
-    size_t write_ptr = 0;
-
-    uint8_t option_dhcp_discover[] {
-        DHCP_OPTION_DHCP_MESSAGE_TYPE,
-        1,
-        DHCP_MESSAGE_TYPE_DHCPREQUEST
-    };
-
-    uint8_t option_request_ip_addr[6] {
-        DHCP_OPTION_REQUESTED_IP_ADDR,
-        4,
-    };
-    memcpy(&option_request_ip_addr[2], &npacket.your_ip_address, 4);
-
-    uint8_t option_end[] {
-        DHCP_OPTION_END,
-    };
-
-    memcpy(&dhcp_packet[write_ptr], &npacket, sizeof(dhcp_packet_t));
-    write_ptr += sizeof(dhcp_packet_t);
-
-    memcpy(&dhcp_packet[write_ptr], option_dhcp_discover, sizeof(option_dhcp_discover));
-    write_ptr += sizeof(option_dhcp_discover);
-
-    memcpy(&dhcp_packet[write_ptr], option_request_ip_addr, sizeof(option_request_ip_addr));
-    write_ptr += sizeof(option_request_ip_addr);
-
-    // BUG @since 14/10/2025 -- 20:40
-    // serveridoption is abitrary
-    memcpy(&dhcp_packet[write_ptr], server_id_option, server_id_option[1] + 2);
-    write_ptr += server_id_option[1] + 2;
-
-    memcpy(&dhcp_packet[write_ptr], option_end, sizeof(option_end));
-    write_ptr += sizeof(option_end);
-
-    if (write_ptr < 300) {
-        write_ptr = 300;
+    if (result == DHCP_CLIENT_RECIEVE_REQ) {
+        auto dhcp_create_request_packet_fn = (decltype(DHCPCreateRequestPacket)*)driver_get_function(get_global_driver_manager(), driver_handle, "DHCPCreateRequestPacket");
+        auto request = dhcp_create_request_packet_fn("test!", ip, dhcp_server_id, p->m_nXID, device->mac);
+        device->ip4 = ip;
+        device->subnet_mask = subnet_mask;
+        device->gateway_ip = gateway;
+        udp_send(device, dhcp_server_id, DHCP_PORT_CLIENT, DHCP_PORT_SERVER, (uint8_t*)&request, sizeof(DHCPPacket));
+        printf(DBG, "sending dhcp request\n");
+        return;
     }
 
-    auto device = nidm_get_device(get_global_nidm(), "eth0 (Intel e1000)");
-    device->ip4 = net_to_host(p->your_ip_address);
-    device->subnet_mask = TO_IP(subnet_mask_option[2], subnet_mask_option[3], subnet_mask_option[4], subnet_mask_option[5]);
-    device->gateway_ip = TO_IP(router_option[2], router_option[3], router_option[4], router_option[5]);
-
-    printf(DBG, "sending dhcp request (%ul bytes)\n", write_ptr);
-    udp_send(device, TO_IP(server_id_option[2], server_id_option[3], server_id_option[4], server_id_option[5]), 68, 67, dhcp_packet, write_ptr);
+    printf(DBG, "dhcp unkown\n");
 }
 
 void dhcp_client(network_interface_device_t* device) {
-    seed_random(clock_get_time_since_boot());
-    dhcp_packet_t p {};
-    p.op = DHCP_OP_BOOTREQUEST;
-    p.htype = DHCP_HTYPE_ETHERNET;
-    p.hlen = DHCP_HLEN_ETHERNET_ADDRESS;
-    p.hops = 0;
-    p.xid = host_to_net((uint32_t)random_number(0, MAX_UINT32));
-    p.secs = host_to_net((uint16_t)0);
-    p.flags = host_to_net((uint16_t)0x8000);
-    p.client_ip_address = host_to_net((uint32_t)0);
-    p.your_ip_address = host_to_net((uint32_t)0);
-    p.server_ip_address = host_to_net((uint32_t)0);
-    p.gateway_ip_address = host_to_net((uint32_t)0);
-    memzero(&p.client_hw_address[0], 16);
-    memcpy(&p.client_hw_address[0], device->mac, 6);
-    memzero(&p.server_name[0], 64);
-    memzero(&p.file[0], 128);
-    p.magic = host_to_net((uint32_t)0x63825363);
+    system_driver_handle_t driver_handle = driver_manager_get_driver_handle(get_global_driver_manager(), "INetDrivers");
+    auto dhcp_client_discover_fn = (decltype(DHCPClientDiscover)*)driver_get_function(get_global_driver_manager(), driver_handle, "DHCPClientDiscover");
 
-    uint8_t option_dhcp_discover[] {
-        DHCP_OPTION_DHCP_MESSAGE_TYPE,
-        1,
-        DHCP_MESSAGE_TYPE_DHCPDISCOVER
-    };
-
-    uint8_t option_client_id[] {
-        61,
-        7,
-        1,
-        device->mac[0], device->mac[1], device->mac[2],
-        device->mac[3], device->mac[4], device->mac[5]
-    };
-
-    uint8_t option_host_name[] {
-        DHCP_OPTION_HOSTNAME,
-        5,
-        'T', 'E', 'S', 'T', '!'
-    };
-
-    uint8_t option_end[] {
-        DHCP_OPTION_END,
-    };
-
-    uint8_t dhcp_packet[548];
-    memzero(&dhcp_packet[0], 548);
-    size_t write_ptr = 0;
-
-    memcpy(&dhcp_packet[write_ptr], &p, sizeof(dhcp_packet_t));
-    write_ptr += sizeof(dhcp_packet_t);
-
-    memcpy(&dhcp_packet[write_ptr], option_dhcp_discover, sizeof(option_dhcp_discover));
-    write_ptr += sizeof(option_dhcp_discover);
-
-    memcpy(&dhcp_packet[write_ptr], option_client_id, sizeof(option_client_id));
-    write_ptr += sizeof(option_client_id);
-
-    memcpy(&dhcp_packet[write_ptr], option_host_name, sizeof(option_host_name));
-    write_ptr += sizeof(option_host_name);
-
-    memcpy(&dhcp_packet[write_ptr], option_end, sizeof(option_end));
-    write_ptr += sizeof(option_end);
-
-    if (write_ptr < 300) {
-        write_ptr = 300;
-    }
-
-    printf(DBG, "sending dhcp discover (%ul bytes)\n", write_ptr);
-    udp_send(device, TO_IP(255,255,255,255), 68, 67, dhcp_packet, write_ptr);
-    nidm_udp_bind(get_global_nidm(), 68, dhcp_callback);
+    printf(DBG, "sending dhcp discover\n");
+    auto xid = dhcp_client_discover_fn("hostname", device->mac);
+    nidm_udp_bind(get_global_nidm(), DHCP_PORT_CLIENT, dhcp_callback);
 }
 
 extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
@@ -629,9 +469,9 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
     const pci_device_t* network_controller = pci_find_device(get_global_pcie_device_manager(), &network_device_class_info);
 
     e1000_t e1000 {};
+    network_interface_device_t e1000_nid {};
     const auto e1000_init_result = e1000_init_device(network_controller, &e1000);
     if (e1000_init_result == 0) {
-        network_interface_device_t e1000_nid {};
         e1000_nid.name = "eth0 (Intel e1000)";
         // TODO @since 27/08/2025 -- 03:49
         // dhcp :)
@@ -678,8 +518,6 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
         // printf(DBG, "[HTTP] Sending request:\n%s", http_request);
         // tcp_send_packet(&e1000_nid, (uint8_t*)http_request, strlen(http_request), TCP_FLAG_ACK | TCP_FLAG_PSH, connection);
         tcp_listen(&e1000_nid, 1234, tcp_callback);
-
-        dhcp_client(&e1000_nid);
     }
 
     driver_manager_t driver_manager {};
@@ -719,6 +557,8 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
             }
         }
     }
+
+    dhcp_client(&e1000_nid);
 
     // kernel finished
     // printf(STD, "> SYSTEM READY\n");

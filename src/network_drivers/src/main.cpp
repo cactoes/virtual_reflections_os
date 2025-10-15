@@ -1,12 +1,11 @@
-#define DHCP_VERSION    0
+#define DHCP_VERSION    1
 #define E1000_VERSION   0
 
 #include "common.hpp"
+#include "dhcp.hpp"
 
-/// @brief kernel api functions
+/// @brief driver exports
 extern "C" {
-    // NOLINTNEXTLINE
-    void kprint(const char* str);
 }
 
 extern "C" int DriverInit() {

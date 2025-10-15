@@ -8,8 +8,6 @@
 #ifndef __DRIVERS_NETWORK_NIDM_HPP__
 #define __DRIVERS_NETWORK_NIDM_HPP__
 
-#define TO_IP(a0, a1, a2, a3) ((((uint32_t)(a0) & 0xff) << 24) | (((uint32_t)(a1) & 0xff) << 16) | (((uint32_t)(a2) & 0xff) << 8) | (((uint32_t)(a3) & 0xff) << 0))
-
 #include "common.hpp"
 #include "utils/map.hpp"
 #include "string.hpp"

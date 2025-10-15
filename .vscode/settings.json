@@ -20,6 +20,7 @@
     },
     "clang-tidy.compilerArgs": [
         "-I./src/kernel/include",
+        "-I./src/network_drivers/include",
         "-I./src/shared_headers"
     ]
 }

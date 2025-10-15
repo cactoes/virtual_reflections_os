@@ -3,7 +3,7 @@
 #include "std/array.hpp"
 #include "std/array.hpp"
 #include "memory/heap.hpp"
-#include "random.hpp"
+#include "std/random.hpp"
 
 struct tile_t {
     int bomb_count;
