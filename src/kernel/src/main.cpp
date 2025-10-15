@@ -470,8 +470,10 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
         }
     }
 
-    dhcp_context_t dhcp_context {};
-    dhcp_client_start(&dhcp_context, nidm_get_prefered_device(get_global_nidm()));
+    if (driver_query_capability(get_global_driver_manager(), driver_manager_get_driver_handle(get_global_driver_manager(), "INetDrivers"), "dhcp") >= 1) {
+        dhcp_context_t dhcp_context {};
+        dhcp_client_start(&dhcp_context, nidm_get_prefered_device(get_global_nidm()));
+    }
 
     {
         auto device = nidm_get_prefered_device(get_global_nidm());
