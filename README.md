@@ -44,6 +44,7 @@ It is public for reference and educational purposes only.
 ## General
 [OSDev - https://wiki.osdev.org/Expanded_Main_Page](https://wiki.osdev.org/Expanded_Main_Page) <br>
 [stackoverflow - https://stackoverflow.com](https://stackoverflow.com) <br>
+[DHCP Reference - https://datatracker.ietf.org/doc/html/rfc2131](https://datatracker.ietf.org/doc/html/rfc2131) <br>
 
 ### YouTube
 [Write Your Own 64-bit Operating System Kernel - https://www.youtube.com/watch?v=wz9CZBeXR6U](https://www.youtube.com/watch?v=wz9CZBeXR6U) <br>
