@@ -29,16 +29,19 @@ void dhcp_net_callback(uint8_t* packet, size_t size) {
 
     dhcp_context_t* ctx = get_global_dhcp_context();
     auto dhcp_client_handle_packet_fn = (decltype(DHCPClientHandlePacket)*)driver_get_function(get_global_driver_manager(), ctx->driver_handle, "DHCPClientHandlePacket");
+    // TODO @since 16/10/2025 -- 17:15
+    // deternine when to send
+    // auto dhcp_client_lease_extend_fn = (decltype(DHCPClientLeaseExtend)*)driver_get_function(get_global_driver_manager(), ctx->driver_handle, "DHCPClientLeaseExtend");
+    // dhcp_client_lease_extend_fn(ctx->state, dhcp_send_packet);
 
-    uint32_t ip, subnet_mask, gateway;
-    int result = dhcp_client_handle_packet_fn(ctx->state, dhcp_send_packet, (DHCPPacket*)packet, &ip, &subnet_mask, &gateway);
+    int result = dhcp_client_handle_packet_fn(ctx->state, dhcp_send_packet, (DHCPPacket*)packet);
 
     switch (result) {
         case DHCP_CLIENT_RECIEVE_ACK: {
             auto device = nidm_get_prefered_device(get_global_nidm());
-            device->ip.raw = ip;
-            device->subnet_mask.raw = subnet_mask;
-            device->gateway.raw = gateway;
+            device->ip.raw = ctx->state->m_nOfferdIP;
+            device->subnet_mask.raw = ctx->state->m_nSubnetMask;
+            device->gateway.raw = ctx->state->m_nGateway;
             break;
         }
         default:

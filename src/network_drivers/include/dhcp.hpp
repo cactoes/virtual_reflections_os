@@ -96,7 +96,12 @@ struct DHCPClientState {
     // sesion
     uint32_t m_nXID;
     uint32_t m_nDHCPServerIP;
+
+    // contract
     uint32_t m_nOfferdIP;
+    uint32_t m_nIPLeaseTimeS;
+    uint32_t m_nSubnetMask;
+    uint32_t m_nGateway;
 };
 
 typedef void(*DHCPSendPacketFN)(uint32_t nDstIp, uint16_t nDstPort, uint16_t nSrcPort, uint8_t* pData, size_t nSize);
@@ -109,6 +114,7 @@ uint32_t DHCPGenerateXID();
 uint8_t* DHCPGetOption(DHCPPacket* pPacket, uint8_t nType);
 DHCPPacket DHCPCreateDiscoverPacket(const char* szHostName, uint32_t nXID, uint8_t pMac[6]);
 DHCPPacket DHCPCreateRequestPacket(const char* szHostName, uint32_t nWantedIP, uint32_t nDHCPServerIP, uint32_t nXID, uint8_t pMac[6]);
+DHCPPacket DHCPCreateLeaseExtendPacket(const char* szHostName, uint32_t nIpToExtend, uint32_t nXID, uint8_t pMac[6], uint32_t nDHCPServerIp);
 
 /// @brief dhcp exports
 extern "C" {
@@ -117,7 +123,9 @@ extern "C" {
     void DHCPClientShutdown(DHCPClientState* pClientState);
 
     void DHCPClientStart(DHCPClientState* pClientState, DHCPSendPacketFN pSendPacket);
-    int DHCPClientHandlePacket(DHCPClientState* pClientState, DHCPSendPacketFN pSendPacket, DHCPPacket* pPacket, uint32_t* pIP, uint32_t* pSubnetMask, uint32_t* pGatewayIp);
+    int DHCPClientHandlePacket(DHCPClientState* pClientState, DHCPSendPacketFN pSendPacket, DHCPPacket* pPacket);
+
+    void DHCPClientLeaseExtend(DHCPClientState* pClientState, DHCPSendPacketFN pSendPacket);
 }
 
 #endif // __DHCP_HPP__

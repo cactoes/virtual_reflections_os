@@ -52,7 +52,7 @@ DHCPPacket DHCPCreateDiscoverPacket(const char* szHostName, uint32_t nXID, uint8
     memzero(&dhcpPacket, sizeof(DHCPPacket));
     
     dhcpPacket.m_nOp = DHCP_OP_BOOTREQUEST;
-    dhcpPacket.m_nHType = DHCP_OP_BOOTREQUEST;
+    dhcpPacket.m_nHType = DHCP_HTYPE_ETHERNET;
     dhcpPacket.m_nHLen = DHCP_HLEN_ETHERNET_ADDRESS;
     dhcpPacket.m_nHops = 0;
 
@@ -94,7 +94,7 @@ DHCPPacket DHCPCreateRequestPacket(const char* szHostName, uint32_t nWantedIP, u
     memzero(&dhcpPacket, sizeof(DHCPPacket));
     
     dhcpPacket.m_nOp = DHCP_OP_BOOTREQUEST;
-    dhcpPacket.m_nHType = DHCP_OP_BOOTREQUEST;
+    dhcpPacket.m_nHType = DHCP_HTYPE_ETHERNET;
     dhcpPacket.m_nHLen = DHCP_HLEN_ETHERNET_ADDRESS;
     dhcpPacket.m_nHops = 0;
 
@@ -133,6 +133,53 @@ DHCPPacket DHCPCreateRequestPacket(const char* szHostName, uint32_t nWantedIP, u
     return dhcpPacket;
 }
 
+DHCPPacket DHCPCreateLeaseExtendPacket(const char* szHostName, uint32_t nIpToExtend, uint32_t nXID, uint8_t pMac[6], uint32_t nDHCPServerIp) {
+    DHCPPacket dhcpPacket{};
+    memzero(&dhcpPacket, sizeof(DHCPPacket));
+    
+    dhcpPacket.m_nOp = DHCP_OP_BOOTREQUEST;
+    dhcpPacket.m_nHType = DHCP_HTYPE_ETHERNET;
+    dhcpPacket.m_nHLen = DHCP_HLEN_ETHERNET_ADDRESS;
+    dhcpPacket.m_nHops = 0;
+
+    dhcpPacket.m_nXID = nXID;
+    dhcpPacket.m_nSecs = host_to_net<uint16_t>(0);
+    dhcpPacket.m_nFlags = host_to_net<uint16_t>(0);
+
+    dhcpPacket.m_nClientIPAddress = host_to_net<uint32_t>(nIpToExtend);
+    dhcpPacket.m_nYourIPAddress = host_to_net<uint32_t>(0);
+    dhcpPacket.m_nServerIPAddress = host_to_net<uint32_t>(0);
+    dhcpPacket.m_nGatewayIPAddress = host_to_net<uint32_t>(0);
+
+    for (size_t i = 0; i < 6; i++)
+        dhcpPacket.m_aClientHWAddress[i] = pMac[i];
+
+    dhcpPacket.m_nMagic = host_to_net<uint32_t>(DHCP_MAGIC);
+
+    DHCPOptionsWriter dhcpOptionsWriter {};
+    DHCPOptionsWriterInit(&dhcpOptionsWriter, &dhcpPacket.m_aOptions[0], sizeof(DHCPPacket::m_aOptions));
+
+    uint8_t aDHCPMessageType[] { DHCP_MESSAGE_TYPE_DHCPREQUEST };
+    DHCPOptionsWriterAddOption(&dhcpOptionsWriter, DHCP_OPTION_DHCP_MESSAGE_TYPE, &aDHCPMessageType[0], sizeof(aDHCPMessageType));
+
+    uint32_t beExtendedIp = host_to_net(nIpToExtend);
+    DHCPOptionsWriterAddOption(&dhcpOptionsWriter, DHCP_OPTION_REQUESTED_IP_ADDR, (uint8_t*)&beExtendedIp, 4);
+
+    uint32_t beDHCPServerIp = host_to_net(nDHCPServerIp);
+    DHCPOptionsWriterAddOption(&dhcpOptionsWriter, DHCP_OPTION_DHCP_SERVER_ID, (uint8_t*)&beDHCPServerIp, 4);
+
+    // TODO @since 15/10/2025 -- 13:36
+    // replace with strlen
+    size_t nHostNameLen = 0;
+    for (const char* p = szHostName; *p; p++)
+        nHostNameLen++;
+    DHCPOptionsWriterAddOption(&dhcpOptionsWriter, DHCP_OPTION_HOSTNAME, (uint8_t*)szHostName, nHostNameLen);
+
+    DHCPOptionsWriterShutdown(&dhcpOptionsWriter);
+
+    return dhcpPacket;
+}
+
 DHCPClientState* DHCPClientInit(const char* szHostName, uint8_t pMac[6]) {
     DHCPClientState* pClientState = (DHCPClientState*)malloc(sizeof(DHCPClientState));
     memzero(pClientState, sizeof(DHCPClientState));
@@ -158,6 +205,7 @@ void DHCPClientNewSession(DHCPClientState* pClientState) {
     pClientState->m_nXID = DHCPGenerateXID();
     pClientState->m_nOfferdIP = 0;
     pClientState->m_nDHCPServerIP = 0;
+    pClientState->m_nIPLeaseTimeS = 0;
 }
 
 void DHCPClientShutdown(DHCPClientState* pClientState) {
@@ -165,48 +213,21 @@ void DHCPClientShutdown(DHCPClientState* pClientState) {
     free(pClientState);
 }
 
-// uint32_t DHCPClientDiscover(const char* szHostName, uint8_t pMac[6]) {
-//     uint32_t nXID = DHCPGenerateXID();
-//     DHCPPacket dhcpPacket = DHCPCreateDiscoverPacket(szHostName, nXID, pMac);
-//     KsNetUdpSend(TO_IP(255, 255, 255, 255), DHCP_PORT_CLIENT, DHCP_PORT_SERVER, (uint8_t*)&dhcpPacket, sizeof(DHCPPacket));
-//     return nXID;
-// }
-
-// int DHCPClientRecieve(DHCPPacket* pPacket, uint32_t nXID, uint32_t* pIP, uint32_t* pSubnetMask, uint32_t* pGatewayIp, uint32_t* pDHCPServerID) {
-//     if (pPacket->m_nXID != nXID)
-//         return DHCP_CLIENT_RECIEVE_ERR;
-
-//     DHCPOption<1>* pMessageTypeOption = (DHCPOption<1>*)DHCPGetOption(pPacket, DHCP_OPTION_DHCP_MESSAGE_TYPE);
-//     DHCPOption<4>* pSubnetMaskOption = (DHCPOption<4>*)DHCPGetOption(pPacket, DHCP_OPTION_SUBNET_MASK);
-//     DHCPOption<4>* pDHCPServerIDOption = (DHCPOption<4>*)DHCPGetOption(pPacket, DHCP_OPTION_DHCP_SERVER_ID);
-//     DHCPOption<4>* pRouterOption = (DHCPOption<4>*)DHCPGetOption(pPacket, DHCP_OPTION_ROUTER);
-
-//     if (!pMessageTypeOption)
-//         return DHCP_CLIENT_RECIEVE_ERR;
-
-//     uint32_t uDHCPServerId = TO_IP(pDHCPServerIDOption->m_aValue[0], pDHCPServerIDOption->m_aValue[1], pDHCPServerIDOption->m_aValue[2], pDHCPServerIDOption->m_aValue[3]);
-//     *pIP = net_to_host<uint32_t>(pPacket->m_nYourIPAddress);
-//     *pDHCPServerID = uDHCPServerId;
-//     *pSubnetMask = TO_IP(pSubnetMaskOption->m_aValue[0], pSubnetMaskOption->m_aValue[1], pSubnetMaskOption->m_aValue[2], pSubnetMaskOption->m_aValue[3]);
-//     *pGatewayIp = TO_IP(pRouterOption->m_aValue[0], pRouterOption->m_aValue[1], pRouterOption->m_aValue[2], pRouterOption->m_aValue[3]);
-
-//     if (pMessageTypeOption->m_aValue[0] == DHCP_MESSAGE_TYPE_DHCPACK)
-//         return DHCP_CLIENT_RECIEVE_ACK;
-
-//     // DHCPPacket dhcpPacket = DHCPCreateRequestPacket(szHostName, pPacket->m_nYourIPAddress, uDHCPServerId, nXID, pMac);
-//     // KsNetUdpSend(uDHCPServerId, DHCP_PORT_CLIENT, DHCP_PORT_SERVER, (uint8_t*)&dhcpPacket, sizeof(DHCPPacket));
-//     if (pMessageTypeOption->m_aValue[0] == DHCP_MESSAGE_TYPE_DHCPOFFER)
-//         return DHCP_CLIENT_RECIEVE_REQ;
-
-//     return DHCP_CLIENT_RECIEVE_OTH;
-// }
-
 void DHCPClientStart(DHCPClientState* pClientState, DHCPSendPacketFN pSendPacket) {
     DHCPPacket dhcpPacket = DHCPCreateDiscoverPacket(pClientState->m_szHostname, pClientState->m_nXID, pClientState->m_aMac);
     pSendPacket(TO_IP(255, 255, 255, 255), DHCP_PORT_SERVER, DHCP_PORT_CLIENT, (uint8_t*)&dhcpPacket, sizeof(DHCPPacket));
 }
 
-int DHCPClientHandlePacket(DHCPClientState* pClientState, DHCPSendPacketFN pSendPacket, DHCPPacket* pPacket, uint32_t* pIP, uint32_t* pSubnetMask, uint32_t* pGatewayIp) {
+uint32_t DHCPFieldToNumber(uint8_t* pField, size_t nSize) {
+    uint32_t num = 0;
+    for (size_t i = 0; i < nSize; i++) {
+        num <<= 8;
+        num += pField[i];
+    }
+    return num;
+}
+
+int DHCPClientHandlePacket(DHCPClientState* pClientState, DHCPSendPacketFN pSendPacket, DHCPPacket* pPacket) {
     if (pPacket->m_nXID != pClientState->m_nXID)
         return DHCP_CLIENT_RECIEVE_ERR;
 
@@ -217,6 +238,7 @@ int DHCPClientHandlePacket(DHCPClientState* pClientState, DHCPSendPacketFN pSend
     DHCPOption<4>* pSubnetMaskOption = (DHCPOption<4>*)DHCPGetOption(pPacket, DHCP_OPTION_SUBNET_MASK);
     DHCPOption<4>* pRouterOption = (DHCPOption<4>*)DHCPGetOption(pPacket, DHCP_OPTION_ROUTER);
     DHCPOption<4>* pDHCPServerIDOption = (DHCPOption<4>*)DHCPGetOption(pPacket, DHCP_OPTION_DHCP_SERVER_ID);
+    DHCPOption<4>* pIPLeaseTime = (DHCPOption<4>*)DHCPGetOption(pPacket, DHCP_OPTION_IP_LEASE_TIME);
 
     switch (pMessageTypeOption->m_aValue[0]) {
         case DHCP_MESSAGE_TYPE_DHCPACK: {
@@ -224,19 +246,19 @@ int DHCPClientHandlePacket(DHCPClientState* pClientState, DHCPSendPacketFN pSend
                 !pSubnetMaskOption || !pRouterOption)
                 return DHCP_CLIENT_RECIEVE_ERR;
 
-            *pIP = pClientState->m_nOfferdIP;
-            *pSubnetMask = TO_IP(pSubnetMaskOption->m_aValue[0], pSubnetMaskOption->m_aValue[1], pSubnetMaskOption->m_aValue[2], pSubnetMaskOption->m_aValue[3]);
-            *pGatewayIp = TO_IP(pRouterOption->m_aValue[0], pRouterOption->m_aValue[1], pRouterOption->m_aValue[2], pRouterOption->m_aValue[3]);
+            pClientState->m_nSubnetMask = TO_IP(pSubnetMaskOption->m_aValue[0], pSubnetMaskOption->m_aValue[1], pSubnetMaskOption->m_aValue[2], pSubnetMaskOption->m_aValue[3]);
+            pClientState->m_nGateway = TO_IP(pRouterOption->m_aValue[0], pRouterOption->m_aValue[1], pRouterOption->m_aValue[2], pRouterOption->m_aValue[3]);
 
             return DHCP_CLIENT_RECIEVE_ACK;
         }
         case DHCP_MESSAGE_TYPE_DHCPOFFER: {
-            if (!pDHCPServerIDOption)
+            if (!pDHCPServerIDOption || !pIPLeaseTime)
                 return DHCP_CLIENT_RECIEVE_ERR;
 
             pClientState->m_nOfferdIP = net_to_host<uint32_t>(pPacket->m_nYourIPAddress);
             pClientState->m_nDHCPServerIP = TO_IP(pDHCPServerIDOption->m_aValue[0], pDHCPServerIDOption->m_aValue[1], pDHCPServerIDOption->m_aValue[2], pDHCPServerIDOption->m_aValue[3]);
-            
+            pClientState->m_nIPLeaseTimeS = DHCPFieldToNumber(&pIPLeaseTime->m_aValue[0], 4);
+
             DHCPPacket dhcpPacket = DHCPCreateRequestPacket(pClientState->m_szHostname, pClientState->m_nOfferdIP, pClientState->m_nDHCPServerIP, pClientState->m_nXID, pClientState->m_aMac);
             pSendPacket(pClientState->m_nDHCPServerIP, DHCP_PORT_SERVER, DHCP_PORT_CLIENT, (uint8_t*)&dhcpPacket, sizeof(DHCPPacket));
             return DHCP_CLIENT_RECIEVE_REQ;
@@ -246,4 +268,9 @@ int DHCPClientHandlePacket(DHCPClientState* pClientState, DHCPSendPacketFN pSend
     }
 
     return DHCP_CLIENT_RECIEVE_ERR;
+}
+
+void DHCPClientLeaseExtend(DHCPClientState* pClientState, DHCPSendPacketFN pSendPacket) {
+    DHCPPacket dhcpPacket = DHCPCreateLeaseExtendPacket(pClientState->m_szHostname, pClientState->m_nOfferdIP, pClientState->m_nXID, pClientState->m_aMac, pClientState->m_nDHCPServerIP);
+    pSendPacket(pClientState->m_nDHCPServerIP, DHCP_PORT_SERVER, DHCP_PORT_CLIENT, (uint8_t*)&dhcpPacket, sizeof(DHCPPacket));
 }
