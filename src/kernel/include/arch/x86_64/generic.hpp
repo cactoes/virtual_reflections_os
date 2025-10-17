@@ -130,4 +130,12 @@ static inline uint64_t x86_64_read_cr2() {
     return res;
 }
 
+static inline void x86_64_cpuid(uint32_t eax_in, uint32_t ecx_in, uint32_t* eax_out, uint32_t* ebx_out, uint32_t* ecx_out, uint32_t* edx_out) {
+    __asm__ volatile ("cpuid"
+                : "=a"(*eax_out), "=b"(*ebx_out), "=c"(*ecx_out), "=d"(*edx_out)
+                : "a"(eax_in), "c"(ecx_in));
+}
+
+
+
 #endif // __X86_64_GENERIC_HPP__

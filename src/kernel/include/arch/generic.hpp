@@ -106,6 +106,23 @@ inline uint32_t in_port<uint32_t>(uint16_t port) {
     return x86_64_in_port<uint32_t>(port);
 }
 
+static inline bool get_cpu_name(char* buffer, size_t size) {
+    if (size <= 48)
+        return false;
+    
+    memzero(buffer, size);
+
+    uint32_t registers[4];
+    char* p = buffer;
+    for (uint32_t i = 0; i < 3; i++) {
+        x86_64_cpuid(0x80000002 + i, 0, &registers[0], &registers[1], &registers[2], &registers[3]);
+        memcpy(p, registers, sizeof(registers));
+        p += sizeof(registers);
+    }
+
+    return true;
+}
+
 #endif // ARCH_X86_64
 
 #endif // __GENERIC_HPP__

@@ -1,5 +1,6 @@
 #include "system_info.hpp"
 #include "smbios.hpp"
+#include "arch/generic.hpp"
 
 system_info_manager_t* global_boot_info_manager;
 
@@ -44,4 +45,12 @@ void system_info_parse_system_information(system_info_manager_t* system_info_man
         smbios_iterate(struct_pointer->table_address, system_info_manager, system_info_dump);
         return;
     }
+}
+
+void system_info_get_cpu_name(system_info_manager_t* system_info_manager) {
+    char buffer[49];
+    if (get_cpu_name(buffer, 49))
+        system_info_manager->cpu_name = buffer;
+    else
+        system_info_manager->cpu_name = "Unkown";
 }

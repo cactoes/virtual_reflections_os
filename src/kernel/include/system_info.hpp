@@ -18,6 +18,8 @@ struct system_info_manager_t {
     string product_name;
     string version;
     string serial_number;
+
+    string cpu_name;
 };
 
 /// @brief                          set the global system info manager
@@ -36,5 +38,9 @@ void system_info_parse_memory_size(system_info_manager_t* system_info_manager, m
 /// @brief                              parse system information from smbios tables
 /// @param[inout] system_info_manager   system info manager to store manufacturer, product, version & serial
 void system_info_parse_system_information(system_info_manager_t* system_info_manager);
+
+/// @brief                              gets the cpu name of the system
+/// @param[inout] system_info_manager   system info manager to store the name in
+void system_info_get_cpu_name(system_info_manager_t* system_info_manager);
 
 #endif // __SYSTEM_INFO_HPP__
