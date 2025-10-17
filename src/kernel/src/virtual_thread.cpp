@@ -174,3 +174,8 @@ int vthread_wait_for_close(vthread_handle_t handle) {
 size_t vthread_get_count() {
     return g_threads.size();
 }
+
+void vthread_terminate(vthread_handle_t handle) {
+    g_current_thread->vt_state = vthread_state_t::STOPPING;
+    vthread_yield();
+}

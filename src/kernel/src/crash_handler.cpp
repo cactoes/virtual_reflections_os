@@ -3,6 +3,7 @@
 #include "drivers/vga.hpp"
 #include "string.hpp"
 #include "utils/debug.hpp"
+#include "virtual_thread.hpp"
 
 enum print_mode_t {
     STD,
@@ -13,6 +14,13 @@ extern void printf(print_mode_t mode, const char* p_str, ...);
 
 void __kernel_fatal(uint64_t code, const char* p_message, cpu_state_t* p_cpu_state) {
     printf(DBG, "kernel fatal triggerd: 0x%uh \"%s\"\n", code, p_message);
+
+    // if not main thread just terminate the thread not the system
+    vthread_handle_t vth = vthread_get_tls()->handle;
+    if (vth != 1) {
+        printf(DBG, "thread: %ul terminated (crashed)\n", vth);
+        vthread_terminate(vth);
+    }
 
     vga_tm_color_map_t color {};
     color.foreground = vga_tm_color_t::WHITE;

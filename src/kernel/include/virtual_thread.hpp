@@ -86,4 +86,8 @@ int vthread_wait_for_close(vthread_handle_t handle);
 /// @return     number of threads currently managed by the scheduler
 size_t vthread_get_count();
 
+/// @brief          closes a thread forcefully
+/// @param handle   handle to the thread
+void vthread_terminate(vthread_handle_t handle);
+
 #endif // __VIRTUAL_THREAD_HPP__
