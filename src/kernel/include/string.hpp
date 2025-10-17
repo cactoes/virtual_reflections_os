@@ -189,4 +189,26 @@ inline string str_format_size(size_t size) {
     return string(buffer);
 }
 
+inline string str_format_time(size_t ms) {
+    uint64_t total_seconds = ms / 1000;
+    uint64_t seconds = total_seconds % 60;
+    uint64_t minutes = (total_seconds / 60) % 60;
+    uint64_t hours   = (total_seconds / 3600) % 24;
+    uint64_t days    = total_seconds / 86400;
+
+    char buffer[256];
+
+    if (days > 0) {
+        sprintf(buffer, 256, "%uld %ulh %ulm %uls", days, hours, minutes, seconds);
+    } else if (hours > 0) {
+        sprintf(buffer, 256, "%ulh %zum %uls", hours, minutes, seconds);
+    } else if (minutes > 0) {
+        sprintf(buffer, 256, "%ulm %uls", minutes, seconds);
+    } else {
+        sprintf(buffer, 256, "%uls", seconds);
+    }
+
+    return string(buffer);
+}
+
 #endif // __STRING_HPP__
