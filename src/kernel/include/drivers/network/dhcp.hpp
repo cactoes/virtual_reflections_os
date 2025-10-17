@@ -15,6 +15,7 @@
 struct dhcp_context_t {
     DHCPClientState* state;
     system_driver_handle_t driver_handle;
+    bool is_configured;
 };
 
 dhcp_context_t* dhcp_context_create();
@@ -25,5 +26,7 @@ dhcp_context_t* get_global_dhcp_context();
 
 void dhcp_send_packet(uint32_t dst_ip, uint16_t dst_port, uint16_t src_port, uint8_t* data, size_t size);
 void dhcp_client_start(dhcp_context_t* dhcp_context, network_interface_device_t* device);
+int dhcp_client_thread();
+bool dhcp_client_is_configured(dhcp_context_t* dhcp_context);
 
 #endif // __DRIVERS_NETWORK_DHCP_HPP__

@@ -42,6 +42,7 @@ void dhcp_net_callback(uint8_t* packet, size_t size) {
             device->ip.raw = ctx->state->m_nOfferdIP;
             device->subnet_mask.raw = ctx->state->m_nSubnetMask;
             device->gateway.raw = ctx->state->m_nGateway;
+            ctx->is_configured = true;
             break;
         }
         default:
@@ -54,12 +55,26 @@ void dhcp_client_start(dhcp_context_t* dhcp_context, network_interface_device_t*
     auto dhcp_client_init_fn = (decltype(DHCPClientInit)*)driver_get_function(get_global_driver_manager(), driver_handle, "DHCPClientInit");
     auto dhcp_client_start_fn = (decltype(DHCPClientStart)*)driver_get_function(get_global_driver_manager(), driver_handle, "DHCPClientStart");
 
-    dhcp_context->driver_handle = driver_handle;
     // TODO @since 15/10/2025 -- 14:32
     // setup hostname
     dhcp_context->state = dhcp_client_init_fn("hostname", device->mac);
+    dhcp_context->driver_handle = driver_handle;
+    dhcp_context->is_configured = false;
     set_global_dhcp_context(dhcp_context);
 
     nidm_udp_bind(get_global_nidm(), DHCP_PORT_CLIENT, dhcp_net_callback);
     dhcp_client_start_fn(dhcp_context->state, dhcp_send_packet);
+}
+
+int dhcp_client_thread() {
+    dhcp_context_t dhcp_context {};
+    dhcp_client_start(&dhcp_context, nidm_get_prefered_device(get_global_nidm()));
+
+    // hang?
+    while (true);
+    return 0;
+}
+
+bool dhcp_client_is_configured(dhcp_context_t* dhcp_context) {
+    return dhcp_context->is_configured;
 }

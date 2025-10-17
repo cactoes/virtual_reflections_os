@@ -218,7 +218,9 @@ void exec(const string& path, const std::dynamic_array<string>& args) {
         }
         case hash_fnv1a_64("systemstat"): {
             system_info_manager_t* sysinfo = get_global_system_info_manager();
-            printf(STD, "%s %s %s %s\n", sysinfo->manufacturer.c_str(), sysinfo->product_name.c_str(), sysinfo->version.c_str(), sysinfo->serial_number.c_str());
+            printf(STD, "Host:    %s %s %s %s\n", sysinfo->manufacturer.c_str(), sysinfo->product_name.c_str(), sysinfo->version.c_str(), sysinfo->serial_number.c_str());
+            printf(STD, "CPU:     %s\n", sysinfo->cpu_name.c_str());
+            printf(STD, "Threads: %ul\n", vthread_get_count());
             break;
         }
         default:
@@ -348,6 +350,7 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
     set_global_system_info_manager(&sim);
     system_info_parse_memory_size(get_global_system_info_manager(), (multiboot_t*)p_multiboot_struct);
     system_info_parse_system_information(get_global_system_info_manager());
+    system_info_get_cpu_name(get_global_system_info_manager());
 
     vfs_t vfs {};
     vfs_init(&vfs);
@@ -471,21 +474,15 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
     }
 
     if (driver_query_capability(get_global_driver_manager(), driver_manager_get_driver_handle(get_global_driver_manager(), "INetDrivers"), "dhcp") >= 1) {
-        dhcp_context_t dhcp_context {};
-        dhcp_client_start(&dhcp_context, nidm_get_prefered_device(get_global_nidm()));
+        if (vthread_create(dhcp_client_thread, p_kpml4) == VTHREAD_HANDLE_INVALID)
+            printf(DBG, "failed to start DHCP client\n");
     }
 
-    {
-        auto device = nidm_get_prefered_device(get_global_nidm());
-        while (device->ip.raw == 0);
-
-        uint8_t mac[6];
-        uint64_t frame = clock_get_time_since_boot() + 1000;
+    auto net_test = []() {
+        while (!dhcp_client_is_configured(get_global_dhcp_context()));
 
         auto connection = tcp_connect(TO_IP(192, 168, 178, 219), 8090, tcp_callback);
 
-        while (connection->state != tcp_state_t::ESTABLISHED);
-        
         const char* http_request = 
             "GET / HTTP/1.1\r\n"
             "Connection: close\r\n"
@@ -493,7 +490,11 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
             "\r\n";
         printf(DBG, "[HTTP] Sending request:\n%s", http_request);
         tcp_send_packet((uint8_t*)http_request, strlen(http_request), TCP_FLAG_ACK | TCP_FLAG_PSH, connection);
-    }
+
+        return 0;
+    };
+
+    vthread_create(net_test, p_kpml4);
 
     // kernel finished
     // printf(STD, "> SYSTEM READY\n");
