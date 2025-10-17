@@ -483,6 +483,11 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
 
         auto connection = tcp_connect(TO_IP(192, 168, 178, 219), 8090, tcp_callback);
 
+        if (connection->state != tcp_state_t::ESTABLISHED) {
+            printf(DBG, "failed to make tco connection\n");
+            return 1;
+        }
+
         const char* http_request = 
             "GET / HTTP/1.1\r\n"
             "Connection: close\r\n"

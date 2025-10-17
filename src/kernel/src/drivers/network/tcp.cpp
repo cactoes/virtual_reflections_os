@@ -2,6 +2,7 @@
 #include "drivers/network/ip.hpp"
 #include "utils/vector.hpp"
 #include "std/random.hpp"
+#include "time/clock.hpp"
 
 enum print_mode_t {
     STD,
@@ -40,7 +41,41 @@ tcp_connection_t* tcp_connect(uint32_t ip, uint32_t port, tcp_connect_callback_t
     }
 
     tcp_init_connection(connection_ptr, ip, port, callback);
+    connection_ptr->state = tcp_state_t::SYN_SENT;
     tcp_send_packet(nullptr, 0, TCP_FLAG_SYN, connection_ptr);
+    
+    uint64_t time = clock_get_time_since_boot() + 50;
+    bool keep_alive = true;
+    int retry_count_max = 0;
+    while (keep_alive) {
+        if (time < clock_get_time_since_boot())
+            time = clock_get_time_since_boot() + 100 * (retry_count_max + 1);
+        else
+            continue;
+
+        switch (connection_ptr->state) {
+            case tcp_state_t::ESTABLISHED: {
+                keep_alive = false;
+                break;
+            }
+            case tcp_state_t::SYN_SENT: {
+                if (retry_count_max > 3) {
+                    keep_alive = false;
+                    break;
+                }
+                tcp_send_packet(nullptr, 0, TCP_FLAG_SYN, connection_ptr);
+                retry_count_max++;
+                break;
+            }
+            default: {
+                keep_alive = false;
+                break;
+            }
+        }
+    }
+
+    // give the server some time to respond
+    while (time + 50 < clock_get_time_since_boot());
     return connection_ptr;
 }
 
