@@ -221,6 +221,7 @@ void exec(const string& path, const std::dynamic_array<string>& args) {
             printf(STD, "Host:    %s %s %s %s\n", sysinfo->manufacturer.c_str(), sysinfo->product_name.c_str(), sysinfo->version.c_str(), sysinfo->serial_number.c_str());
             printf(STD, "CPU:     %s\n", sysinfo->cpu_name.c_str());
             printf(STD, "Threads: %ul\n", vthread_get_count());
+            printf(STD, "Uptime:  %s\n", str_format_time(clock_get_time_since_boot()).c_str());
             break;
         }
         default:
@@ -289,13 +290,6 @@ int terminal() {
     subscribe_on_key_down(terminal_keydown_callback);
     while (keep_terminal_alive) {}
     return 0;
-}
-
-void tcp_callback(const uint8_t* data, size_t size) {
-    for (size_t i = 0; i < size; i++)
-        printf(DBG, "%c", data[i]);
-
-    printf(DBG, "\n");
 }
 
 extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
@@ -478,13 +472,20 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
             printf(DBG, "failed to start DHCP client\n");
     }
 
-    auto net_test = []() {
+    auto net_test = []() {\
+        auto tcp_callback = [](const uint8_t* data, size_t size) {
+            for (size_t i = 0; i < size; i++)
+                printf(DBG, "%c", data[i]);
+
+            printf(DBG, "\n");
+        };
+
         while (!dhcp_client_is_configured(get_global_dhcp_context()));
 
-        auto connection = tcp_connect(TO_IP(192, 168, 178, 219), 8090, tcp_callback);
+        auto conn = tcp_connect(TO_IP(192, 168, 178, 219), 8090, tcp_callback);
 
-        if (connection->state != tcp_state_t::ESTABLISHED) {
-            printf(DBG, "failed to make tco connection\n");
+        if (conn->state != tcp_state_t::ESTABLISHED) {
+            printf(DBG, "failed to make tcp connection\n");
             return 1;
         }
 
@@ -494,8 +495,7 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
             "User-Agent: virtual reflections e0\r\n"
             "\r\n";
         printf(DBG, "[HTTP] Sending request:\n%s", http_request);
-        tcp_send_packet((uint8_t*)http_request, strlen(http_request), TCP_FLAG_ACK | TCP_FLAG_PSH, connection);
-
+        tcp_send_packet((uint8_t*)http_request, strlen(http_request), TCP_FLAG_ACK | TCP_FLAG_PSH, conn);
         return 0;
     };
 

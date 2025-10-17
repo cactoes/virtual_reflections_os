@@ -294,7 +294,7 @@ void tcp_receive(network_interface_device_t* device, uint8_t* payload, size_t pa
 
             if (flags & TCP_FLAG_FIN) {
                 connection->rcv_nxt++;
-                tcp_send_packet(nullptr, 0, TCP_FLAG_ACK, connection);
+                tcp_send_packet(nullptr, 0, TCP_FLAG_FIN | TCP_FLAG_ACK, connection);
                 connection->state = tcp_state_t::CLOSE_WAIT;
             }
             break;
