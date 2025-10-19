@@ -17,8 +17,8 @@ void __kernel_fatal(uint64_t code, const char* p_message, cpu_state_t* p_cpu_sta
 
     // if not main thread just terminate the thread not the system
     vthread_handle_t vth = vthread_get_tls()->handle;
-    if (vth != 1) {
-        printf(DBG, "thread: %ul terminated (crashed)\n", vth);
+    if (vth != VTHREAD_MAIN_THREAD_HANDLE) {
+        printf(DBG, "thread: %ul terminated (crashed or forcefully stopped)\n", vth);
         vthread_terminate(vth);
     }
 

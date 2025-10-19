@@ -40,7 +40,7 @@ void vthread_handle_sleeping(vthread_t* p_vthread) {
 }
 
 void vthread_handle_stopping(vthread_t* p_vthread) {
-    heap_free(get_global_heap(), p_vthread->stack_og);
+    heap_free(get_global_heap(), p_vthread->stack_bottom);
     g_threads.remove(p_vthread->handle);
 }
 
@@ -67,9 +67,9 @@ vthread_handle_t vthread_start_and_setup_main() {
 
     std::unique_ptr<vthread_t> p_vthread = std::make_unique<vthread_t>();
 
-    p_vthread->handle = 0;
+    p_vthread->handle = VTHREAD_MAIN_THREAD_HANDLE;
     p_vthread->pml4 = get_pml4();
-    ((tls_base_t*)p_vthread->tls)->handle = 0;
+    ((tls_base_t*)p_vthread->tls)->handle = VTHREAD_MAIN_THREAD_HANDLE;
     g_current_thread = p_vthread.get();
 
     return vthread_add(move(p_vthread)) ? 0 : VTHREAD_HANDLE_INVALID;
@@ -84,7 +84,7 @@ vthread_handle_t vthread_create(thread_entry_t p_thread_entry, void* pml4) {
 
     memzero(stack, VTHREAD_STACK_SIZE);
     std::unique_ptr<vthread_t> p_vthread = std::make_unique<vthread_t>();
-    p_vthread->stack_og = stack;
+    p_vthread->stack_bottom = stack;
     uint64_t* stack_top = (uint64_t*)(((uint64_t)stack + VTHREAD_STACK_SIZE - sizeof(cpu_state_t)) & ~0xF);
 
     // itret frame
@@ -122,6 +122,19 @@ cpu_state_t* vthread_handle_interrupt(cpu_state_t* p_cpu_state) {
     return vthread_schedule(p_cpu_state);
 }
 
+bool vthread_check_stack(vthread_t* thread) {
+    // stak has overflown
+    if ((uint64_t)thread->stack < (uint64_t)thread->stack_bottom)
+        return false;
+
+    // thread stack is in deadzone, to prevent overflow we terminate it
+    if ((uint64_t)thread->stack - (uint64_t)thread->stack_bottom < VTHREAD_STACK_DEADZONE)
+        return false;
+
+    // stack is still safe :)
+    return true;
+}
+
 cpu_state_t* vthread_schedule(cpu_state_t* p_cpu_state) {  
     // BUG @since 09/09/2025 -- 20:59
     // using the lock here can cause a deadlock?
@@ -137,6 +150,11 @@ cpu_state_t* vthread_schedule(cpu_state_t* p_cpu_state) {
             case vthread_state_t::STARTING: vthread_handle_starting(g_current_thread); break;
             case vthread_state_t::SLEEPING: vthread_handle_sleeping(g_current_thread); break;
             case vthread_state_t::STOPPING: vthread_handle_stopping(g_current_thread); break;
+            case vthread_state_t::RUNNING: {
+                if (!vthread_check_stack(g_current_thread) && g_current_thread->handle != VTHREAD_MAIN_THREAD_HANDLE)
+                    kernel_fatal(KERNEL_FATAL_VTHREAD_STACK_PROTECTION, "thread stack protection triggerd");
+                break;
+            }
             case vthread_state_t::UNKNOWN:
             default: break;
         }

@@ -11,8 +11,10 @@
 #ifndef __VIRTUAL_THREAD_HPP__
 #define __VIRTUAL_THREAD_HPP__
 
-#define VTHREAD_STACK_SIZE          1000000 // 1M
+#define VTHREAD_STACK_SIZE          1000000     // 1M (randomly chosen)
+#define VTHREAD_STACK_DEADZONE      64000       // 64K (randomly chosen)
 #define VTHREAD_TLS_ENTRY_COUNT     64
+#define VTHREAD_MAIN_THREAD_HANDLE  (vthread_handle_t)0
 
 #define VTHREAD_HANDLE_INVALID (vthread_handle_t)-1
 
@@ -36,7 +38,7 @@ enum class vthread_state_t {
 struct vthread_t {
     cpu_state_t cpu_state;
     void* stack;
-    void* stack_og;
+    void* stack_bottom;
     uint64_t tls[VTHREAD_TLS_ENTRY_COUNT] = {};
     vthread_handle_t handle;
     vthread_state_t vt_state;

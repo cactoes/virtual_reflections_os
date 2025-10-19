@@ -11,7 +11,9 @@
 #define KERNEL_FATAL_MULTIBOOT_MAGIC_VALIDATE       0xF0000000
 #define KERNEL_FATAL_VMEM_INIT                      0xF0000001
 #define KERNEL_FATAL_HEAP_INIT                      0xF0000002
-#define KERNEL_FATAL_VHREAD_INIT                    0xF0000003
+#define KERNEL_FATAL_VTHREAD_INIT                   0xF0000003
+
+#define KERNEL_FATAL_VTHREAD_STACK_PROTECTION       0xA0000000
 
 #include "common.hpp"
 

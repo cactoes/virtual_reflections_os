@@ -336,7 +336,7 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
 
     // initialize threading
     if (vthread_start_and_setup_main() == VTHREAD_HANDLE_INVALID)
-        kernel_fatal(KERNEL_FATAL_VHREAD_INIT, "virtual threads failed to intialize");
+        kernel_fatal(KERNEL_FATAL_VTHREAD_INIT, "virtual threads failed to intialize");
 
     pit_add_interrupt_function(vthread_handle_interrupt);
 
@@ -502,8 +502,7 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
     vthread_create(net_test, p_kpml4);
 
     // kernel finished
-    // printf(STD, "> SYSTEM READY\n");
-    printf(DBG, "Kernel finished initializing\n");
+    printf(DBG, "kernel finished initializing\n");
 
     // if (vthread_create(desktop_init, p_kpml4) == VTHREAD_HANDLE_INVALID)
     //     printf(DBG, "failed to create desktop thread\n");
