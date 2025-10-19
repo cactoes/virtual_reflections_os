@@ -472,7 +472,7 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
             printf(DBG, "failed to start DHCP client\n");
     }
 
-    auto net_test = []() {\
+    auto net_test = []() {
         auto tcp_callback = [](const uint8_t* data, size_t size) {
             for (size_t i = 0; i < size; i++)
                 printf(DBG, "%c", data[i]);
