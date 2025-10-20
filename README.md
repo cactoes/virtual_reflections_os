@@ -8,6 +8,7 @@ A 64-bit custom made operating system, using grub as bootloader
 - [ ] drive / disk manager
 - [ ] processes (kernel mode)
 - [ ] work on vthreads
+- [ ] general cleanup / restructuring
 - [ ] fat32
     - [x] read
     - [ ] write
