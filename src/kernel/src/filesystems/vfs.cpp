@@ -92,6 +92,35 @@ bool vfs_disk_storage_interface::enumerate_directory(const string& path, std::dy
     return true;
 }
 
+vfs_out_stream_interface::vfs_out_stream_interface(void(*writer)(const char*)) {
+    writer_fn = writer;
+}
+
+bool vfs_out_stream_interface::write_file(const string& path, std::dynamic_array<uint8_t>* content) {
+    return write_file(path, content->get_data(), content->length());
+}
+
+bool vfs_out_stream_interface::write_file(const string& path, uint8_t* content, size_t size) {
+    if (size == 0)
+        return false;
+    
+    // make sure content is 'safe'
+    content[size] = '\0';
+
+    // then send to writer
+    writer_fn((const char*)content);
+
+    return true;
+}
+
+bool vfs_out_stream_interface::enumerate_directory(const string& path, std::dynamic_array<std::unique_ptr<vfs_node_t>>* out_array) {
+    auto node = std::make_unique<vfs_node_t>();
+    node->meta.name = "stream";
+    node->type = vfs_node_type_t::FILE;
+    out_array->insert_back(move(node));
+    return true;
+}
+
 void set_global_vfs(vfs_t* vfs) {
     global_vfs_instance = vfs;
 }
@@ -267,7 +296,7 @@ bool vfs_create_file(vfs_t* vfs, const string& path) {
 }
 
 file_descriptor_t vfs_open_file(vfs_t* vfs, const string& path) {
-    if (!vfs_resolve_path(vfs, path))
+    if (auto node = vfs_resolve_path(vfs, path); !node || node->type != vfs_node_type_t::FILE)
         return FILE_DESCRIPTOR_INVALID;
 
     file_descriptor_t fd = vfs_get_next_descriptor(vfs);
@@ -346,7 +375,7 @@ bool vfs_mount(vfs_t* vfs, const string& path, std::unique_ptr<vfs_storage_inter
     vfs_mount_point_t* mp_pointer = mp.get();
     vfs->mount_points.insert_back(move(mp));
 
-    new_node->storage_interface = mp_pointer->interface.get();
+    new_node->storage_interface = storage_interface_pointer;
     new_node->root_storage_interface = new_node;
     new_node->root_mount_point = new_node;
     new_node->mount_point = mp_pointer;

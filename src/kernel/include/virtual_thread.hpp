@@ -11,7 +11,7 @@
 #ifndef __VIRTUAL_THREAD_HPP__
 #define __VIRTUAL_THREAD_HPP__
 
-#define VTHREAD_STACK_SIZE          1000000     // 1M (randomly chosen)
+#define VTHREAD_STACK_SIZE          2000000     // 2M (randomly chosen)
 #define VTHREAD_STACK_DEADZONE      64000       // 64K (randomly chosen)
 #define VTHREAD_TLS_ENTRY_COUNT     64
 #define VTHREAD_MAIN_THREAD_HANDLE  (vthread_handle_t)0
@@ -19,12 +19,14 @@
 #define VTHREAD_HANDLE_INVALID (vthread_handle_t)-1
 
 #include "common.hpp"
+#include "filesystems/vfs.hpp"
 
 typedef uint64_t vthread_handle_t;
 typedef int(*thread_entry_t)();
 
 struct tls_base_t {
     vthread_handle_t handle;
+    file_descriptor_t out_streams[3];
 };
 
 enum class vthread_state_t {

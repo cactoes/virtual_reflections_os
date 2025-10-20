@@ -102,6 +102,31 @@ private:
     mutex_t mutex;
 };
 
+class vfs_out_stream_interface : public vfs_storage_interface_t {
+public:
+    vfs_out_stream_interface(void(*writer)(const char*));
+
+    bool read_file(const string& path, std::dynamic_array<uint8_t>* content) override {
+        return false;
+    }
+
+    bool write_file(const string& path, std::dynamic_array<uint8_t>* content) override;
+    bool write_file(const string& path, uint8_t* content, size_t size) override;
+
+    bool enumerate_directory(const string& path, std::dynamic_array<std::unique_ptr<vfs_node_t>>* out_array);
+
+    bool create_directory(const string& path) override {
+        return false;
+    }
+
+    vfs_storage_info_t get_storage_info() const {
+        return vfs_storage_info_t{};
+    }
+
+private:
+    void(*writer_fn)(const char*);
+};
+
 struct vfs_mount_point_t {
     string mount_point_path;
     std::unique_ptr<vfs_storage_interface_t> interface;

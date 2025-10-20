@@ -47,33 +47,36 @@
 #include "virtual_thread.hpp"
 #include "system_info.hpp"
 #include "smbios.hpp"
+#include "io.hpp"
 
 #define HEAP_START_SIZE 0x100000 * 32 // 32 mb
 #define PIT_TIMER_INTERVAL 1000 // times per second
 
-enum print_mode_t {
-    STD,
-    DBG
-};
+// enum print_mode_t {
+//     STD,
+//     DBG
+// };
 
-void printf(print_mode_t mode, const char* p_str, ...) {
-    uint8_t buffer[256] = { 0 };
+// void printf(print_mode_t mode, const char* p_str, ...) {
+//     char buffer[256] = { 0 };
 
-    va_list args;
-    va_start(args, p_str);
-    size_t strlen = sprintf((char*)buffer, (unsigned long int)sizeof(buffer), p_str, args);
-    va_end(args);
+//     va_list args;
+//     va_start(args, p_str);
+//     size_t strlen = sprintf(buffer, (unsigned long int)sizeof(buffer), p_str, args);
+//     va_end(args);
 
-    switch (mode) {
-        case DBG:
-            debug_puts((char*)buffer);
-            break;
-        case STD:
-        default:
-            vga_tm_puts(&g_vga_tm_buffer, (char*)buffer);
-            break;
-    }
-}
+//     switch (mode) {
+//         case DBG:
+//             // debug_puts((char*)buffer);
+//             kprintf(buffer);
+//             break;
+//         case STD:
+//         default:
+//             // vga_tm_puts(&g_vga_tm_buffer, buffer);
+//             printf(buffer);
+//             break;
+//     }
+// }
 
 void exec(const string& path, const std::dynamic_array<string>& args) {
     switch (hash_fnv1a_64(path.c_str())) {
@@ -88,26 +91,26 @@ void exec(const string& path, const std::dynamic_array<string>& args) {
             // TODO @since 13/10/2025 -- 12:35
             // add dma stuff & reserved memory for the kernel etc
 
-            printf(STD, "Memory allocated:   %s/%s (%i%)\n", str_format_size(used_mem).c_str(), str_format_size(heap->size).c_str(), (int)(((double)used_mem / (double)heap->size) * 100));
-            printf(STD, "Total available:    %s\n", str_format_size(get_global_system_info_manager()->memory_size).c_str());
-            printf(STD, "Total comitted:     %f%\n", (double)(((double)heap->size / (double)get_global_system_info_manager()->memory_size) * 100));
+            printf("Memory allocated:   %s/%s (%i%)\n", str_format_size(used_mem).c_str(), str_format_size(heap->size).c_str(), (int)(((double)used_mem / (double)heap->size) * 100));
+            printf("Total available:    %s\n", str_format_size(get_global_system_info_manager()->memory_size).c_str());
+            printf("Total comitted:     %f%\n", (double)(((double)heap->size / (double)get_global_system_info_manager()->memory_size) * 100));
             break;
         }
         case hash_fnv1a_64("netstat"): {
             for (auto& device : get_global_nidm()->devices) {
-                printf(STD, "%s:\n", device->name.c_str());
-                printf(STD, "    MAC:            %uh:%uh:%uh:%uh:%uh:%uh\n", device->mac[0], device->mac[1], device->mac[2], device->mac[3], device->mac[4], device->mac[5]);
-                printf(STD, "    IPv4:           %u.%u.%u.%u\n", device->ip.byte3, device->ip.byte2, device->ip.byte1, device->ip.byte0);
-                printf(STD, "    Gateway:        %u.%u.%u.%u\n", device->gateway.byte3, device->gateway.byte2, device->gateway.byte1, device->gateway.byte0);
-                printf(STD, "    Subnet mask:    %u.%u.%u.%u\n", device->subnet_mask.byte3, device->subnet_mask.byte2, device->subnet_mask.byte1, device->subnet_mask.byte0);
+                printf("%s:\n", device->name.c_str());
+                printf("    MAC:            %uh:%uh:%uh:%uh:%uh:%uh\n", device->mac[0], device->mac[1], device->mac[2], device->mac[3], device->mac[4], device->mac[5]);
+                printf("    IPv4:           %u.%u.%u.%u\n", device->ip.byte3, device->ip.byte2, device->ip.byte1, device->ip.byte0);
+                printf("    Gateway:        %u.%u.%u.%u\n", device->gateway.byte3, device->gateway.byte2, device->gateway.byte1, device->gateway.byte0);
+                printf("    Subnet mask:    %u.%u.%u.%u\n", device->subnet_mask.byte3, device->subnet_mask.byte2, device->subnet_mask.byte1, device->subnet_mask.byte0);
             }
             break;
         }
         case hash_fnv1a_64("pcistat"): {
             for (auto& device : get_global_pcie_device_manager()->devices) {
                 const char* cd = pci_get_class_description(&device);
-                printf(STD, "[%u:%u.%u] %s:\n", device.bus, device.device, device.function, cd);
-                printf(STD, "    Vendor ID: 0x%uh, Device ID: 0x%uh\n", device.vendor_device_id.vendor_id, device.vendor_device_id.device_id);
+                printf("[%u:%u.%u] %s:\n", device.bus, device.device, device.function, cd);
+                printf("    Vendor ID: 0x%uh, Device ID: 0x%uh\n", device.vendor_device_id.vendor_id, device.vendor_device_id.device_id);
             }
             break;
         }
@@ -121,12 +124,12 @@ void exec(const string& path, const std::dynamic_array<string>& args) {
 
             bool result = vfs_list_directory(get_global_vfs(), arg_path, &entries);
             if (!result) {
-                printf(STD, "Directory not found");
+                printf("Directory not found");
                 break;
             }
 
             for (auto& dir : entries)
-                printf(STD, "%s\n", dir->meta.name.c_str());
+                printf("%s\n", dir->meta.name.c_str());
 
             break;
         }
@@ -140,40 +143,40 @@ void exec(const string& path, const std::dynamic_array<string>& args) {
 
             file_descriptor_t result = vfs_open_file(get_global_vfs(), arg_path);
             if (result == FILE_DESCRIPTOR_INVALID) {
-                printf(STD, "File not found");
+                printf("File not found");
                 break;
             }
 
             std::dynamic_array<uint8_t> data {};
             vfs_read_file(get_global_vfs(), result, &data);
             for (auto& ch : data) {
-                printf(STD, "%c", ch);
+                printf("%c", ch);
             }
-            printf(STD, "\n");
+            printf("\n");
             break;
         }
         case hash_fnv1a_64("help"): {
-            printf(STD, "help                           Displays this help message\n");
-            printf(STD, "memstat                        Memory info\n");
-            printf(STD, "netstat                        Network card info\n");
-            printf(STD, "pcistat                        PCI(e) info\n");
-            printf(STD, "ls                             Lists files and directories\n");
-            printf(STD, "cat                            Display file content\n");
-            printf(STD, "systemstat                     Display system information\n");
-            printf(STD, "diskstat                       Displays disk info\n");
-            printf(STD, "    <path>                     Target disk path\n");
-            printf(STD, "driverquery                    Query drivers for information\n");
-            printf(STD, "    list                       List all drivers\n");
-            printf(STD, "    <name> <feature>           List the capabiliy of a driver feature\n");
+            printf("help                           Displays this help message\n");
+            printf("memstat                        Memory info\n");
+            printf("netstat                        Network card info\n");
+            printf("pcistat                        PCI(e) info\n");
+            printf("ls                             Lists files and directories\n");
+            printf("cat                            Display file content\n");
+            printf("systemstat                     Display system information\n");
+            printf("diskstat                       Displays disk info\n");
+            printf("    <path>                     Target disk path\n");
+            printf("driverquery                    Query drivers for information\n");
+            printf("    list                       List all drivers\n");
+            printf("    <name> <feature>           List the capabiliy of a driver feature\n");
             break;
         }
         case hash_fnv1a_64("driverquery"): {
             if (args.length() >= 1) {
                 auto arg0 = *args.get_at(0);
                 if (arg0 == "list") {
-                    printf(STD, "List of loaded drivers:\n");
+                    printf("List of loaded drivers:\n");
                     for (const auto& driver : get_global_driver_manager()->loaded_drivers)
-                        printf(STD, "    %s\n", driver.value->name.c_str());
+                        printf("    %s\n", driver.value->name.c_str());
                     
                     break;
                 }
@@ -182,18 +185,18 @@ void exec(const string& path, const std::dynamic_array<string>& args) {
                     auto arg1 = *args.get_at(1);
                     system_driver_handle_t handle = driver_manager_get_driver_handle(get_global_driver_manager(), arg0.c_str());
                     if (handle == SYSTEM_DRIVER_HANDLE_INVALID) {
-                        printf(STD, "Invalid driver name\n");
+                        printf("Invalid driver name\n");
                         break;
                     }
 
-                    printf(STD, "%s:\n", arg0.c_str());
+                    printf("%s:\n", arg0.c_str());
                     uint64_t capability = driver_query_capability(get_global_driver_manager(), handle, arg1.c_str());
                     if (capability == MAX_UINT64) {
-                        printf(STD, "    Capability: %s not supported", arg1.c_str());
+                        printf("    Capability: %s not supported", arg1.c_str());
                     } else if (capability == 0) {
-                        printf(STD, "    Capability: %s not implemented", arg1.c_str());
+                        printf("    Capability: %s not implemented", arg1.c_str());
                     } else {
-                        printf(STD, "    Capability: %s version %u", arg1.c_str(), capability);
+                        printf("    Capability: %s version %u", arg1.c_str(), capability);
                     }
                 }
             }
@@ -205,71 +208,71 @@ void exec(const string& path, const std::dynamic_array<string>& args) {
     
                 vfs_storage_info_t storage_info {};
                 if (!vfs_get_disk_info(get_global_vfs(), arg0.c_str(), &storage_info)) {
-                    printf(STD, "Disk or drive not found\n");
+                    printf("Disk or drive not found\n");
                     break;
                 }
     
-                printf(STD, "%s:\n", storage_info.model.c_str());
-                printf(STD, "    Serial: %s\n", storage_info.serial.c_str());
-                printf(STD, "    Firmware: %s\n", storage_info.firmare.c_str());
-                printf(STD, "    Disk size: %s\n", str_format_size(storage_info.capacity).c_str());
+                printf("%s:\n", storage_info.model.c_str());
+                printf("    Serial: %s\n", storage_info.serial.c_str());
+                printf("    Firmware: %s\n", storage_info.firmare.c_str());
+                printf("    Disk size: %s\n", str_format_size(storage_info.capacity).c_str());
             }
             break;
         }
         case hash_fnv1a_64("systemstat"): {
             system_info_manager_t* sysinfo = get_global_system_info_manager();
-            printf(STD, "Host:    %s %s %s %s\n", sysinfo->manufacturer.c_str(), sysinfo->product_name.c_str(), sysinfo->version.c_str(), sysinfo->serial_number.c_str());
-            printf(STD, "CPU:     %s\n", sysinfo->cpu_name.c_str());
-            printf(STD, "Threads: %ul\n", vthread_get_count());
-            printf(STD, "Uptime:  %s\n", str_format_time(clock_get_time_since_boot()).c_str());
+            printf("Host:    %s %s %s %s\n", sysinfo->manufacturer.c_str(), sysinfo->product_name.c_str(), sysinfo->version.c_str(), sysinfo->serial_number.c_str());
+            printf("CPU:     %s\n", sysinfo->cpu_name.c_str());
+            printf("Threads: %ul\n", vthread_get_count());
+            printf("Uptime:  %s\n", str_format_time(clock_get_time_since_boot()).c_str());
             break;
         }
         default:
-            printf(STD, "command not found");
+            printf("command not found");
             break;
     }
 }
 
-std::dynamic_array<char> terminal_current_input {};
+static std::dynamic_array<char> terminal_current_input {};
 bool keep_terminal_alive = true;
 
 void terminal_keydown_callback(virtual_key_t vk) {
     switch (vk) {
         case VK_ENTER: {
-            printf(STD, "\n");
+            printf("\n");
             terminal_current_input.insert_back(0);
 
             auto parts = str_split(terminal_current_input.get_data(), ' ');
             std::dynamic_array<string> args {};
-            args.resize(parts.length() - 1);
+            if (parts.length() > 0)
+                args.resize(parts.length() - 1);
             for (size_t i = 1; i < parts.length(); i++)
                 args.insert_back(*parts.get_at(i));
 
-            if (parts.length() == 0) {
+            if (parts.length() == 0)
                 exec("", {});
-            } else {
+            else
                 exec(*parts.get_at(0), args);
-            }
 
             terminal_current_input.clear();
-            printf(STD, "\n> ");
+            printf("\n> ");
             break;
         }
         case VK_BACKSPACE:
             if (terminal_current_input.length() > 0) {
-                printf(STD, "%c", '\b');
+                printf("%c", '\b');
                 terminal_current_input.delete_at(terminal_current_input.length() - 1);
             }
             break;
         case VK_TAB:
             for (size_t i = 0; i < 4; i++) {
-                printf(STD, " ");
+                printf(" ");
                 terminal_current_input.insert_back(' ');
             }
             break;
         default:
             if (char ch = vk_to_ascii(vk, holding_shift(), holding_caps())) {
-                printf(STD, "%c", ch);
+                printf("%c", ch);
                 terminal_current_input.insert_back(ch);
             }
             break;
@@ -277,16 +280,16 @@ void terminal_keydown_callback(virtual_key_t vk) {
 }
 
 int terminal() {
-    printf(STD, "VirtualReflectionsOS Interacive Terminal [v0.1:%s]\n", GIT_COMMIT_HASH);
-    printf(STD, "System booted succesfully\n");
-    printf(STD, "Type 'help' for a list of commands.\n");
+    printf("VirtualReflectionsOS Interacive Terminal [v0.1:%s]\n", GIT_COMMIT_HASH);
+    printf("System booted succesfully\n");
+    printf("Type 'help' for a list of commands.\n");
 
     if (!ps2_port_test_device(ps2_device_type_t::KEYBOARD)) {
-        printf(STD, "\nNo keyboard found, exiting ...\n");
+        printf("\nNo keyboard found, exiting ...\n");
         return 1;
     }
 
-    printf(STD, "\n> ");
+    printf("\n> ");
     subscribe_on_key_down(terminal_keydown_callback);
     while (keep_terminal_alive) {}
     return 0;
@@ -351,6 +354,19 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
     set_global_vfs(&vfs);
     vfs_create_directory(get_global_vfs(), "/mnt");
     vfs_create_directory(get_global_vfs(), "/dev");
+    vfs_create_directory(get_global_vfs(), "/pipe");
+
+    auto dbg_stream = std::make_unique<vfs_out_stream_interface>(debug_puts);
+    vfs_mount(get_global_vfs(), "/dev/dbg", move(dbg_stream));
+
+    auto std_out_writer = [](const char* str) {
+        // todo check vga mode
+        vga_tm_puts(&g_vga_tm_buffer, str);
+    };
+
+    auto vga_stream = std::make_unique<vfs_out_stream_interface>(std_out_writer);
+    vfs_mount(get_global_vfs(), "/pipe/std/0", move(vga_stream));
+    vthread_get_tls()->out_streams[IO_TLS_STD_OUT] = vfs_open_file(get_global_vfs(), "/pipe/std/0/stream");
 
     // finished core startup
 
@@ -386,9 +402,9 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
         sprintf(disk_mount_name_buffer, 20, "/mnt/disk%i", ide_device_index++);
 
         if (!mount_disk(move(ide_storage), disk_mount_name_buffer)) {
-            printf(DBG, "failed to mount disk: %s\n", disk_mount_name_buffer);
+            kprintf("failed to mount disk: %s\n", disk_mount_name_buffer);
         } else {
-            printf(DBG, "mounted: %s\n", disk_mount_name_buffer);
+            kprintf("mounted: %s\n", disk_mount_name_buffer);
         }
     }
 
@@ -408,9 +424,9 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
             sprintf(disk_mount_name_buffer, 20, "/mnt/drive%i", ahci_device_index++);
 
             if (!mount_disk(move(ahci_storage), disk_mount_name_buffer)) {
-                printf(DBG, "failed to mount drive: %s\n", disk_mount_name_buffer);
+                kprintf("failed to mount drive: %s\n", disk_mount_name_buffer);
             } else {
-                printf(DBG, "mounted: %s\n", disk_mount_name_buffer);
+                kprintf("mounted: %s\n", disk_mount_name_buffer);
             }
         }
     }
@@ -441,43 +457,43 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
                 std::dynamic_array<uint8_t> driver_file {};
                 file_descriptor_t driver_file_handle = vfs_open_file(get_global_vfs(), string("/mnt/disk0/") + driver_name + ".sys");
                 if (driver_file_handle == FILE_DESCRIPTOR_INVALID) {
-                    printf(DBG, "failed to open handle to driver '%s'\n", driver_name.c_str());
+                    kprintf("failed to open handle to driver '%s'\n", driver_name.c_str());
                     continue;
                 }
 
                 if (!vfs_read_file(get_global_vfs(), driver_file_handle, &driver_file)) {
-                    printf(DBG, "failed to read driver '%s'\n", driver_name.c_str());
+                    kprintf("failed to read driver '%s'\n", driver_name.c_str());
                     continue;
                 }
 
                 system_driver_handle_t driver_handle = driver_load(get_global_driver_manager(), driver_name.c_str(), driver_file.get_data());
                 if (driver_handle == SYSTEM_DRIVER_HANDLE_INVALID) {
-                    printf(DBG, "failed to load driver '%s'\n", driver_name.c_str());
+                    kprintf("failed to load driver '%s'\n", driver_name.c_str());
                     continue;
                 }
 
                 int result = driver_start(get_global_driver_manager(), driver_handle);
                 if (result != 0) {
-                    printf(DBG, "failed to start driver '%s'. code: %i\n", driver_name.c_str(), result);
+                    kprintf("failed to start driver '%s'. code: %i\n", driver_name.c_str(), result);
                     continue;
                 }
 
-                printf(DBG, "loaded driver '%s'. code: %i\n", driver_name.c_str(), result);
+                kprintf("loaded driver '%s'. code: %i\n", driver_name.c_str(), result);
             }
         }
     }
 
     if (driver_query_capability(get_global_driver_manager(), driver_manager_get_driver_handle(get_global_driver_manager(), "INetDrivers"), "dhcp") >= 1) {
         if (vthread_create(dhcp_client_thread, p_kpml4) == VTHREAD_HANDLE_INVALID)
-            printf(DBG, "failed to start DHCP client\n");
+            kprintf("failed to start DHCP client\n");
     }
 
     auto net_test = []() {
         auto tcp_callback = [](const uint8_t* data, size_t size) {
             for (size_t i = 0; i < size; i++)
-                printf(DBG, "%c", data[i]);
+                kprintf("%c", data[i]);
 
-            printf(DBG, "\n");
+            kprintf("\n");
         };
 
         while (!dhcp_client_is_configured(get_global_dhcp_context()));
@@ -485,7 +501,7 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
         auto conn = tcp_connect(TO_IP(192, 168, 178, 219), 8090, tcp_callback);
 
         if (conn->state != tcp_state_t::ESTABLISHED) {
-            printf(DBG, "failed to make tcp connection\n");
+            kprintf("failed to make tcp connection\n");
             return 1;
         }
 
@@ -494,7 +510,7 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
             "Connection: close\r\n"
             "User-Agent: virtual reflections e0\r\n"
             "\r\n";
-        printf(DBG, "[HTTP] Sending request:\n%s", http_request);
+        kprintf("[HTTP] Sending request:\n%s", http_request);
         tcp_send_packet((uint8_t*)http_request, strlen(http_request), TCP_FLAG_ACK | TCP_FLAG_PSH, conn);
         return 0;
     };
@@ -502,20 +518,20 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
     vthread_create(net_test, p_kpml4);
 
     // kernel finished
-    printf(DBG, "kernel finished initializing\n");
+    kprintf("kernel finished initializing\n");
 
     // if (vthread_create(desktop_init, p_kpml4) == VTHREAD_HANDLE_INVALID)
-    //     printf(DBG, "failed to create desktop thread\n");
+    //     kprintf("failed to create desktop thread\n");
     
     // while (!is_desktop_ready());
     // minesweeper_init();
 
     vthread_handle_t vth = vthread_create(terminal, p_kpml4);
     if (vth == VTHREAD_HANDLE_INVALID) {
-        printf(DBG, "failed to start terminal");
+        kprintf("failed to start terminal");
     } else {
         vthread_wait_for_close(vth);
-        printf(DBG, "terminal closed\n");
+        kprintf("terminal closed\n");
     }
 
     // we shoudn t reach this point since the kernel should never stop

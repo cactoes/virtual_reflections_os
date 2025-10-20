@@ -3,13 +3,7 @@
 #include "utils/bitmap.hpp"
 #include "crash_handler.hpp"
 #include "arch/interrupt.hpp"
-
-enum print_mode_t {
-    STD,
-    DBG
-};
-
-extern void printf(print_mode_t mode, const char* p_str, ...);
+#include "io.hpp"
 
 static linear_map<interrupt_t, interrupt_callback_t> g_interrupt_callbacks {};
 
@@ -99,6 +93,6 @@ void* handle_interrupt(uint64_t code, cpu_state_t* p_rsp) {
         }
     }
 
-    printf(DBG, "unhandled interrupt triggerd: 0x%uh\n", code);
+    kprintf("unhandled interrupt triggerd: 0x%uh\n", code);
     return p_rsp;
 }

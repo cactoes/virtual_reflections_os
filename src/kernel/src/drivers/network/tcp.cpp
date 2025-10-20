@@ -3,13 +3,7 @@
 #include "utils/vector.hpp"
 #include "std/random.hpp"
 #include "time/clock.hpp"
-
-enum print_mode_t {
-    STD,
-    DBG
-};
-
-extern void printf(print_mode_t mode, const char* p_str, ...);
+#include "io.hpp"
 
 linked_list<std::unique_ptr<tcp_connection_t>> connections {};
 
@@ -137,7 +131,7 @@ bool tcp_send_packet(uint8_t* p_payload, size_t payload_length, uint8_t flags, t
         return false;
 
     if (payload_length > 1460) {
-        printf(DBG, "[INET - TCP] payload too large (%zu bytes)\n", payload_length);
+        kprintf("[INET - TCP] payload too large (%zu bytes)\n", payload_length);
         return false;
     }
 
@@ -182,7 +176,7 @@ bool tcp_send_packet(uint8_t* p_payload, size_t payload_length, uint8_t flags, t
 
 void tcp_receive(network_interface_device_t* device, uint8_t* payload, size_t payload_length, uint32_t src_ip) {
     if (payload_length < sizeof(tcp_header_t)) {
-        printf(DBG, "[INET - TCP: %s] packet too small\n", device->name.c_str());
+        kprintf("[INET - TCP: %s] packet too small\n", device->name.c_str());
         return;
     }
 
@@ -196,11 +190,11 @@ void tcp_receive(network_interface_device_t* device, uint8_t* payload, size_t pa
     uint8_t flags = header->flags;
     uint16_t window = net_to_host(header->window);
 
-    // printf(DBG, "[INET - TCP: %s] got tcp packet for from: %u.%u.%u.%u:%u\n", device->name.c_str(), (src_ip >> 24) & 0xff, (src_ip >> 16) & 0xff, (src_ip >> 8) & 0xff, src_ip & 0xff, src_port);
+    // kprintf("[INET - TCP: %s] got tcp packet for from: %u.%u.%u.%u:%u\n", device->name.c_str(), (src_ip >> 24) & 0xff, (src_ip >> 16) & 0xff, (src_ip >> 8) & 0xff, src_ip & 0xff, src_port);
 
     size_t header_len = data_offset * 4;
     if (header_len > payload_length) {
-        printf(DBG, "[INET - TCP: %s] invalid header length\n", device->name.c_str());
+        kprintf("[INET - TCP: %s] invalid header length\n", device->name.c_str());
         return;
     }
 
@@ -231,7 +225,7 @@ void tcp_receive(network_interface_device_t* device, uint8_t* payload, size_t pa
     // FIXME @since 23/09/2025 -- 18:21
     // for now if we dont have a specific listener just close the connection
     if (!connection) {
-        printf(DBG, "[INET - TCP: %s] no handler\n", device->name.c_str());
+        kprintf("[INET - TCP: %s] no handler\n", device->name.c_str());
         tcp_send_packet(nullptr, 0, TCP_FLAG_RST, nullptr);
         return;
     }
@@ -252,7 +246,7 @@ void tcp_receive(network_interface_device_t* device, uint8_t* payload, size_t pa
             connection->iss = (uint32_t)random_number(0, MAX_UINT32 - 1);
             connection->snd_nxt = connection->iss;
             connection->state = tcp_state_t::SYN_RECEIVED;
-            printf(DBG, "[INET - TCP: %s] incoming connection attempt\n", device->name.c_str());
+            kprintf("[INET - TCP: %s] incoming connection attempt\n", device->name.c_str());
             if (!tcp_send_packet(nullptr, 0, TCP_FLAG_SYN | TCP_FLAG_ACK, connection))
                 connection->state = tcp_state_t::LISTEN;
             break;
@@ -265,7 +259,7 @@ void tcp_receive(network_interface_device_t* device, uint8_t* payload, size_t pa
             connection->state = tcp_state_t::ESTABLISHED;
             connection->rcv_nxt = seq_num + 1;
             connection->snd_una = ack_num;
-            printf(DBG, "[INET - TCP: %s] accepted incoming connection\n", device->name.c_str());
+            kprintf("[INET - TCP: %s] accepted incoming connection\n", device->name.c_str());
             tcp_send_packet(nullptr, 0, TCP_FLAG_ACK, connection);
             break;
         case tcp_state_t::SYN_RECEIVED:
@@ -273,11 +267,11 @@ void tcp_receive(network_interface_device_t* device, uint8_t* payload, size_t pa
                 break;
 
             if (ack_num != connection->snd_nxt) {
-                printf(DBG, "[INET - TCP: %s] invalid ACK number, expected %u got %u\n", device->name.c_str(), connection->snd_nxt, ack_num);
+                kprintf("[INET - TCP: %s] invalid ACK number, expected %u got %u\n", device->name.c_str(), connection->snd_nxt, ack_num);
                 break;
             }
 
-            printf(DBG, "[INET - TCP: %s] connection established!\n", device->name.c_str());
+            kprintf("[INET - TCP: %s] connection established!\n", device->name.c_str());
             connection->state = tcp_state_t::ESTABLISHED;
             connection->snd_una = ack_num;
             break;
@@ -308,7 +302,7 @@ void tcp_receive(network_interface_device_t* device, uint8_t* payload, size_t pa
             }
         break;
         default:
-            printf(DBG, "[INET - TCP: %s] unhandled connection state\n", device->name.c_str());
+            kprintf("[INET - TCP: %s] unhandled connection state\n", device->name.c_str());
             break;
     }
 }

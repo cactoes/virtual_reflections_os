@@ -3,13 +3,7 @@
 #include "arch/generic.hpp"
 #include "memory/vmem.hpp"
 #include "interrupt_manager.hpp"
-
-enum print_mode_t {
-    STD,
-    DBG
-};
-
-extern void printf(print_mode_t mode, const char* p_str, ...);
+#include "io.hpp"
 
 static heap_t g_e1000_dma_heap {};
 static e1000_t* g_e1000 = nullptr;
@@ -236,7 +230,7 @@ cpu_state_t* e1000_handle_interrupt(cpu_state_t* p_rsp) {
     // link status changed interrupt
     if (icr & E1000_IMS_LSC) {
         uint32_t status = e1000_read_reg(p_device, E1000_STATUS);
-        printf(DBG, "Link status changed: 0x%uh\n", status);
+        kprintf("Link status changed: 0x%uh\n", status);
     }
 
     return p_rsp;

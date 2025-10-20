@@ -1,12 +1,6 @@
 #include "drivers/network/icmp.hpp"
 #include "drivers/network/ip.hpp"
-
-enum print_mode_t {
-    STD,
-    DBG
-};
-
-extern void printf(print_mode_t mode, const char* p_str, ...);
+#include "io.hpp"
 
 void icmp_receive(network_interface_device_t* p_device, uint8_t* p_payload, size_t len) {
     if (len < sizeof(icmp_header_t))
@@ -17,7 +11,7 @@ void icmp_receive(network_interface_device_t* p_device, uint8_t* p_payload, size
     icmp_header_t* icmp = (icmp_header_t*)p_payload;
 
     if (icmp->type == 8) {
-        printf(DBG, "[INET - ICMP: %s] get echo request\n", p_device->name.c_str());
+        kprintf("[INET - ICMP: %s] get echo request\n", p_device->name.c_str());
 
         uint8_t reply_buf[1500];
         icmp_header_t* icmp_reply = (icmp_header_t*)reply_buf;

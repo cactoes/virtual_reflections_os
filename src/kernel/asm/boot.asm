@@ -108,6 +108,6 @@ KPML4:     resb 4096
 KPDP:      resb 4096
 KPD:       resb 4096
 
-; 256 kb of kernel stack
-KSTACK_BOTTOM: resb 4096 * 64
+; 1024 kb of kernel stack
+KSTACK_BOTTOM: resb 1024 * 1024
 KSTACK_TOP:

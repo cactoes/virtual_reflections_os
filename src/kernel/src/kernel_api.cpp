@@ -3,16 +3,10 @@
 #include "time/clock.hpp"
 #include "drivers/network/nidm.hpp"
 #include "drivers/network/udp.hpp"
-
-enum print_mode_t {
-    STD,
-    DBG
-};
-
-extern void printf(print_mode_t mode, const char* p_str, ...);
+#include "io.hpp"
 
 void kprint(const char* str) {
-    printf(DBG, "[DRIVER] %s\n", str);
+    kprintf("[DRIVER] %s\n", str);
 }
 
 uint64_t ktime_since_boot() {

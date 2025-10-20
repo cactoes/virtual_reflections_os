@@ -1,0 +1,44 @@
+#include "io.hpp"
+#include "virtual_thread.hpp"
+
+bool write_stream(io_stream_t stream, const char* str) {
+    file_descriptor_t stream_fd = FILE_DESCRIPTOR_INVALID;
+    
+    if (stream == io_stream_t::STD_OUT || stream == io_stream_t::STD_ERR || stream == io_stream_t::STD_WRN) {
+        tls_base_t* tls = vthread_get_tls();
+        stream_fd = tls->out_streams[ABS((int)stream) - 1];
+    }
+
+    if (stream == io_stream_t::STD_DBG)
+        stream_fd = vfs_open_file(get_global_vfs(), "/dev/dbg/stream");
+
+    if (stream_fd == FILE_DESCRIPTOR_INVALID)
+        return false;
+
+    std::dynamic_array<uint8_t> data {};
+    data.assign((const uint8_t*)str, strlen(str));
+    data.insert_back('\0');
+    return vfs_write_file(get_global_vfs(), stream_fd, &data);
+}
+
+void printf(const char* str, ...) {
+    char buffer[256] = { 0 };
+
+    va_list args;
+    va_start(args, str);
+    sprintf(buffer, (unsigned long int)sizeof(buffer), str, args);
+    va_end(args);
+
+    write_stream(io_stream_t::STD_OUT, buffer);
+}
+
+void kprintf(const char* str, ...) {
+    char buffer[256] = { 0 };
+
+    va_list args;
+    va_start(args, str);
+    sprintf(buffer, (unsigned long int)sizeof(buffer), str, args);
+    va_end(args);
+
+    write_stream(io_stream_t::STD_DBG, buffer);
+}

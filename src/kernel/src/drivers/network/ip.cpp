@@ -4,13 +4,7 @@
 #include "drivers/network/udp.hpp"
 #include "drivers/network/arp.hpp"
 #include "drivers/network/tcp.hpp"
-
-enum print_mode_t {
-    STD,
-    DBG
-};
-
-extern void printf(print_mode_t mode, const char* p_str, ...);
+#include "io.hpp"
 
 void ip_receive(network_interface_device_t* p_device, uint8_t* p_packet, size_t size) {
     ip_header_t* ip = (ip_header_t*)p_packet;
@@ -74,7 +68,7 @@ bool ip_send(network_interface_device_t* p_device, uint32_t dst_ip, uint8_t prot
     if (dst_ip == TO_IP(255, 255, 255, 255)) {
         memset(&dst_mac[0], 0xFF, 6);
     } else if (!arp_lookup(next_net_hop_ip, dst_mac)) {
-        printf(DBG, "[INET - IP: %s] arp lookup for %u.%u.%u.%u\n", p_device->name.c_str(), (next_net_hop_ip >> 24) & 0xff, (next_net_hop_ip >> 16) & 0xff, (next_net_hop_ip >> 8) & 0xff, (next_net_hop_ip) & 0xff);
+        kprintf("[INET - IP: %s] arp lookup for %u.%u.%u.%u\n", p_device->name.c_str(), (next_net_hop_ip >> 24) & 0xff, (next_net_hop_ip >> 16) & 0xff, (next_net_hop_ip >> 8) & 0xff, (next_net_hop_ip) & 0xff);
         arp_discover_request_ipv4(p_device, next_net_hop_ip);
         return false;
     }

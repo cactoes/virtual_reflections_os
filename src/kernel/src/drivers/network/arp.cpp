@@ -2,13 +2,7 @@
 #include "drivers/network/ethernet.hpp"
 #include "time/clock.hpp"
 #include "utils/map.hpp"
-
-enum print_mode_t {
-    STD,
-    DBG
-};
-
-extern void printf(print_mode_t mode, const char* p_str, ...);
+#include "io.hpp"
 
 static linear_map<uint32_t, arp_table_entry_t> g_address_lookup_table {};
 
@@ -49,7 +43,7 @@ void arp_receive(network_interface_device_t* p_device, uint8_t* p_packet, size_t
     }
 
     if (net_to_host(arp_packet->operation) == 1 && ntohl(arp_packet->target_ip) == p_device->ip.raw) {
-        printf(DBG, "[INET - ARP: %s] arp lookup for us\n", p_device->name.c_str());
+        kprintf("[INET - ARP: %s] arp lookup for us\n", p_device->name.c_str());
 
         arp_packet_t arp_reply {};
         arp_reply.harware_type = host_to_net<uint16_t>(1);
@@ -68,7 +62,7 @@ void arp_receive(network_interface_device_t* p_device, uint8_t* p_packet, size_t
     }
 
     if (net_to_host(arp_packet->operation) == 2) {
-        printf(DBG, "[INET - ARP: %s] new arp table entry\n", p_device->name.c_str());
+        kprintf("[INET - ARP: %s] new arp table entry\n", p_device->name.c_str());
         arp_table_insert(net_to_host(arp_packet->sender_ip), arp_packet->sender_hw);
     }
 }

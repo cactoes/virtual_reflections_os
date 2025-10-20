@@ -1,12 +1,6 @@
 #include "drivers/network/udp.hpp"
 #include "drivers/network/ip.hpp"
-
-enum print_mode_t {
-    STD,
-    DBG
-};
-
-extern void printf(print_mode_t mode, const char* p_str, ...);
+#include "io.hpp"
 
 void udp_receive(network_interface_device_t* p_device, uint8_t* p_payload, size_t payload_length) {
     udp_header_t* header = (udp_header_t*)p_payload;
@@ -16,7 +10,7 @@ void udp_receive(network_interface_device_t* p_device, uint8_t* p_payload, size_
     uint16_t checksum = net_to_host(header->checksum);
 
     if (length != payload_length)
-        printf(DBG, "[INET - UDP: %s] payload length mismatch!\n", p_device->name.c_str());
+        kprintf("[INET - UDP: %s] payload length mismatch!\n", p_device->name.c_str());
 
     uint8_t* udp_payload = p_payload + sizeof(udp_header_t);
     size_t udp_payload_length = payload_length - sizeof(udp_header_t);
