@@ -291,7 +291,7 @@ int terminal() {
 
     printf("\n> ");
     subscribe_on_key_down(terminal_keydown_callback);
-    while (keep_terminal_alive) {}
+    while (keep_terminal_alive);
     return 0;
 }
 

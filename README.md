@@ -2,6 +2,12 @@
 A 64-bit custom made operating system, using grub as bootloader
 
 ## TODO
+- [ ] rethink vfs "layout"
+- [ ] rework keyboarc controller -> move to io etc..
+- [ ] subsystem manager
+- [ ] drive / disk manager
+- [ ] processes (kernel mode)
+- [ ] work on vthreads
 - [ ] fat32
     - [x] read
     - [ ] write
