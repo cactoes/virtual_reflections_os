@@ -3,7 +3,7 @@ A 64-bit custom made operating system, using grub as bootloader
 
 ## TODO
 - [ ] rethink vfs "layout"
-- [ ] rework keyboarc controller -> move to io etc..
+- [ ] rework keyboard controller -> move to io etc..
 - [ ] subsystem manager
 - [ ] drive / disk manager
 - [ ] processes (kernel mode)
@@ -18,10 +18,10 @@ A 64-bit custom made operating system, using grub as bootloader
 PS> .\docker_install.ps1
 ```
 
-## Setup windows TAP network
+## Setup windows TAP network (optional)
 Make sure to have openVPN for the tap interface.
-1. Rename the tap interface to tap0
-2. Change its ip to: `10.0.2.1`
+1. Rename the tap interface to: `tap0`
+2. Change its ip to: `10.0.2.2`
 3. Change its subnet mask to: `255.255.255.0`
 
 ## Building the ISO

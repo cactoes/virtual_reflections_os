@@ -1,4 +1,15 @@
+/*
+* DHCP 1:
+* * basic functionality for getting an ip, gateway & subnet mask
+*     - discover -> offer -> request -> acknowlege
+* * functionality for extending a lease
+*     - not automatic, functionally is there
+*/
 #define DHCP_VERSION    1
+
+/*
+* E1000 1:
+*/
 #define E1000_VERSION   0
 
 #include "common.hpp"
