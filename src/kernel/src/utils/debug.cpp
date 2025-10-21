@@ -25,3 +25,10 @@ void debug_puts(const char* p_str) {
     while (*p_ptr)
         debug_putc(*p_ptr++);
 }
+
+void debug_trap(const char* msg) {
+    debug_puts("[debug trap hit: ");
+    debug_puts(msg);
+    debug_puts("]");
+    halt();
+}

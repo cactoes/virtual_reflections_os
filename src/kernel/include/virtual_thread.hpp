@@ -26,7 +26,7 @@ typedef int(*thread_entry_t)();
 
 struct tls_base_t {
     vthread_handle_t handle;
-    file_descriptor_t out_streams[3];
+    file_descriptor_t out_streams[3] { FILE_DESCRIPTOR_INVALID, FILE_DESCRIPTOR_INVALID, FILE_DESCRIPTOR_INVALID };
 };
 
 enum class vthread_state_t {
@@ -49,15 +49,17 @@ struct vthread_t {
     void* pml4;
 };
 
-/// @brief      start the main virtual thread & perform initial setup
-/// @return     handle to the newly created main virtual thread
-vthread_handle_t vthread_start_and_setup_main();
+/// @brief                  start the main virtual thread & perform initial setup
+/// @param[in] out_streams  std: in, err, wrn
+/// @return                 handle to the newly created main virtual thread
+vthread_handle_t vthread_start_and_setup_main(file_descriptor_t out_streams[3]);
 
 /// @brief                      create a new vthread
 /// @param[in] p_thread_entry   entry point function for the new thread
 /// @param[in] pml4             pointer to the pml4 for the thread address space
+/// @param[in] out_streams      std: in, err, wrn
 /// @return                     handle to the created vthread
-vthread_handle_t vthread_create(thread_entry_t p_thread_entry, void* pml4);
+vthread_handle_t vthread_create(thread_entry_t p_thread_entry, void* pml4, file_descriptor_t out_streams[3]);
 
 /// @brief                      handles a vthread interrupt & updates cpu state
 /// @param[in] p_cpu_state      pointer to the current cpu state

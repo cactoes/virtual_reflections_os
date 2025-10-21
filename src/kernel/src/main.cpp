@@ -336,19 +336,7 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
     ps2_mouse_init();
     pit_init(PIT_TIMER_INTERVAL);
     interrupt_init(gdt_get_kernel_code_selector());
-
-    // initialize threading
-    if (vthread_start_and_setup_main() == VTHREAD_HANDLE_INVALID)
-        kernel_fatal(KERNEL_FATAL_VTHREAD_INIT, "virtual threads failed to intialize");
-
-    pit_add_interrupt_function(vthread_handle_interrupt);
-
-    system_info_manager_t sim {};
-    set_global_system_info_manager(&sim);
-    system_info_parse_memory_size(get_global_system_info_manager(), (multiboot_t*)p_multiboot_struct);
-    system_info_parse_system_information(get_global_system_info_manager());
-    system_info_get_cpu_name(get_global_system_info_manager());
-
+    
     vfs_t vfs {};
     vfs_init(&vfs);
     set_global_vfs(&vfs);
@@ -366,7 +354,24 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
 
     auto vga_stream = std::make_unique<vfs_out_stream_interface>(std_out_writer);
     vfs_mount(get_global_vfs(), "/pipe/std/0", move(vga_stream));
-    vthread_get_tls()->out_streams[IO_TLS_STD_OUT] = vfs_open_file(get_global_vfs(), "/pipe/std/0/stream");
+    
+    file_descriptor_t out_streams[3] {
+        vfs_open_file(get_global_vfs(), "/pipe/std/0/stream"),
+        FILE_DESCRIPTOR_INVALID,
+        FILE_DESCRIPTOR_INVALID
+    };
+
+    // initialize threading
+    if (vthread_start_and_setup_main(out_streams) == VTHREAD_HANDLE_INVALID)
+        kernel_fatal(KERNEL_FATAL_VTHREAD_INIT, "virtual threads failed to intialize");
+
+    pit_add_interrupt_function(vthread_handle_interrupt);
+
+    system_info_manager_t sim {};
+    set_global_system_info_manager(&sim);
+    system_info_parse_memory_size(get_global_system_info_manager(), (multiboot_t*)p_multiboot_struct);
+    system_info_parse_system_information(get_global_system_info_manager());
+    system_info_get_cpu_name(get_global_system_info_manager());
 
     // finished core startup
 
@@ -484,7 +489,7 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
     }
 
     if (driver_query_capability(get_global_driver_manager(), driver_manager_get_driver_handle(get_global_driver_manager(), "INetDrivers"), "dhcp") >= 1) {
-        if (vthread_create(dhcp_client_thread, p_kpml4) == VTHREAD_HANDLE_INVALID)
+        if (vthread_create(dhcp_client_thread, p_kpml4, out_streams) == VTHREAD_HANDLE_INVALID)
             kprintf("failed to start DHCP client\n");
     }
 
@@ -515,7 +520,7 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
         return 0;
     };
 
-    vthread_create(net_test, p_kpml4);
+    vthread_create(net_test, p_kpml4, out_streams);
 
     // kernel finished
     kprintf("kernel finished initializing\n");
@@ -526,7 +531,7 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
     // while (!is_desktop_ready());
     // minesweeper_init();
 
-    vthread_handle_t vth = vthread_create(terminal, p_kpml4);
+    vthread_handle_t vth = vthread_create(terminal, p_kpml4, out_streams);
     if (vth == VTHREAD_HANDLE_INVALID) {
         kprintf("failed to start terminal");
     } else {

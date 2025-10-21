@@ -35,10 +35,12 @@
 void debug_init();
 void debug_putc(const char ch);
 void debug_puts(const char* p_str);
+void debug_trap(const char* str);
 #else
 #define debug_init()
 #define debug_putc(x)
 #define debug_puts(x, ...)
+#define debug_trap(x)
 #endif
 
 #endif // __UTILS_DEBUG_HPP__

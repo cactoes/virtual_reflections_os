@@ -205,4 +205,25 @@ const vfs_node_meta_t* vfs_get_meta(vfs_t* vfs, file_descriptor_t fd);
 bool vfs_list_directory(vfs_t* vfs, const string& path, std::dynamic_array<vfs_node_t*>* out_array);
 bool vfs_get_disk_info(vfs_t* vfs, const string& path, vfs_storage_info_t* disk_info);
 
+/*
+// void open_file("/COM/x"); // void open_file("/pipe/x");
+
+1. select driver based on path
+2. based on driver check operation etc
+if disk -> select storage driver
+
+- void open_file("/device/x");
+    -> select file system driver
+
+- fat32 / iso9660 / ...
+    -> select storage driver
+
+- usb / sata / ide
+    -> perform read
+
+- void open_file("/pipe/x");
+    -> select pipe driver
+    -> write to named pipe
+*/
+
 #endif // __FILESYSTEMS_VFS_HPP__

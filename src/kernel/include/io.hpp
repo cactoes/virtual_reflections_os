@@ -8,8 +8,6 @@
 #ifndef __IO_HPP__
 #define __IO_HPP__
 
-#define IO_TLS_STD_OUT 0
-
 #include "common.hpp"
 
 enum class io_stream_t {

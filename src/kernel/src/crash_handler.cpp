@@ -10,10 +10,12 @@ void __kernel_fatal(uint64_t code, const char* p_message, cpu_state_t* p_cpu_sta
     kprintf("kernel fatal triggerd: 0x%uh \"%s\"\n", code, p_message);
 
     // if not main thread just terminate the thread not the system
-    vthread_handle_t vth = vthread_get_tls()->handle;
-    if (vth != VTHREAD_MAIN_THREAD_HANDLE) {
-        kprintf("thread: %ul terminated (crashed or forcefully stopped)\n", vth);
-        vthread_terminate(vth);
+    // & if a valid tls is setup
+    if (auto tls = vthread_get_tls()) {
+        if (tls->handle != VTHREAD_MAIN_THREAD_HANDLE) {
+            kprintf("thread: %ul terminated (crashed or forcefully stopped)\n", tls->handle);
+            vthread_terminate(tls->handle);
+        }
     }
 
     vga_tm_color_map_t color {};
