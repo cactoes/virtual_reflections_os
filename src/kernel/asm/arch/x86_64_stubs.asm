@@ -143,39 +143,16 @@ x86_64_memcpy:
 ; @param rdi, in            dst
 ; @param rsi, in            value
 ; @param rdx, in            length
+; @return rax               ?
 ; @remarks                  destroyed registers: ?
 ;==========================================
 align 32
 x86_64_memset:
-    mov     rax, rdi
-    test    rdx, rdx
-    jz      .done
-
-    movzx   rcx, sil
-    imul    rcx, 0x0101010101010101
-
-    cmp     rdx, 8
-    jb      .tiny_fill
-
-    mov     r8, rdx
-    shr     r8, 3
-.fill_qwords:
-    mov     [rdi], rcx
-    add     rdi, 8
-    dec     r8
-    jnz     .fill_qwords
-
-    and     rdx, 7
-    jz      .done
-.tiny_fill:
-    mov     r8, rdx
-.fill_bytes:
-    mov     [rdi], sil
-    inc     rdi
-    dec     r8
-    jnz     .fill_bytes
-
-.done:
+    push    rdi
+    mov     rcx, rdx
+    movzx   rax, sil
+    rep     stosb
+    pop     rax
     ret
 
 ;==========================================
