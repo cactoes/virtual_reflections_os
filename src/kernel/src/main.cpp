@@ -54,6 +54,16 @@
 
 void exec(const string& path, const std::dynamic_array<string>& args) {
     switch (hash_fnv1a_64(path.c_str())) {
+        case hash_fnv1a_64("memdump"): {
+            auto heap = get_global_heap();
+            for (size_t i = 0; i < heap->heap_block_array_size; i++) {
+                heap_block_t* block = &heap->heap_block_array[i];
+                if (block->used && block->size > 100 && !block->free) {
+                    kprintf("%c %p-%p (%s)\n", block->free ? 'f' : 'u', block->start_real_addr, (void*)((uint64_t)block->start_real_addr + block->size), str_format_size(block->size).c_str());
+                }
+            }
+            break;
+        }
         case hash_fnv1a_64("memstat"): {
             auto heap = get_global_heap();
             size_t used_mem = 0;

@@ -336,6 +336,8 @@ bool vfs_write_file(vfs_t* vfs, file_descriptor_t fd, uint8_t* content, size_t s
 
     vfs_storage_interface_t* storage_interface = vfs_get_storage_interface(vfs, it->value);
     string relative_path = vfs_translate_to_backend_path(vfs, it->value);
+    if (!storage_interface || (uint64_t)storage_interface < 0x1000)
+        debug_trap("bad storage_interface");
     return storage_interface->write_file(relative_path, content, size);
 }
 
