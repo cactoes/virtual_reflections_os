@@ -26,12 +26,12 @@ void vthread_entry_point(thread_entry_t p_thread_entry) {
     while (true);
 }
 
-void vthread_set_next_thead() {
-    auto current_thread_it = g_threads.get(g_current_thread->handle);
-    if (current_thread_it.advance() == g_threads.end())
+vthread_t* vthread_get_next_thead(vthread_handle_t handle) {
+    auto current_thread_it = g_threads.get(handle);
+    if (current_thread_it == g_threads.end() || current_thread_it.advance() == g_threads.end())
         current_thread_it = g_threads.begin();
     
-    g_current_thread = current_thread_it->value.get();
+    return current_thread_it->value.get();
 }
 
 void vthread_handle_sleeping(vthread_t* p_vthread) {
@@ -157,17 +157,13 @@ cpu_state_t* vthread_schedule(cpu_state_t* p_cpu_state) {
     g_current_thread->stack = (void*)p_cpu_state;
 
     do {
-        vthread_set_next_thead();
+        g_current_thread = vthread_get_next_thead(g_current_thread->handle);
         switch (g_current_thread->vt_state) {
             case vthread_state_t::STARTING: vthread_handle_starting(g_current_thread); break;
             case vthread_state_t::SLEEPING: vthread_handle_sleeping(g_current_thread); break;
             case vthread_state_t::STOPPING: {
-                uint64_t addr = (uint64_t)g_current_thread;
                 vthread_handle_stopping(g_current_thread);
-                // BUG @since 21/10/2025 -- 21:19
-                // use after free *sometimes* gets triggered here
-                if (g_current_thread != 0x0 || (uint64_t)g_current_thread != addr)
-                    debug_trap("use after free!");
+                g_current_thread = vthread_get_next_thead(VTHREAD_HANDLE_INVALID);
                 break;
             }
             case vthread_state_t::RUNNING: {
