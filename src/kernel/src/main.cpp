@@ -52,32 +52,6 @@
 #define HEAP_START_SIZE 0x100000 * 32 // 32 mb
 #define PIT_TIMER_INTERVAL 1000 // times per second
 
-// enum print_mode_t {
-//     STD,
-//     DBG
-// };
-
-// void printf(print_mode_t mode, const char* p_str, ...) {
-//     char buffer[256] = { 0 };
-
-//     va_list args;
-//     va_start(args, p_str);
-//     size_t strlen = sprintf(buffer, (unsigned long int)sizeof(buffer), p_str, args);
-//     va_end(args);
-
-//     switch (mode) {
-//         case DBG:
-//             // debug_puts((char*)buffer);
-//             kprintf(buffer);
-//             break;
-//         case STD:
-//         default:
-//             // vga_tm_puts(&g_vga_tm_buffer, buffer);
-//             printf(buffer);
-//             break;
-//     }
-// }
-
 void exec(const string& path, const std::dynamic_array<string>& args) {
     switch (hash_fnv1a_64(path.c_str())) {
         case hash_fnv1a_64("memstat"): {
@@ -495,10 +469,12 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
 
     auto net_test = []() {
         auto tcp_callback = [](const uint8_t* data, size_t size) {
-            for (size_t i = 0; i < size; i++)
-                kprintf("%c", data[i]);
-
+            char* str = (char*)malloc(size + 1);
+            memzero(str, size + 1);
+            memcpy(str, data, size);
+            kprintf(str);
             kprintf("\n");
+            free(str);
         };
 
         while (!dhcp_client_is_configured(get_global_dhcp_context()));
