@@ -68,6 +68,7 @@ bool vfs_disk_storage_interface::write_file(const string& path, std::dynamic_arr
 }
 
 bool vfs_disk_storage_interface::write_file(const string& path, uint8_t* content, size_t size) {
+    mutex_lock_guard guard(&mutex);
     return api->write(path.c_str(), content, &size) == 0;
 }
 
@@ -93,6 +94,7 @@ bool vfs_disk_storage_interface::enumerate_directory(const string& path, std::dy
 }
 
 vfs_out_stream_interface::vfs_out_stream_interface(void(*writer)(const char*)) {
+    mutex_init(&mutex);
     writer_fn = writer;
 }
 
@@ -101,6 +103,7 @@ bool vfs_out_stream_interface::write_file(const string& path, std::dynamic_array
 }
 
 bool vfs_out_stream_interface::write_file(const string& path, uint8_t* content, size_t size) {
+    mutex_lock_guard guard(&mutex);
     if (size == 0)
         return false;
     
@@ -145,6 +148,10 @@ bool vfs_init(vfs_t* vfs) {
     vfs->root_node->meta.permissions.read = true;
     vfs->root_node->meta.permissions.write = true;
 
+    mutex_init(&vfs->fd_mutex);
+    mutex_init(&vfs->si_mutex);
+    mutex_init(&vfs->nt_mutex);
+
     return true;
 }
 
@@ -176,14 +183,16 @@ vfs_node_t* vfs_resolve_path(vfs_t* vfs, const string& path) {
 }
 
 vfs_storage_interface_t* vfs_get_storage_interface(vfs_t* vfs, const string& path) {
+    mutex_lock_guard guard(&vfs->si_mutex);
+
     vfs_node_t* node = vfs_resolve_path(vfs, path);
-    if (node)
-        return node->root_storage_interface->storage_interface;
+    if (!node)
+        return nullptr;
 
     if (node->storage_interface)
         return node->storage_interface;
 
-    return nullptr;
+    return node->root_storage_interface->storage_interface;
 }
 
 vfs_node_t* vfs_create_cache_directories(vfs_t* vfs, const string& path) {
@@ -255,6 +264,8 @@ file_descriptor_t vfs_get_next_descriptor(vfs_t* vfs) {
 }
 
 bool vfs_create_directory(vfs_t* vfs, const string& path) {
+    mutex_lock_guard guard(&vfs->nt_mutex);
+
     if (vfs_resolve_path(vfs, path))
         return true;
 
@@ -276,6 +287,10 @@ bool vfs_create_file(vfs_t* vfs, const string& path) {
     string filename = (last_slash != string::k_npos) ? path.substr(last_slash + 1) : path;
 
     vfs_create_directory(vfs, dir_path);
+    
+    // after since else we deadlock
+    mutex_lock_guard guard(&vfs->nt_mutex);
+    
     vfs_node_t* parent_dir = vfs_resolve_path(vfs, dir_path);
 
     std::unique_ptr<vfs_node_t> new_node = std::make_unique<vfs_node_t>();
@@ -296,6 +311,8 @@ bool vfs_create_file(vfs_t* vfs, const string& path) {
 }
 
 file_descriptor_t vfs_open_file(vfs_t* vfs, const string& path) {
+    mutex_lock_guard guard(&vfs->fd_mutex);
+
     if (auto node = vfs_resolve_path(vfs, path); !node || node->type != vfs_node_type_t::FILE)
         return FILE_DESCRIPTOR_INVALID;
 
@@ -306,10 +323,13 @@ file_descriptor_t vfs_open_file(vfs_t* vfs, const string& path) {
 }
 
 bool vfs_close_file(vfs_t* vfs, file_descriptor_t fd) {
+    mutex_lock_guard guard(&vfs->fd_mutex);
     return vfs->open_files.remove(fd);
 }
 
 bool vfs_read_file(vfs_t* vfs, file_descriptor_t fd, std::dynamic_array<uint8_t>* content) {
+    mutex_lock_guard guard(&vfs->fd_mutex);
+
     auto it = vfs->open_files.get(fd);
     if (it == vfs->open_files.end())
         return false;
@@ -320,6 +340,8 @@ bool vfs_read_file(vfs_t* vfs, file_descriptor_t fd, std::dynamic_array<uint8_t>
 }
 
 bool vfs_write_file(vfs_t* vfs, file_descriptor_t fd, std::dynamic_array<uint8_t>* content) {
+    mutex_lock_guard guard(&vfs->fd_mutex);
+    
     auto it = vfs->open_files.get(fd);
     if (it == vfs->open_files.end())
         return false;
@@ -330,14 +352,14 @@ bool vfs_write_file(vfs_t* vfs, file_descriptor_t fd, std::dynamic_array<uint8_t
 }
 
 bool vfs_write_file(vfs_t* vfs, file_descriptor_t fd, uint8_t* content, size_t size) {
+    mutex_lock_guard guard(&vfs->fd_mutex);
+
     auto it = vfs->open_files.get(fd);
     if (it == vfs->open_files.end())
         return false;
 
     vfs_storage_interface_t* storage_interface = vfs_get_storage_interface(vfs, it->value);
     string relative_path = vfs_translate_to_backend_path(vfs, it->value);
-    if (!storage_interface || (uint64_t)storage_interface < 0x1000)
-        debug_trap("bad storage_interface");
     return storage_interface->write_file(relative_path, content, size);
 }
 
@@ -361,6 +383,8 @@ void vfs_enumerate_and_append_child_nodes(vfs_storage_interface_t* storage_inter
 }
 
 bool vfs_mount(vfs_t* vfs, const string& path, std::unique_ptr<vfs_storage_interface_t> storage_interface) {
+    mutex_lock_guard guard(&vfs->nt_mutex);
+
     for (const auto& mount : vfs->mount_points)
         if (mount->mount_point_path == path)
             return false;
@@ -395,6 +419,10 @@ bool vfs_add_file_cache(vfs_t* vfs, const string& path) {
     string filename = (last_slash != string::k_npos) ? path.substr(last_slash + 1) : path;
 
     vfs_create_directory(vfs, dir_path);
+
+    // after to prevent deadlock
+    mutex_lock_guard guard(&vfs->nt_mutex);
+
     vfs_node_t* parent_dir = vfs_resolve_path(vfs, dir_path);
 
     std::unique_ptr<vfs_node_t> new_node = std::make_unique<vfs_node_t>();
@@ -409,6 +437,8 @@ bool vfs_add_file_cache(vfs_t* vfs, const string& path) {
 }
 
 const vfs_node_meta_t* vfs_get_meta(vfs_t* vfs, file_descriptor_t fd) {
+    mutex_lock_guard guard(&vfs->fd_mutex);
+
     auto it = vfs->open_files.get(fd);
     if (it == vfs->open_files.end())
         return nullptr;
@@ -417,6 +447,8 @@ const vfs_node_meta_t* vfs_get_meta(vfs_t* vfs, file_descriptor_t fd) {
 }
 
 bool vfs_list_directory(vfs_t* vfs, const string& path, std::dynamic_array<vfs_node_t*>* out_array) {
+    mutex_lock_guard guard(&vfs->nt_mutex);
+
     vfs_node_t* root_node = vfs_resolve_path(vfs, path);
     if (!root_node)
         return false;
@@ -429,6 +461,8 @@ bool vfs_list_directory(vfs_t* vfs, const string& path, std::dynamic_array<vfs_n
 }
 
 bool vfs_get_disk_info(vfs_t* vfs, const string& path, vfs_storage_info_t* disk_info) {
+    mutex_lock_guard guard(&vfs->nt_mutex);
+
     vfs_node_t* node = vfs_resolve_path(vfs, path);
     if (!node || !node->meta.flags.is_mount_point)
         return false;

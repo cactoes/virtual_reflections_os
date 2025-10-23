@@ -13,6 +13,7 @@
 #include "string.hpp"
 #include "std/pointer.hpp"
 #include "std/array.hpp"
+#include "utils/mutex.hpp"
 
 union ipv4_address_t {
     uint32_t raw;
@@ -45,6 +46,8 @@ public:
 typedef void(*network_callback_t)(uint8_t* p_packet, size_t length);
 
 struct nidm_t {
+    mutex_t mutex {};
+
     std::dynamic_array<std::unique_ptr<network_interface_device_t>> devices;
     linear_map<uint16_t, network_callback_t> udp_callbacks;
 };

@@ -1,13 +1,6 @@
 #include "drivers/network/nidm.hpp"
 #include "drivers/network/ethernet.hpp"
 
-enum print_mode_t {
-    STD,
-    DBG
-};
-
-extern void printf(print_mode_t mode, const char* p_str, ...);
-
 nidm_t* global_nidm = nullptr;
 
 void set_global_nidm(nidm_t* nidm) {
@@ -21,14 +14,19 @@ nidm_t* get_global_nidm() {
 void nidm_init(nidm_t* nidm) {
     nidm->devices = std::dynamic_array<std::unique_ptr<network_interface_device_t>>();
     nidm->udp_callbacks = linear_map<uint16_t, network_callback_t>();
+    mutex_init(&nidm->mutex);
 }
 
 void nidm_shutdown(nidm_t* nidm) {
+    mutex_lock_guard guard(&nidm->mutex);
+
     nidm->devices.clear();
     nidm->udp_callbacks.clear();
 }
 
 int nidm_register_device(nidm_t* nidm, std::unique_ptr<network_interface_device_t> device) {
+    mutex_lock_guard guard(&nidm->mutex);
+
     nidm->devices.insert_back(move(device));
     return 0;
 }
@@ -53,6 +51,8 @@ int nidm_packet_send(nidm_t* nidm, const void* p_data, size_t size) {
 }
 
 int nidm_udp_bind(nidm_t* nidm, uint16_t port, network_callback_t p_callback) {
+    mutex_lock_guard guard(&nidm->mutex);
+
     if (nidm->udp_callbacks.contains(port))
         return 1;
 
@@ -61,6 +61,8 @@ int nidm_udp_bind(nidm_t* nidm, uint16_t port, network_callback_t p_callback) {
 }
 
 int nidm_udp_dispatch(nidm_t* nidm, uint16_t port, uint8_t* p_packet, size_t length) {
+    mutex_lock_guard guard(&nidm->mutex);
+
     auto it = nidm->udp_callbacks.get(port);
     if (it == nidm->udp_callbacks.end())
         return 1;

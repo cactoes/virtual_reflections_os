@@ -126,6 +126,7 @@ public:
 
 private:
     void(*writer_fn)(const char*);
+    mutex_t mutex;
 };
 
 struct vfs_mount_point_t {
@@ -179,6 +180,15 @@ struct vfs_node_t {
 };
 
 struct vfs_t {
+    // for open files / file descriptors
+    mutex_t fd_mutex {};
+
+    // for storage interfaces
+    mutex_t si_mutex {};
+
+    // for node tree
+    mutex_t nt_mutex {};
+
     std::unique_ptr<vfs_storage_interface_t> root_storage_interface;
     std::unique_ptr<vfs_node_t> root_node;
 
