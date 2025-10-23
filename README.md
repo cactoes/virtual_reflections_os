@@ -10,6 +10,7 @@ A 64-bit custom made operating system, using grub as bootloader
 - [ ] work on vthreads
 - [ ] general cleanup / restructuring
 - [ ] gui
+- [ ] toolchain (external)
 - [ ] fat32
     - [x] read
     - [ ] write
