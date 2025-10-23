@@ -5,8 +5,7 @@ bool write_stream(io_stream_t stream, const char* str) {
     file_descriptor_t stream_fd = FILE_DESCRIPTOR_INVALID;
     
     if (stream == io_stream_t::STD_OUT || stream == io_stream_t::STD_ERR || stream == io_stream_t::STD_WRN) {
-        tls_base_t* tls = vthread_get_tls();
-        stream_fd = tls->out_streams[ABS((int)stream) - 1];
+        stream_fd = vthread_get_tls()->out_streams[ABS((int)stream) - 1];
     }
 
     if (stream == io_stream_t::STD_DBG)

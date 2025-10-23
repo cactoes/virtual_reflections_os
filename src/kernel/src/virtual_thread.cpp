@@ -8,6 +8,9 @@
 #include "std/pointer.hpp"
 #include "time/clock.hpp"
 
+// TODO @since 23/10/2025 -- 19:06
+// change into 1 "bigger" thread handler
+
 static linear_map<vthread_handle_t, std::unique_ptr<vthread_t>> g_threads {};
 
 static vthread_handle_t     g_vth_counter = 1;
@@ -19,6 +22,7 @@ void vthread_entry_point(thread_entry_t p_thread_entry) {
     g_current_thread->vt_state = vthread_state_t::STARTING;
     while (g_current_thread->vt_state == vthread_state_t::STARTING)
         vthread_yield();
+    
     g_current_thread->exit_code = p_thread_entry();
     g_current_thread->vt_state = vthread_state_t::STOPPING;
 
@@ -27,6 +31,8 @@ void vthread_entry_point(thread_entry_t p_thread_entry) {
 }
 
 vthread_t* vthread_get_next_thead(vthread_handle_t handle) {
+    mutex_lock_guard guard(&g_mutex);
+
     auto current_thread_it = g_threads.get(handle);
     if (current_thread_it == g_threads.end() || current_thread_it.advance() == g_threads.end())
         current_thread_it = g_threads.begin();
@@ -40,6 +46,8 @@ void vthread_handle_sleeping(vthread_t* p_vthread) {
 }
 
 void vthread_handle_stopping(vthread_t* p_vthread) {
+    mutex_lock_guard guard(&g_mutex);
+
     heap_free(get_global_heap(), p_vthread->stack_bottom);
     g_threads.remove(p_vthread->handle);
 }
@@ -51,6 +59,8 @@ void vthread_handle_starting(vthread_t* p_vthread) {
 }
 
 bool vthread_add(std::unique_ptr<vthread_t> p_vthread) {
+    mutex_lock_guard guard(&g_mutex);
+
     p_vthread->vt_state = vthread_state_t::RUNNING;
     
     if (!g_threads.insert(p_vthread->handle, move(p_vthread)))
@@ -60,8 +70,6 @@ bool vthread_add(std::unique_ptr<vthread_t> p_vthread) {
 }
 
 vthread_handle_t vthread_start_and_setup_main(file_descriptor_t out_streams[3]) {
-    mutex_lock_guard guard(&g_mutex);
-
     if (g_current_thread)
         return false;
 
@@ -69,19 +77,16 @@ vthread_handle_t vthread_start_and_setup_main(file_descriptor_t out_streams[3]) 
 
     p_vthread->handle = VTHREAD_MAIN_THREAD_HANDLE;
     p_vthread->pml4 = get_pml4();
-    auto tls = (tls_base_t*)p_vthread->tls;
-    tls->handle = VTHREAD_MAIN_THREAD_HANDLE;
-    tls->out_streams[0] = out_streams[0];
-    tls->out_streams[1] = out_streams[1];
-    tls->out_streams[2] = out_streams[2];
+    p_vthread->tls.handle = VTHREAD_MAIN_THREAD_HANDLE;
+    p_vthread->tls.out_streams[0] = out_streams[0];
+    p_vthread->tls.out_streams[1] = out_streams[1];
+    p_vthread->tls.out_streams[2] = out_streams[2];
     g_current_thread = p_vthread.get();
 
     return vthread_add(move(p_vthread)) ? 0 : VTHREAD_HANDLE_INVALID;
 }
 
 vthread_handle_t vthread_create(thread_entry_t p_thread_entry, void* pml4, file_descriptor_t out_streams[3]) {
-    mutex_lock_guard guard(&g_mutex);
-
     uint64_t* stack = (uint64_t*)heap_alloc(get_global_heap(), VTHREAD_STACK_SIZE);
     if (!stack)
         return VTHREAD_HANDLE_INVALID;
@@ -108,15 +113,14 @@ vthread_handle_t vthread_create(thread_entry_t p_thread_entry, void* pml4, file_
 
     const vthread_handle_t new_handle = g_vth_counter++;
 
-    p_vthread->stack = stack_top;
+    p_vthread->stack_top = stack_top;
     p_vthread->handle = new_handle;
     p_vthread->vt_state = vthread_state_t::RUNNING;
     p_vthread->pml4 = pml4;
-    auto tls = (tls_base_t*)p_vthread->tls;
-    tls->handle = new_handle;
-    tls->out_streams[0] = out_streams[0];
-    tls->out_streams[1] = out_streams[1];
-    tls->out_streams[2] = out_streams[2];
+    p_vthread->tls.handle = new_handle;
+    p_vthread->tls.out_streams[0] = out_streams[0];
+    p_vthread->tls.out_streams[1] = out_streams[1];
+    p_vthread->tls.out_streams[2] = out_streams[2];
 
     if (vthread_add(move(p_vthread)))
         return new_handle;
@@ -132,11 +136,11 @@ cpu_state_t* vthread_handle_interrupt(cpu_state_t* p_cpu_state) {
 
 bool vthread_check_stack(vthread_t* thread) {
     // stak has overflown
-    if ((uint64_t)thread->stack < (uint64_t)thread->stack_bottom)
+    if ((uint64_t)thread->stack_top < (uint64_t)thread->stack_bottom)
         return false;
 
     // thread stack is in deadzone, to prevent overflow we terminate it
-    if ((uint64_t)thread->stack - (uint64_t)thread->stack_bottom < VTHREAD_STACK_DEADZONE)
+    if ((uint64_t)thread->stack_top - (uint64_t)thread->stack_bottom < VTHREAD_STACK_DEADZONE)
         return false;
 
     // stack is still safe :)
@@ -144,17 +148,10 @@ bool vthread_check_stack(vthread_t* thread) {
 }
 
 cpu_state_t* vthread_schedule(cpu_state_t* p_cpu_state) {  
-    // BUG @since 09/09/2025 -- 20:59
-    // using the lock here can cause a deadlock?
-    // mutex_lock_guard guard(&g_mutex);
     if (g_threads.size() == 0)
         return nullptr;
 
-    if (!g_current_thread) {
-        debug_trap("no current thread");
-    }
-
-    g_current_thread->stack = (void*)p_cpu_state;
+    g_current_thread->stack_top = (void*)p_cpu_state;
 
     do {
         g_current_thread = vthread_get_next_thead(g_current_thread->handle);
@@ -176,18 +173,18 @@ cpu_state_t* vthread_schedule(cpu_state_t* p_cpu_state) {
         }
     } while (g_current_thread->vt_state != vthread_state_t::RUNNING);
 
-    gdt_set_stack_pointer0(g_current_thread->stack);
+    gdt_set_stack_pointer0(g_current_thread->stack_top);
     set_pml4(g_current_thread->pml4);
 
-    return (cpu_state_t*)g_current_thread->stack;
+    return (cpu_state_t*)g_current_thread->stack_top;
 }
 
 void vthread_yield() {
     call_scheduler_interrupt();
 }
 
-tls_base_t* vthread_get_tls() {
-    return (tls_base_t*)g_current_thread->tls;
+thread_local_storage_t* vthread_get_tls() {
+    return &g_current_thread->tls;
 }
 
 void vthread_sleep(uint64_t time_ms) {
@@ -210,6 +207,14 @@ size_t vthread_get_count() {
 }
 
 void vthread_terminate(vthread_handle_t handle) {
+    auto current_thread_it = g_threads.get(handle);
+    if (current_thread_it == g_threads.end())
+        return;
+
+    current_thread_it->value->vt_state = vthread_state_t::STOPPING;
+}
+
+void vthread_terminate() {
     g_current_thread->vt_state = vthread_state_t::STOPPING;
     vthread_yield();
 }

@@ -14,7 +14,7 @@ void __kernel_fatal(uint64_t code, const char* p_message, cpu_state_t* p_cpu_sta
     if (auto tls = vthread_get_tls()) {
         if (tls->handle != VTHREAD_MAIN_THREAD_HANDLE) {
             kprintf("thread: %ul terminated (crashed or forcefully stopped)\n", tls->handle);
-            vthread_terminate(tls->handle);
+            vthread_terminate();
         }
     }
 

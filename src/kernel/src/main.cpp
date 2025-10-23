@@ -132,11 +132,13 @@ void exec(const string& path, const std::dynamic_array<string>& args) {
             }
 
             std::dynamic_array<uint8_t> data {};
-            vfs_read_file(get_global_vfs(), result, &data);
-            for (auto& ch : data) {
-                printf("%c", ch);
+            if (vfs_read_file(get_global_vfs(), result, &data)) {
+                data.insert_back('\n');
+                data.insert_back(0);
+                printf((char*)data.get_data());
+            } else {
+                printf("Failed to read file");
             }
-            printf("\n");
             break;
         }
         case hash_fnv1a_64("help"): {
@@ -212,7 +214,7 @@ void exec(const string& path, const std::dynamic_array<string>& args) {
             break;
         }
         default:
-            printf("command not found");
+            printf("Command not found");
             break;
     }
 }

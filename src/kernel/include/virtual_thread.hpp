@@ -13,7 +13,6 @@
 
 #define VTHREAD_STACK_SIZE          2000000     // 2M (randomly chosen)
 #define VTHREAD_STACK_DEADZONE      64000       // 64K (randomly chosen)
-#define VTHREAD_TLS_ENTRY_COUNT     64
 #define VTHREAD_MAIN_THREAD_HANDLE  (vthread_handle_t)0
 
 #define VTHREAD_HANDLE_INVALID (vthread_handle_t)-1
@@ -24,7 +23,7 @@
 typedef uint64_t vthread_handle_t;
 typedef int(*thread_entry_t)();
 
-struct tls_base_t {
+struct thread_local_storage_t {
     vthread_handle_t handle;
     file_descriptor_t out_streams[3] { FILE_DESCRIPTOR_INVALID, FILE_DESCRIPTOR_INVALID, FILE_DESCRIPTOR_INVALID };
 };
@@ -38,14 +37,27 @@ enum class vthread_state_t {
 };
 
 struct vthread_t {
-    cpu_state_t cpu_state;
-    void* stack;
-    void* stack_bottom;
-    uint64_t tls[VTHREAD_TLS_ENTRY_COUNT] = {};
+    // handle to thread
     vthread_handle_t handle;
+    
+    // state of thread
     vthread_state_t vt_state;
-    int exit_code;
+    
+    // tls data
+    thread_local_storage_t tls;
+    
+    // state before interrupt
+    cpu_state_t cpu_state;
+
+    // stack stuff
+    void* stack_top;
+    void* stack_bottom;
+
+    // internal thread stuff
     uint64_t sleep_until_ms;
+    int exit_code;
+
+    // memory map
     void* pml4;
 };
 
@@ -76,7 +88,7 @@ void vthread_yield();
 
 /// @brief      get the tls base for the current virtual thread
 /// @return     pointer to the tls base of the current thread
-tls_base_t* vthread_get_tls();
+thread_local_storage_t* vthread_get_tls();
 
 /// @brief                  puts the current thread to sleep for a given time in ms
 /// @param time_ms          number of milliseconds to sleep
@@ -95,5 +107,8 @@ size_t vthread_get_count();
 /// @brief          closes a thread forcefully
 /// @param handle   handle to the thread
 void vthread_terminate(vthread_handle_t handle);
+
+/// @brief          closes current thread forcefully
+void vthread_terminate();
 
 #endif // __VIRTUAL_THREAD_HPP__
