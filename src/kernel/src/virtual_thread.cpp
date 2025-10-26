@@ -31,7 +31,7 @@ void vthread_entry_point(thread_entry_t p_thread_entry) {
 }
 
 vthread_t* vthread_get_next_thead(vthread_handle_t handle) {
-    mutex_lock_guard guard(&g_mutex);
+    // mutex_lock_guard guard(&g_mutex);
 
     auto current_thread_it = g_threads.get(handle);
     if (current_thread_it == g_threads.end() || current_thread_it.advance() == g_threads.end())
@@ -188,10 +188,14 @@ thread_local_storage_t* vthread_get_tls() {
 }
 
 void vthread_sleep(uint64_t time_ms) {
-    // main thread is not allowed to sleep
-    if (g_current_thread->handle == 0)
+    // main thread has busy to sleep
+    if (g_current_thread->handle == 0) {
+        uint64_t sleep_until_ms = clock_get_time_since_boot() + time_ms;
+        while (clock_get_time_since_boot() < sleep_until_ms);
         return;
+    }
 
+    // the rest can just yield until ready
     g_current_thread->sleep_until_ms = clock_get_time_since_boot() + time_ms;
     g_current_thread->vt_state = vthread_state_t::SLEEPING;
     vthread_yield();

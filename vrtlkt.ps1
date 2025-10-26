@@ -7,7 +7,8 @@
 # startup commands
 param (
     [string]$Tool,
-    [switch]$Debug
+    [switch]$Debug,
+    [switch]$NoWelcomeMessage
 )
 
 # functions
@@ -21,10 +22,10 @@ function Start-DockerEnvironment {
 
 function Start-QEMU {
     # features
-    $ENABLE_AHCI        = $config["qemu_enable_ahci"]       # required
+    $ENABLE_AHCI        = $config["qemu_enable_ahci"]
     $ENABLE_SERIAL_IO   = $config["qemu_enable_serial_io"]
     $ENABLE_VHD         = $config["qemu_enable_vhd"]
-    $ENABLE_ISO         = $config["qemu_enable_iso"]        # required
+    $ENABLE_ISO         = $config["qemu_enable_iso"]
     $ENABLE_NETWORKING  = $config["qemu_enable_networking"]
     $NETWORKING_TYPE    = $config["qemu_enable_networking_type"]
     $NETWORK_CARD       = $config["qemu_network_card"]
@@ -45,56 +46,56 @@ function Start-QEMU {
     $ARG_LIST = @(
         "-boot", "d",
         "-machine", "pc",
-        "-m", $SYSTEM_MEMORY
+        "-m", "$($config["qemu_system_memory"])"
     )
 
-    if ($ENABLE_AHCI) {
+    if ($config["qemu_enable_ahci"]) {
         $ARG_LIST += @("-device", "ahci,id=ahci")
     }
 
-    if ($ENABLE_SERIAL_IO) {
+    if ($config["qemu_enable_serial_io"]) {
         $ARG_LIST += @("-serial", "stdio")
     }
 
-    if ($ENABLE_VHD) {
+    if ($config["qemu_enable_vhd"]) {
         $ARG_LIST += @(
-            "-drive", "format=raw,file=`"$DISK_PATH`",id=disk,if=none",
+            "-drive", "format=raw,file=`"$($config["qemu_path_vhd"])`",id=disk,if=none",
             "-device", "ide-hd,drive=disk,bus=ahci.0"
         )
     }
 
-    if ($ENABLE_ISO) {
+    if ($config["qemu_enable_iso"]) {
         $ARG_LIST += @(
-            "-drive", "id=cdrom,if=none,media=cdrom,file=`"$ISO_PATH`"",
+            "-drive", "id=cdrom,if=none,media=cdrom,file=`"$($config["qemu_path_iso"])`"",
             "-device", "ide-cd,drive=cdrom,bus=ide.0"
         )
     }
 
-    if ($ENABLE_NETWORKING) {
-        if ($NETWORKING_TYPE -eq "tap0") {
+    if ($config["qemu_enable_networking"]) {
+        if ($config["qemu_enable_networking_type"] -eq "tap0") {
             $ARG_LIST += @(
                 "-netdev", "tap,id=net0,ifname=tap0,script=no,downscript=no"
             )
         }
         
-        if ($NETWORKING_TYPE -eq "nat") {
+        if ($config["qemu_enable_networking_type"] -eq "nat") {
             $ARG_LIST += @(
                 "-netdev", "user,id=net0"
             )
         }
 
-        if ($ENABLE_NET_DUMP) {
+        if ($config["qemu_enable_net_dump"]) {
             $ARG_LIST += @(
-                "-object", "filter-dump,id=dump0,netdev=net0,file=`"$NETWORK_DUMP_PATH`""
+                "-object", "filter-dump,id=dump0,netdev=net0,file=`"$($config["qemu_network_dump_file_path"])`""
             )
         }
 
         $ARG_LIST += @(
-            "-device", "$NETWORK_CARD,netdev=net0,mac=$MAC"
+            "-device", "$($config["qemu_network_card"]),netdev=net0,mac=$($config["qemu_mac"])"
         )
     }
 
-    if ($Debug -or $ENABLE_DEBUG) {
+    if ($Debug -or $config["qemu_force_debug"]) {
         $ARG_LIST += @(
             "-S",
             "-gdb", "tcp::1234",
@@ -102,11 +103,9 @@ function Start-QEMU {
         )
     }
 
-    $label = if ($Debug -or $ENABLE_DEBUG) { "DEBUG" } else { "DEFAULT" }
-    $timestamp = Get-Date -Format "HH:mm:ss"
-    Write-Host "[$timestamp] Starting QEMU ..."
-    Write-Host "    Mode: $label"
-    Write-Host "    Args: $($ARG_LIST -join ' ')"
+    $label = if ($Debug -or $config["qemu_force_debug"]) { "DEBUG" } else { "DEFAULT" }
+    Write-Host "Mode: $label"
+    Write-Host "Args: $($ARG_LIST -join ' ')"
     Write-Host ""
 
     qemu-system-x86_64.exe @ARG_LIST
@@ -142,24 +141,38 @@ function Read-ConfFile {
 # global variables
 $git_commit_hash = git rev-parse --short HEAD
 $config = Read-ConfFile
+# $timestamp = Get-Date -Format "HH:mm:ss"
 
 # welcome message
-Write-Host "VirtualReflectionsOS Toolkit [v1:$git_commit_hash]"
-Write-Host "Copyright (C) Blackline Technologies Ltd."
-Write-Host ""
+if (-not $NoWelcomeMessage) {
+    Write-Host "VirtualReflectionsOS Toolkit [v1:$git_commit_hash]"
+    Write-Host "Copyright (C) Blackline Technologies Ltd."
+    Write-Host ""
+}
 
 switch ($Tool) {
-    "install" { Install-DockerEnvironment }
-    "build"   { Start-DockerEnvironment }
-    "run"     { Start-QEMU }
-    default   { Write-Host "Invalid tool." }
+    "install" {
+        Write-Host "Installing docker build environment ..."
+        Install-DockerEnvironment
+    }
+
+    "build" {
+        Write-Host "Building kernel ..."
+        Start-DockerEnvironment
+    }
+
+    "run" {
+        Write-Host "Starting QEMU ..."
+        Start-QEMU
+    }
+
+    default {
+        Write-Host "Invalid tool."
+        exit -1
+    }
 }
 
 # program exit
-Write-Host ""
 if ($LASTEXITCODE -ne 0) {
-    Write-Host "An error occured in tool .."
     exit $LASTEXITCODE
-} else {
-    Write-Host "Tool finished successfully"
 }
