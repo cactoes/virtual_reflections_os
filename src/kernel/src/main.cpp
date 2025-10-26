@@ -266,7 +266,7 @@ void terminal_keydown_callback(virtual_key_t vk) {
 }
 
 int terminal() {
-    printf("VirtualReflectionsOS Interacive Terminal [v0.1:%s]\n", GIT_COMMIT_HASH);
+    printf("VirtualReflectionsOS Interacive Terminal [v1:%s]\n", GIT_COMMIT_HASH);
     printf("System booted succesfully\n");
     printf("Type 'help' for a list of commands.\n");
 

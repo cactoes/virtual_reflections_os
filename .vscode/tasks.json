@@ -8,7 +8,7 @@
             "args": [
                 "powershell",
                 "-ArgumentList",
-                "-File ./qemu_start.ps1 debug",
+                "-File ./vrtlkt.ps1 -Tool run -Debug",
             ],
             "options": {
                 "statusbar": {
@@ -19,7 +19,7 @@
         {
             "label": "start qemu",
             "type": "shell",
-            "command": "./qemu_start.ps1",
+            "command": "./vrtlkt.ps1 -Tool run",
             "options": {
                 "statusbar": {
                     "label": "$(debug-start) Run",
@@ -30,7 +30,7 @@
         {
             "label": "build kernel",
             "type": "shell",
-            "command": "./docker_build.ps1",
+            "command": "./vrtlkt.ps1 -Tool build",
             "group": {
                 "kind": "build",
                 "isDefault": true
