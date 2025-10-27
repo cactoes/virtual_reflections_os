@@ -51,7 +51,7 @@ function Start-QEMU {
     }
 
     if ($config["qemu_enable_networking"]) {
-        if ($config["qemu_enable_networking_type"] -eq "tap0") {
+        if ($config["qemu_enable_networking_type"] -eq "tap") {
             $argument_list += @(
                 "-netdev", "tap,id=net0,ifname=tap0,script=no,downscript=no"
             )

@@ -10,7 +10,6 @@ A 64-bit custom made operating system, using grub as bootloader
 - [ ] work on vthreads
 - [ ] general cleanup / restructuring
 - [ ] gui
-- [ ] toolchain (external)
 - [ ] fat32
     - [x] read
     - [ ] write
@@ -18,7 +17,7 @@ A 64-bit custom made operating system, using grub as bootloader
 ## Setup build environment
 ### Windows host
 ```powershell
-PS> .\docker_install.ps1
+PS> .\vrtlkt.ps1 -Tool install
 ```
 
 ## Setup windows TAP network (optional)
@@ -26,11 +25,12 @@ Make sure to have openVPN for the tap interface.
 1. Rename the tap interface to: `tap0`
 2. Change its ip to: `10.0.2.2`
 3. Change its subnet mask to: `255.255.255.0`
+4. Change the network type in the config to `tap`
 
 ## Building the ISO
 ### Windows host
 ```powershell
-PS> .\docker_build.ps1
+PS> .\vrtlkt.ps1 -Tool build
 ```
 
 ## Running QEMU
@@ -38,7 +38,7 @@ Start the QEMU environment with the required startup flags.
 
 ### Windows host
 ```powershell
-PS> .\qemu_start.ps1
+PS> .\vrtlkt.ps1 -Tool run
 ```
 
 ## Diagrams
