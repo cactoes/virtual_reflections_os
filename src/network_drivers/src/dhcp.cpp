@@ -1,6 +1,8 @@
+#define DRIVER_NAMING
+
 #include "dhcp.hpp"
 #include "std/random.hpp"
-#include "kernel_exports.hpp"
+#include "virtual_reflections_driver.hpp"
 
 void DHCPOptionsWriterInit(DHCPOptionsWriter* pWriter, uint8_t* pBuffer, size_t nBufferSize) {
     pWriter->m_pBuffer = pBuffer;

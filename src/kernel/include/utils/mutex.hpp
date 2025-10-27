@@ -10,8 +10,11 @@
 #ifndef __UTILS_MUTEX_HPP__
 #define __UTILS_MUTEX_HPP__
 
+#include "common.hpp"
+
 struct mutex_t {
     volatile int locked;
+    uint64_t saved_flags;
 };
 
 void mutex_init(mutex_t* p_mutex);

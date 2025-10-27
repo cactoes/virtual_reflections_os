@@ -15,7 +15,7 @@ ASSEMBLY_FILES_PATH         := $(PROJECT_PATH)/asm
 ROOT_PATH                   := ../..
 BUILD_PATH                  := $(ROOT_PATH)/build/$(TARGET_NAME)
 LINKER_SCRIPT               := $(PROJECT_PATH)/linker.ld
-KERNEL_API                  := $(ROOT_PATH)/src/kernel/include/
+KERNEL_API                  := $(ROOT_PATH)/src/kernel/include/kernel_include
 SHARED_HEADERS              := $(ROOT_PATH)/src/shared_headers/
 
 # compilers

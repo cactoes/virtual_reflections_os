@@ -1,24 +1,6 @@
 {
-    "files.associations": {
-        "cmath": "cpp",
-        "map": "cpp",
-        "unordered_map": "cpp",
-        "array": "cpp",
-        "string_view": "cpp",
-        "initializer_list": "cpp",
-        "*.tcc": "cpp",
-        "deque": "cpp",
-        "vector": "cpp",
-        "system_error": "cpp",
-        "compare": "cpp",
-        "functional": "cpp",
-        "tuple": "cpp",
-        "type_traits": "cpp",
-        "utility": "cpp",
-        "algorithm": "cpp",
-        "typeinfo": "cpp"
-    },
     "clang-tidy.compilerArgs": [
+        "-I./src/kernel/include/kernel_include",
         "-I./src/kernel/include",
         "-I./src/network_drivers/include",
         "-I./src/shared_headers"

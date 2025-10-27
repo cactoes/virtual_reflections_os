@@ -1,9 +1,6 @@
+#include "kernel_include/virtual_reflections_exports.hpp"
 #include "drivers/driver.hpp"
 #include "elf.hpp"
-
-// TODO @since 12/08/2025 -- 00:13
-// relocate this kernel api
-#include "kernel_api.hpp"
 
 driver_manager_t* global_driver_manager = nullptr;
 
@@ -66,8 +63,8 @@ system_driver_handle_t driver_load(driver_manager_t* driver_manager, const char*
     system_driver->base_address = (void*)base_address;
     system_driver->file_data_ptr = p_driver_file;
     system_driver->name = p_name;
-    system_driver->functions.driver_init = elf_get_function<int>((uint8_t*)p_driver_file, base_address, &tables, &program_section_info, "DriverInit");
-    system_driver->functions.driver_exit = elf_get_function<int>((uint8_t*)p_driver_file, base_address, &tables, &program_section_info, "DriverExit");
+    system_driver->functions.driver_init = elf_get_function<int>((uint8_t*)p_driver_file, base_address, &tables, &program_section_info, "driver_init");
+    system_driver->functions.driver_exit = elf_get_function<int>((uint8_t*)p_driver_file, base_address, &tables, &program_section_info, "driver_exit");
     
     driver_manager->current_handle++;
 
@@ -123,7 +120,7 @@ void* driver_get_function(driver_manager_t* driver_manager, system_driver_handle
 }
 
 uint64_t driver_query_capability(driver_manager_t* driver_manager, system_driver_handle_t handle, const char* feature) {
-    driver_query_capability_t driver_query_capability_fn = (driver_query_capability_t)driver_get_function(driver_manager, handle, "QueryCapability");
+    driver_query_capability_t driver_query_capability_fn = (driver_query_capability_t)driver_get_function(driver_manager, handle, "query_capability");
     if (!driver_query_capability_fn)
         return -1;
     

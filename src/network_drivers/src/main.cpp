@@ -12,8 +12,11 @@
 */
 #define E1000_VERSION   0
 
+#define DRIVER_NAMING
+
 #include "common.hpp"
 #include "dhcp.hpp"
+#include "virtual_reflections_driver.hpp"
 
 extern "C" int DriverInit() {
     return 0;

@@ -123,6 +123,14 @@ static inline bool get_cpu_name(char* buffer, size_t size) {
     return true;
 }
 
+static inline uint64_t save_flags_and_cli() {
+    return x86_64_save_flags_and_cli();
+}
+
+static inline void restore_flags(uint64_t flags) {
+    x86_64_restore_flags(flags);
+}
+
 #endif // ARCH_X86_64
 
 #endif // __GENERIC_HPP__

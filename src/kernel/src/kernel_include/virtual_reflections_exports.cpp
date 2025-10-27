@@ -1,4 +1,4 @@
-#include "kernel_api.hpp"
+#include "kernel_include/virtual_reflections_exports.hpp"
 #include "memory/heap.hpp"
 #include "time/clock.hpp"
 #include "drivers/network/nidm.hpp"

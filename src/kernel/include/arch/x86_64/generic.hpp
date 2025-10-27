@@ -136,6 +136,27 @@ static inline void x86_64_cpuid(uint32_t eax_in, uint32_t ecx_in, uint32_t* eax_
                 : "a"(eax_in), "c"(ecx_in));
 }
 
+static inline uint64_t x86_64_save_flags_and_cli() {
+    uint64_t flags;
+    asm volatile(
+        "pushfq\n"
+        "pop %0\n"
+        "cli"
+        : "=r"(flags)
+        :
+        : "memory"
+    );
+    return flags;
+}
 
+static inline void x86_64_restore_flags(uint64_t flags) {
+    asm volatile(
+        "push %0\n"
+        "popfq"
+        :
+        : "r"(flags)
+        : "memory", "cc"
+    );
+}
 
 #endif // __X86_64_GENERIC_HPP__
