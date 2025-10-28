@@ -72,12 +72,18 @@ void exec(const string& path, const std::dynamic_array<string>& args) {
                     used_mem += heap->heap_block_array[i].size;
             }
 
-            // TODO @since 13/10/2025 -- 12:35
-            // add dma stuff & reserved memory for the kernel etc
+            for (auto& h : get_global_dma_heap_manager()->heaps) {
+                for (size_t i = 0; i < h.heap_block_array_size; i++) {
+                    if (!h.heap_block_array[i].free)
+                        used_mem += h.heap_block_array[i].size;
+                }
+            }
 
-            printf("Memory allocated:   %s/%s (%i%)\n", str_format_size(used_mem).c_str(), str_format_size(heap->size).c_str(), (int)(((double)used_mem / (double)heap->size) * 100));
+            size_t available_mem = heap->size + get_global_dma_heap_manager()->size;
+
+            printf("Memory allocated:   %s/%s (%i%)\n", str_format_size(used_mem).c_str(), str_format_size(available_mem).c_str(), (int)(((double)used_mem / (double)available_mem) * 100));
             printf("Total available:    %s\n", str_format_size(get_global_system_info_manager()->memory_size).c_str());
-            printf("Total comitted:     %f%\n", (double)(((double)heap->size / (double)get_global_system_info_manager()->memory_size) * 100));
+            printf("Total comitted:     %f%\n", (double)(((double)available_mem / (double)get_global_system_info_manager()->memory_size) * 100));
             break;
         }
         case hash_fnv1a_64("netstat"): {
