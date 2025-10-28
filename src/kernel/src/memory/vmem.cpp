@@ -2,6 +2,11 @@
 #include "memory/paging.hpp"
 #include "arch/generic.hpp"
 #include "multiboot.hpp"
+#include "utils/bitmap.hpp"
+
+// 2 * 64 = 128
+// 128 2mb regions
+static uint64_t global_mapped_mmio_bitmap[2] {};
 
 /// @brief variable placed at the end of the kernel
 // NOLINTNEXTLINE
@@ -176,4 +181,27 @@ bool vmem_init(void* p_multiboot_struct, void* p_pml4) {
     // __set_pml4(pml4);
 
     return true;
+}
+
+void* vmem_map_mmio_region(void* pml4, void* physical_address) {
+    uint64_t page_addr_physical = align_down((uint64_t)physical_address, PAGE_SIZE_LARGE);
+    uint64_t addr_offset = (uint64_t)physical_address - page_addr_physical;
+
+    void* virtual_address = 0;
+
+    for (size_t i = 1; i < bitmap_get_size(global_mapped_mmio_bitmap); i++) {
+        if (!bitmap_get(global_mapped_mmio_bitmap, i)) {
+            bitmap_set(global_mapped_mmio_bitmap, i, true);
+            virtual_address = (void*)(VMEM_MAPPED_MMIO_REGION + i * PAGE_SIZE_LARGE);
+            break;
+        }
+    }
+
+    if (virtual_address == 0)
+        return nullptr;
+
+    if (!vmem_map_2mb_page(pml4, virtual_address, (void*)page_addr_physical))
+        return nullptr;
+
+    return (void*)((uint64_t)virtual_address + addr_offset);
 }

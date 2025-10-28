@@ -3,7 +3,7 @@
 #include "memory/heap.hpp"
 #include "arch/generic.hpp"
 
-heap_t global_ahci_dma_heap {};
+heap_t* global_ahci_dma_heap = nullptr;
 
 ahci_storage_driver_t::ahci_storage_driver_t(ahci_drive_t* drive) {
     this->drive = drive;
@@ -81,18 +81,18 @@ storage_info_t ahci_storage_driver_t::get_storage_info() const {
 }
 
 int ahci_init(const pci_device_t* pice_device, linked_list<ahci_drive_t>* device_list) {
-    // still sketchy to just randomly get the pml4 table but whtv
-    if (dma_heap_init(get_pml4(), &global_ahci_dma_heap, (void*)VMEM_AHCI_DMA, PAGE_SIZE_LARGE) != 0)
+    global_ahci_dma_heap = dma_heap_manager_create_heap(get_global_dma_heap_manager(), PAGE_SIZE_LARGE);
+    if (!global_ahci_dma_heap)
         return 1;
 
     const uint64_t mmio_addr_physical = (uint64_t)pci_read_bar(pice_device, 5);
-    const uint64_t mmio_addr_physical_page = align_down(mmio_addr_physical, PAGE_SIZE_LARGE);
-    const uint64_t mmio_addr_offset = mmio_addr_physical - mmio_addr_physical_page;
+    // still sketchy to just randomly get the pml4 table but whtv
+    volatile hba_mem_t* hba = (volatile hba_mem_t*)vmem_map_mmio_region(get_global_dma_heap_manager()->pml4, (void*)mmio_addr_physical);
 
-    if (!vmem_map_2mb_page(get_pml4(), (void*)VMEM_AHCI_MMIO, (void*)mmio_addr_physical_page))
+    // TODO @since 28/10/2025 -- 01:02
+    // free the dma heap
+    if (!hba)
         return 2;
-
-    volatile hba_mem_t* hba = (volatile hba_mem_t*)((uint8_t*)VMEM_AHCI_MMIO + mmio_addr_offset);
 
     // for interupts enable:
     // hba->ghc |= AHCI_GHC_IE;
@@ -142,23 +142,23 @@ void* ahci_port_init(volatile hba_port_t* port) {
     while (port->cmd & AHCI_PORT_CMD_CR);
     port->cmd &= ~AHCI_PORT_CMD_FRE;
 
-    void* clb = dma_heap_alloc(&global_ahci_dma_heap, PAGE_SIZE, PAGE_SIZE);
+    void* clb = dma_heap_alloc(global_ahci_dma_heap, PAGE_SIZE, PAGE_SIZE);
     if (!clb)
         return nullptr;
 
     memzero(clb, PAGE_SIZE);
-    port->clb = dma_get_physical_lower(&global_ahci_dma_heap, clb);
-    port->clbu = dma_get_physical_upper(&global_ahci_dma_heap, clb);
+    port->clb = dma_get_physical_lower(global_ahci_dma_heap, clb);
+    port->clbu = dma_get_physical_upper(global_ahci_dma_heap, clb);
 
-    void* fb = dma_heap_alloc(&global_ahci_dma_heap, PAGE_SIZE, PAGE_SIZE);
+    void* fb = dma_heap_alloc(global_ahci_dma_heap, PAGE_SIZE, PAGE_SIZE);
     if (!fb) {
-        dma_heap_free(&global_ahci_dma_heap, clb);
+        dma_heap_free(global_ahci_dma_heap, clb);
         return nullptr;
     }
     
     memzero(fb, PAGE_SIZE);
-    port->fb = dma_get_physical_lower(&global_ahci_dma_heap, fb);
-    port->fbu = dma_get_physical_upper(&global_ahci_dma_heap, fb);
+    port->fb = dma_get_physical_lower(global_ahci_dma_heap, fb);
+    port->fbu = dma_get_physical_upper(global_ahci_dma_heap, fb);
 
     port->ie = 0;
 
@@ -224,8 +224,8 @@ int ahci_sata_identify_device(ahci_drive_t* drive) {
 
     drive->capacity = drive->lba * (uint64_t)drive->logical_sector_size;
 
-    dma_heap_free(&global_ahci_dma_heap, ctx.cmdtable);
-    dma_heap_free(&global_ahci_dma_heap, ctx.data_buffer);
+    dma_heap_free(global_ahci_dma_heap, ctx.cmdtable);
+    dma_heap_free(global_ahci_dma_heap, ctx.data_buffer);
 
     return 0;
 }
@@ -240,25 +240,25 @@ int ahci_sata_prepare_command(ahci_cmd_context_t* ctx, ahci_drive_t* drive, uint
     ctx->cmdheader[slot].w = write ? 1 : 0;
     ctx->cmdheader[slot].prdtl = 1;
 
-    ctx->cmdtable = (hba_cmd_tbl_t*)dma_heap_alloc(&global_ahci_dma_heap, PAGE_SIZE, PAGE_SIZE);
+    ctx->cmdtable = (hba_cmd_tbl_t*)dma_heap_alloc(global_ahci_dma_heap, PAGE_SIZE, PAGE_SIZE);
     if (!ctx->cmdtable)
         return 1;
 
     memzero(ctx->cmdtable, PAGE_SIZE);
 
-    ctx->cmdheader[slot].ctba = dma_get_physical_lower(&global_ahci_dma_heap, ctx->cmdtable);
-    ctx->cmdheader[slot].ctbau = dma_get_physical_upper(&global_ahci_dma_heap, ctx->cmdtable);
+    ctx->cmdheader[slot].ctba = dma_get_physical_lower(global_ahci_dma_heap, ctx->cmdtable);
+    ctx->cmdheader[slot].ctbau = dma_get_physical_upper(global_ahci_dma_heap, ctx->cmdtable);
 
-    ctx->data_buffer = dma_heap_alloc(&global_ahci_dma_heap, PAGE_SIZE, PAGE_SIZE);
+    ctx->data_buffer = dma_heap_alloc(global_ahci_dma_heap, PAGE_SIZE, PAGE_SIZE);
     if (!ctx->data_buffer) {
-        dma_heap_free(&global_ahci_dma_heap, ctx->cmdtable);
+        dma_heap_free(global_ahci_dma_heap, ctx->cmdtable);
         return 2;
     }
 
     memzero(ctx->data_buffer, PAGE_SIZE);
 
-    ctx->cmdtable->prdt_entry[0].dba = dma_get_physical_lower(&global_ahci_dma_heap, ctx->data_buffer);
-    ctx->cmdtable->prdt_entry[0].dbau = dma_get_physical_upper(&global_ahci_dma_heap, ctx->data_buffer);
+    ctx->cmdtable->prdt_entry[0].dba = dma_get_physical_lower(global_ahci_dma_heap, ctx->data_buffer);
+    ctx->cmdtable->prdt_entry[0].dbau = dma_get_physical_upper(global_ahci_dma_heap, ctx->data_buffer);
     ctx->cmdtable->prdt_entry[0].dbc = (drive->logical_sector_size * sector_count) - 1;
     // enable this for interrupts:
     // ctx->cmdtable->prdt_entry[0].i = 0;
@@ -305,8 +305,8 @@ int ahci_sata_read(ahci_drive_t* drive, uint64_t lba, uint16_t sector_count, uin
 
     memcpy(buffer, ctx.data_buffer, drive->logical_sector_size);
 
-    dma_heap_free(&global_ahci_dma_heap, ctx.cmdtable);
-    dma_heap_free(&global_ahci_dma_heap, ctx.data_buffer);
+    dma_heap_free(global_ahci_dma_heap, ctx.cmdtable);
+    dma_heap_free(global_ahci_dma_heap, ctx.data_buffer);
 
     return 0;
 }
@@ -331,8 +331,8 @@ int ahci_sata_write(ahci_drive_t* drive, uint64_t lba, uint16_t sector_count, co
     if (drive->port->is & AHCI_PORT_INT_TFES)
 		return 3;
 
-    dma_heap_free(&global_ahci_dma_heap, ctx.cmdtable);
-    dma_heap_free(&global_ahci_dma_heap, ctx.data_buffer);
+    dma_heap_free(global_ahci_dma_heap, ctx.cmdtable);
+    dma_heap_free(global_ahci_dma_heap, ctx.data_buffer);
 
     return 0;
 }
@@ -388,8 +388,8 @@ int ahci_atapi_identify_device(ahci_drive_t* drive) {
 
     drive->capacity = drive->lba * (uint64_t)drive->logical_sector_size;
 
-    dma_heap_free(&global_ahci_dma_heap, ctx.cmdtable);
-    dma_heap_free(&global_ahci_dma_heap, ctx.data_buffer);
+    dma_heap_free(global_ahci_dma_heap, ctx.cmdtable);
+    dma_heap_free(global_ahci_dma_heap, ctx.data_buffer);
 
     return 0;
 }
@@ -405,25 +405,25 @@ int ahci_atapi_prepare_command(ahci_cmd_context_t* ctx, ahci_drive_t* drive, con
     ctx->cmdheader[slot].prdtl = 1;
     ctx->cmdheader[slot].a = 1;
 
-    ctx->cmdtable = (hba_cmd_tbl_t*)dma_heap_alloc(&global_ahci_dma_heap, PAGE_SIZE, PAGE_SIZE);
+    ctx->cmdtable = (hba_cmd_tbl_t*)dma_heap_alloc(global_ahci_dma_heap, PAGE_SIZE, PAGE_SIZE);
     if (!ctx->cmdtable)
         return 1;
 
     memzero(ctx->cmdtable, PAGE_SIZE);
 
-    ctx->cmdheader[slot].ctba = dma_get_physical_lower(&global_ahci_dma_heap, ctx->cmdtable);
-    ctx->cmdheader[slot].ctbau = dma_get_physical_upper(&global_ahci_dma_heap, ctx->cmdtable);
+    ctx->cmdheader[slot].ctba = dma_get_physical_lower(global_ahci_dma_heap, ctx->cmdtable);
+    ctx->cmdheader[slot].ctbau = dma_get_physical_upper(global_ahci_dma_heap, ctx->cmdtable);
 
-    ctx->data_buffer = dma_heap_alloc(&global_ahci_dma_heap, PAGE_SIZE, PAGE_SIZE);
+    ctx->data_buffer = dma_heap_alloc(global_ahci_dma_heap, PAGE_SIZE, PAGE_SIZE);
     if (!ctx->data_buffer) {
-        dma_heap_free(&global_ahci_dma_heap, ctx->cmdtable);
+        dma_heap_free(global_ahci_dma_heap, ctx->cmdtable);
         return 2;
     }
 
     memzero(ctx->data_buffer, PAGE_SIZE);
 
-    ctx->cmdtable->prdt_entry[0].dba = dma_get_physical_lower(&global_ahci_dma_heap, ctx->data_buffer);
-    ctx->cmdtable->prdt_entry[0].dbau = dma_get_physical_upper(&global_ahci_dma_heap, ctx->data_buffer);
+    ctx->cmdtable->prdt_entry[0].dba = dma_get_physical_lower(global_ahci_dma_heap, ctx->data_buffer);
+    ctx->cmdtable->prdt_entry[0].dbau = dma_get_physical_upper(global_ahci_dma_heap, ctx->data_buffer);
     ctx->cmdtable->prdt_entry[0].dbc = data_length - 1;
     ctx->cmdtable->prdt_entry[0].i = 0;
 

@@ -18,6 +18,7 @@
 #define GLOBAL_HEAP get_global_heap()
 
 #include "common.hpp"
+#include "std/array.hpp"
 
 struct heap_block_t {
     // start of virtual address
@@ -47,6 +48,13 @@ struct heap_t {
     void* start_virtual_addr;
     size_t size;
     void* pml4;
+};
+
+struct dma_heap_manager_t {
+    void* start_virtual_addr;
+    size_t size;
+    void* pml4;
+    std::dynamic_array<heap_t> heaps;
 };
 
 typedef bool(*heap_block_filter_callback_t)(const heap_block_t*, const void*);
@@ -140,6 +148,28 @@ uint32_t dma_get_physical_upper(heap_t* p_dma_heap, void* p_block);
 /// @remarks                        technically memory leaks since it never frees
 ///                                 the memory used for the entire dma heap
 NODISCARD int dma_heap_init(void* p_pml4, heap_t* p_dma_heap, void* p_virtual_address, size_t size);
+
+/// @brief                      initialzes a dma heap manager
+/// @param[inout] manager       pointer to the dma heap manager struct
+/// @param[inout] pml4          corresponding page table
+/// @param[in] virtual_address  virtual address to assign dma heaps to
+/// @param size                 total size for dma heaps
+/// @return                     success status
+bool dma_heap_manager_init(dma_heap_manager_t* manager, void* pml4, void* virtual_address, size_t size);
+
+/// @brief              sets the global dma heap manager to the given one
+/// @param[in] manager  pointer to the dma heap manager struct that should be global
+void set_global_dma_heap_manager(dma_heap_manager_t* manager);
+
+/// @brief              gets the global dma heap manager if set
+/// @return             pointer to the global dma heap manager
+dma_heap_manager_t* get_global_dma_heap_manager();
+
+/// @brief                  creates a dma heap
+/// @param[inout] manager   pointer to the dma heap manager
+/// @param size             size of the dma heap
+/// @return                 pointer to heap or nullptr if failed
+heap_t* dma_heap_manager_create_heap(dma_heap_manager_t* manager, size_t size);
 
 /// @brief              sets the global heap to the given one
 /// @param[in] heap     pointer to heap that should be global

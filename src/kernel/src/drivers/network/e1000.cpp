@@ -5,7 +5,7 @@
 #include "interrupt_manager.hpp"
 #include "io.hpp"
 
-static heap_t g_e1000_dma_heap {};
+static heap_t* g_e1000_dma_heap = nullptr;
 static e1000_t* g_e1000 = nullptr;
 
 e1000_nid_t::e1000_nid_t(const e1000_t& e1000) {
@@ -51,20 +51,20 @@ bool e1000_load_mac(e1000_t* p_device) {
 }
 
 int e1000_receive_init(e1000_t* p_device) {
-    p_device->rdesc_array = (e1000_rdesc_t*)dma_heap_alloc(&g_e1000_dma_heap, E1000_RECEIVE_DESC_COUNT * sizeof(e1000_rdesc_t), 16);
+    p_device->rdesc_array = (e1000_rdesc_t*)dma_heap_alloc(g_e1000_dma_heap, E1000_RECEIVE_DESC_COUNT * sizeof(e1000_rdesc_t), 16);
     if (!p_device->rdesc_array)
         return 1;
 
-    p_device->rdesc_buffer_array = (uint8_t*)dma_heap_alloc(&g_e1000_dma_heap, E1000_RECEIVE_DESC_COUNT * E1000_BUFFER_SIZE, 16);
+    p_device->rdesc_buffer_array = (uint8_t*)dma_heap_alloc(g_e1000_dma_heap, E1000_RECEIVE_DESC_COUNT * E1000_BUFFER_SIZE, 16);
     if (!p_device->rdesc_buffer_array)
         return 2;
     
     for (int i = 0; i < E1000_RECEIVE_DESC_COUNT; ++i) {
         memzero(&p_device->rdesc_array[i], sizeof(e1000_rdesc_t));
-        p_device->rdesc_array[i].buffer_addr = dma_get_physical(&g_e1000_dma_heap, (p_device->rdesc_buffer_array + i * E1000_BUFFER_SIZE));
+        p_device->rdesc_array[i].buffer_addr = dma_get_physical(g_e1000_dma_heap, (p_device->rdesc_buffer_array + i * E1000_BUFFER_SIZE));
     }
 
-    uint64_t physical = (uint64_t)dma_get_physical(&g_e1000_dma_heap, p_device->rdesc_array);
+    uint64_t physical = (uint64_t)dma_get_physical(g_e1000_dma_heap, p_device->rdesc_array);
     if (physical == 0)
         return 3;
 
@@ -83,20 +83,20 @@ int e1000_receive_init(e1000_t* p_device) {
 }
 
 int e1000_transmit_init(e1000_t* p_device) {
-    p_device->tdesc_array = (e1000_tdesc_t*)dma_heap_alloc(&g_e1000_dma_heap, E1000_TRANSMIT_DESC_COUNT * sizeof(e1000_tdesc_t), 16);
+    p_device->tdesc_array = (e1000_tdesc_t*)dma_heap_alloc(g_e1000_dma_heap, E1000_TRANSMIT_DESC_COUNT * sizeof(e1000_tdesc_t), 16);
     if (!p_device->tdesc_array)
         return 1;
 
-    p_device->tdesc_buffer_array = (uint8_t*)dma_heap_alloc(&g_e1000_dma_heap, E1000_TRANSMIT_DESC_COUNT * E1000_BUFFER_SIZE, 16);
+    p_device->tdesc_buffer_array = (uint8_t*)dma_heap_alloc(g_e1000_dma_heap, E1000_TRANSMIT_DESC_COUNT * E1000_BUFFER_SIZE, 16);
     if (!p_device->tdesc_buffer_array)
         return 2;
     
     for (int i = 0; i < E1000_TRANSMIT_DESC_COUNT; ++i) {
         memzero(&p_device->tdesc_array[i], sizeof(e1000_tdesc_t));
-        p_device->tdesc_array[i].buffer_addr = dma_get_physical(&g_e1000_dma_heap, (p_device->tdesc_buffer_array + i * E1000_BUFFER_SIZE));
+        p_device->tdesc_array[i].buffer_addr = dma_get_physical(g_e1000_dma_heap, (p_device->tdesc_buffer_array + i * E1000_BUFFER_SIZE));
     }
 
-    uint64_t physical = (uint64_t)dma_get_physical(&g_e1000_dma_heap, p_device->tdesc_array);
+    uint64_t physical = (uint64_t)dma_get_physical(g_e1000_dma_heap, p_device->tdesc_array);
     if (physical == 0)
         return 3;
 
@@ -148,10 +148,6 @@ void e1000_enable_interrupts(e1000_t* p_device) {
 }
 
 int e1000_init_device(const pci_device_t* p_pcie_device, e1000_t* p_network_device) {
-    // i dont like this get_pml4,
-    // the moment we start switching to virtual envoriments this will likeley break ...
-    void* pml4 = get_pml4();
-
     // register as global e1000 driver
     e1000_set_global_device(p_network_device);
 
@@ -163,19 +159,18 @@ int e1000_init_device(const pci_device_t* p_pcie_device, e1000_t* p_network_devi
     if (pci_read_bar(p_pcie_device, 0) & PCI_BAR_MMIO_ENABLED)
         return 1;
 
-    if (dma_heap_init(pml4, &g_e1000_dma_heap, (void*)VMEM_E1000_DMA, PAGE_SIZE_LARGE) != 0)
+    g_e1000_dma_heap = dma_heap_manager_create_heap(get_global_dma_heap_manager(), PAGE_SIZE_LARGE);
+    if (!g_e1000_dma_heap)
         return 2;
 
-    // map mmio
     uint64_t bar_addr_physical = pci_read_bar(p_pcie_device, 0) & ~0xF;
-    uint64_t bar_page_addr_physical = align_down(bar_addr_physical, PAGE_SIZE_LARGE);
-    uint64_t bar_addr_offset = bar_addr_physical - bar_page_addr_physical;
-
-    if (!vmem_map_2mb_page(pml4, (void*)VMEM_E1000_MMIO, (void*)bar_page_addr_physical))
+    p_network_device->mmio_region = vmem_map_mmio_region(get_global_dma_heap_manager()->pml4, (void*)bar_addr_physical);
+    
+    // TODO @since 28/10/2025 -- 01:02
+    // free the dma heap
+    if (!p_network_device->mmio_region)
         return 3;
 
-    // set vars
-    p_network_device->mmio_region = (void*)((uint64_t)VMEM_E1000_MMIO + bar_addr_offset);
     p_network_device->rx_tail = 0;
     p_network_device->tx_tail = 0;
 

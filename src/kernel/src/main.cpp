@@ -307,7 +307,7 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
 
     // initialze the global heap
     heap_t heap {};
-    if (!heap_init(&heap, p_kpml4, (void*)VMEM_HEAP_START_ADDR, HEAP_START_SIZE))
+    if (!heap_init(&heap, p_kpml4, (void*)VMEM_KERNEL_HEAP_START, HEAP_START_SIZE))
         kernel_fatal(KERNEL_FATAL_HEAP_INIT, "kernel heap fail to initialze");
     
     set_global_heap(&heap);
@@ -322,6 +322,10 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
     ps2_mouse_init();
     pit_init(PIT_TIMER_INTERVAL);
     interrupt_init(gdt_get_kernel_code_selector());
+
+    dma_heap_manager_t allocator {};
+    set_global_dma_heap_manager(&allocator);
+    dma_heap_manager_init(get_global_dma_heap_manager(), p_kpml4, (void*)VMEM_DMA_ALLOCATOR_START, PAGE_SIZE_LARGE * 128);
     
     vfs_t vfs {};
     vfs_init(&vfs);

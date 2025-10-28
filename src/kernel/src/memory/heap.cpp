@@ -3,6 +3,7 @@
 #include "memory/vmem.hpp"
 
 static heap_t* g_heap = nullptr;
+static dma_heap_manager_t* global_dma_heap_manager = nullptr;
 
 bool heap_block_filters::donor_block_filter(const heap_block_t* p_block, const void* p_param) {
     return p_block->used && p_block->free && p_block->size >= *(size_t*)p_param;
@@ -295,7 +296,7 @@ int dma_heap_init(void* p_pml4, heap_t* p_dma_heap, void* p_virtual_address, siz
         return 1;
 
     // TODO @since 13/06/2025 -- 02:06
-    // we need to make an allocator that only maps contigious
+    // we need to make an manager that only maps contigious
     if (size > PAGE_SIZE_LARGE)
         return 1;
 
@@ -335,6 +336,65 @@ int dma_heap_init(void* p_pml4, heap_t* p_dma_heap, void* p_virtual_address, siz
     p_dma_heap->heap_block_array->used = true;
 
     return 0;
+}
+
+bool dma_heap_manager_init(dma_heap_manager_t* manager, void* pml4, void* virtual_address, size_t size) {
+    if (!is_aligned(size, PAGE_SIZE_LARGE))
+        return false;
+
+    manager->heaps = std::dynamic_array<heap_t>{};
+    manager->pml4 = pml4;
+    manager->start_virtual_addr = virtual_address;
+    manager->size = size;
+
+    return true;
+}
+
+void set_global_dma_heap_manager(dma_heap_manager_t* manager) {
+    global_dma_heap_manager = manager;
+}
+
+dma_heap_manager_t* get_global_dma_heap_manager() {
+    return global_dma_heap_manager;
+}
+
+void* dma_heap_manager_get_virtual_address(dma_heap_manager_t* manager, size_t size) {
+    uint64_t begin = (uint64_t)manager->start_virtual_addr;
+    uint64_t end = (uint64_t)manager->start_virtual_addr + manager->size;
+
+    while (begin + size <= end) {
+        bool found = true;
+
+        for (auto& heap : manager->heaps) {
+            uint64_t heap_begin = (uint64_t)heap.start_virtual_addr;
+            uint64_t heap_end = (uint64_t)heap.start_virtual_addr + heap.size;
+
+            if (begin < heap_end && begin + size > heap_begin) {
+                begin = heap_end;
+                found = false;
+                break;
+            }
+        }
+
+        if (found) {
+            return (void*)begin;
+        }
+    }
+
+    return nullptr;
+}
+
+heap_t* dma_heap_manager_create_heap(dma_heap_manager_t* manager, size_t size) {
+    void* virtual_address = dma_heap_manager_get_virtual_address(manager, size);
+    if (!virtual_address)
+        return nullptr;
+
+    heap_t heap {};
+    if (dma_heap_init(manager->pml4, &heap, virtual_address, size) != 0)
+        return nullptr;
+
+    manager->heaps.insert_back(heap);
+    return manager->heaps.get_at(manager->heaps.length() - 1);
 }
 
 void set_global_heap(heap_t* p_heap) {

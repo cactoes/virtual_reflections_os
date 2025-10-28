@@ -8,11 +8,10 @@
 #ifndef __MEMORY_VMEM_HPP__
 #define __MEMORY_VMEM_HPP__
 
-#define VMEM_HEAP_START_ADDR      0x40000000
-#define VMEM_E1000_DMA            (VMEM_HEAP_START_ADDR - PAGE_SIZE_LARGE)
-#define VMEM_E1000_MMIO           (VMEM_E1000_DMA - PAGE_SIZE_LARGE)
-#define VMEM_AHCI_DMA             (VMEM_E1000_MMIO - PAGE_SIZE_LARGE)
-#define VMEM_AHCI_MMIO            (VMEM_AHCI_DMA - PAGE_SIZE_LARGE)
+#define VMEM_IDENTITY_MAP           0x0         // 1gb size
+#define VMEM_DMA_ALLOCATOR_START    0x40000000  // 256mb size
+#define VMEM_MAPPED_MMIO_REGION     0x50000000  // 256mb size
+#define VMEM_KERNEL_HEAP_START      0x60000000  // unlimited?
 
 #include "common.hpp"
 
@@ -50,5 +49,11 @@ NODISCARD void* vmem_virtual_to_physical(void* p_pml4, void* p_virtual_addr);
 /// @param[inout] pml4          page table to use
 /// @return                     success status
 NODISCARD bool vmem_init(void* p_multiboot_struct, void* p_pml4);
+
+/// @brief                      memory maps an region to virtual memory
+/// @param[inout] pml4          target page table to map to
+/// @param physical_address     the address to map
+/// @return                     the virtual address its mapped to if success else nullptr
+void* vmem_map_mmio_region(void* pml4, void* physical_address);
 
 #endif // __MEMORY_VMEM_HPP__
