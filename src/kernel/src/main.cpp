@@ -219,6 +219,13 @@ void exec(const string& path, const std::dynamic_array<string>& args) {
             printf("Uptime:  %s\n", str_format_time(clock_get_time_since_boot()).c_str());
             break;
         }
+        case hash_fnv1a_64("gui"): {
+            printf("Starting graphical environment ...\n");
+            if (vthread_create(desktop_init, get_pml4(), vthread_get_tls()->out_streams) == VTHREAD_HANDLE_INVALID)
+                printf("Failed start graphical environment\n");
+            
+            break;
+        }
         default:
             printf("Command not found");
             break;

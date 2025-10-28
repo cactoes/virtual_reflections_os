@@ -212,6 +212,10 @@ void desktop_render_draw_cursor() {
     desktop_render_linev(x + 5, y + 6, 1, { 255, 255, 255 });
 }
 
+void desktop_render_task_bar() {
+    desktop_render_square(0, VGA_GM_BUFFER_HEIGHT - 20, VGA_GM_BUFFER_WIDTH, 20, { 50, 50, 50 });
+}
+
 bool desktop_register_target(desktop_render_target_t p_target) {
     return g_render_targets.insert_back(p_target);
 }
@@ -244,6 +248,7 @@ int desktop_init() {
             target(dt);
 
         // render ui
+        desktop_render_task_bar();
         desktop_render_draw_cursor();
 
         desktop_render_end();
