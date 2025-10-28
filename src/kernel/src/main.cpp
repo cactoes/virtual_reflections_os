@@ -52,6 +52,9 @@
 #define HEAP_START_SIZE 0x100000 * 32 // 32 mb
 #define PIT_TIMER_INTERVAL 1000 // times per second
 
+static std::dynamic_array<char> terminal_current_input {};
+bool keep_terminal_alive = true;
+
 void exec(const string& path, const std::dynamic_array<string>& args) {
     switch (hash_fnv1a_64(path.c_str())) {
         case hash_fnv1a_64("memdump"): {
@@ -223,7 +226,10 @@ void exec(const string& path, const std::dynamic_array<string>& args) {
             printf("Starting graphical environment ...\n");
             if (vthread_create(desktop_init, get_pml4(), vthread_get_tls()->out_streams) == VTHREAD_HANDLE_INVALID)
                 printf("Failed start graphical environment\n");
-            
+
+            // TODO @since 29/10/2025 -- 00:10
+            // terminal keyboard unsubscribe
+            // else the terminal keeps running during gui ...
             break;
         }
         default:
@@ -231,9 +237,6 @@ void exec(const string& path, const std::dynamic_array<string>& args) {
             break;
     }
 }
-
-static std::dynamic_array<char> terminal_current_input {};
-bool keep_terminal_alive = true;
 
 void terminal_keydown_callback(virtual_key_t vk) {
     switch (vk) {

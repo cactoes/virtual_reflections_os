@@ -294,6 +294,8 @@ void tile_peek_nearby(tile_t* tile) {
     });
 }
 
+static int xoff, yoff;
+
 void minesweeper_on_mouse_up(const desktop_event_on_mouse_button_t* event) {
     if (!is_game_running)
         return;
@@ -301,7 +303,7 @@ void minesweeper_on_mouse_up(const desktop_event_on_mouse_button_t* event) {
     int mouse_x, mouse_y;
     desktop_get_cursor_pos(&mouse_x, &mouse_y);
 
-    tile_t* tile = get_tile_from_pos(mouse_x, mouse_y);
+    tile_t* tile = get_tile_from_pos(mouse_x - xoff, mouse_y - yoff);
     if (!tile)
         return;
 
@@ -322,7 +324,7 @@ void minesweeper_on_mouse_down(const desktop_event_on_mouse_button_t* event) {
     int mouse_x, mouse_y;
     desktop_get_cursor_pos(&mouse_x, &mouse_y);
 
-    tile_t* tile = get_tile_from_pos(mouse_x, mouse_y);
+    tile_t* tile = get_tile_from_pos(mouse_x - xoff, mouse_y - yoff);
     if (!tile)
         return;
 
@@ -361,10 +363,16 @@ void minesweeper_init() {
     // register desktop stuff
     desktop_event_subscribe(DESKTOP_EVENT_MOUSE_RELEASED, minesweeper_on_mouse_down);
     desktop_event_subscribe(DESKTOP_EVENT_MOUSE_PRESSED, minesweeper_on_mouse_up);
-    desktop_register_target(minesweeper_render_target);
+    desktop_render_target_t target {};
+    target.callback = minesweeper_render_target;
+    target.x = 1;
+    target.y = 1;
+    target.w = game_config.size.width * tile_size;
+    target.h = game_config.size.height * tile_size;
+    desktop_register_target(target);
 
     // random
-    seed_random(809429);
+    seed_random(930123);
 
     // setup game board
     // if (g_game_board)
@@ -470,8 +478,11 @@ void minesweeper_render_tile(tile_t* tile, uint64_t offset_x, uint64_t offset_y)
     }
 }
 
-void minesweeper_render_target(uint64_t dt) {
-    loop_game_board([](tile_t* tile) {
-        minesweeper_render_tile(tile, 0, 0);
+void minesweeper_render_target(uint64_t dt, uint64_t x, uint64_t y) {
+    xoff = x;
+    yoff = y;
+
+    loop_game_board([x, y](tile_t* tile) {
+        minesweeper_render_tile(tile, x, y);
     });
 }

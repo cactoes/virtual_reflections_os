@@ -15,7 +15,13 @@
 
 #include "common.hpp"
 
-typedef void(*desktop_render_target_t)(uint64_t dt);
+struct desktop_render_target_t {
+    typedef void(*callback_t)(uint64_t dt, uint64_t x, uint64_t y);
+    callback_t callback;
+    uint64_t x, y;
+    uint64_t w, h;
+    bool dragging;
+};
 
 struct desktop_event_on_mouse_move_t {
     int x;

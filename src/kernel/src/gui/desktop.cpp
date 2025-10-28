@@ -7,6 +7,7 @@
 #include "std/random.hpp"
 #include "time/clock.hpp"
 #include "virtual_thread.hpp"
+#include "gui/games/minesweeper.hpp"
 
 enum print_mode_t {
     STD,
@@ -220,12 +221,72 @@ bool desktop_register_target(desktop_render_target_t p_target) {
     return g_render_targets.insert_back(p_target);
 }
 
+void desktop_on_mouse_release(const desktop_event_on_mouse_button_t* event) {
+    if (event->key != desktop_event_mouse_button_type_t::LEFT)
+        return;
+
+    const auto x = g_desktop_mouse_pos[0];
+    const auto y = g_desktop_mouse_pos[1];
+
+    for (auto& target : g_render_targets)
+        target.dragging = false;
+}
+
+void desktop_on_mouse_pressed(const desktop_event_on_mouse_button_t* event) {
+    if (event->key != desktop_event_mouse_button_type_t::LEFT)
+        return;
+
+    const auto x = g_desktop_mouse_pos[0];
+    const auto y = g_desktop_mouse_pos[1];
+
+    for (auto& target : g_render_targets) {
+        if (x > target.x && x < target.x + target.w &&
+            y > target.y && y < target.y + 10) {
+                target.dragging = true;
+                break;
+            }
+
+        target.dragging = false;
+    }
+}
+
+void desktop_on_mouse_move(const desktop_event_on_mouse_move_t* event) {
+    static int x, y;
+
+    const int dx = event->x - x;
+    const int dy = event->y - y;
+
+    for (auto& target : g_render_targets) {
+        if (target.dragging) {
+            target.x += dx;
+            target.y += dy;
+            break;
+        }
+    }
+
+    x = event->x;
+    y = event->y;
+}
+
+void desktop_render_window(const desktop_render_target_t* target) {
+    desktop_render_square(target->x - 1, target->y, target->w + 2, 10, { 255, 255, 255 });
+    desktop_render_linev(target->x - 1, target->y + 10, target->h, { 255, 255, 255 });
+    desktop_render_lineh(target->x - 1, target->y + 10 + target->h, target->w + 2, { 255, 255, 255 });
+    desktop_render_linev(target->x + target->w, target->y + 10, target->h, { 255, 255, 255 });
+}
+
 int desktop_init() {
     // setup renderer
     desktop_render_init();
 
     // setup input devices
     desktop_init_hardware_handlers();
+
+    desktop_event_subscribe(DESKTOP_EVENT_MOUSE_RELEASED, desktop_on_mouse_release);
+    desktop_event_subscribe(DESKTOP_EVENT_MOUSE_PRESSED, desktop_on_mouse_pressed);
+    desktop_event_subscribe(DESKTOP_EVENT_MOUSE_MOVE, desktop_on_mouse_move);
+
+    minesweeper_init();
 
     g_desktop_ready = true;
 
@@ -244,8 +305,10 @@ int desktop_init() {
         desktop_render_clear_buffer();
 
         // render targets
-        for (auto& target : g_render_targets)
-            target(dt);
+        for (auto& target : g_render_targets) {
+            target.callback(dt, target.x, target.y + 10);
+            desktop_render_window(&target);
+        }
 
         // render ui
         desktop_render_task_bar();
