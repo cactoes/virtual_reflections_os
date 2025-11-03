@@ -107,6 +107,7 @@ public:
 
     string();
     string(const char* p_string);
+    string(char ch);
     
     // for now no copy
     string(const string& r_other);

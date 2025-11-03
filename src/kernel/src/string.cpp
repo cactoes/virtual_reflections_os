@@ -442,6 +442,19 @@ string::string(const string& other) {
     assign(move(other));
 }
 
+string::string(char ch) {
+    if (p_str) {
+        GFREE(p_str);
+        p_str = nullptr;
+        len = 0;
+    }
+
+    len = 1;
+    p_str = (char*)GALLOC(len * 2);
+    memzero(p_str, len + 1);
+    p_str[0] = ch;
+}
+
 string& string::operator=(const string& other) {
     if (this == &other)
         return *this;
