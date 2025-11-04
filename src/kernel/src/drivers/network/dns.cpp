@@ -23,6 +23,7 @@ void dns_client_init(dns_client_t* client) {
     client->is_configured = false;
     client->mutex = mutex_t{};
     mutex_init(&client->mutex);
+    client->dns_server = TO_IP(8, 8, 8, 8);
 }
 
 void dns_client_store_record(dns_client_t* client, const string& hostname, uint32_t ip) {
@@ -251,14 +252,10 @@ int dns_client_thread() {
     return 0;
 }
 
-uint32_t dns_client_query(const string& hostname, uint32_t dns_server_ip) {
+uint32_t dns_client_query(dns_client_t* client, const string& hostname) {
     auto query = dns_build_query(hostname, dns_query_type_t::A);
-    
-    auto client = get_global_dns_client();
-    if (!client)
-        return -1;
 
-    if (udp_send(dns_server_ip, client->port, DNS_SERVER_PORT, query.get_data(), query.length()) != 0)
+    if (udp_send(client->dns_server, client->port, DNS_SERVER_PORT, query.get_data(), query.length()) != 0)
         return -1;
 
     const uint64_t timeout_time = clock_get_time_since_boot() + 1000;

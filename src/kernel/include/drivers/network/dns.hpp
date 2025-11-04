@@ -55,6 +55,7 @@ struct dns_client_t {
     mutex_t mutex;
     uint16_t port;
     bool is_configured;
+    uint32_t dns_server;
 };
 
 void set_global_dns_client(dns_client_t* client);
@@ -64,14 +65,8 @@ void dns_client_init(dns_client_t* client);
 
 void dns_client_store_record(dns_client_t* client, const string& hostname, uint32_t ip);
 const dns_cache_record_t* dns_client_get_record(dns_client_t* client, const string& hostname);
-uint32_t dns_client_query(const string& hostname, uint32_t dns_server_ip);
+uint32_t dns_client_query(dns_client_t* client, const string& hostname);
 int dns_client_thread();
 bool dns_client_is_configured(dns_client_t* client);
-
-std::dynamic_array<uint8_t> dns_encode_hostname(const string& hostname);
-string dns_decode_hostname(const uint8_t* bytes, size_t size);
-
-std::dynamic_array<uint8_t> dns_build_query(const string& hostname, dns_query_type_t type);
-int dns_receive(const uint8_t* packet, size_t size);
 
 #endif // __DRIVERS_NETWORK_DNS_HPP__

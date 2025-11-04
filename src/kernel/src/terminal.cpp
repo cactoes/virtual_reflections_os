@@ -190,7 +190,7 @@ void terminal_execute(const string& path, const std::dynamic_array<string>& args
                 if (arg0 == "resolve") {
                     if (args.length() >= 2) {
                         auto arg1 = *args.get_at(1);
-                        auto ip = dns_client_query(arg1.c_str(), TO_IP(8, 8, 8, 8));
+                        auto ip = dns_client_query(get_global_dns_client(), arg1.c_str());
                         if (ip != MAX_UINT32 && ip != 0)
                             printf("Hostname: %s\nIP:       %u.%u.%u.%u\n", arg1.c_str(), FROM_IP(ip));
                         else
@@ -203,7 +203,7 @@ void terminal_execute(const string& path, const std::dynamic_array<string>& args
                 }
 
                 if (arg0 == "server") {
-                    printf("Hostname: dns.google\nIP:       %u.%u.%u.%u\n", FROM_IP(TO_IP(8, 8, 8, 8)));
+                    printf("IP:       %u.%u.%u.%u\n", FROM_IP(get_global_dns_client()->dns_server));
                     break;
                 }
             }

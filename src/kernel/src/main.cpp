@@ -273,7 +273,7 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
         while (!dhcp_client_is_configured(get_global_dhcp_context()));
         while (!dns_client_is_configured(get_global_dns_client()));
 
-        auto ip = dns_client_query("cactoes.xyz", TO_IP(8, 8, 8, 8));
+        auto ip = dns_client_query(get_global_dns_client(), "cactoes.xyz");
         auto conn = tcp_connect(ip, 80, tcp_callback);
 
         if (conn->state != tcp_state_t::ESTABLISHED) {
