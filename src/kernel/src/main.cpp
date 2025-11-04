@@ -257,6 +257,9 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
             kprintf("failed to start DHCP client\n");
     }
 
+    if (vthread_create(dns_client_thread, p_kpml4, out_streams) == VTHREAD_HANDLE_INVALID)
+        kprintf("failed to start DNS client\n");
+
     auto net_test = []() {
         auto tcp_callback = [](const uint8_t* data, size_t size) {
             char* str = (char*)malloc(size + 1);
@@ -268,36 +271,24 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
         };
 
         while (!dhcp_client_is_configured(get_global_dhcp_context()));
-        auto query = dns_build_query("google.com", dns_query_type_t::A);
+        while (!dns_client_is_configured(get_global_dns_client()));
 
-        auto rdns_recieve = [](uint8_t* data, size_t size) {
-            kprintf("dns recieved\n");
-            dns_receive(data, size);
-        };
+        auto ip = dns_client_query("cactoes.xyz", TO_IP(8, 8, 8, 8));
+        auto conn = tcp_connect(ip, 80, tcp_callback);
 
-        uint16_t udp_port = (uint16_t)random_number(49152, 65535);
+        if (conn->state != tcp_state_t::ESTABLISHED) {
+            kprintf("failed to make tcp connection\n");
+            return 1;
+        }
 
-        nidm_udp_bind(get_global_nidm(), udp_port, rdns_recieve);
-        udp_send(TO_IP(8, 8, 8, 8), udp_port, 53, query.get_data(), query.length());
-
-        // TODO @since 03/11/2025 -- 15:50
-        // dns client start thread
-
-
-        // auto conn = tcp_connect(TO_IP(192, 168, 178, 219), 8090, tcp_callback);
-
-        // if (conn->state != tcp_state_t::ESTABLISHED) {
-        //     kprintf("failed to make tcp connection\n");
-        //     return 1;
-        // }
-
-        // const char* http_request = 
-        //     "GET / HTTP/1.1\r\n"
-        //     "Connection: close\r\n"
-        //     "User-Agent: virtual reflections e0\r\n"
-        //     "\r\n";
-        // kprintf("[HTTP] Sending request:\n%s", http_request);
-        // tcp_send_packet((uint8_t*)http_request, strlen(http_request), TCP_FLAG_ACK | TCP_FLAG_PSH, conn);
+        const char* http_request = 
+            "GET / HTTP/1.1\r\n"
+            "Host: cactoes.xyz\r\n"
+            "Connection: close\r\n"
+            "User-Agent: virtual reflections e0\r\n"
+            "\r\n";
+        kprintf("[HTTP] Sending request:\n%s", http_request);
+        tcp_send_packet((uint8_t*)http_request, strlen(http_request), TCP_FLAG_ACK | TCP_FLAG_PSH, conn);
         return 0;
     };
 

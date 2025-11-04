@@ -15,6 +15,7 @@
 #include "drivers/driver.hpp"
 #include "drivers/ps2/ps2.hpp"
 #include "drivers/network/nidm.hpp"
+#include "drivers/network/dns.hpp"
 
 
 static std::dynamic_array<char> terminal_current_input {};
@@ -115,21 +116,6 @@ void terminal_execute(const string& path, const std::dynamic_array<string>& args
             }
             break;
         }
-        case hash_fnv1a_64("help"): {
-            printf("help                           Displays this help message\n");
-            printf("memstat                        Memory info\n");
-            printf("netstat                        Network card info\n");
-            printf("pcistat                        PCI(e) info\n");
-            printf("ls                             Lists files and directories\n");
-            printf("cat                            Display file content\n");
-            printf("systemstat                     Display system information\n");
-            printf("diskstat                       Displays disk info\n");
-            printf("    <path>                     Target disk path\n");
-            printf("driverquery                    Query drivers for information\n");
-            printf("    list                       List all drivers\n");
-            printf("    <name> <feature>           List the capabiliy of a driver feature\n");
-            break;
-        }
         case hash_fnv1a_64("driverquery"): {
             if (args.length() >= 1) {
                 auto arg0 = *args.get_at(0);
@@ -195,6 +181,51 @@ void terminal_execute(const string& path, const std::dynamic_array<string>& args
             // TODO @since 29/10/2025 -- 00:10
             // terminal keyboard unsubscribe
             // else the terminal keeps running during gui ...
+            break;
+        }
+        case hash_fnv1a_64("dns"): {
+            if (args.length() >= 1) {
+                auto arg0 = *args.get_at(0);
+
+                if (arg0 == "resolve") {
+                    if (args.length() >= 2) {
+                        auto arg1 = *args.get_at(1);
+                        auto ip = dns_client_query(arg1.c_str(), TO_IP(8, 8, 8, 8));
+                        if (ip != MAX_UINT32 && ip != 0)
+                            printf("Hostname: %s\nIP:       %u.%u.%u.%u\n", arg1.c_str(), FROM_IP(ip));
+                        else
+                            printf("Unable to resolve hostname\n");
+                        break;
+                    }
+
+                    printf("No host name given\n");
+                    break;
+                }
+
+                if (arg0 == "server") {
+                    printf("Hostname: dns.google\nIP:       %u.%u.%u.%u\n", FROM_IP(TO_IP(8, 8, 8, 8)));
+                    break;
+                }
+            }
+
+            break;
+        }
+        case hash_fnv1a_64("help"): {
+            printf("help                           Displays this help message\n");
+            printf("memstat                        Memory info\n");
+            printf("netstat                        Network card info\n");
+            printf("pcistat                        PCI(e) info\n");
+            printf("ls                             Lists files and directories\n");
+            printf("cat                            Display file content\n");
+            printf("systemstat                     Display system information\n");
+            printf("diskstat                       Displays disk info\n");
+            printf("    <path>                     Target disk path\n");
+            printf("driverquery                    Query drivers for information\n");
+            printf("    list                       List all drivers\n");
+            printf("    <name> <feature>           List the capabiliy of a driver feature\n");
+            printf("dns                            DNS information\n");
+            printf("    server                     Get the dns server that is used\n");
+            printf("    resolve <hostname>         Resolves the given hostname\n");
             break;
         }
         default:

@@ -8,9 +8,13 @@
 #ifndef __DRIVERS_NETWORK_DNS_HPP__
 #define __DRIVERS_NETWORK_DNS_HPP__
 
+#define DNS_SERVER_PORT 53
+
 #include "common.hpp"
 #include "string.hpp"
 #include "std/array.hpp"
+#include "utils/map.hpp"
+#include "utils/mutex.hpp"
 
 struct dns_header_t {
     uint16_t id;
@@ -48,7 +52,9 @@ struct dns_cache_record_t {
 
 struct dns_client_t {
     linear_map<string, dns_cache_record_t> records;
+    mutex_t mutex;
     uint16_t port;
+    bool is_configured;
 };
 
 void set_global_dns_client(dns_client_t* client);
@@ -57,7 +63,10 @@ dns_client_t* get_global_dns_client();
 void dns_client_init(dns_client_t* client);
 
 void dns_client_store_record(dns_client_t* client, const string& hostname, uint32_t ip);
-const dns_cache_record_t* dns_client_get_record(dns_client_t* client, const string& hostname, uint32_t ip);
+const dns_cache_record_t* dns_client_get_record(dns_client_t* client, const string& hostname);
+uint32_t dns_client_query(const string& hostname, uint32_t dns_server_ip);
+int dns_client_thread();
+bool dns_client_is_configured(dns_client_t* client);
 
 std::dynamic_array<uint8_t> dns_encode_hostname(const string& hostname);
 string dns_decode_hostname(const uint8_t* bytes, size_t size);

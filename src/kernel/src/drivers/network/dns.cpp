@@ -3,17 +3,9 @@
 #include "utils/map.hpp"
 #include "io.hpp"
 #include "drivers/network/nidm.hpp"
-
-// void dns_cache_records_insert(const string& hostname, uint32_t ip) {
-//     global_dns_cache_records[hostname] = dns_cache_record_t{ .name = hostname, .ip = ip };
-// }
-
-// const dns_cache_record_t* dns_cache_records_get(const string& hostname) {
-//     if (auto it = global_dns_cache_records.get(hostname); it != global_dns_cache_records.end())
-//         return &it->value;
-
-//     return nullptr;
-// }
+#include "drivers/network/udp.hpp"
+#include "time/clock.hpp"
+#include "virtual_thread.hpp"
 
 static dns_client_t* global_dns_client = nullptr;
 
@@ -28,13 +20,20 @@ dns_client_t* get_global_dns_client() {
 void dns_client_init(dns_client_t* client) {
     client->records = linear_map<string, dns_cache_record_t>{};
     client->port = random_number(49152, 65535);
+    client->is_configured = false;
+    client->mutex = mutex_t{};
+    mutex_init(&client->mutex);
 }
 
 void dns_client_store_record(dns_client_t* client, const string& hostname, uint32_t ip) {
+    mutex_lock_guard guard(&client->mutex);
+
     client->records[hostname] = dns_cache_record_t{ .name = hostname, .ip = ip };
 }
 
-const dns_cache_record_t* dns_client_get_record(dns_client_t* client, const string& hostname, uint32_t ip) {
+const dns_cache_record_t* dns_client_get_record(dns_client_t* client, const string& hostname) {
+    mutex_lock_guard guard(&client->mutex);
+
     if (auto it = client->records.get(hostname); it != client->records.end())
         return &it->value;
 
@@ -59,31 +58,52 @@ std::dynamic_array<uint8_t> dns_encode_hostname(const string& hostname) {
     return output;
 }
 
-string dns_decode_hostname(const uint8_t* bytes, size_t size) {
+
+string dns_decode_hostname(const uint8_t* packet, size_t packet_size, size_t& offset) {
     string result;
-    size_t offset = 0;
+    bool jumped = false;
+    size_t original_offset = offset;
+    int max_loops = 128;
     
-    while (offset < size && bytes[offset] != 0) {
-        uint8_t length = bytes[offset];
-        offset++;
+    while (offset < packet_size && max_loops-- > 0) {
+        uint8_t len = packet[offset];
         
-        // Check bounds
-        if (offset + length > size) {
+        if (len == 0) {
+            offset++;
             break;
         }
         
-        // Add dot separator (except for first label)
-        if (result.length() != 0) {
-            result += ".";
+        if ((len & 0xC0) == 0xC0) {
+            if (offset + 1 >= packet_size)
+                break;
+            
+            uint16_t pointer = ((len & 0x3F) << 8) | packet[offset + 1];
+            if (pointer >= packet_size)
+                break;
+            
+            if (!jumped) {
+                original_offset = offset + 2;
+                jumped = true;
+            }
+            offset = pointer;
+            continue;
         }
         
-        // Append the label
-        for (size_t i = 0; i < length; i++) {
-            result += (char)bytes[offset + i];
-        }
+        offset++;
+        if (offset + len > packet_size)
+            break;
         
-        offset += length;
+        if (result.length() != 0)
+            result += '.';
+        
+        for (size_t i = 0; i < len; i++)
+            result += (char)packet[offset + i];
+        
+        offset += len;
     }
+    
+    if (jumped)
+        offset = original_offset;
     
     return result;
 }
@@ -161,7 +181,6 @@ int dns_receive(const uint8_t* packet, size_t size) {
 
     size_t offset = sizeof(dns_header_t);
 
-    // skip questions
     for (int i = 0; i < qdcount && offset < size; i++) {
         size_t name_len = dns_name_length(&packet[offset], size - offset);
         if (name_len == 0)
@@ -175,13 +194,7 @@ int dns_receive(const uint8_t* packet, size_t size) {
 
 
     for (int i = 0; i < ancount && offset < size; i++) {
-        string hostname = dns_decode_hostname(&packet[offset], size - offset);
-        
-        size_t name_len = dns_name_length(&packet[offset], size - offset);
-        if (name_len == 0 || offset + name_len > size)
-            return 1;
-
-        offset += name_len;
+        string hostname = dns_decode_hostname(packet, size, offset);
 
         if (offset + 10 > size)
             return 1;
@@ -203,13 +216,13 @@ int dns_receive(const uint8_t* packet, size_t size) {
 
         if (type == 1 && rdlength == 4) {
             uint32_t ip = *(uint32_t*)&packet[offset];
-            kprintf("%s -> %u.%u.%u.%u (TTL: %u)\n", 
+            kprintf("2. %s -> %u.%u.%u.%u (TTL: %u)\n", 
                    hostname.c_str(),
                    packet[offset], packet[offset+1], 
                    packet[offset+2], packet[offset+3],
                    ttl);
 
-            dns_client_store_record(get_global_dns_client(), hostname, ip);
+            dns_client_store_record(get_global_dns_client(), hostname, net_to_host(ip));
         }
 
         offset += rdlength;
@@ -223,6 +236,8 @@ void dns_client_start() {
 
     auto net_recieve = [](uint8_t* p, size_t s) { dns_receive(p, s); };
     nidm_udp_bind(get_global_nidm(), client->port, net_recieve);
+
+    client->is_configured = true;
 }
 
 int dns_client_thread() {
@@ -234,4 +249,38 @@ int dns_client_thread() {
 
     while (true);
     return 0;
+}
+
+uint32_t dns_client_query(const string& hostname, uint32_t dns_server_ip) {
+    auto query = dns_build_query(hostname, dns_query_type_t::A);
+    
+    auto client = get_global_dns_client();
+    if (!client)
+        return -1;
+
+    if (udp_send(dns_server_ip, client->port, DNS_SERVER_PORT, query.get_data(), query.length()) != 0)
+        return -1;
+
+    const uint64_t timeout_time = clock_get_time_since_boot() + 1000;
+    const dns_cache_record_t* record = nullptr;
+
+    while (clock_get_time_since_boot() < timeout_time) {
+        record = dns_client_get_record(client, hostname);
+        if (record)
+            break;
+
+        vthread_sleep(10);
+    }
+
+    if (!record)
+        return -1;
+
+    return record->ip;
+}
+
+bool dns_client_is_configured(dns_client_t* client) {
+    if (!client)
+        return false;
+
+    return client->is_configured;
 }

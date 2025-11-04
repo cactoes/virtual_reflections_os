@@ -76,5 +76,8 @@ int dhcp_client_thread() {
 }
 
 bool dhcp_client_is_configured(dhcp_context_t* dhcp_context) {
+    if (!dhcp_context)
+        return false;
+
     return dhcp_context->is_configured;
 }

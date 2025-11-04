@@ -8,6 +8,8 @@
 #ifndef __IO_HPP__
 #define __IO_HPP__
 
+#define IO_PRINT_BUFFER_SIZE 512
+
 #include "common.hpp"
 
 enum class io_stream_t {

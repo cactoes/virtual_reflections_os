@@ -21,7 +21,7 @@ bool write_stream(io_stream_t stream, const char* str) {
 }
 
 void printf(const char* str, ...) {
-    char buffer[256] = { 0 };
+    char buffer[IO_PRINT_BUFFER_SIZE] = { 0 };
 
     va_list args;
     va_start(args, str);
@@ -32,7 +32,7 @@ void printf(const char* str, ...) {
 }
 
 void kprintf(const char* str, ...) {
-    char buffer[256] = { 0 };
+    char buffer[IO_PRINT_BUFFER_SIZE] = { 0 };
 
     va_list args;
     va_start(args, str);
