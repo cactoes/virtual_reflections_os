@@ -58,6 +58,8 @@
 #define TO_IP(a0, a1, a2, a3)   ((((uint32_t)(a0) & 0xff) << 24) | (((uint32_t)(a1) & 0xff) << 16) | (((uint32_t)(a2) & 0xff) << 8) | (((uint32_t)(a3) & 0xff) << 0))
 #define FROM_IP(ip)             ((ip) >> 24) & 0xFF, ((ip) >> 16) & 0xFF, ((ip) >> 8)  & 0xFF, ((ip) >> 0)  & 0xFF
 
+#define BCD_TO_BIN(bcd)         (((bcd) >> 4) * 10) + ((bcd) & 0x0F)
+
 template<typename T>
 struct remove_reference {
     using type_t = T;
