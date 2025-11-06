@@ -1,4 +1,4 @@
-#include "subsystems/dhcp/dhcp_driver.hpp"
+#include "subsystems/dhcp/dhcp_client_driver.hpp"
 #include "drivers/driver.hpp"
 #include "drivers/network/udp.hpp"
 

@@ -242,7 +242,7 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
     }
 
     // start our driver as the dhcp subsystem
-    subsystem_dhcp_client_t subsystem_dhcp_client{ DEVICE_HOST_NAME };
+    subsystem_dhcp_client_driver_t subsystem_dhcp_client{ DEVICE_HOST_NAME };
     subsystem_interface_set(ISUBSYSTEM_DHCP_CLIENT, &subsystem_dhcp_client);
     if (driver_query_capability(get_global_driver_manager(), driver_manager_get_driver_handle(get_global_driver_manager(), "INetDrivers"), "dhcp") >= 1) {
         subsystem_dhcp_client.init();
@@ -262,7 +262,7 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
         e1000_nid->is_configured = false;
         nidm_register_device(get_global_nidm(), move(e1000_nid));
 
-        auto subsystem_dhcp_client = subsystem_interface_get<subsystem_dhcp_client_interface_t>(ISUBSYSTEM_DHCP_CLIENT);
+        auto subsystem_dhcp_client = subsystem_interface_get<subsystem_interface_dhcp_client_t>(ISUBSYSTEM_DHCP_CLIENT);
         subsystem_dhcp_client->configure(nidm_get_device_on_interface(get_global_nidm(), "eth0"));
     }
 
