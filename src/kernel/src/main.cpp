@@ -18,7 +18,11 @@
 #include "drivers/network/tcp.hpp"
 #include "drivers/network/arp.hpp"
 #include "drivers/network/udp.hpp"
-#include "drivers/network/dhcp.hpp"
+#include "drivers/network/dns.hpp"
+
+#include "subsystem_interface.hpp"
+#include "subsystems/dhcp/interface.hpp"
+#include "subsystems/dhcp/dhcp_driver.hpp"
 
 #include "interrupt_manager.hpp"
 
@@ -52,8 +56,7 @@
 
 #define HEAP_START_SIZE 0x100000 * 32 // 32 mb
 #define PIT_TIMER_INTERVAL 1000 // times per second
-
-#include "drivers/network/dns.hpp"
+#define DEVICE_HOST_NAME "hostname"
 
 extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
     // validate multiboot
@@ -201,6 +204,8 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
     }
 
     // network device
+    // TODO @since 06/11/2025 -- 02:00
+    // move to after dhcp driver init? so we can configure immediately
     pci_class_info_t network_device_class_info { .revision_id = (uint8_t)PCI_UNKNOWN, .prog_if = (uint8_t)PCI_UNKNOWN, .sub_class = (uint8_t)0, .class_code = (uint8_t)2 };
     const pci_device_t* network_controller = pci_find_device(get_global_pcie_device_manager(), &network_device_class_info);
 
@@ -211,6 +216,7 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
         e1000_nid->is_up = true;
         e1000_nid->is_prefered = true;
         e1000_nid->interface = "eth0";
+        e1000_nid->is_configured = false;
         nidm_register_device(get_global_nidm(), move(e1000_nid));
     }
 
@@ -253,8 +259,15 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
     }
 
     if (driver_query_capability(get_global_driver_manager(), driver_manager_get_driver_handle(get_global_driver_manager(), "INetDrivers"), "dhcp") >= 1) {
-        if (vthread_create(dhcp_client_thread, p_kpml4, out_streams) == VTHREAD_HANDLE_INVALID)
-            kprintf("failed to start DHCP client\n");
+        subsystem_dhcp_client_t subsystem_dhcp_client{ DEVICE_HOST_NAME };
+        subsystem_interface_set(ISUBSYSTEM_DHCP_CLIENT, &subsystem_dhcp_client);
+
+        subsystem_dhcp_client.init();
+
+        // for now just configure the default device ...
+        // TODO @since 06/11/2025 -- 01:48
+        // check if there is a valid device
+        subsystem_dhcp_client.configure(nidm_get_prefered_device(get_global_nidm()));
     }
 
     if (vthread_create(dns_client_thread, p_kpml4, out_streams) == VTHREAD_HANDLE_INVALID)
@@ -270,7 +283,8 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
             free(str);
         };
 
-        while (!dhcp_client_is_configured(get_global_dhcp_context()));
+        // while (!dhcp_client_is_configured(get_global_dhcp_context()));
+        while (!nidm_get_prefered_device(get_global_nidm())->is_configured)
         while (!dns_client_is_configured(get_global_dns_client()));
 
         auto ip = dns_client_query(get_global_dns_client(), "cactoes.xyz");

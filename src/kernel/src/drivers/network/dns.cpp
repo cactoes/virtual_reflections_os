@@ -59,7 +59,6 @@ std::dynamic_array<uint8_t> dns_encode_hostname(const string& hostname) {
     return output;
 }
 
-
 string dns_decode_hostname(const uint8_t* packet, size_t packet_size, size_t& offset) {
     string result;
     bool jumped = false;
@@ -193,7 +192,6 @@ int dns_receive(const uint8_t* packet, size_t size) {
         offset += 4;
     }
 
-
     for (int i = 0; i < ancount && offset < size; i++) {
         string hostname = dns_decode_hostname(packet, size, offset);
 
@@ -232,10 +230,11 @@ int dns_receive(const uint8_t* packet, size_t size) {
     return 0;
 }
 
+void net_recieve(uint8_t* p, size_t s) { dns_receive(p, s); };
+
 void dns_client_start() {
     auto client = get_global_dns_client();
 
-    auto net_recieve = [](uint8_t* p, size_t s) { dns_receive(p, s); };
     nidm_udp_bind(get_global_nidm(), client->port, net_recieve);
 
     client->is_configured = true;
