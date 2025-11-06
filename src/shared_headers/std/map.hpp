@@ -5,11 +5,12 @@
 
 #pragma once
 
-#ifndef __UTILS_MAP_HPP__
-#define __UTILS_MAP_HPP__
+#ifndef __STD_MAP_HPP__
+#define __STD_MAP_HPP__
 
-#include "memory/heap.hpp"
 #include "std/array.hpp"
+
+namespace std {
 
 template <typename T, typename U>
 struct key_value_pair_t {
@@ -56,21 +57,21 @@ class linear_map {
 public:
     linear_map() = default;
     
-    linear_map(const linear_map<T, U>& other) {
+    linear_map(const std::linear_map<T, U>& other) {
         data = other.data;
     }
 
-    linear_map& operator=(const linear_map<T, U>& other) {
+    linear_map& operator=(const std::linear_map<T, U>& other) {
         if (this != &other)
             data = other.data;
         return *this;
     }
 
-    linear_map(linear_map<T, U>&& other) noexcept {
+    linear_map(std::linear_map<T, U>&& other) noexcept {
         data = move(other.data);
     }
 
-    linear_map& operator=(linear_map<T, U>&& other) noexcept {
+    linear_map& operator=(std::linear_map<T, U>&& other) noexcept {
         if (this != &other)
             data = move(other.data);
         return *this;
@@ -147,4 +148,6 @@ private:
     std::dynamic_array<key_value_pair_t<T, U>> data {};
 };
 
-#endif // __UTILS_MAP_HPP__
+} // namespace std
+
+#endif // __STD_MAP_HPP__

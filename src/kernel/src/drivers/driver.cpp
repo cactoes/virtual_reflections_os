@@ -1,5 +1,6 @@
 #include "kernel_include/virtual_reflections_exports.hpp"
 #include "drivers/driver.hpp"
+#include "memory/heap.hpp"
 #include "elf.hpp"
 
 driver_manager_t* global_driver_manager = nullptr;
@@ -38,7 +39,7 @@ system_driver_handle_t driver_load(driver_manager_t* driver_manager, const char*
 
     // TODO @since 13/08/2025 -- 22:55
     // make this more global / better manageable
-    linear_map<string, void*> symbol_map {};
+    std::linear_map<string, void*> symbol_map {};
     symbol_map["malloc"] = (void*)&malloc;
     symbol_map["free"] = (void*)&free;
     symbol_map["kprint"] = (void*)&kprint;

@@ -1,5 +1,5 @@
 #include "virtual_thread.hpp"
-#include "utils/map.hpp"
+#include "std/map.hpp"
 #include "utils/mutex.hpp"
 #include "arch/gdt.hpp"
 #include "arch/interrupt.hpp"
@@ -11,7 +11,7 @@
 // TODO @since 23/10/2025 -- 19:06
 // change into 1 "bigger" thread handler
 
-static linear_map<vthread_handle_t, std::unique_ptr<vthread_t>> g_threads {};
+static std::linear_map<vthread_handle_t, std::unique_ptr<vthread_t>> g_threads {};
 
 static vthread_handle_t     g_vth_counter = 1;
 static vthread_t*           g_current_thread = nullptr;

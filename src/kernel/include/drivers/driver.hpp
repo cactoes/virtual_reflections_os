@@ -12,7 +12,7 @@
 
 #include "common.hpp"
 #include "string.hpp"
-#include "utils/map.hpp"
+#include "std/map.hpp"
 #include "std/pointer.hpp"
 
 struct system_driver_functions_t {
@@ -32,7 +32,7 @@ typedef uint64_t(*driver_query_capability_t)(const char*);
 
 struct driver_manager_t {
     system_driver_handle_t current_handle;
-    linear_map<system_driver_handle_t, std::unique_ptr<system_driver_t>> loaded_drivers;
+    std::linear_map<system_driver_handle_t, std::unique_ptr<system_driver_t>> loaded_drivers;
 };
 
 void set_global_driver_manager(driver_manager_t* driver_manager);

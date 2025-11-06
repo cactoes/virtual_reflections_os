@@ -1,11 +1,11 @@
 #include "interrupt_manager.hpp"
-#include "utils/map.hpp"
+#include "std/map.hpp"
 #include "utils/bitmap.hpp"
 #include "crash_handler.hpp"
 #include "arch/interrupt.hpp"
 #include "io.hpp"
 
-static linear_map<interrupt_t, interrupt_callback_t> g_interrupt_callbacks {};
+static std::linear_map<interrupt_t, interrupt_callback_t> g_interrupt_callbacks {};
 
 bool is_interrupt_exception(uint64_t code) {
     return (code >= 0 && code <= 21);

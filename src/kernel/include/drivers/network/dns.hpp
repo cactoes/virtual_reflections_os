@@ -13,7 +13,7 @@
 #include "common.hpp"
 #include "string.hpp"
 #include "std/array.hpp"
-#include "utils/map.hpp"
+#include "std/map.hpp"
 #include "utils/mutex.hpp"
 
 struct dns_header_t {
@@ -51,7 +51,7 @@ struct dns_cache_record_t {
 };
 
 struct dns_client_t {
-    linear_map<string, dns_cache_record_t> records;
+    std::linear_map<string, dns_cache_record_t> records;
     mutex_t mutex;
     uint16_t port;
     bool is_configured;

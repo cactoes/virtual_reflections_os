@@ -9,7 +9,7 @@
 #define __DRIVERS_NETWORK_NIDM_HPP__
 
 #include "common.hpp"
-#include "utils/map.hpp"
+#include "std/map.hpp"
 #include "string.hpp"
 #include "std/pointer.hpp"
 #include "std/array.hpp"
@@ -52,7 +52,7 @@ struct nidm_t {
     mutex_t mutex {};
 
     std::dynamic_array<std::unique_ptr<network_interface_device_t>> devices;
-    linear_map<uint16_t, network_callback_t> udp_callbacks;
+    std::linear_map<uint16_t, network_callback_t> udp_callbacks;
 };
 
 void set_global_nidm(nidm_t* nidm);

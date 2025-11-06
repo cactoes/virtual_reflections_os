@@ -1,5 +1,6 @@
 #include "drivers/network/udp.hpp"
 #include "drivers/network/ip.hpp"
+#include "memory/heap.hpp"
 #include "io.hpp"
 
 void udp_receive(network_interface_device_t* p_device, uint8_t* p_payload, size_t payload_length) {

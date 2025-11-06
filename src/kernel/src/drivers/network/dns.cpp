@@ -1,6 +1,6 @@
 #include "drivers/network/dns.hpp"
 #include "std/random.hpp"
-#include "utils/map.hpp"
+#include "std/map.hpp"
 #include "io.hpp"
 #include "drivers/network/nidm.hpp"
 #include "drivers/network/udp.hpp"
@@ -18,7 +18,7 @@ dns_client_t* get_global_dns_client() {
 }
 
 void dns_client_init(dns_client_t* client) {
-    client->records = linear_map<string, dns_cache_record_t>{};
+    client->records = std::linear_map<string, dns_cache_record_t>{};
     client->port = random_number(49152, 65535);
     client->is_configured = false;
     client->mutex = mutex_t{};

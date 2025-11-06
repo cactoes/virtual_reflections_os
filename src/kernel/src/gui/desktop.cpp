@@ -2,24 +2,17 @@
 #include "drivers/vga.hpp"
 #include "drivers/ps2/mouse.hpp"
 #include "std/array.hpp"
-#include "utils/map.hpp"
+#include "std/map.hpp"
 #include "utils/event.hpp"
 #include "std/random.hpp"
 #include "time/clock.hpp"
 #include "virtual_thread.hpp"
 #include "gui/games/minesweeper.hpp"
 
-enum print_mode_t {
-    STD,
-    DBG
-};
-
-extern void printf(print_mode_t mode, const char* p_str, ...);
-
 static vga_buffer_t* g_desktop_back_buffer = nullptr;
 static bool g_desktop_ready = false;
 static int g_desktop_mouse_pos[2] { 0, 0 };
-static linear_map<uint64_t, event_manager_t<void*>> g_desktop_event_container {};
+static std::linear_map<uint64_t, event_manager_t<void*>> g_desktop_event_container {};
 static linked_list<desktop_render_target_t> g_render_targets {};
 constexpr uint64_t k_desktop_target_fps_ms = 1000 / 60;
 

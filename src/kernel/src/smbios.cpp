@@ -1,13 +1,6 @@
 #include "smbios.hpp"
 #include "string.hpp"
 
-enum print_mode_t {
-    STD,
-    DBG
-};
-
-extern void printf(print_mode_t mode, const char* p_str, ...);
-
 size_t smbios_entry_length(const smbios_entry_header_t* entry) {
     size_t size = 0;
     const char* string_table = (const char*)((uint8_t*)entry + entry->length);

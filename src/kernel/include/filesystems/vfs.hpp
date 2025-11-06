@@ -15,7 +15,7 @@
 #include "std/pointer.hpp"
 #include "utils/mutex.hpp"
 #include "std/array.hpp"
-#include "utils/map.hpp"
+#include "std/map.hpp"
 #include "utils/debug.hpp"
 #include "utils/vector.hpp"
 
@@ -70,7 +70,7 @@ public:
     }
 
 private:
-    linear_map<string, std::unique_ptr<std::dynamic_array<uint8_t>>> storage;
+    std::linear_map<string, std::unique_ptr<std::dynamic_array<uint8_t>>> storage;
     mutex_t mutex;
 };
 
@@ -192,7 +192,7 @@ struct vfs_t {
     std::unique_ptr<vfs_storage_interface_t> root_storage_interface;
     std::unique_ptr<vfs_node_t> root_node;
 
-    linear_map<file_descriptor_t, string> open_files {};
+    std::linear_map<file_descriptor_t, string> open_files {};
     linked_list<std::unique_ptr<vfs_mount_point_t>> mount_points {};
 
     int fd_counter = 0;

@@ -1,10 +1,10 @@
 #include "drivers/network/arp.hpp"
 #include "drivers/network/ethernet.hpp"
 #include "time/clock.hpp"
-#include "utils/map.hpp"
+#include "std/map.hpp"
 #include "io.hpp"
 
-static linear_map<uint32_t, arp_table_entry_t> g_address_lookup_table {};
+static std::linear_map<uint32_t, arp_table_entry_t> g_address_lookup_table {};
 
 void arp_table_insert(uint32_t ipv4, uint8_t p_mac[6]) {
     arp_table_entry_t entry {};

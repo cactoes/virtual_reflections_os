@@ -1,13 +1,7 @@
 #include "drivers/network/ethernet.hpp"
 #include "drivers/network/ip.hpp"
 #include "drivers/network/arp.hpp"
-
-enum print_mode_t {
-    STD,
-    DBG
-};
-
-extern void printf(print_mode_t mode, const char* p_str, ...);
+#include "memory/heap.hpp"
 
 void ethernet_send(network_interface_device_t* p_device, uint8_t p_dst_mac[6], uint16_t type, const uint8_t* p_packet, size_t size) {
     const size_t frame_size = sizeof(ethernet_header_t) + size;
