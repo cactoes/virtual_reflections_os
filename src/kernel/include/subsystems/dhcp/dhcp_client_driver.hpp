@@ -1,6 +1,6 @@
 //==========================================
 /// @file       dhcp_driver.hpp
-/// @brief      driver implementaiton for the dhcp subsystem
+/// @brief      driver implementation for the dhcp subsystem
 //==========================================
 
 #pragma once

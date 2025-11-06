@@ -188,10 +188,14 @@ thread_local_storage_t* vthread_get_tls() {
 }
 
 void vthread_sleep(uint64_t time_ms) {
-    // main thread has busy to sleep
+    // FIXME @since 06/11/2025 -- 17:05
+    // can fully block the system
+    // main thread has "busy" to sleep
     if (g_current_thread->handle == 0) {
         uint64_t sleep_until_ms = clock_get_time_since_boot() + time_ms;
-        while (clock_get_time_since_boot() < sleep_until_ms);
+        while (clock_get_time_since_boot() < sleep_until_ms)
+            pause();
+
         return;
     }
 

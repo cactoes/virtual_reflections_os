@@ -137,11 +137,13 @@ static inline void x86_64_cpuid(uint32_t eax_in, uint32_t ecx_in, uint32_t* eax_
 }
 
 static inline uint64_t x86_64_save_flags_and_cli() {
+    // FIXME @since 06/11/2025 -- 16:54
+    // figure out if we need to cli
+    // & where to call sti
     uint64_t flags;
     asm volatile(
         "pushfq\n"
         "pop %0\n"
-        "cli"
         : "=r"(flags)
         :
         : "memory"

@@ -23,6 +23,8 @@
 #include "subsystem_interface.hpp"
 #include "subsystems/dhcp/interface.hpp"
 #include "subsystems/dhcp/dhcp_client_driver.hpp"
+#include "subsystems/dns/interface.hpp"
+#include "subsystems/dns/dns_client_driver.hpp"
 
 #include "interrupt_manager.hpp"
 
@@ -247,6 +249,12 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
         subsystem_interface_get<subsystem_interface_dhcp_client_t>(ISUBSYSTEM_DHCP_CLIENT)->init();
     }
 
+    // start our driver as the dhcp subsystem
+    if (driver_query_capability(get_global_driver_manager(), driver_manager_get_driver_handle(get_global_driver_manager(), "INetDrivers"), "dns") >= 1) {
+        subsystem_interface_set(ISUBSYSTEM_DNS_CLIENT, std::make_unique<subsystem_dns_client_driver_t>());
+        subsystem_interface_get<subsystem_interface_dns_client_t>(ISUBSYSTEM_DNS_CLIENT)->init();
+    }
+
     // network device
     pci_class_info_t network_device_class_info { .revision_id = (uint8_t)PCI_UNKNOWN, .prog_if = (uint8_t)PCI_UNKNOWN, .sub_class = (uint8_t)0, .class_code = (uint8_t)2 };
     const pci_device_t* network_controller = pci_find_device(get_global_pcie_device_manager(), &network_device_class_info);
@@ -265,9 +273,6 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
         subsystem_dhcp_client->configure(nidm_get_device_on_interface(get_global_nidm(), "eth0"));
     }
 
-    if (vthread_create(dns_client_thread, p_kpml4, out_streams) == VTHREAD_HANDLE_INVALID)
-        kprintf("failed to start DNS client\n");
-
     auto net_test = []() {
         auto tcp_callback = [](const uint8_t* data, size_t size) {
             char* str = (char*)malloc(size + 1);
@@ -278,10 +283,12 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
             free(str);
         };
 
-        while (!nidm_get_prefered_device(get_global_nidm())->is_configured)
-        while (!dns_client_is_configured(get_global_dns_client()));
+        auto si_dns_client = subsystem_interface_get<subsystem_interface_dns_client_t>(ISUBSYSTEM_DNS_CLIENT);
 
-        auto ip = dns_client_query(get_global_dns_client(), "cactoes.xyz");
+        while (!nidm_get_prefered_device(get_global_nidm())->is_configured)
+        while (!si_dns_client->is_configured());
+
+        auto ip = si_dns_client->resolve("cactoes.xyz");
         auto conn = tcp_connect(ip, 80, tcp_callback);
 
         if (conn->state != tcp_state_t::ESTABLISHED) {
@@ -300,7 +307,7 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
         return 0;
     };
 
-    vthread_create(net_test, p_kpml4, out_streams);
+    // vthread_create(net_test, p_kpml4, out_streams);
 
     // kernel finished
     kprintf("kernel finished initializing\n");

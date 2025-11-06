@@ -17,6 +17,8 @@
 #include "drivers/network/nidm.hpp"
 #include "drivers/network/dns.hpp"
 
+#include "subsystem_interface.hpp"
+#include "subsystems/dns/interface.hpp"
 
 static std::dynamic_array<char> terminal_current_input {};
 bool keep_terminal_alive = true;
@@ -186,11 +188,12 @@ void terminal_execute(const std::string& path, const std::dynamic_array<std::str
         case hash_fnv1a_64("dns"): {
             if (args.length() >= 1) {
                 auto arg0 = *args.get_at(0);
+                auto si_dns_client = subsystem_interface_get<subsystem_interface_dns_client_t>(ISUBSYSTEM_DNS_CLIENT);
 
                 if (arg0 == "resolve") {
                     if (args.length() >= 2) {
                         auto arg1 = *args.get_at(1);
-                        auto ip = dns_client_query(get_global_dns_client(), arg1.c_str());
+                        auto ip = si_dns_client->resolve(arg1.c_str());
                         if (ip != MAX_UINT32 && ip != 0)
                             printf("Hostname: %s\nIP:       %u.%u.%u.%u\n", arg1.c_str(), FROM_IP(ip));
                         else
@@ -203,7 +206,7 @@ void terminal_execute(const std::string& path, const std::dynamic_array<std::str
                 }
 
                 if (arg0 == "server") {
-                    printf("IP:       %u.%u.%u.%u\n", FROM_IP(get_global_dns_client()->dns_server));
+                    printf("IP:       %u.%u.%u.%u\n", FROM_IP(si_dns_client->get_dns_server()));
                     break;
                 }
             }

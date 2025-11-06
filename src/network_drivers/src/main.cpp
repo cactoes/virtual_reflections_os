@@ -15,7 +15,7 @@
 /*
 * DNS 1:
 */
-#define DNS_VERSION   0
+#define DNS_VERSION     1
 
 #define DRIVER_NAMING
 

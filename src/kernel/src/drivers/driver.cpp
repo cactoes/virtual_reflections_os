@@ -43,6 +43,7 @@ system_driver_handle_t driver_load(driver_manager_t* driver_manager, const char*
     symbol_map["malloc"] = (void*)&malloc;
     symbol_map["free"] = (void*)&free;
     symbol_map["kprint"] = (void*)&kprint;
+    symbol_map["ksleep"] = (void*)&ksleep;
     symbol_map["ktime_since_boot"] = (void*)&ktime_since_boot;
     symbol_map["knet_udp_send"] = (void*)&knet_udp_send;
 

@@ -13,6 +13,7 @@
     #define KsPrint kprint
     #define KsTimeSinceBoot ktime_since_boot
     #define KsNetUdpSend knet_udp_send
+    #define KsSleep ksleep
 
     #define DriverInit driver_init
     #define DriverExit driver_exit
@@ -29,6 +30,7 @@ extern "C" {
 void kprint(const char* str);
 uint64_t ktime_since_boot();
 void knet_udp_send(uint32_t dst_ip, uint16_t src_port, uint16_t dst_port, uint8_t* packet, size_t size);
+void ksleep(uint64_t ms);
 
 int driver_init();
 int driver_exit();
