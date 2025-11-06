@@ -194,7 +194,7 @@ void vthread_sleep(uint64_t time_ms) {
     if (g_current_thread->handle == 0) {
         uint64_t sleep_until_ms = clock_get_time_since_boot() + time_ms;
         while (clock_get_time_since_boot() < sleep_until_ms)
-            pause();
+            vthread_yield();
 
         return;
     }
