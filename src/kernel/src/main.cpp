@@ -203,23 +203,6 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
         }
     }
 
-    // network device
-    // TODO @since 06/11/2025 -- 02:00
-    // move to after dhcp driver init? so we can configure immediately
-    pci_class_info_t network_device_class_info { .revision_id = (uint8_t)PCI_UNKNOWN, .prog_if = (uint8_t)PCI_UNKNOWN, .sub_class = (uint8_t)0, .class_code = (uint8_t)2 };
-    const pci_device_t* network_controller = pci_find_device(get_global_pcie_device_manager(), &network_device_class_info);
-
-    e1000_t e1000 {};
-    const auto e1000_init_result = e1000_init_device(network_controller, &e1000);
-    if (e1000_init_result == 0) {
-        std::unique_ptr<e1000_nid_t> e1000_nid = std::make_unique<e1000_nid_t>(e1000);
-        e1000_nid->is_up = true;
-        e1000_nid->is_prefered = true;
-        e1000_nid->interface = "eth0";
-        e1000_nid->is_configured = false;
-        nidm_register_device(get_global_nidm(), move(e1000_nid));
-    }
-
     driver_manager_t driver_manager {};
     set_global_driver_manager(&driver_manager);
 
@@ -258,16 +241,29 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
         }
     }
 
+    // start our driver as the dhcp subsystem
+    subsystem_dhcp_client_t subsystem_dhcp_client{ DEVICE_HOST_NAME };
+    subsystem_interface_set(ISUBSYSTEM_DHCP_CLIENT, &subsystem_dhcp_client);
     if (driver_query_capability(get_global_driver_manager(), driver_manager_get_driver_handle(get_global_driver_manager(), "INetDrivers"), "dhcp") >= 1) {
-        subsystem_dhcp_client_t subsystem_dhcp_client{ DEVICE_HOST_NAME };
-        subsystem_interface_set(ISUBSYSTEM_DHCP_CLIENT, &subsystem_dhcp_client);
-
         subsystem_dhcp_client.init();
+    }
 
-        // for now just configure the default device ...
-        // TODO @since 06/11/2025 -- 01:48
-        // check if there is a valid device
-        subsystem_dhcp_client.configure(nidm_get_prefered_device(get_global_nidm()));
+    // network device
+    pci_class_info_t network_device_class_info { .revision_id = (uint8_t)PCI_UNKNOWN, .prog_if = (uint8_t)PCI_UNKNOWN, .sub_class = (uint8_t)0, .class_code = (uint8_t)2 };
+    const pci_device_t* network_controller = pci_find_device(get_global_pcie_device_manager(), &network_device_class_info);
+
+    e1000_t e1000 {};
+    const auto e1000_init_result = e1000_init_device(network_controller, &e1000);
+    if (e1000_init_result == 0) {
+        std::unique_ptr<e1000_nid_t> e1000_nid = std::make_unique<e1000_nid_t>(e1000);
+        e1000_nid->is_up = true;
+        e1000_nid->is_prefered = true;
+        e1000_nid->interface = "eth0";
+        e1000_nid->is_configured = false;
+        nidm_register_device(get_global_nidm(), move(e1000_nid));
+
+        auto subsystem_dhcp_client = subsystem_interface_get<subsystem_dhcp_client_interface_t>(ISUBSYSTEM_DHCP_CLIENT);
+        subsystem_dhcp_client->configure(nidm_get_device_on_interface(get_global_nidm(), "eth0"));
     }
 
     if (vthread_create(dns_client_thread, p_kpml4, out_streams) == VTHREAD_HANDLE_INVALID)

@@ -39,6 +39,14 @@ network_interface_device_t* nidm_get_device(nidm_t* nidm, const string& name) {
     return nullptr;
 }
 
+network_interface_device_t* nidm_get_device_on_interface(nidm_t* nidm, const string& interface) {
+    for (auto& device : nidm->devices)
+        if (device->interface == interface)
+            return device.get();
+
+    return nullptr;
+}
+
 int nidm_packet_recieve(nidm_t* nidm, network_interface_device_t* p_device, const void* p_data, size_t size) {
     return ethernet_receive(p_device, (uint8_t*)p_data, size);
 }

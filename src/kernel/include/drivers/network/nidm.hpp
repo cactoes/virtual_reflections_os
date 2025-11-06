@@ -63,6 +63,7 @@ void nidm_shutdown(nidm_t* nidm);
 
 int nidm_register_device(nidm_t* nidm, std::unique_ptr<network_interface_device_t> device);
 network_interface_device_t* nidm_get_device(nidm_t* nidm, const string& name);
+network_interface_device_t* nidm_get_device_on_interface(nidm_t* nidm, const string& interface);
 
 int nidm_packet_recieve(nidm_t* nidm, network_interface_device_t* p_device, const void* p_data, size_t size);
 int nidm_packet_send(nidm_t* nidm, const void* p_data, size_t size);
