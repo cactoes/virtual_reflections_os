@@ -27,6 +27,7 @@
 #define GENERATE_CASE_STATEMENT(x) case hash_fnv1a_64(#x): return SUBSYSTEM_INTERFACE_TO_ENUM_NAME(x);
 
 #include "common.hpp"
+#include "std/pointer.hpp"
 
 /// @brief generate all the interfaces of the interface list
 SUBSYSTEM_INTERFACE_LIST(GENERATE_INTERFACE_NAMES)
@@ -58,7 +59,7 @@ static inline int subsystem_interface_to_index(uint64_t hash) {
 /// @param interface    the interface hash (I[X])
 /// @param[in] ptr      pointer to the interface
 /// @return             true if valid interface hash else false
-bool subsystem_interface_set(uint64_t interface, subsystem_interface_t* ptr);
+bool subsystem_interface_set(uint64_t interface, std::unique_ptr<subsystem_interface_t> ptr);
 
 /// @brief              gets the interface ptr by the hash
 /// @param interface    the interface hash (I[X])

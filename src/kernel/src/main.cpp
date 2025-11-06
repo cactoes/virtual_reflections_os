@@ -22,7 +22,7 @@
 
 #include "subsystem_interface.hpp"
 #include "subsystems/dhcp/interface.hpp"
-#include "subsystems/dhcp/dhcp_driver.hpp"
+#include "subsystems/dhcp/dhcp_client_driver.hpp"
 
 #include "interrupt_manager.hpp"
 
@@ -242,10 +242,9 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
     }
 
     // start our driver as the dhcp subsystem
-    subsystem_dhcp_client_driver_t subsystem_dhcp_client{ DEVICE_HOST_NAME };
-    subsystem_interface_set(ISUBSYSTEM_DHCP_CLIENT, &subsystem_dhcp_client);
     if (driver_query_capability(get_global_driver_manager(), driver_manager_get_driver_handle(get_global_driver_manager(), "INetDrivers"), "dhcp") >= 1) {
-        subsystem_dhcp_client.init();
+        subsystem_interface_set(ISUBSYSTEM_DHCP_CLIENT, std::make_unique<subsystem_dhcp_client_driver_t>(DEVICE_HOST_NAME));
+        subsystem_interface_get<subsystem_interface_dhcp_client_t>(ISUBSYSTEM_DHCP_CLIENT)->init();
     }
 
     // network device
@@ -279,7 +278,6 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
             free(str);
         };
 
-        // while (!dhcp_client_is_configured(get_global_dhcp_context()));
         while (!nidm_get_prefered_device(get_global_nidm())->is_configured)
         while (!dns_client_is_configured(get_global_dns_client()));
 

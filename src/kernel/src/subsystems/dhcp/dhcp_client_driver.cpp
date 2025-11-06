@@ -6,7 +6,7 @@ void dhcp_send_packet_wrapper(uint32_t dst_ip, uint16_t dst_port, uint16_t src_p
     udp_send(dst_ip, src_port, dst_port, data, size);
 }
 
-bool subsystem_dhcp_client_t::init() {
+bool subsystem_dhcp_client_driver_t::init() {
     system_driver_handle_t driver_handle = driver_manager_get_driver_handle(get_global_driver_manager(), "INetDrivers");
     driver_client_init = (decltype(DHCPClientInit)*)driver_get_function(get_global_driver_manager(), driver_handle, "DHCPClientInit");
     driver_client_shutdown = (decltype(DHCPClientShutdown)*)driver_get_function(get_global_driver_manager(), driver_handle, "DHCPClientShutdown");
@@ -14,17 +14,17 @@ bool subsystem_dhcp_client_t::init() {
     driver_client_handle_packet = (decltype(DHCPClientHandlePacket)*)driver_get_function(get_global_driver_manager(), driver_handle, "DHCPClientHandlePacket");
     driver_client_lease_extend = (decltype(DHCPClientLeaseExtend)*)driver_get_function(get_global_driver_manager(), driver_handle, "DHCPClientLeaseExtend");
 
-    return nidm_udp_bind(get_global_nidm(), DHCP_PORT_CLIENT, { this, &subsystem_dhcp_client_t::network_callback }) == 0;
+    return nidm_udp_bind(get_global_nidm(), DHCP_PORT_CLIENT, { this, &subsystem_dhcp_client_driver_t::network_callback }) == 0;
 }
 
-void subsystem_dhcp_client_t::shutdown() {
+void subsystem_dhcp_client_driver_t::shutdown() {
     mutex_lock_guard guard(&mutex);
 
     if (state)
         driver_client_shutdown(state);
 }
 
-void subsystem_dhcp_client_t::network_callback(uint8_t* packet, size_t size) {
+void subsystem_dhcp_client_driver_t::network_callback(uint8_t* packet, size_t size) {
     mutex_lock_guard guard(&mutex);
 
     if (size != sizeof(DHCPPacket))
@@ -49,7 +49,7 @@ void subsystem_dhcp_client_t::network_callback(uint8_t* packet, size_t size) {
     }
 }
 
-void subsystem_dhcp_client_t::configure(network_interface_device_t* device) {
+void subsystem_dhcp_client_driver_t::configure(network_interface_device_t* device) {
     mutex_lock_guard guard(&mutex);
 
     if (state)
