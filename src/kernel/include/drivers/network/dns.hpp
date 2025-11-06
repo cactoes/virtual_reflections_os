@@ -11,7 +11,7 @@
 #define DNS_SERVER_PORT 53
 
 #include "common.hpp"
-#include "string.hpp"
+#include "std/string.hpp"
 #include "std/array.hpp"
 #include "std/map.hpp"
 #include "utils/mutex.hpp"
@@ -46,12 +46,12 @@ enum class dns_query_type_t {
 };
 
 struct dns_cache_record_t {
-    string name;
+    std::string name;
     uint32_t ip;
 };
 
 struct dns_client_t {
-    std::linear_map<string, dns_cache_record_t> records;
+    std::linear_map<std::string, dns_cache_record_t> records;
     mutex_t mutex;
     uint16_t port;
     bool is_configured;
@@ -63,9 +63,9 @@ dns_client_t* get_global_dns_client();
 
 void dns_client_init(dns_client_t* client);
 
-void dns_client_store_record(dns_client_t* client, const string& hostname, uint32_t ip);
-const dns_cache_record_t* dns_client_get_record(dns_client_t* client, const string& hostname);
-uint32_t dns_client_query(dns_client_t* client, const string& hostname);
+void dns_client_store_record(dns_client_t* client, const std::string& hostname, uint32_t ip);
+const dns_cache_record_t* dns_client_get_record(dns_client_t* client, const std::string& hostname);
+uint32_t dns_client_query(dns_client_t* client, const std::string& hostname);
 int dns_client_thread();
 bool dns_client_is_configured(dns_client_t* client);
 

@@ -1,5 +1,5 @@
 #include "smbios.hpp"
-#include "string.hpp"
+#include "std/string.hpp"
 
 size_t smbios_entry_length(const smbios_entry_header_t* entry) {
     size_t size = 0;

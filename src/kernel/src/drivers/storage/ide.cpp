@@ -1,6 +1,6 @@
 #include "drivers/storage/ide.hpp"
 #include "arch/generic.hpp"
-#include "string.hpp"
+#include "std/string.hpp"
 
 bool wait_ide_status(uint16_t io_base, uint8_t mask_set, uint8_t mask_clear) {
     while (true) {
@@ -147,9 +147,9 @@ int ide_ata_identify_device(ide_device_t* p_device) {
     if (ide_send_identify(p_device, buffer) != 0)
         return 1;
 
-    unpack_be16_string(&buffer[27], 20, p_device->model, sizeof(p_device->model));
-    unpack_be16_string(&buffer[10], 10, p_device->serial, sizeof(p_device->serial));
-    unpack_be16_string(&buffer[23], 4, p_device->firmware, sizeof(p_device->firmware));
+    str_unpack_be16(&buffer[27], 20, p_device->model, sizeof(p_device->model));
+    str_unpack_be16(&buffer[10], 10, p_device->serial, sizeof(p_device->serial));
+    str_unpack_be16(&buffer[23], 4, p_device->firmware, sizeof(p_device->firmware));
 
     p_device->lba = ((uint32_t)buffer[61] << 16) | buffer[60];
 
@@ -174,9 +174,9 @@ int ide_atapi_identify_device(ide_device_t* p_device) {
     if (ide_send_identify(p_device, identify_buffer) != 0)
         return 1;
 
-    unpack_be16_string(&identify_buffer[27], 20, p_device->model, sizeof(p_device->model));
-    unpack_be16_string(&identify_buffer[10], 10, p_device->serial, sizeof(p_device->serial));
-    unpack_be16_string(&identify_buffer[23], 4, p_device->firmware, sizeof(p_device->firmware));
+    str_unpack_be16(&identify_buffer[27], 20, p_device->model, sizeof(p_device->model));
+    str_unpack_be16(&identify_buffer[10], 10, p_device->serial, sizeof(p_device->serial));
+    str_unpack_be16(&identify_buffer[23], 4, p_device->firmware, sizeof(p_device->firmware));
 
     uint8_t packet[12] = {};
     packet[0] = 0x25;

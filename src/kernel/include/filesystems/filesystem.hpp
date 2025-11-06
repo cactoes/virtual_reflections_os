@@ -12,7 +12,7 @@
 
 #include "common.hpp"
 #include "drivers/storage/storage.hpp"
-#include "string.hpp"
+#include "std/string.hpp"
 #include "std/array.hpp"
 
 struct mbr_partition_entry_t {
@@ -32,7 +32,7 @@ enum class filesystem_type_t {
 
 // very basic node for simple info
 struct filesystem_node_t {
-    string name;
+    std::string name;
     bool is_directory;
     size_t filesize;
 };

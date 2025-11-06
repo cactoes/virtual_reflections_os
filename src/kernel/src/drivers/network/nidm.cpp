@@ -31,7 +31,7 @@ int nidm_register_device(nidm_t* nidm, std::unique_ptr<network_interface_device_
     return 0;
 }
 
-network_interface_device_t* nidm_get_device(nidm_t* nidm, const string& name) {
+network_interface_device_t* nidm_get_device(nidm_t* nidm, const std::string& name) {
     for (auto& device : nidm->devices)
         if (device->name == name)
             return device.get();
@@ -39,7 +39,7 @@ network_interface_device_t* nidm_get_device(nidm_t* nidm, const string& name) {
     return nullptr;
 }
 
-network_interface_device_t* nidm_get_device_on_interface(nidm_t* nidm, const string& interface) {
+network_interface_device_t* nidm_get_device_on_interface(nidm_t* nidm, const std::string& interface) {
     for (auto& device : nidm->devices)
         if (device->interface == interface)
             return device.get();

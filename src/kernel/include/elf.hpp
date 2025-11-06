@@ -70,7 +70,7 @@ enum class elf_type_t {
 #define ELF_GET_SECTION(header, index) &ELF_GET_SECTION_HEADER((header))[(index)]
 
 #include "common.hpp"
-#include "string.hpp"
+#include "std/string.hpp"
 #include "std/map.hpp"
 
 struct elf_header_t {
@@ -144,7 +144,7 @@ elf_section_header_t* elf_find_section_by_name(uint8_t* p_elf_data, const char* 
 
 bool elf_find_symbol_address(uint8_t* p_elf_data, elf_section_header_t* p_symbol_table, elf_section_header_t* p_string_table, const char* p_symbol_name, uint64_t* p_symbol_value);
 
-int elf_relocate(uint8_t* p_elf_data, uint8_t* p_base_address, elf_section_header_t* p_target_section, elf_section_header_t* p_symbol_table, elf_section_header_t* p_string_table, std::linear_map<string, void*>* p_symbol_map);
+int elf_relocate(uint8_t* p_elf_data, uint8_t* p_base_address, elf_section_header_t* p_target_section, elf_section_header_t* p_symbol_table, elf_section_header_t* p_string_table, std::linear_map<std::string, void*>* p_symbol_map);
 
 int elf_check_file(uint8_t* p_elf_data, elf_type_t elf_bin_type = elf_type_t::DYNAMIC);
 
@@ -154,7 +154,7 @@ void elf_load_program_sections(uint8_t* p_elf_data, uint8_t* p_base_address, elf
 
 elf_tables_t elf_get_tables(uint8_t* p_elf_data);
 
-int elf_relocate_rel_sections(uint8_t* p_elf_data, uint8_t* p_base_address, elf_tables_t* p_tables, std::linear_map<string, void*>* p_symbol_map);
+int elf_relocate_rel_sections(uint8_t* p_elf_data, uint8_t* p_base_address, elf_tables_t* p_tables, std::linear_map<std::string, void*>* p_symbol_map);
 
 template <typename R, typename... Args>
 using elf_func_t = R (*)(Args...);

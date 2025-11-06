@@ -31,7 +31,7 @@
 #include "drivers/storage/storage.hpp"
 #include "filesystems/filesystem.hpp"
 #include "std/array.hpp"
-#include "string.hpp"
+#include "std/string.hpp"
 #include "std/pointer.hpp"
 
 typedef uint16_t fat32_date_t;

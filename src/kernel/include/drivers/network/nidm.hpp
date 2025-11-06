@@ -10,7 +10,7 @@
 
 #include "common.hpp"
 #include "std/map.hpp"
-#include "string.hpp"
+#include "std/string.hpp"
 #include "std/pointer.hpp"
 #include "std/array.hpp"
 #include "utils/mutex.hpp"
@@ -33,8 +33,8 @@ public:
     virtual int send_packet(const void* data, size_t size) = 0;
 
 public:
-    string name;
-    string interface;
+    std::string name;
+    std::string interface;
     bool is_up;
     bool is_prefered;
     bool is_configured;
@@ -62,8 +62,8 @@ void nidm_init(nidm_t* nidm);
 void nidm_shutdown(nidm_t* nidm);
 
 int nidm_register_device(nidm_t* nidm, std::unique_ptr<network_interface_device_t> device);
-network_interface_device_t* nidm_get_device(nidm_t* nidm, const string& name);
-network_interface_device_t* nidm_get_device_on_interface(nidm_t* nidm, const string& interface);
+network_interface_device_t* nidm_get_device(nidm_t* nidm, const std::string& name);
+network_interface_device_t* nidm_get_device_on_interface(nidm_t* nidm, const std::string& interface);
 
 int nidm_packet_recieve(nidm_t* nidm, network_interface_device_t* p_device, const void* p_data, size_t size);
 int nidm_packet_send(nidm_t* nidm, const void* p_data, size_t size);

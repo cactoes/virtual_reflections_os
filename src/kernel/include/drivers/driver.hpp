@@ -11,7 +11,7 @@
 #define SYSTEM_DRIVER_HANDLE_INVALID (system_driver_handle_t)-1
 
 #include "common.hpp"
-#include "string.hpp"
+#include "std/string.hpp"
 #include "std/map.hpp"
 #include "std/pointer.hpp"
 
@@ -21,7 +21,7 @@ struct system_driver_functions_t {
 };
 
 struct system_driver_t {
-    string name;
+    std::string name;
     void* base_address;
     void* file_data_ptr;
     system_driver_functions_t functions;

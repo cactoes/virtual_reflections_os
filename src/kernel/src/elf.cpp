@@ -36,7 +36,7 @@ bool elf_find_symbol_address(uint8_t* p_elf_data, elf_section_header_t* p_symbol
     return false;
 }
 
-int elf_relocate(uint8_t* p_elf_data, uint8_t* p_base_address, elf_section_header_t* p_target_section, elf_section_header_t* p_symbol_table, elf_section_header_t* p_string_table, std::linear_map<string, void*>* p_symbol_map) {
+int elf_relocate(uint8_t* p_elf_data, uint8_t* p_base_address, elf_section_header_t* p_target_section, elf_section_header_t* p_symbol_table, elf_section_header_t* p_string_table, std::linear_map<std::string, void*>* p_symbol_map) {
     int relocation_count = p_target_section->size / p_target_section->entry_size;
     elf_relocation_entry_t* relocations = (elf_relocation_entry_t*)(p_elf_data + p_target_section->file_offset);
 
@@ -170,7 +170,7 @@ elf_tables_t elf_get_tables(uint8_t* p_elf_data) {
     return tables;
 }
 
-int elf_relocate_rel_sections(uint8_t* p_elf_data, uint8_t* p_base_address, elf_tables_t* p_tables, std::linear_map<string, void*>* p_symbol_map) {
+int elf_relocate_rel_sections(uint8_t* p_elf_data, uint8_t* p_base_address, elf_tables_t* p_tables, std::linear_map<std::string, void*>* p_symbol_map) {
     if (elf_section_header_t* rela_dyn = elf_find_section_by_name(p_elf_data, ".rela.dyn")) {
         if (elf_relocate(p_elf_data, p_base_address, rela_dyn, p_tables->symbol_table, p_tables->string_table, p_symbol_map) != 0) {
             return 1;

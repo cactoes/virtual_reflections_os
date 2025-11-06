@@ -1,7 +1,7 @@
 #include "crash_handler.hpp"
 #include "arch/generic.hpp"
 #include "drivers/vga.hpp"
-#include "string.hpp"
+#include "std/string.hpp"
 #include "utils/debug.hpp"
 #include "virtual_thread.hpp"
 #include "io.hpp"

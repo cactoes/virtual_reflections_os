@@ -18,7 +18,7 @@ dns_client_t* get_global_dns_client() {
 }
 
 void dns_client_init(dns_client_t* client) {
-    client->records = std::linear_map<string, dns_cache_record_t>{};
+    client->records = std::linear_map<std::string, dns_cache_record_t>{};
     client->port = random_number(49152, 65535);
     client->is_configured = false;
     client->mutex = mutex_t{};
@@ -26,13 +26,13 @@ void dns_client_init(dns_client_t* client) {
     client->dns_server = TO_IP(8, 8, 8, 8);
 }
 
-void dns_client_store_record(dns_client_t* client, const string& hostname, uint32_t ip) {
+void dns_client_store_record(dns_client_t* client, const std::string& hostname, uint32_t ip) {
     mutex_lock_guard guard(&client->mutex);
 
     client->records[hostname] = dns_cache_record_t{ .name = hostname, .ip = ip };
 }
 
-const dns_cache_record_t* dns_client_get_record(dns_client_t* client, const string& hostname) {
+const dns_cache_record_t* dns_client_get_record(dns_client_t* client, const std::string& hostname) {
     mutex_lock_guard guard(&client->mutex);
 
     if (auto it = client->records.get(hostname); it != client->records.end())
@@ -41,11 +41,11 @@ const dns_cache_record_t* dns_client_get_record(dns_client_t* client, const stri
     return nullptr;
 }
 
-std::dynamic_array<uint8_t> dns_encode_hostname(const string& hostname) {
+std::dynamic_array<uint8_t> dns_encode_hostname(const std::string& hostname) {
     std::dynamic_array<uint8_t> output {};
     output.resize(hostname.length());
 
-    std::dynamic_array<string> parts = str_split(hostname, '.');
+    std::dynamic_array<std::string> parts = str_split(hostname, '.');
 
     for (auto& part : parts) {
         output.insert_back((uint8_t)part.length());
@@ -59,8 +59,8 @@ std::dynamic_array<uint8_t> dns_encode_hostname(const string& hostname) {
     return output;
 }
 
-string dns_decode_hostname(const uint8_t* packet, size_t packet_size, size_t& offset) {
-    string result;
+std::string dns_decode_hostname(const uint8_t* packet, size_t packet_size, size_t& offset) {
+    std::string result;
     bool jumped = false;
     size_t original_offset = offset;
     int max_loops = 128;
@@ -108,7 +108,7 @@ string dns_decode_hostname(const uint8_t* packet, size_t packet_size, size_t& of
     return result;
 }
 
-std::dynamic_array<uint8_t> dns_build_query(const string& hostname, dns_query_type_t type) {
+std::dynamic_array<uint8_t> dns_build_query(const std::string& hostname, dns_query_type_t type) {
     dns_header_t header {};
     header.id = host_to_net<uint16_t>(random_number(0, MAX_UINT16));
     header.flags = host_to_net<uint16_t>(0x0100);
@@ -193,7 +193,7 @@ int dns_receive(const uint8_t* packet, size_t size) {
     }
 
     for (int i = 0; i < ancount && offset < size; i++) {
-        string hostname = dns_decode_hostname(packet, size, offset);
+        std::string hostname = dns_decode_hostname(packet, size, offset);
 
         if (offset + 10 > size)
             return 1;
@@ -251,7 +251,7 @@ int dns_client_thread() {
     return 0;
 }
 
-uint32_t dns_client_query(dns_client_t* client, const string& hostname) {
+uint32_t dns_client_query(dns_client_t* client, const std::string& hostname) {
     auto query = dns_build_query(hostname, dns_query_type_t::A);
 
     if (udp_send(client->dns_server, client->port, DNS_SERVER_PORT, query.get_data(), query.length()) != 0)

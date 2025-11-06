@@ -15,7 +15,7 @@
 #include "filesystems/filesystem.hpp"
 #include "drivers/storage/storage.hpp"
 #include "std/array.hpp"
-#include "string.hpp"
+#include "std/string.hpp"
 #include "std/pointer.hpp"
 
 struct iso9660_lbs_msb_32 {

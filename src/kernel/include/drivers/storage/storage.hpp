@@ -10,12 +10,12 @@
 
 #include "common.hpp"
 #include "std/pointer.hpp"
-#include "string.hpp"
+#include "std/string.hpp"
 
 struct storage_info_t {
-    string model;
-    string serial;
-    string firmare;
+    std::string model;
+    std::string serial;
+    std::string firmare;
 
     size_t capacity;
 };

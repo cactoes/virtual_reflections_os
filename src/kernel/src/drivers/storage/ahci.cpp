@@ -197,9 +197,9 @@ int ahci_sata_identify_device(ahci_drive_t* drive) {
 
     const uint16_t* data = (const uint16_t*)ctx.data_buffer;
 
-    unpack_be16_string(&data[27], 20, drive->model, sizeof(drive->model));
-    unpack_be16_string(&data[10], 10, drive->serial, sizeof(drive->serial));
-    unpack_be16_string(&data[23], 4, drive->firmware, sizeof(drive->firmware));
+    str_unpack_be16(&data[27], 20, drive->model, sizeof(drive->model));
+    str_unpack_be16(&data[10], 10, drive->serial, sizeof(drive->serial));
+    str_unpack_be16(&data[23], 4, drive->firmware, sizeof(drive->firmware));
 
     // lba28 fallback
     drive->lba = (uint32_t)data[60] | ((uint32_t)data[61] << 16);
@@ -361,9 +361,9 @@ int ahci_atapi_identify_device(ahci_drive_t* drive) {
 
     const uint16_t* data = (const uint16_t*)ctx.data_buffer;
 
-    unpack_be16_string(&data[10], 10, drive->model, sizeof(drive->model));
-    unpack_be16_string(&data[23], 4, drive->serial, sizeof(drive->serial));
-    unpack_be16_string(&data[27], 20, drive->firmware, sizeof(drive->firmware));
+    str_unpack_be16(&data[10], 10, drive->model, sizeof(drive->model));
+    str_unpack_be16(&data[23], 4, drive->serial, sizeof(drive->serial));
+    str_unpack_be16(&data[27], 20, drive->firmware, sizeof(drive->firmware));
 
     // lba28 fallback
     drive->lba = (uint32_t)data[60] | ((uint32_t)data[61] << 16);

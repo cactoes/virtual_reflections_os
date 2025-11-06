@@ -45,7 +45,7 @@
 #include "std/random.hpp"
 
 #include "multiboot.hpp"
-#include "string.hpp"
+#include "std/string.hpp"
 #include "common.hpp"
 #include "crash_handler.hpp"
 #include "virtual_thread.hpp"
@@ -210,10 +210,10 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
     if (vfs_list_directory(get_global_vfs(), "/mnt/disk0", &nodes)) {
         for (auto& node : nodes) {
             if (str_ends_with(node->meta.name.c_str(), ".sys")) {
-                string driver_name = node->meta.name.substr(0, node->meta.name.length() - 4);
+                std::string driver_name = node->meta.name.substr(0, node->meta.name.length() - 4);
 
                 std::dynamic_array<uint8_t> driver_file {};
-                file_descriptor_t driver_file_handle = vfs_open_file(get_global_vfs(), string("/mnt/disk0/") + driver_name + ".sys");
+                file_descriptor_t driver_file_handle = vfs_open_file(get_global_vfs(), std::string("/mnt/disk0/") + driver_name + ".sys");
                 if (driver_file_handle == FILE_DESCRIPTOR_INVALID) {
                     kprintf("failed to open handle to driver '%s'\n", driver_name.c_str());
                     continue;

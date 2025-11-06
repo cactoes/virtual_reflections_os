@@ -1,6 +1,6 @@
 #include "filesystems/iso9660.hpp"
 #include "memory/heap.hpp"
-#include "string.hpp"
+#include "std/string.hpp"
 #include "std/array.hpp"
 #include "std/pointer.hpp"
 
@@ -104,11 +104,11 @@ bool iso9660_find_node(storage_driver_interface_t* storage_interface, iso9660_da
         return false;
 
     // split string to get the next node to look for
-    std::dynamic_array<string> path_parts = str_split(path, '/');
+    std::dynamic_array<std::string> path_parts = str_split(path, '/');
     if (path_parts.length() == 0)
         return false;
 
-    string& target = *path_parts.get_at(0);
+    std::string& target = *path_parts.get_at(0);
 
     // find target section
     size_t offset = 0;
@@ -144,7 +144,7 @@ bool iso9660_find_node(storage_driver_interface_t* storage_interface, iso9660_da
 
             // recurse, if the directory was the target the function will catch it at the beginning
             if (is_directory) {
-                string remaining_path = "";
+                std::string remaining_path = "";
                 for (size_t i = 1; i < path_parts.length(); i++) {
                     remaining_path += "/";
                     remaining_path += *path_parts.get_at(i);

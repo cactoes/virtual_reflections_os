@@ -114,11 +114,11 @@ bool fat32_find_node(storage_driver_interface_t* storage_interface, fat32_data_t
     }
 
     // split string to get the next node to look for
-    std::dynamic_array<string> path_parts = str_split(path, '/');
+    std::dynamic_array<std::string> path_parts = str_split(path, '/');
     if (path_parts.length() == 0)
         return false;
 
-    string& target = *path_parts.get_at(0);
+    std::string& target = *path_parts.get_at(0);
 
     while (cluster < FAT32_EOC32) {
         // read target disk cluster
@@ -189,7 +189,7 @@ bool fat32_find_node(storage_driver_interface_t* storage_interface, fat32_data_t
                 }
 
                 if (is_directory) {
-                    string remaining_path = "";
+                    std::string remaining_path = "";
                     for (size_t i = 1; i < path_parts.length(); i++) {
                         remaining_path += "/";
                         remaining_path += *path_parts.get_at(i);

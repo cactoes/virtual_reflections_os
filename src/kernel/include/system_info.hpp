@@ -9,17 +9,17 @@
 #define __SYSTEM_INFO_HPP__
 
 #include "multiboot.hpp"
-#include "string.hpp"
+#include "std/string.hpp"
 
 struct system_info_manager_t {
     size_t memory_size;
 
-    string manufacturer;
-    string product_name;
-    string version;
-    string serial_number;
+    std::string manufacturer;
+    std::string product_name;
+    std::string version;
+    std::string serial_number;
 
-    string cpu_name;
+    std::string cpu_name;
 };
 
 /// @brief                          set the global system info manager

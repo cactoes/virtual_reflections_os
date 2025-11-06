@@ -1,7 +1,7 @@
 #include "terminal.hpp"
 #include "common.hpp"
 #include "io.hpp"
-#include "string.hpp"
+#include "std/string.hpp"
 #include "system_info.hpp"
 #include "virtual_thread.hpp"
 
@@ -21,14 +21,14 @@
 static std::dynamic_array<char> terminal_current_input {};
 bool keep_terminal_alive = true;
 
-void terminal_execute(const string& path, const std::dynamic_array<string>& args) {
+void terminal_execute(const std::string& path, const std::dynamic_array<std::string>& args) {
     switch (hash_fnv1a_64(path.c_str())) {
         case hash_fnv1a_64("memdump"): {
             auto heap = get_global_heap();
             for (size_t i = 0; i < heap->heap_block_array_size; i++) {
                 heap_block_t* block = &heap->heap_block_array[i];
                 if (block->used && block->size > 100 && !block->free) {
-                    kprintf("%c %p-%p (%s)\n", block->free ? 'f' : 'u', block->start_real_addr, (void*)((uint64_t)block->start_real_addr + block->size), str_format_size(block->size).c_str());
+                    kprintf("%c %p-%p (%s)\n", block->free ? 'f' : 'u', block->start_real_addr, (void*)((uint64_t)block->start_real_addr + block->size), size_format_to_string(block->size).c_str());
                 }
             }
             break;
@@ -50,8 +50,8 @@ void terminal_execute(const string& path, const std::dynamic_array<string>& args
 
             size_t available_mem = heap->size + get_global_dma_heap_manager()->size;
 
-            printf("Memory allocated:   %s/%s (%i%)\n", str_format_size(used_mem).c_str(), str_format_size(available_mem).c_str(), (int)(((double)used_mem / (double)available_mem) * 100));
-            printf("Total available:    %s\n", str_format_size(get_global_system_info_manager()->memory_size).c_str());
+            printf("Memory allocated:   %s/%s (%i%)\n", size_format_to_string(used_mem).c_str(), size_format_to_string(available_mem).c_str(), (int)(((double)used_mem / (double)available_mem) * 100));
+            printf("Total available:    %s\n", size_format_to_string(get_global_system_info_manager()->memory_size).c_str());
             printf("Total comitted:     %f%\n", (double)(((double)available_mem / (double)get_global_system_info_manager()->memory_size) * 100));
             break;
         }
@@ -77,7 +77,7 @@ void terminal_execute(const string& path, const std::dynamic_array<string>& args
             // TODO @since 11/10/2025 -- 01:09
             // check if is file
             std::dynamic_array<vfs_node_t*> entries {};
-            string arg_path = "";
+            std::string arg_path = "";
             if (args.length() >= 1)
                 arg_path = *args.get_at(0);
 
@@ -96,7 +96,7 @@ void terminal_execute(const string& path, const std::dynamic_array<string>& args
             // TODO @since 11/10/2025 -- 01:09
             // check if is directory
             std::dynamic_array<vfs_node_t*> entries {};
-            string arg_path = "";
+            std::string arg_path = "";
             if (args.length() >= 1)
                 arg_path = *args.get_at(0);
 
@@ -161,7 +161,7 @@ void terminal_execute(const string& path, const std::dynamic_array<string>& args
                 printf("%s:\n", storage_info.model.c_str());
                 printf("    Serial: %s\n", storage_info.serial.c_str());
                 printf("    Firmware: %s\n", storage_info.firmare.c_str());
-                printf("    Disk size: %s\n", str_format_size(storage_info.capacity).c_str());
+                printf("    Disk size: %s\n", size_format_to_string(storage_info.capacity).c_str());
             }
             break;
         }
@@ -170,7 +170,7 @@ void terminal_execute(const string& path, const std::dynamic_array<string>& args
             printf("Host:    %s %s %s %s\n", sysinfo->manufacturer.c_str(), sysinfo->product_name.c_str(), sysinfo->version.c_str(), sysinfo->serial_number.c_str());
             printf("CPU:     %s\n", sysinfo->cpu_name.c_str());
             printf("Threads: %ul\n", vthread_get_count());
-            printf("Uptime:  %s\n", str_format_time(clock_get_time_since_boot()).c_str());
+            printf("Uptime:  %s\n", time_format_to_string(clock_get_time_since_boot()).c_str());
             break;
         }
         case hash_fnv1a_64("gui"): {
@@ -241,7 +241,7 @@ void terminal_keydown_callback(virtual_key_t vk) {
             terminal_current_input.insert_back(0);
 
             auto parts = str_split(terminal_current_input.get_data(), ' ');
-            std::dynamic_array<string> args {};
+            std::dynamic_array<std::string> args {};
             if (parts.length() > 0)
                 args.resize(parts.length() - 1);
             for (size_t i = 1; i < parts.length(); i++)

@@ -14,7 +14,7 @@
 
 class subsystem_dhcp_client_driver_t : public subsystem_interface_dhcp_client_t {
 public:
-    subsystem_dhcp_client_driver_t(const string& hostname) : hostname(hostname) {
+    subsystem_dhcp_client_driver_t(const std::string& hostname) : hostname(hostname) {
         mutex_init(&mutex);
     };
 
@@ -28,7 +28,7 @@ private:
 
     DHCPClientState* state;
     network_interface_device_t* current_device;
-    string hostname;
+    std::string hostname;
     mutex_t mutex;
 
     decltype(DHCPClientInit)* driver_client_init = nullptr;
