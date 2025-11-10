@@ -1,5 +1,8 @@
 #include "io.hpp"
 #include "virtual_thread.hpp"
+#include "utils/bitmap.hpp"
+
+static uint64_t global_io_bitmap[1];
 
 bool write_stream(io_stream_t stream, const char* str) {
     file_descriptor_t stream_fd = FILE_DESCRIPTOR_INVALID;
@@ -28,7 +31,10 @@ void printf(const char* str, ...) {
     sprintf(buffer, (unsigned long int)sizeof(buffer), str, args);
     va_end(args);
 
-    write_stream(io_stream_t::STD_OUT, buffer);
+    if (io_flag_get(io_flag::KPRINT_BYPASS_VFS))
+        debug_puts(buffer);
+    else
+        write_stream(io_stream_t::STD_OUT, buffer);
 }
 
 void kprintf(const char* str, ...) {
@@ -40,4 +46,12 @@ void kprintf(const char* str, ...) {
     va_end(args);
 
     write_stream(io_stream_t::STD_DBG, buffer);
+}
+
+void io_flag_set(io_flag flag, bool state) {
+    bitmap_set(global_io_bitmap, (size_t)flag, state);
+}
+
+bool io_flag_get(io_flag flag) {
+    return bitmap_get(global_io_bitmap, (size_t)flag);
 }
