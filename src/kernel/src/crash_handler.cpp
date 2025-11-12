@@ -108,7 +108,7 @@ void __kernel_fatal(uint64_t code, const char* p_message, cpu_state_t* p_cpu_sta
         kprintf("rsi=0x%uh\n", p_cpu_state->rsi);
         kprintf("rdi=0x%uh\n", p_cpu_state->rdi);
         kprintf("rip=0x%uh\n", p_cpu_state->rip);
-        // kprintf("rsp=0x%uh\n", p_cpu_state->rsp);
+        kprintf("rsp=0x%uh\n", p_cpu_state->rsp);
     }
 
     while (true)

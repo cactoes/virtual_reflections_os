@@ -291,7 +291,10 @@ int terminal_thread_main() {
     }
 
     printf("\n> ");
-    subscribe_on_key_down(terminal_keydown_callback);
-    while (keep_terminal_alive);
+    // subscribe_on_key_down(terminal_keydown_callback);
+    while (keep_terminal_alive) {
+        auto vk = wait_for_key();
+        terminal_keydown_callback(vk);
+    }
     return 0;
 }

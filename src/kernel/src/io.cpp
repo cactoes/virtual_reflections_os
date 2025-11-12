@@ -1,15 +1,15 @@
 #include "io.hpp"
 #include "virtual_thread.hpp"
 #include "utils/bitmap.hpp"
+#include "drivers/vga.hpp"
 
 static uint64_t global_io_bitmap[1];
 
 bool write_stream(io_stream_t stream, const char* str) {
     file_descriptor_t stream_fd = FILE_DESCRIPTOR_INVALID;
     
-    if (stream == io_stream_t::STD_OUT || stream == io_stream_t::STD_ERR || stream == io_stream_t::STD_WRN) {
+    if (stream == io_stream_t::STD_OUT || stream == io_stream_t::STD_ERR || stream == io_stream_t::STD_WRN)
         stream_fd = vthread_get_tls()->out_streams[ABS((int)stream) - 1];
-    }
 
     if (stream == io_stream_t::STD_DBG)
         stream_fd = vfs_open_file(get_global_vfs(), "/dev/dbg/stream");

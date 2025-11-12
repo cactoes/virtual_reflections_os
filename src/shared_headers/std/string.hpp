@@ -642,6 +642,9 @@ public:
     }
 
     void assign(const std::string& other) {
+        if (this == &other)
+            return;
+
         this->~string();
 
         len = other.len;

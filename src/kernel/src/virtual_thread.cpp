@@ -147,7 +147,7 @@ bool vthread_check_stack(vthread_t* thread) {
     return true;
 }
 
-cpu_state_t* vthread_schedule(cpu_state_t* p_cpu_state) {  
+cpu_state_t* vthread_schedule(cpu_state_t* p_cpu_state) {
     if (g_threads.size() == 0)
         return nullptr;
 
