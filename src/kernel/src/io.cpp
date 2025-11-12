@@ -31,10 +31,7 @@ void printf(const char* str, ...) {
     sprintf(buffer, (unsigned long int)sizeof(buffer), str, args);
     va_end(args);
 
-    if (io_flag_get(io_flag::KPRINT_BYPASS_VFS))
-        debug_puts(buffer);
-    else
-        write_stream(io_stream_t::STD_OUT, buffer);
+    write_stream(io_stream_t::STD_OUT, buffer);
 }
 
 void kprintf(const char* str, ...) {
@@ -45,7 +42,10 @@ void kprintf(const char* str, ...) {
     sprintf(buffer, (unsigned long int)sizeof(buffer), str, args);
     va_end(args);
 
-    write_stream(io_stream_t::STD_DBG, buffer);
+    if (io_flag_get(io_flag::KPRINT_BYPASS_VFS))
+        debug_puts(buffer);
+    else
+        write_stream(io_stream_t::STD_DBG, buffer);
 }
 
 void io_flag_set(io_flag flag, bool state) {
