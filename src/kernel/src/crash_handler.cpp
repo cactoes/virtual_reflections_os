@@ -14,8 +14,9 @@ void __kernel_fatal(uint64_t code, const char* p_message, cpu_state_t* p_cpu_sta
     // if not main thread just terminate the thread not the system
     // & if a valid tls is setup
     if (auto tls = vthread_get_tls()) {
-        if (tls->handle != VTHREAD_MAIN_THREAD_HANDLE) {
+        if (auto handle = tls->handle; tls->handle != VTHREAD_MAIN_THREAD_HANDLE) {
             kprintf("thread: %ul terminated (crashed or forcefully stopped)\n", tls->handle);
+            mutex_clear_all_thread_references_and_release(handle);
             vthread_terminate();
         }
     }

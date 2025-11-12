@@ -324,6 +324,7 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
     } else {
         vthread_wait_for_close(vth);
         kprintf("terminal closed\n");
+        printf("\n[terminal exited]\n");
     }
 
     // we shoudn t reach this point since the kernel should never stop

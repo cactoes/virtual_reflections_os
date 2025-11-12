@@ -12,14 +12,20 @@
 
 #include "common.hpp"
 
+typedef uint64_t vthread_handle_t;
+
 struct mutex_t {
     volatile int locked;
     uint64_t saved_flags;
+
+    // for crash handler cleanup
+    vthread_handle_t handle;
 };
 
 void mutex_init(mutex_t* p_mutex);
 void mutex_lock(mutex_t* p_mutex);
 void mutex_unlock(mutex_t* p_mutex);
+void mutex_clear_all_thread_references_and_release(vthread_handle_t handle);
 
 /// @brief helper class for managing mutex lock / unlocks automatically
 class mutex_lock_guard {
