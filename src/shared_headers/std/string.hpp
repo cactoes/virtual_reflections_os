@@ -514,7 +514,7 @@ public:
     
     string(char ch) { assign(ch); }
     string(const char* string) { assign(string); }
-    string(const std::string& other) { assign(move(other)); }
+    string(const std::string& other) { assign(other); }
 
     string& operator=(const std::string& other) {
         if (this == &other)
@@ -624,7 +624,10 @@ public:
     }
 
     void assign(const char ch) {
-        this->~string();
+        if (str) {
+            free(str);
+            str = nullptr;
+        }
 
         len = 1;
         str = (char*)malloc(2);
@@ -633,7 +636,10 @@ public:
     }
 
     void assign(const char* string) {
-        this->~string();
+        if (str) {
+            free(str);
+            str = nullptr;
+        }
 
         len = strlen(string);
         str = (char*)malloc(len * sizeof(char) + 1);
@@ -645,7 +651,10 @@ public:
         if (this == &other)
             return;
 
-        this->~string();
+        if (str) {
+            free(str);
+            str = nullptr;
+        }
 
         len = other.len;
         str = (char*)malloc(len * sizeof(char) + 1);
@@ -673,6 +682,8 @@ public:
     
     bool operator==(const std::string& other) const { return streq(str, other.str); }
     bool operator==(const char* other) const { return streq(str, other); }
+    bool operator!=(const std::string& other) const { return !streq(str, other.str); }
+    bool operator!=(const char* other) const { return !streq(str, other); }
     
     string operator+(const std::string& other) const {
         string n(str);

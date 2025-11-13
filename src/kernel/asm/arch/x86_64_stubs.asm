@@ -173,9 +173,6 @@ isr_stub_%+%1:
     ; store pointer to the stack
     mov rsi, rsp
     ; call the interrupt handler
-    ; TODO @since 14/04/2025 -- 13:58
-    ; THIS ONLY SUPPORT KERNEL MODE INTERRUPTS
-    ; THE STACK IS DIFFERENT OTHERWISE
     call x86_64_int_handler
 
     ; update / restore stack pointer
@@ -183,6 +180,7 @@ isr_stub_%+%1:
 
     pop_all_regs
 
+    ; skip error code
     add rsp, 8
 
     ; return from interrupt

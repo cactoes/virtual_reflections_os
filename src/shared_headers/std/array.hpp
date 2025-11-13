@@ -52,9 +52,7 @@ public:
     }
 
     template <size_t arr_size>
-    dynamic_array(const T (&p_arr)[arr_size]) {
-        dynamic_array(p_arr, arr_size);
-    }
+    dynamic_array(const T (&p_arr)[arr_size]) : dynamic_array(p_arr, arr_size) {}
 
     dynamic_array(const dynamic_array<T>& other) {
         size = other.size;
@@ -230,15 +228,16 @@ public:
         if (!new_data)
             return false;
 
-        memzero(new_data, new_size * sizeof(T));
-        memcpy(new_data, data, capacity * sizeof(T));
+        for (size_t i = 0; i < size; ++i) {
+            new (&new_data[i]) T(move(data[i]));
+            data[i].~T();
+        }
 
         if (data)
             free(data);
 
         data = new_data;
         capacity = new_size;
-
         return true;
     }
 
@@ -253,9 +252,9 @@ public:
     }
 
 private:
-    T* data;
-    size_t size;
-    size_t capacity;
+    T* data = nullptr;
+    size_t size = 0;
+    size_t capacity = 0;
 };
 
 template <typename T, size_t size>
@@ -365,7 +364,7 @@ public:
     }
 
 private:
-    T data[size];
+    T data[size] {};
 };
 
 } // namespace std
