@@ -66,3 +66,4 @@ It is public for reference and educational purposes only.
 [uefi-os - https://github.com/sansoune/uefi-os](https://github.com/sansoune/uefi-os)<br>
 [MmdOS - https://github.com/Rostamborn/MmdOS](https://github.com/Rostamborn/MmdOS)<br>
 [cavOS - https://github.com/malwarepad/cavOS](https://github.com/malwarepad/cavOS)<br>
+[RedactedOS - https://github.com/differrari/RedactedOS](https://github.com/differrari/RedactedOS)<br>
