@@ -1,89 +1,114 @@
 @startuml kernel diagram
-title kernel diagram
+title Kernel Diagram (Core) v1
 
-' node "Hardware Compatibility Layer (Hardware API)" as HWCL {
-' }
+actor "User Basic" as user
 
-' rectangle "Core" {
-'     rectangle "Drivers" {
-'         [PCI]
-'         [PIT]
-'         [VGA]
-'         [PS/2 Keyboard]
-'         [PS/2 Mouse]
-'         [AHCI]
-'         [IDE]
-'     }
+node "Interrupt Manager" as im
+node "Input Manager" as inputm
+node "Processor Abstraction" as pa
 
-'     rectangle "Core Functions" {
-'         [Virtual Threads]
-'         [Memory Manager]
-'         [Interrupts]
-'     }
+interface "Serviced Interrupt" as si
+interface "Screen" as screen
+interface "Debug Port" as dbgport
 
-'     rectangle "Utilities" {
-'         [Vector]
-'         [Mutex]
-'         [Events]
-'         [Bitmap]
-'     }
+interface "Network Card" as nc
+interface "Keyboard" as kb
 
-'     rectangle "Virtual File System" {
+node "Crash Handler" as ch
 
-'     }
+package "Networking" as networking {
+    component "Packet Handler" as npm
+    component "DHCP" as ndhcp
+    component "DNS" as ndns
+    collections "Network Stack" as networkstack
+}
 
-'     rectangle "File Systems" {
-'         [ISO9660]
-'         [FAT32]
-'     }
-' }
+package "PIT Driver" as pitdriver {
+    component "Interrupt Handler" as pitih
+}
 
-' [Virtual Threads] --> [Mutex]
-' [Virtual Threads] --> [Memory Manager]
+node "VGA Driver" as vgadriver
+node "Intel e1000 Driver" as e1000driver
 
-' [Memory Manager] --> [Bitmap]
-' [Memory Manager] --> [Mutex]
+package "Virtual Threads" as vthreads {
+    component "Interrupt Handler" as vthreadsih
+    component "Scheduler" as vthreadssc
+}
 
-' [Drivers] --> [Interrupts]
-' [PCI] --> [Vector]
-' [PIT] --> [Vector]
-' [PIT] --> [Virtual Threads]
-' [VGA] --> [Memory Manager]
-' [PS/2 Keyboard] --> [Events]
-' [PS/2 Mouse] ..> [Events]
-' [AHCI] --> [Memory Manager]
-' [AHCI] --> [Vector]
-' [IDE] --> [Vector]
+package "Device Driver" as devicedrivers {
+    component "PS/2" as ddps2
+    component "PIT" as ddpit
+    component "VGA" as ddvga
+    component "cmos" as ddcmos
+    component "Intel e1000" as dde1000
+    
+    folder "Storage Driver" as ddstorage {
+        component "ACHI"
+        component "IDE"
+    }
+}
 
-' [Events] --> [Mutex]
-' [Events] --> [Vector]
-' [Vector] --> [Mutex]
+package "Virtual File System" as vfs {
+    component "I/O" as vfsio
+}
 
-' "Virtual File System" --> [Vector]
-' "Virtual File System" --> [ISO9660]
-' "Virtual File System" --> [FAT32]
-' "Virtual File System" --> [IDE]
-' "Virtual File System" --> [Memory Manager]
+package "Memory Mangement" as mm {
+    component "Heap" as heap
+    component "DMA" as dma
+    component "Virtual Memory" as vmem
+    component "Physical Memory" as pmem
+}
 
-' [ISO9660] --> [Memory Manager]
-' [FAT32] --> [Memory Manager]
+package "Components" as components {
+    component "ELF Parser"
+    component "Multiboot Parser"
+    component "SMBios Parser"
+}
 
-' rectangle "Programs" {
-'     rectangle "Shell" {
-'         [Visual output]
-'         [Text Input]
-'     }
-' }
+database db [
+    VHD
+    ----
+    MBR(?)
+    ----
+    FAT32
+]
 
-' node "Compatibility Layer (Kernel API)" as CL {
-' }
+user --> si
+user <-- screen
+user <-- dbgport
 
-' Programs ..> CL
-' CL ..> Core
+si --> pa
+si <-- kb
+si <-- nc
 
-' [Interrupts] --> HWCL
-' Drivers ..> HWCL
-' [Memory Manager] ..> HWCL
-' [Virtual Threads] ..> HWCL
+pa --> im
+
+ch <-- pa
+ch <--> im
+
+im --> ddps2
+ddps2 <--> inputm
+
+e1000driver --> npm
+
+im --> ddpit
+im --> vthreadsih : (software int)
+im --> dde1000
+
+pitih --> vthreadssc
+
+ddpit --> pitdriver
+ddvga --> vgadriver
+dde1000 --> e1000driver
+
+pmem --> pa
+
+vthreads --> pa
+
+vgadriver --> screen
+
+ddstorage --> db
+
+vfs --> ddstorage
 
 @enduml
