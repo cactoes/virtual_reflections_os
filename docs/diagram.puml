@@ -1,5 +1,6 @@
 @startuml kernel diagram
 title Kernel Diagram (Core) v1
+' left to right direction
 
 actor "User Basic" as user
 
@@ -17,18 +18,11 @@ interface "Keyboard" as kb
 node "Crash Handler" as ch
 
 package "Networking" as networking {
-    component "Packet Handler" as npm
+    component "Packet Handler" as npa
+    collections "Network Stack" as nstack
     component "DHCP" as ndhcp
     component "DNS" as ndns
-    collections "Network Stack" as networkstack
 }
-
-package "PIT Driver" as pitdriver {
-    component "Interrupt Handler" as pitih
-}
-
-node "VGA Driver" as vgadriver
-node "Intel e1000 Driver" as e1000driver
 
 package "Virtual Threads" as vthreads {
     component "Interrupt Handler" as vthreadsih
@@ -46,6 +40,15 @@ package "Device Driver" as devicedrivers {
         component "ACHI"
         component "IDE"
     }
+}
+
+package "Drivers" as drivers {
+    package "PIT Driver" as pitdriver {
+        component "Interrupt Handler" as pitih
+    }
+
+    node "VGA Driver" as vgadriver
+    node "Intel e1000 Driver" as e1000driver
 }
 
 package "Virtual File System" as vfs {
@@ -76,39 +79,33 @@ database db [
 user --> si
 user <-- screen
 user <-- dbgport
-
 si --> pa
 si <-- kb
 si <-- nc
-
 pa --> im
-
 ch <-- pa
 ch <--> im
-
 im --> ddps2
 ddps2 <--> inputm
-
-e1000driver --> npm
-
+e1000driver --> npa
+npa --> nstack
+nstack --> ndns
+nstack --> ndhcp
 im --> ddpit
 im --> vthreadsih : (software int)
 im --> dde1000
-
 pitih --> vthreadssc
-
 ddpit --> pitdriver
 ddvga --> vgadriver
 dde1000 --> e1000driver
-
+drivers --> pa
 pmem --> pa
-
+dma --> vmem
+heap --> vmem
+vmem --> pmem
 vthreads --> pa
-
 vgadriver --> screen
-
 ddstorage --> db
-
 vfs --> ddstorage
 
 @enduml
