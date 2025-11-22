@@ -2,13 +2,15 @@
 A 64-bit custom made operating system, using grub as bootloader
 
 ## TODO
-- [ ] subsystem manager
+- [ ] redo subsystem manager
+- [ ] (generic?) device drivers
 - [ ] rethink vfs "layout"
 - [ ] rework keyboard controller -> move to io etc..
 - [ ] drive / disk manager
 - [ ] processes (kernel mode)
 - [ ] work on vthreads
 - [ ] general cleanup / restructuring
+    - [ ] interrupt manager
 - [ ] gui
 - [ ] fat32
     - [x] read
