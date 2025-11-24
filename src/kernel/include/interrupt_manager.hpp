@@ -58,6 +58,8 @@ enum class interrupt_t : uint64_t {
     // TODO @since 20/08/2025 -- 02:15
     SOFTWARE_CRASH_HANDLER,
 
+    SIZE,
+
     UNKOWN = (uint64_t)-1,
 };
 

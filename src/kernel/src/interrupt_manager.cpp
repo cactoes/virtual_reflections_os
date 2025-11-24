@@ -5,7 +5,7 @@
 #include "arch/interrupt.hpp"
 #include "io.hpp"
 
-static std::linear_map<interrupt_t, interrupt_callback_t> g_interrupt_callbacks {};
+static interrupt_callback_t global_interrupt_callback_array[(size_t)interrupt_t::SIZE] { nullptr };
 
 bool is_interrupt_exception(uint64_t code) {
     return (code >= 0 && code <= 21);
@@ -49,10 +49,11 @@ bool set_interrupt_callback(interrupt_t code, interrupt_callback_t callback) {
     if ((uint64_t)code > 255)
         return false;
 
-    if (g_interrupt_callbacks.contains(code))
+    if (global_interrupt_callback_array[(size_t)code])
         return false;
 
-    return g_interrupt_callbacks.insert(code, callback);
+    global_interrupt_callback_array[(size_t)code] = callback;
+    return true;
 }
 
 uint64_t interrupt_irq_to_int(uint64_t irq) {
@@ -67,9 +68,8 @@ void* handle_interrupt(uint64_t code, cpu_state_t* p_rsp) {
         __kernel_fatal(code, "critical interrupt triggerd", p_rsp);
 
     if (is_interrupt_hardware(interrupt_type)) {
-        auto it = g_interrupt_callbacks.get(interrupt_type);
-        if (it != g_interrupt_callbacks.end()) {
-            p_rsp = it->value(p_rsp);
+        if (auto callback = global_interrupt_callback_array[(size_t)interrupt_type]) {
+            p_rsp = callback(p_rsp);
             interrupt_send_eoi(code - 0x20);
             return p_rsp;
         }
@@ -84,11 +84,8 @@ void* handle_interrupt(uint64_t code, cpu_state_t* p_rsp) {
         case interrupt_t::SOFTWARE_SCHEDULER:
         case interrupt_t::SOFTWARE_CRASH_HANDLER:
         case interrupt_t::SOFTWARE_SYSTEMCALL: {
-            auto it = g_interrupt_callbacks.get(interrupt_type);
-            if (it != g_interrupt_callbacks.end()) {
-                p_rsp = it->value(p_rsp);
-                return p_rsp;
-            }
+            if (auto callback = global_interrupt_callback_array[(size_t)interrupt_type])
+                return callback(p_rsp);
             break;
         }
     }
