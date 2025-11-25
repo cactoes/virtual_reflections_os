@@ -1,6 +1,7 @@
 #include "utils/mutex.hpp"
 #include "arch/generic.hpp"
 #include "virtual_thread.hpp"
+#include "interrupt_manager.hpp"
 
 #define MUTEX_ARRAY_SIZE 128
 
@@ -36,22 +37,32 @@ void mutex_init(mutex_t* p_mutex) {
 }
 
 void mutex_lock(mutex_t* p_mutex) {
-    p_mutex->saved_flags = save_flags_and_cli();
-    p_mutex->handle = vthread_get_tls()->handle;
-    if (!append_to_mutex_array(global_mutex_array, p_mutex))
-        debug_puts("[WARN] mutex failed to append");
-    
-    while (atomic_exchange(&p_mutex->locked, 1))
-        pause();
+    if (is_in_interrupt())
+        debug_trap("lock while inside interrupt");
+
+    if (__thread_tls->irq_disable_depth == 0)
+        __thread_tls->saved_irq_flags = save_flags_and_cli();
+
+    __thread_tls->irq_disable_depth++;
+
+    while (atomic_exchange(&p_mutex->locked, 1) != 0)
+        vthread_yield();
+
+    p_mutex->handle = __thread_tls->handle;
 }
 
 void mutex_unlock(mutex_t* p_mutex) {
-    p_mutex->handle = VTHREAD_HANDLE_INVALID;
-    atomic_exchange(&p_mutex->locked, 0);
-    restore_flags(p_mutex->saved_flags);
+    if (p_mutex->handle != __thread_tls->handle)
+        debug_trap("wrong thread tried mutex unlock");
 
-    if (!remove_from_mutex_array(global_mutex_array, p_mutex))
-        debug_puts("[WARN] mutex failed to remove");
+    p_mutex->handle = VTHREAD_HANDLE_INVALID;
+
+    __thread_tls->irq_disable_depth--;
+
+    if (__thread_tls->irq_disable_depth == 0)
+        restore_flags(__thread_tls->saved_irq_flags);
+    
+    atomic_exchange(&p_mutex->locked, 0);
 }
 
 void mutex_clear_all_thread_references_and_release(vthread_handle_t handle) {

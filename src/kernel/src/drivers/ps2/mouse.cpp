@@ -2,7 +2,11 @@
 #include "drivers/ps2/ps2.hpp"
 #include "utils/event.hpp"
 
+// TODO @since 25/11/2025 -- 20:42
+// remove this event manager
+// it will cause issues with the new mutex architecture
 static event_manager_t<const ps2_mouse_state_t*> g_mouse_event_manager {};
+
 static ps2_mouse_state_t g_mouse_state {};
 static uint8_t g_mouse_packet_buffer[PS2_MOUSE_PACKET_SIZE] {};
 static uint8_t g_mouse_packet_index = 0;

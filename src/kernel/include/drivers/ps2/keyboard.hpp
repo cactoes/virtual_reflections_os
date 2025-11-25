@@ -39,7 +39,6 @@ struct ps2_key_state_t {
 cpu_state_t* ps2_keyboard_handle_interrupt(cpu_state_t* p_rsp);
 uint32_t ps2_keyboard_get_last_scancode();
 void ps2_keyboard_clear_last_scancode();
-void ps2_keyboard_event_subscribe(void(*p_handler)(const ps2_key_state_t*));
 const ps2_key_state_t* ps2_keyboard_get_key_state(uint32_t scan_code);
 bool ps2_keyboard_is_scan_code_extended(uint32_t scan_code);
 

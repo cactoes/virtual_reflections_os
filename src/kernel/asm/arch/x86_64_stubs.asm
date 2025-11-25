@@ -162,6 +162,7 @@ x86_64_memset:
 ;==========================================
 %macro isr_stub 1
 isr_stub_%+%1:
+    cli
     %if %1 != 8 && %1 != 10 && %1 != 11 && %1 != 12 && %1 != 13 && %1 != 14 && %1 != 17 && %1 != 30
         push 0
     %endif
@@ -183,6 +184,7 @@ isr_stub_%+%1:
     ; skip error code
     add rsp, 8
 
+    sti
     ; return from interrupt
     iretq
 %endmacro

@@ -32,6 +32,7 @@
 #define ALWAYS_INLINE       __attribute__((always_inline))
 #define PACKED              __attribute__((packed))
 #define NAKED               __attribute__((naked))
+#define ALIGNED(x)          __attribute__((aligned(x)))
 #define NODISCARD           [[nodiscard]]
 #define NORETURN            [[noreturn]]
 #define UNUSED_PARAM        [[maybe_unused]]
@@ -227,7 +228,7 @@ struct cpu_state_t {
     uint64_t rflags;
     uint64_t rsp;
     uint64_t ss;
-} PACKED;
+} ALIGNED(16) PACKED;
 
 extern "C" void* malloc(size_t size) noexcept;
 extern "C" void free(void* ptr) noexcept;

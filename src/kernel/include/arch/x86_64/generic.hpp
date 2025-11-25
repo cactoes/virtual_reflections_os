@@ -137,13 +137,11 @@ static inline void x86_64_cpuid(uint32_t eax_in, uint32_t ecx_in, uint32_t* eax_
 }
 
 static inline uint64_t x86_64_save_flags_and_cli() {
-    // FIXME @since 06/11/2025 -- 16:54
-    // figure out if we need to cli
-    // & where to call sti
     uint64_t flags;
     asm volatile(
         "pushfq\n"
         "pop %0\n"
+        "cli\n"
         : "=r"(flags)
         :
         : "memory"
@@ -159,6 +157,14 @@ static inline void x86_64_restore_flags(uint64_t flags) {
         : "r"(flags)
         : "memory", "cc"
     );
+}
+
+static inline void x86_64_fpu_store(void* store) {
+    asm volatile("fxsave (%0)" :: "r"(store));
+}
+
+static inline void x86_64_fpu_load(void* store) {
+    asm volatile("fxrstor (%0)" :: "r"(store));
 }
 
 #endif // __X86_64_GENERIC_HPP__

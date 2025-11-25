@@ -17,6 +17,9 @@
 
 #define VTHREAD_HANDLE_INVALID (vthread_handle_t)-1
 
+#define __thread_tls vthread_get_tls()
+
+
 #include "common.hpp"
 #include "filesystems/vfs.hpp"
 
@@ -26,6 +29,8 @@ typedef int(*thread_entry_t)();
 struct thread_local_storage_t {
     vthread_handle_t handle;
     file_descriptor_t out_streams[3] { FILE_DESCRIPTOR_INVALID, FILE_DESCRIPTOR_INVALID, FILE_DESCRIPTOR_INVALID };
+    uint64_t saved_irq_flags;
+    int irq_disable_depth;
 };
 
 enum class vthread_state_t {
@@ -59,6 +64,10 @@ struct vthread_t {
 
     // memory map
     void* pml4;
+
+    //64-byte aligned fpu area
+    uint8_t* fpu_area;
+    uint8_t* fpu_state;
 };
 
 /// @brief                  start the main virtual thread & perform initial setup
@@ -110,5 +119,7 @@ void vthread_terminate(vthread_handle_t handle);
 
 /// @brief          closes current thread forcefully
 void vthread_terminate();
+
+bool vthread_is_closed(vthread_handle_t handle);
 
 #endif // __VIRTUAL_THREAD_HPP__

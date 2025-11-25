@@ -1,8 +1,6 @@
 #include "drivers/keyboard.hpp"
 #include "drivers/ps2/keyboard.hpp"
 
-static event_manager_t<virtual_key_t> keyboard_callbacks {};
-
 bool holding_shift() {
     return ps2_keyboard_get_key_state(PS2_KEYBOARD_SC_LSHIFT)->is_pressed || ps2_keyboard_get_key_state(PS2_KEYBOARD_SC_RSHIFT)->is_pressed;
 }
@@ -210,15 +208,7 @@ char vk_to_ascii(virtual_key_t vk, bool shift, bool caps) {
     }
 }
 
-void ps2_callback(const ps2_key_state_t* state) {
-    if (state->scan_code == MAX_UINT32 || !state->is_pressed || state->is_escaped)
-        return;
-
-    keyboard_callbacks.fire_event(scan_to_virtual(state->scan_code, state->is_escaped));
-}
-
 void keyboard_initialize() {
-    ps2_keyboard_event_subscribe(ps2_callback);
 }
 
 virtual_key_t wait_for_key() {
@@ -236,8 +226,4 @@ virtual_key_t wait_for_key() {
 
     ps2_keyboard_clear_last_scancode();
     return vk;
-}
-
-void subscribe_on_key_down(void(*callback)(virtual_key_t vk)) {
-    keyboard_callbacks.subscribe(callback);
 }

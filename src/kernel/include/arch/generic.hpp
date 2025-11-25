@@ -131,6 +131,14 @@ static inline void restore_flags(uint64_t flags) {
     x86_64_restore_flags(flags);
 }
 
+static inline void fpu_store(void* store) {
+    x86_64_fpu_store(store);
+}
+
+static inline void fpu_load(void* store) {
+    x86_64_fpu_load(store);
+}
+
 #endif // ARCH_X86_64
 
 #endif // __GENERIC_HPP__

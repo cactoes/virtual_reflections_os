@@ -341,6 +341,8 @@ bool vfs_read_file(vfs_t* vfs, file_descriptor_t fd, std::dynamic_array<uint8_t>
 
 #define STORAGE_INTERFACE_INVALID(x) (x) == nullptr || (uint64_t)(x) == 0xffffffff || (uint64_t)(x) == 0xffffffffffffffff || (uint64_t)(x) == 0xffffffff00000000
 
+#include "arch/generic.hpp"
+
 bool vfs_write_file(vfs_t* vfs, file_descriptor_t fd, std::dynamic_array<uint8_t>* content) {
     mutex_lock_guard guard(&vfs->fd_mutex);
     
@@ -350,9 +352,6 @@ bool vfs_write_file(vfs_t* vfs, file_descriptor_t fd, std::dynamic_array<uint8_t
 
     vfs_storage_interface_t* storage_interface = vfs_get_storage_interface(vfs, it->value);
     std::string relative_path = vfs_translate_to_backend_path(vfs, it->value);
-    char buffer[256];
-    sprintf(buffer, 256, "storage_interface: 0x%p\n", storage_interface);
-    debug_puts(buffer);
 
     if (STORAGE_INTERFACE_INVALID(storage_interface))
         debug_trap("invalid storage interface");
@@ -369,9 +368,6 @@ bool vfs_write_file(vfs_t* vfs, file_descriptor_t fd, uint8_t* content, size_t s
 
     vfs_storage_interface_t* storage_interface = vfs_get_storage_interface(vfs, it->value);
     std::string relative_path = vfs_translate_to_backend_path(vfs, it->value);
-    char buffer[256];
-    sprintf(buffer, 256, "storage_interface: 0x%p\n", storage_interface);
-    debug_puts(buffer);
 
     if (STORAGE_INTERFACE_INVALID(storage_interface))
         debug_trap("invalid storage interface");

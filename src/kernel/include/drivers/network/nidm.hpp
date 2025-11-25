@@ -66,6 +66,12 @@ network_interface_device_t* nidm_get_device(nidm_t* nidm, const std::string& nam
 network_interface_device_t* nidm_get_device_on_interface(nidm_t* nidm, const std::string& interface);
 
 int nidm_packet_recieve(nidm_t* nidm, network_interface_device_t* p_device, const void* p_data, size_t size);
+
+// FIXME @since 25/11/2025 -- 20:44
+// temporary fix for the new interupt stuff
+// fix or "harden" this together with `nidm_packet_recieve`
+int nidm_process_packet();
+
 int nidm_packet_send(nidm_t* nidm, const void* p_data, size_t size);
 
 int nidm_udp_bind(nidm_t* nidm, uint16_t port, network_callback_t p_callback);

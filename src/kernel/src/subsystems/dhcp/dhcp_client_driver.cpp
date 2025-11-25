@@ -25,7 +25,7 @@ void subsystem_dhcp_client_driver_t::shutdown() {
 }
 
 void subsystem_dhcp_client_driver_t::network_callback(uint8_t* packet, size_t size) {
-    mutex_lock_guard guard(&mutex);
+    // mutex_lock_guard guard(&mutex);
 
     if (size != sizeof(DHCPPacket))
         return;

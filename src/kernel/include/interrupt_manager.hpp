@@ -105,4 +105,8 @@ uint64_t interrupt_irq_to_int(uint64_t irq);
 /// @return         updated cpu state pointer after handling the interrupt
 void* handle_interrupt(uint64_t code, cpu_state_t* p_rsp);
 
+/// @brief          checks if current section is in side an interrupt
+/// @return         is in interrupt state
+bool is_in_interrupt();
+
 #endif // __INTERRUPT_MANAGER_HPP__

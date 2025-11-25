@@ -285,7 +285,7 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
 
         auto si_dns_client = subsystem_interface_get<subsystem_interface_dns_client_t>(ISUBSYSTEM_DNS_CLIENT);
 
-        while (!nidm_get_prefered_device(get_global_nidm())->is_configured)
+        while (!nidm_get_prefered_device(get_global_nidm())->is_configured);
         while (!si_dns_client->is_configured());
 
         auto ip = si_dns_client->resolve("cactoes.xyz");
@@ -307,7 +307,7 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
         return 0;
     };
 
-    // vthread_create(net_test, p_kpml4, out_streams);
+    vthread_create(net_test, p_kpml4, out_streams);
 
     // kernel finished
     kprintf("kernel finished initializing\n");
@@ -321,10 +321,14 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
     vthread_handle_t vth = vthread_create(terminal_thread_main, p_kpml4, out_streams);
     if (vth == VTHREAD_HANDLE_INVALID) {
         kprintf("failed to start terminal");
-    } else {
-        vthread_wait_for_close(vth);
-        kprintf("terminal closed\n");
-        printf("\n[terminal exited]\n");
+    } // else {
+    //     vthread_wait_for_close(vth);
+    //     kprintf("terminal closed\n");
+    //     printf("\n[terminal exited]\n");
+    // }
+
+    while (true) {
+        nidm_process_packet();
     }
 
     // we shoudn t reach this point since the kernel should never stop

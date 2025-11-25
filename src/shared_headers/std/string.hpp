@@ -729,9 +729,9 @@ static std::string size_format_to_string(size_t size) {
     constexpr const char* sizes[] { "B", "KB", "MB", "GB", "TB" };
     size_t size_index = 0;
     double size_current = size;
-    while (size_current > 1000.0 && size_index < ARRAY_LENGTH(sizes) - 1) {
+    while (size_current > 1024.0 && size_index < ARRAY_LENGTH(sizes) - 1) {
         size_index++;
-        size_current /= 1000.0;
+        size_current /= 1024.0;
     }
 
     char buffer[256];

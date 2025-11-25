@@ -6,6 +6,7 @@
 #include "io.hpp"
 
 static interrupt_callback_t global_interrupt_callback_array[(size_t)interrupt_t::SIZE] { nullptr };
+static bool global_is_in_interupt = false;
 
 bool is_interrupt_exception(uint64_t code) {
     return (code >= 0 && code <= 21);
@@ -62,6 +63,7 @@ uint64_t interrupt_irq_to_int(uint64_t irq) {
 }
 
 void* handle_interrupt(uint64_t code, cpu_state_t* p_rsp) {
+    global_is_in_interupt = true;
     const auto interrupt_type = convert_to_interrupt(code);
 
     if (is_interrupt_exception(interrupt_type))
@@ -71,6 +73,7 @@ void* handle_interrupt(uint64_t code, cpu_state_t* p_rsp) {
         if (auto callback = global_interrupt_callback_array[(size_t)interrupt_type]) {
             p_rsp = callback(p_rsp);
             interrupt_send_eoi(code - 0x20);
+            global_is_in_interupt = false;
             return p_rsp;
         }
 
@@ -82,14 +85,22 @@ void* handle_interrupt(uint64_t code, cpu_state_t* p_rsp) {
     // make better handler for software
     switch (interrupt_type) {
         case interrupt_t::SOFTWARE_SCHEDULER:
+            global_is_in_interupt = false;
         case interrupt_t::SOFTWARE_CRASH_HANDLER:
         case interrupt_t::SOFTWARE_SYSTEMCALL: {
-            if (auto callback = global_interrupt_callback_array[(size_t)interrupt_type])
+            if (auto callback = global_interrupt_callback_array[(size_t)interrupt_type]) {
+                global_is_in_interupt = false;
                 return callback(p_rsp);
+            }
             break;
         }
     }
 
     kprintf("unhandled interrupt triggerd: 0x%uh\n", code);
+    global_is_in_interupt = false;
     return p_rsp;
+}
+
+bool is_in_interrupt() {
+    return global_is_in_interupt;
 }

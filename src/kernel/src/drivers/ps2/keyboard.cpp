@@ -3,7 +3,6 @@
 #include "utils/debug.hpp"
 #include "utils/event.hpp"
 
-static event_manager_t<const ps2_key_state_t*> g_keyboard_event_manager {};
 static uint32_t g_last_scan_code = MAX_UINT32;
 static ps2_key_state_t g_key_state_array[PS2_KEYBOARD_KEY_STATE_ARRAY_SIZE] {};
 
@@ -34,7 +33,6 @@ cpu_state_t* ps2_keyboard_handle_interrupt(cpu_state_t* p_rsp) {
 
     g_key_state_array[key_state.scan_code] = key_state;
     g_last_scan_code = key_state.scan_code;
-    g_keyboard_event_manager.fire_event(&g_key_state_array[key_state.scan_code]);
 
     return p_rsp;
 }
@@ -45,10 +43,6 @@ uint32_t ps2_keyboard_get_last_scancode() {
 
 void ps2_keyboard_clear_last_scancode() {
     g_last_scan_code = MAX_UINT32;
-}
-
-void ps2_keyboard_event_subscribe(void(*p_handler)(const ps2_key_state_t*)) {
-    g_keyboard_event_manager.subscribe(p_handler);
 }
 
 const ps2_key_state_t* ps2_keyboard_get_key_state(uint32_t scan_code) {
