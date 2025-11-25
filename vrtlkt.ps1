@@ -6,7 +6,7 @@
 
 # startup commands
 param (
-    [ValidateSet("install", "build", "run")]
+    [ValidateSet("install", "build", "run", "clean")]
     [string]$Tool,
     [switch]$Debug,
     [switch]$NoWelcomeMessage
@@ -90,6 +90,11 @@ function Start-QEMU {
     qemu-system-x86_64.exe @argument_list
 }
 
+function Start-CleanBuildEnvironment {
+    Remove-Item -Path "build" -Recurse -Force
+    New-Item -Path "build" -ItemType Directory | Out-Null
+}
+
 function Read-ConfFile {
     $config = @{}
 
@@ -142,13 +147,18 @@ switch ($Tool) {
     }
 
     "build" {
-        Write-Host "Building kernel ..."
+        Write-Host "Building project ..."
         Start-DockerEnvironment
     }
 
     "run" {
         Write-Host "Starting QEMU ..."
         Start-QEMU
+    }
+
+    "clean" {
+        Write-Host "Cleaning build environment ..."
+        Start-CleanBuildEnvironment
     }
 
     default {

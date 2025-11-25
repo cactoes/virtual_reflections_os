@@ -19,7 +19,6 @@
 
 #define __thread_tls vthread_get_tls()
 
-
 #include "common.hpp"
 #include "filesystems/vfs.hpp"
 

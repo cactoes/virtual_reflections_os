@@ -17,17 +17,6 @@
             }
         },
         {
-            "label": "start qemu",
-            "type": "shell",
-            "command": "./vrtlkt.ps1 -Tool run",
-            "options": {
-                "statusbar": {
-                    "label": "$(debug-start) Run",
-                    "detail" : "run the os"
-                }
-            }
-        },
-        {
             "label": "build kernel",
             "type": "shell",
             "command": "./vrtlkt.ps1 -Tool build",
@@ -38,7 +27,18 @@
             "options": {
                 "statusbar": {
                     "label": "$(settings-gear) Build",
-                    "detail" : "build the kernel"
+                    "detail" : "start build process"
+                }
+            }
+        },
+        {
+            "label": "start qemu",
+            "type": "shell",
+            "command": "./vrtlkt.ps1 -Tool run",
+            "options": {
+                "statusbar": {
+                    "label": "$(debug-start) Run",
+                    "detail" : "run the os"
                 }
             }
         },
@@ -68,6 +68,18 @@
                     "hide": true
                 }
             }
-        }
+        },
+        {
+            "label": "clean",
+            "dependsOrder": "sequence",
+            "type": "shell",
+            "command": "./vrtlkt.ps1 -Tool clean",
+            "options": {
+                "statusbar": {
+                    "label": "$(trash) Clean",
+                    "detail" : "cleans the build folder"
+                }
+            }
+        },
     ]
 }
