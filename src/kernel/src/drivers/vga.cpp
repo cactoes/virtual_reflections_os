@@ -229,7 +229,7 @@ bool vga_gm_buffer_create(vga_buffer_t* p_back_buffer) {
         return false;
 
     constexpr size_t buffer_size = sizeof(uint8_t) * VGA_GM_BUFFER_HEIGHT * VGA_GM_BUFFER_WIDTH;
-    p_back_buffer->buffer = (uint8_t*)heap_alloc(get_global_heap(), buffer_size);
+    p_back_buffer->buffer = (uint8_t*)malloc(buffer_size);
 
     if (!p_back_buffer->buffer)
         return false;
@@ -243,7 +243,7 @@ bool vga_gm_buffer_create(vga_buffer_t* p_back_buffer) {
 
 void vga_gm_buffer_destroy(vga_buffer_t* p_back_buffer) {
     if (p_back_buffer && p_back_buffer->buffer) {
-        heap_free(get_global_heap(), p_back_buffer->buffer);
+        free(p_back_buffer->buffer);
         p_back_buffer->buffer = nullptr;
         p_back_buffer->size.width = 0;
         p_back_buffer->size.height = 0;

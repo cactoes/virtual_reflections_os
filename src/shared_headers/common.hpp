@@ -61,6 +61,41 @@
 
 #define BCD_TO_BIN(bcd)         (((bcd) >> 4) * 10) + ((bcd) & 0x0F)
 
+#define NTOHS bswap16
+#define NTOHL bswap32
+#define HTONS bswap16
+#define HTONL bswap32
+
+typedef __SIZE_TYPE__       size_t;
+
+typedef unsigned long long  uint64_t;
+typedef unsigned int        uint32_t;
+typedef unsigned short      uint16_t;
+typedef unsigned char       uint8_t;
+
+typedef signed long long    int64_t;
+typedef signed int          int32_t;
+typedef signed short        int16_t;
+typedef signed char         int8_t;
+
+extern "C" void* memset_impl(void* dst, uint8_t val, size_t size) noexcept;
+extern "C" void* memzero_impl(void* dst, size_t size) noexcept;
+extern "C" void* memcpy_impl(void* dst, const void* src, size_t size) noexcept;
+extern "C" bool  memeq_impl(const void* a, const void* b, size_t size) noexcept;
+
+extern "C" void* malloc(size_t size) noexcept;
+extern "C" void free(void* ptr) noexcept;
+
+void* operator new(__SIZE_TYPE__ size) noexcept;
+void* operator new(__SIZE_TYPE__ size, void* p_ptr) noexcept;
+void* operator new[](__SIZE_TYPE__ size) noexcept;
+void* operator new[](__SIZE_TYPE__ size, void*) noexcept;
+
+void operator delete(void* p_ptr) noexcept;
+void operator delete(void* p_ptr, __SIZE_TYPE__) noexcept;
+void operator delete[](void* ptr) noexcept;
+void operator delete[](void* ptr, __SIZE_TYPE__) noexcept;
+
 template<typename T>
 struct remove_reference {
     using type_t = T;
@@ -91,41 +126,20 @@ T&& forward(typename remove_reference<T>::type_t&& arg) {
     return static_cast<T&&>(arg);
 }
 
-typedef unsigned long long size_t;
-
-typedef unsigned long long uint64_t;
-typedef          long long int64_t;
-
-typedef unsigned int uint32_t;
-typedef          int int32_t;
-
-typedef unsigned short uint16_t;
-typedef          short int16_t;
-
-typedef unsigned char uint8_t;
-typedef   signed char int8_t;
-
-extern "C" void* x86_64_memset(void* p_dest, uint8_t val, size_t size);
-static void* memset(void* p_dest, uint8_t val, size_t size) {
-    return x86_64_memset(p_dest, val, size);
+static void* memset(void* dst, uint8_t val, size_t size) {
+    return memset_impl(dst, val, size);
 }
 
-static void* memzero(void* p_dest, size_t size) {
-    return memset(p_dest, 0, size);
+static void* memzero(void* dst, size_t size) {
+    return memzero_impl(dst, size);
 }
 
-extern "C" void* x86_64_memcpy(void* p_dest, const void* p_src, size_t size);
-static void* memcpy(void* p_dest, const void* p_src, size_t size) {
-    return x86_64_memcpy(p_dest, p_src, size);
+static void* memcpy(void* dst, const void* src, size_t size) {
+    return memcpy_impl(dst, src, size);
 }
 
-static bool memeq(const void* p_a1, const void* p_a2, size_t size) {
-    for (size_t i = 0; i < size; i++) {
-        if (((uint8_t*)p_a1)[i] != ((uint8_t*)p_a2)[i])
-            return false;
-    }
-
-    return true;
+static bool memeq(const void* a, const void* b, size_t size) {
+    return memeq_impl(a, b, size);
 }
 
 static bool is_aligned(uint64_t addr, uint64_t align) {
@@ -141,69 +155,48 @@ static uint64_t align_down(uint64_t addr, uint64_t align) {
 }
 
 static double round(double x) {
-    if (x >= 0.0)
-        return (double)((long long)(x + 0.5));
-    else
-        return (double)((long long)(x - 0.5));
+    return x >= 0.0
+        ? static_cast<double>(static_cast<long long>(x + 0.5))
+        : static_cast<double>(static_cast<long long>(x - 0.5));
 }
 
-constexpr uint16_t ntohs(uint16_t netshort) {
-    return ((netshort & 0xFF) << 8) | ((netshort >> 8) & 0xFF);
+static double pow(double base, int exponent) {
+    if (exponent == 0) return 1;
+
+    bool is_negative = exponent < 0;
+    if (is_negative) exponent = -exponent;
+
+    double result = 1.0;
+
+    while (exponent > 0) {
+        if (exponent % 2 == 1) {
+            result *= base;
+        }
+        base *= base;
+        exponent /= 2;
+    }
+
+    return is_negative ? 1.0 / result : result;
 }
 
-constexpr uint16_t htons(uint16_t hostshort) {
-    return ntohs(hostshort);
+constexpr uint16_t bswap16(uint16_t num) {
+    return ((num & 0xFF) << 8) | ((num >> 8) & 0xFF);
 }
 
-constexpr uint32_t ntohl(uint32_t netlong) {
-    return ((netlong & 0xFF) << 24) | 
-           (((netlong >> 8) & 0xFF) << 16) |
-           (((netlong >> 16) & 0xFF) << 8) |
-           ((netlong >> 24) & 0xFF);
+constexpr uint32_t bswap32(uint32_t num) {
+    return ((num & 0xFF) << 24) | (((num >> 8) & 0xFF) << 16) | (((num >> 16) & 0xFF) << 8) | ((num >> 24) & 0xFF);
 }
 
-constexpr uint32_t htonl(uint32_t hostlong) {
-    return ntohl(hostlong);
+constexpr uint64_t hash_fnv1a_64(const char* str, uint64_t hash = 14695981039346656037ULL) {
+    return (*str == '\0') ? hash : 
+        hash_fnv1a_64(str + 1, (hash ^ static_cast<uint64_t>(*str)) * 1099511628211ULL);
 }
 
-template <typename T>
-constexpr T net_to_host(T n);
-
-template <>
-constexpr uint16_t net_to_host(uint16_t n) {
-    return ntohs(n);
+constexpr uint64_t hash_string_64(const char* str, uint64_t hash = 0ULL) {
+    return (*str == '\0') ? hash :
+        hash_string_64(str + 1, (hash << 1) + static_cast<uint64_t>(*str));
 }
 
-template <>
-constexpr uint32_t net_to_host(uint32_t n) {
-    return ntohl(n);
-}
-
-template <typename T>
-constexpr T host_to_net(T n);
-
-template <>
-constexpr uint16_t host_to_net(uint16_t n) {
-    return htons(n);
-}
-
-template <>
-constexpr uint32_t host_to_net(uint32_t n) {
-    return htonl(n);
-}
-
-constexpr uint64_t hash_fnv1a_64(const char* p_str, uint64_t hash = 14695981039346656037ULL) {
-    return (*p_str == '\0') ? hash :
-        hash_fnv1a_64(p_str + 1, (hash ^ static_cast<uint64_t>(*p_str)) * 1099511628211ULL);
-}
-
-constexpr uint64_t hash_string_64(const char* p_str, uint64_t hash = 0ULL) {
-    return (*p_str == '\0') ? hash :
-        hash_string_64(p_str + 1, (hash << 1) + static_cast<uint64_t>(*p_str));
-}
-
-// FIXME @since 14/07/2025 -- 01:11
-// this struct is still in incorrect order
 struct cpu_state_t {
     uint64_t r8;
     uint64_t r9;
@@ -229,18 +222,5 @@ struct cpu_state_t {
     uint64_t rsp;
     uint64_t ss;
 } ALIGNED(16) PACKED;
-
-extern "C" void* malloc(size_t size) noexcept;
-extern "C" void free(void* ptr) noexcept;
-
-void* operator new(__SIZE_TYPE__ size) noexcept;
-void* operator new(__SIZE_TYPE__ size, void* p_ptr) noexcept;
-void* operator new[](__SIZE_TYPE__ size) noexcept;
-void* operator new[](__SIZE_TYPE__ size, void*) noexcept;
-
-void operator delete(void* p_ptr) noexcept;
-void operator delete(void* p_ptr, __SIZE_TYPE__) noexcept;
-void operator delete[](void* ptr) noexcept;
-void operator delete[](void* ptr, __SIZE_TYPE__) noexcept;
 
 #endif // __COMMON_HPP__

@@ -13,8 +13,8 @@
 #define HEAP_FILTERS_SIZE(array) ARRAY_LENGTH(array)
 
 // heap helper functions / macros
-#define GALLOC(size) heap_alloc(get_global_heap(), size)
-#define GFREE(ptr) heap_free(get_global_heap(), ptr)
+#define GALLOC(size) malloc(size)
+#define GFREE(ptr) free(ptr)
 #define GLOBAL_HEAP get_global_heap()
 
 #include "common.hpp"

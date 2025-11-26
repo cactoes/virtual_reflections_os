@@ -9,25 +9,25 @@
 void ip_receive(network_interface_device_t* p_device, uint8_t* p_packet, size_t size) {
     ip_header_t* ip = (ip_header_t*)p_packet;
 
-    if (net_to_host(ip->dst_addr) != p_device->ip.raw && net_to_host(ip->dst_addr) != 0xFFFFFFFF)
+    if (bswap32(ip->dst_addr) != p_device->ip.raw && bswap32(ip->dst_addr) != 0xFFFFFFFF)
         return;
 
-    uint16_t ip_len = net_to_host(ip->total_length);
+    uint16_t ip_len = bswap16(ip->total_length);
     uint8_t* payload = p_packet + (ip->version_ihl & 0x0F) * 4;
     // BUG @since 28/08/2025 -- 18:30
     // size can differ from actual length
     size_t payload_len = ip_len - (ip->version_ihl & 0x0F) * 4;
     
     uint8_t mac[6];
-    if (!arp_lookup(net_to_host(ip->src_addr), mac))
-        arp_table_insert(net_to_host(ip->src_addr), mac);
+    if (!arp_lookup(bswap32(ip->src_addr), mac))
+        arp_table_insert(bswap32(ip->src_addr), mac);
 
     switch (ip->protocol) {
         case IP_PROTOCOL_ICMP:
             icmp_receive(p_device, payload, payload_len);
             break;
         case IP_PROTOCOL_TCP:
-            tcp_receive(p_device, payload, payload_len, net_to_host(ip->src_addr));
+            tcp_receive(p_device, payload, payload_len, bswap32(ip->src_addr));
             break;
         case IP_PROTOCOL_UDP:
             udp_receive(p_device, payload, payload_len);
@@ -52,13 +52,13 @@ bool ip_send(network_interface_device_t* p_device, uint32_t dst_ip, uint8_t prot
     ip_header_t ip {};
     ip.version_ihl = 0x45;
     ip.tos = 0;
-    ip.total_length = host_to_net<uint16_t>(total_length);
+    ip.total_length = bswap16(total_length);
     ip.identification = 0;
     ip.flags_fragment = 0;
     ip.ttl = 64;
     ip.protocol = protocol;
-    ip.src_addr = htonl(p_device->ip.raw);
-    ip.dst_addr = htonl(dst_ip);
+    ip.src_addr = bswap32(p_device->ip.raw);
+    ip.dst_addr = bswap32(dst_ip);
     ip.header_checksum = 0;
     ip.header_checksum = ip_checksum(&ip, sizeof(ip));
 

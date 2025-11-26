@@ -176,7 +176,7 @@ public:
         if (index == 0) {
             node_t<T>* node_to_delete = first_node;
             first_node = first_node->next;
-            heap_free(get_global_heap(), node_to_delete);
+            free(node_to_delete);
             size--;
             return true;
         }
@@ -191,7 +191,7 @@ public:
 
         if (node_t<T>* node_to_delete = prev_node->next) {
             prev_node->next = node_to_delete->next;
-            heap_free(get_global_heap(), node_to_delete);
+            free(node_to_delete);
             size--;
             return true;
         }
@@ -200,7 +200,7 @@ public:
     }
 
     bool insert_at(size_t index, T&& value) {
-        node_t<T>* new_node = (node_t<T>*)heap_alloc(get_global_heap(), sizeof(node_t<T>));
+        node_t<T>* new_node = (node_t<T>*)malloc(sizeof(node_t<T>));
         if (!new_node)
             return false;
 
@@ -279,7 +279,7 @@ public:
         while (node) {
             node_t<T>* next = node->next;
             node->value.~T();
-            heap_free(get_global_heap(), node);
+            free(node);
             node = next;
         }
         first_node = nullptr;

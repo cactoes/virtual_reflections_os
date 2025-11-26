@@ -27,7 +27,7 @@ system_driver_handle_t driver_load(driver_manager_t* driver_manager, const char*
 
     auto program_section_info = elf_parse_program_sections((uint8_t*)p_driver_file);
 
-    uint8_t* base_address = (uint8_t*)heap_alloc(get_global_heap(), program_section_info.size);
+    uint8_t* base_address = (uint8_t*)malloc(program_section_info.size);
     if (!base_address)
         return SYSTEM_DRIVER_HANDLE_INVALID;
 
@@ -47,8 +47,10 @@ system_driver_handle_t driver_load(driver_manager_t* driver_manager, const char*
     symbol_map["ktime_since_boot"] = (void*)&ktime_since_boot;
     symbol_map["knet_udp_send"] = (void*)&knet_udp_send;
 
-    symbol_map["x86_64_memset"] = (void*)&x86_64_memset;
-    symbol_map["x86_64_memcpy"] = (void*)&x86_64_memcpy;
+    symbol_map["memset_impl"] = (void*)&memset_impl;
+    symbol_map["memzero_impl"] = (void*)&memzero_impl;
+    symbol_map["memcpy_impl"] = (void*)&memcpy_impl;
+    symbol_map["memeq_impl"] = (void*)&memeq_impl;
 
     symbol_map["_Znwm"] = (void*)(void* (*)(__SIZE_TYPE__))&operator new;
     symbol_map["_Znam"] = (void*)(void* (*)(__SIZE_TYPE__))&operator new[];
@@ -81,7 +83,7 @@ int driver_unload(driver_manager_t* driver_manager, system_driver_handle_t handl
         return 1;
 
     if (driver_it->value->base_address)
-        heap_free(get_global_heap(), driver_it->value->base_address);
+        free(driver_it->value->base_address);
 
     return driver_manager->loaded_drivers.remove(handle) ? 0 : 2;
 }

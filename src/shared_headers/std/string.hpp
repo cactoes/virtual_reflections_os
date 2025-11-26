@@ -14,27 +14,6 @@
 #include "common.hpp"
 #include "std/array.hpp"
 
-// TODO @since 06/11/2025 -- 13:57
-// move to math
-static double pow(double base, int exponent) {
-    if (exponent == 0) return 1;
-
-    bool is_negative = exponent < 0;
-    if (is_negative) exponent = -exponent;
-
-    double result = 1.0;
-
-    while (exponent > 0) {
-        if (exponent % 2 == 1) {
-            result *= base;
-        }
-        base *= base;
-        exponent /= 2;
-    }
-
-    return is_negative ? 1.0 / result : result;
-}
-
 /// @brief          returns length of string
 /// @param[in] str  string to get length of
 /// @return         length of string ex nullterminator

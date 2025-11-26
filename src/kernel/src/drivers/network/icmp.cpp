@@ -21,6 +21,6 @@ void icmp_receive(network_interface_device_t* p_device, uint8_t* p_payload, size
         icmp_reply->checksum = ip_checksum(reply_buf, len);
 
         ip_header_t* ip_req = (ip_header_t*)((uint8_t*)p_payload - sizeof(ip_header_t));
-        ip_send(p_device, ntohl(ip_req->src_addr), IP_PROTOCOL_ICMP, reply_buf, len);
+        ip_send(p_device, bswap32(ip_req->src_addr), IP_PROTOCOL_ICMP, reply_buf, len);
     }
 }

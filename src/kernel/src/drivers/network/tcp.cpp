@@ -121,7 +121,7 @@ uint16_t tcp_checksum(uint32_t src_ip, uint32_t dst_ip, const tcp_header_t* tcp_
     while (sum >> 16)
         sum = (sum & 0xFFFF) + (sum >> 16);
 
-    return htons(~sum);
+    return bswap16(~sum);
 }
 
 bool tcp_send_packet(uint8_t* p_payload, size_t payload_length, uint8_t flags, tcp_connection_t* connection) {
@@ -142,12 +142,12 @@ bool tcp_send_packet(uint8_t* p_payload, size_t payload_length, uint8_t flags, t
     tcp_header_t* tcp_hdr = (tcp_header_t*)tcp_packet;
     memzero(tcp_hdr, sizeof(tcp_header_t));
 
-    tcp_hdr->src_port = host_to_net(connection->local_port);
-    tcp_hdr->dst_port = host_to_net(connection->remote_port);
-    tcp_hdr->seq_num = host_to_net(connection->snd_nxt);
+    tcp_hdr->src_port = bswap16(connection->local_port);
+    tcp_hdr->dst_port = bswap16(connection->remote_port);
+    tcp_hdr->seq_num = bswap32(connection->snd_nxt);
 
     if (flags & TCP_FLAG_ACK)
-        tcp_hdr->ack_num = host_to_net(connection->rcv_nxt);
+        tcp_hdr->ack_num = bswap32(connection->rcv_nxt);
     else
         tcp_hdr->ack_num = 0;
     
@@ -159,7 +159,7 @@ bool tcp_send_packet(uint8_t* p_payload, size_t payload_length, uint8_t flags, t
 
     TCP_SET_DATA_OFFSET(tcp_hdr, tcp_header_len / 4);
     tcp_hdr->flags = flags;
-    tcp_hdr->window = host_to_net<uint16_t>(8192);
+    tcp_hdr->window = bswap16(8192);
     tcp_hdr->checksum = 0;
     tcp_hdr->urgent_ptr = 0;
     
@@ -182,13 +182,13 @@ void tcp_receive(network_interface_device_t* device, uint8_t* payload, size_t pa
 
     tcp_header_t* header = (tcp_header_t*)payload;
 
-    uint16_t src_port = net_to_host(header->src_port);
-    uint16_t dst_port = net_to_host(header->dst_port);
-    uint32_t seq_num = net_to_host(header->seq_num);
-    uint32_t ack_num = net_to_host(header->ack_num);
+    uint16_t src_port = bswap16(header->src_port);
+    uint16_t dst_port = bswap16(header->dst_port);
+    uint32_t seq_num = bswap32(header->seq_num);
+    uint32_t ack_num = bswap32(header->ack_num);
     uint8_t data_offset = TCP_DATA_OFFSET(header);
     uint8_t flags = header->flags;
-    uint16_t window = net_to_host(header->window);
+    uint16_t window = bswap16(header->window);
 
     // kprintf("[INET - TCP: %s] got tcp packet for from: %u.%u.%u.%u:%u\n", device->name.c_str(), (src_ip >> 24) & 0xff, (src_ip >> 16) & 0xff, (src_ip >> 8) & 0xff, src_ip & 0xff, src_port);
 

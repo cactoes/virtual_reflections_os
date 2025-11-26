@@ -56,7 +56,7 @@ uint32_t cluster_to_lba(const fat32_data_t* fs_data, uint32_t cluster) {
 }
 
 std::unique_ptr<uint8_t> fat32_read_cluster_from_disk(storage_driver_interface_t* storage_interface, fat32_data_t* fat32_data, size_t cluster, bool* error) {
-    std::unique_ptr<uint8_t> data = std::unique_ptr<uint8_t>((uint8_t*)heap_alloc(get_global_heap(), fat32_data->bytes_per_sector * fat32_data->sectors_per_cluster));
+    std::unique_ptr<uint8_t> data = std::unique_ptr<uint8_t>((uint8_t*)malloc(fat32_data->bytes_per_sector * fat32_data->sectors_per_cluster));
 
     *error = false;
     for (uint32_t sector = 0; sector < fat32_data->sectors_per_cluster; ++sector) {
@@ -224,7 +224,7 @@ bool fat32_filesystem_interface_t::read(const char* path, void** data, size_t* s
         return false;
 
     *size = node.size;
-    *data = heap_alloc(get_global_heap(), node.size);
+    *data = malloc(node.size);
     if (!*data)
         return false;
 

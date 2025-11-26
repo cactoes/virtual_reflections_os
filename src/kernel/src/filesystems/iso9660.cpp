@@ -73,7 +73,7 @@ void get_name(iso9660_dir_record_t* p_record, char* p_out, size_t out_size) {
 }
 
 std::unique_ptr<uint8_t> iso9660_read_from_disk(storage_driver_interface_t* storage_interface, size_t sector_count, uint64_t lba, bool* error) {
-    std::unique_ptr<uint8_t> data = std::unique_ptr<uint8_t>((uint8_t*)heap_alloc(get_global_heap(), sector_count * SECTOR_SIZE));
+    std::unique_ptr<uint8_t> data = std::unique_ptr<uint8_t>((uint8_t*)malloc(sector_count * SECTOR_SIZE));
 
     *error = false;
     for (size_t i = 0; i < sector_count; i++) {
@@ -176,7 +176,7 @@ bool iso9660_filesystem_interface_t::read(const char* path, void** data, size_t*
         return false;
 
     const uint64_t raw_size = align_up(node_data.size, SECTOR_SIZE);
-    const std::unique_ptr<uint8_t> buff = std::unique_ptr<uint8_t>((uint8_t*)heap_alloc(get_global_heap(), raw_size));
+    const std::unique_ptr<uint8_t> buff = std::unique_ptr<uint8_t>((uint8_t*)malloc(raw_size));
     if (!buff.get())
         return false;
 

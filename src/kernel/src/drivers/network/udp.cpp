@@ -5,10 +5,10 @@
 
 void udp_receive(network_interface_device_t* p_device, uint8_t* p_payload, size_t payload_length) {
     udp_header_t* header = (udp_header_t*)p_payload;
-    uint16_t src_port = net_to_host(header->src_port);
-    uint16_t dst_port = net_to_host(header->dst_port);
-    uint16_t length = net_to_host(header->length);
-    uint16_t checksum = net_to_host(header->checksum);
+    uint16_t src_port = bswap16(header->src_port);
+    uint16_t dst_port = bswap16(header->dst_port);
+    uint16_t length = bswap16(header->length);
+    uint16_t checksum = bswap16(header->checksum);
 
     if (length != payload_length)
         kprintf("[INET - UDP: %s] payload length mismatch!\n", p_device->name.c_str());
@@ -58,22 +58,22 @@ int udp_send(uint32_t dst_ip, uint16_t src_port, uint16_t dst_port, const uint8_
         return 1;
 
     const size_t packet_size = sizeof(udp_header_t) + size;
-    uint8_t* packet = (uint8_t*)heap_alloc(get_global_heap(), packet_size);
+    uint8_t* packet = (uint8_t*)malloc(packet_size);
 
     if (!packet)
         return 2;
 
     udp_header_t* header = (udp_header_t*)packet;
-    header->src_port = host_to_net<uint16_t>(src_port);
-    header->dst_port = host_to_net<uint16_t>(dst_port);
-    header->length = host_to_net<uint16_t>(packet_size);
+    header->src_port = bswap16(src_port);
+    header->dst_port = bswap16(dst_port);
+    header->length = bswap16(packet_size);
     header->checksum = 0;
 
     memcpy(packet + sizeof(udp_header_t), p_payload, size);
 
     auto device = nidm_get_prefered_device(get_global_nidm());
 
-    header->checksum = host_to_net<uint16_t>(udp_checksum(
+    header->checksum = bswap16(udp_checksum(
         device->ip.raw,
         dst_ip,
         packet,
@@ -82,7 +82,7 @@ int udp_send(uint32_t dst_ip, uint16_t src_port, uint16_t dst_port, const uint8_
     
     ip_send(device, dst_ip, IP_PROTOCOL_UDP, packet, packet_size);
 
-    heap_free(get_global_heap(), packet);
+    free(packet);
 
     return 0;
 }

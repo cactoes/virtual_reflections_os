@@ -376,9 +376,9 @@ void minesweeper_init() {
 
     // setup game board
     // if (g_game_board)
-    //     heap_free(get_global_heap(), g_game_board);
+    //     free(g_game_board);
     
-    // g_game_board = (tile_t**)heap_alloc(get_global_heap(), sizeof(tile_t) * game_config.size.width * game_config.size.height);
+    // g_game_board = (tile_t**)malloc(sizeof(tile_t) * game_config.size.width * game_config.size.height);
     // if (!g_game_board)
     //     return;
 

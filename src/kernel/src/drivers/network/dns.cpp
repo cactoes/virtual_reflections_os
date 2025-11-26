@@ -110,9 +110,9 @@
 
 // std::dynamic_array<uint8_t> dns_build_query(const std::string& hostname, dns_query_type_t type) {
 //     dns_header_t header {};
-//     header.id = host_to_net<uint16_t>(random_number(0, MAX_UINT16));
-//     header.flags = host_to_net<uint16_t>(0x0100);
-//     header.qdcount = host_to_net<uint16_t>(1);
+//     header.id = bswap16(random_number(0, MAX_UINT16));
+//     header.flags = bswap16(0x0100);
+//     header.qdcount = bswap16(1);
 //     header.ancount = 0;
 //     header.nscount = 0;
 //     header.arcount = 0;

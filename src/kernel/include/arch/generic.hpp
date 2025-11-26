@@ -147,6 +147,30 @@ static inline void fpu_load(void* store) {
     x86_64_fpu_load(store);
 }
 
+extern "C" void* x86_64_memset(void*, uint8_t, size_t) noexcept;
+extern "C" void* x86_64_memcpy(void*, const void*, size_t) noexcept;
+
+inline void* memset_impl(void* dst, uint8_t val, size_t size) noexcept {
+    return x86_64_memset(dst, val, size);
+}
+
+inline void* memzero_impl(void* dst, size_t size) noexcept {
+    return x86_64_memset(dst, 0, size);
+}
+
+inline void* memcpy_impl(void* dst, const void* src, size_t size) noexcept {
+    return x86_64_memcpy(dst, src, size);
+}
+
+inline bool memeq_impl(const void* a, const void* b, size_t size) noexcept {
+    for (size_t i = 0; i < size; i++) {
+        if (((uint8_t*)a)[i] != ((uint8_t*)b)[i])
+            return false;
+    }
+
+    return true;
+}
+
 #endif // ARCH_X86_64
 
 #endif // __GENERIC_HPP__

@@ -253,7 +253,6 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
     if (driver_query_capability(get_global_driver_manager(), driver_manager_get_driver_handle(get_global_driver_manager(), "INetDrivers"), "dns") >= 1) {
         subsystem_interface_set(ISUBSYSTEM_DNS_CLIENT, std::make_unique<subsystem_dns_client_driver_t>());
         subsystem_interface_get<subsystem_interface_dns_client_t>(ISUBSYSTEM_DNS_CLIENT)->init();
-        // ssim_get<ssi_dns_client_t>(SSI_DNS_CLIENT)->init();
     }
 
     // network device

@@ -59,18 +59,18 @@ DHCPPacket DHCPCreateDiscoverPacket(const char* szHostName, uint32_t nXID, uint8
     dhcpPacket.m_nHops = 0;
 
     dhcpPacket.m_nXID = nXID;
-    dhcpPacket.m_nSecs = host_to_net<uint16_t>(0);
-    dhcpPacket.m_nFlags = host_to_net<uint16_t>(0x8000);
+    dhcpPacket.m_nSecs = bswap16(0);
+    dhcpPacket.m_nFlags = bswap16(0x8000);
 
-    dhcpPacket.m_nClientIPAddress = host_to_net<uint32_t>(0);
-    dhcpPacket.m_nYourIPAddress = host_to_net<uint32_t>(0);
-    dhcpPacket.m_nServerIPAddress = host_to_net<uint32_t>(0);
-    dhcpPacket.m_nGatewayIPAddress = host_to_net<uint32_t>(0);
+    dhcpPacket.m_nClientIPAddress = bswap32(0);
+    dhcpPacket.m_nYourIPAddress = bswap32(0);
+    dhcpPacket.m_nServerIPAddress = bswap32(0);
+    dhcpPacket.m_nGatewayIPAddress = bswap32(0);
 
     for (size_t i = 0; i < 6; i++)
         dhcpPacket.m_aClientHWAddress[i] = pMac[i];
 
-    dhcpPacket.m_nMagic = host_to_net<uint32_t>(DHCP_MAGIC);
+    dhcpPacket.m_nMagic = bswap32(DHCP_MAGIC);
 
     DHCPOptionsWriter dhcpOptionsWriter {};
     DHCPOptionsWriterInit(&dhcpOptionsWriter, &dhcpPacket.m_aOptions[0], sizeof(DHCPPacket::m_aOptions));
@@ -101,18 +101,18 @@ DHCPPacket DHCPCreateRequestPacket(const char* szHostName, uint32_t nWantedIP, u
     dhcpPacket.m_nHops = 0;
 
     dhcpPacket.m_nXID = nXID;
-    dhcpPacket.m_nSecs = host_to_net<uint16_t>(0);
-    dhcpPacket.m_nFlags = host_to_net<uint16_t>(0);
+    dhcpPacket.m_nSecs = bswap16(0);
+    dhcpPacket.m_nFlags = bswap16(0);
 
-    dhcpPacket.m_nClientIPAddress = host_to_net<uint32_t>(0);
-    dhcpPacket.m_nYourIPAddress = host_to_net<uint32_t>(0);
-    dhcpPacket.m_nServerIPAddress = host_to_net<uint32_t>(nDHCPServerIP);
-    dhcpPacket.m_nGatewayIPAddress = host_to_net<uint32_t>(0);
+    dhcpPacket.m_nClientIPAddress = bswap32(0);
+    dhcpPacket.m_nYourIPAddress = bswap32(0);
+    dhcpPacket.m_nServerIPAddress = bswap32(nDHCPServerIP);
+    dhcpPacket.m_nGatewayIPAddress = bswap32(0);
 
     for (size_t i = 0; i < 6; i++)
         dhcpPacket.m_aClientHWAddress[i] = pMac[i];
 
-    dhcpPacket.m_nMagic = host_to_net<uint32_t>(DHCP_MAGIC);
+    dhcpPacket.m_nMagic = bswap32(DHCP_MAGIC);
 
     DHCPOptionsWriter dhcpOptionsWriter {};
     DHCPOptionsWriterInit(&dhcpOptionsWriter, &dhcpPacket.m_aOptions[0], sizeof(DHCPPacket::m_aOptions));
@@ -120,7 +120,7 @@ DHCPPacket DHCPCreateRequestPacket(const char* szHostName, uint32_t nWantedIP, u
     uint8_t aDHCPMessageType[] { DHCP_MESSAGE_TYPE_DHCPREQUEST };
     DHCPOptionsWriterAddOption(&dhcpOptionsWriter, DHCP_OPTION_DHCP_MESSAGE_TYPE, &aDHCPMessageType[0], sizeof(aDHCPMessageType));
     
-    uint32_t beWantedIP = host_to_net(nWantedIP);
+    uint32_t beWantedIP = bswap32(nWantedIP);
     DHCPOptionsWriterAddOption(&dhcpOptionsWriter, DHCP_OPTION_REQUESTED_IP_ADDR, (uint8_t*)&beWantedIP, 4);
 
     // TODO @since 15/10/2025 -- 13:36
@@ -145,18 +145,18 @@ DHCPPacket DHCPCreateLeaseExtendPacket(const char* szHostName, uint32_t nIpToExt
     dhcpPacket.m_nHops = 0;
 
     dhcpPacket.m_nXID = nXID;
-    dhcpPacket.m_nSecs = host_to_net<uint16_t>(0);
-    dhcpPacket.m_nFlags = host_to_net<uint16_t>(0);
+    dhcpPacket.m_nSecs = bswap16(0);
+    dhcpPacket.m_nFlags = bswap16(0);
 
-    dhcpPacket.m_nClientIPAddress = host_to_net<uint32_t>(nIpToExtend);
-    dhcpPacket.m_nYourIPAddress = host_to_net<uint32_t>(0);
-    dhcpPacket.m_nServerIPAddress = host_to_net<uint32_t>(0);
-    dhcpPacket.m_nGatewayIPAddress = host_to_net<uint32_t>(0);
+    dhcpPacket.m_nClientIPAddress = bswap32(nIpToExtend);
+    dhcpPacket.m_nYourIPAddress = bswap32(0);
+    dhcpPacket.m_nServerIPAddress = bswap32(0);
+    dhcpPacket.m_nGatewayIPAddress = bswap32(0);
 
     for (size_t i = 0; i < 6; i++)
         dhcpPacket.m_aClientHWAddress[i] = pMac[i];
 
-    dhcpPacket.m_nMagic = host_to_net<uint32_t>(DHCP_MAGIC);
+    dhcpPacket.m_nMagic = bswap32(DHCP_MAGIC);
 
     DHCPOptionsWriter dhcpOptionsWriter {};
     DHCPOptionsWriterInit(&dhcpOptionsWriter, &dhcpPacket.m_aOptions[0], sizeof(DHCPPacket::m_aOptions));
@@ -164,10 +164,10 @@ DHCPPacket DHCPCreateLeaseExtendPacket(const char* szHostName, uint32_t nIpToExt
     uint8_t aDHCPMessageType[] { DHCP_MESSAGE_TYPE_DHCPREQUEST };
     DHCPOptionsWriterAddOption(&dhcpOptionsWriter, DHCP_OPTION_DHCP_MESSAGE_TYPE, &aDHCPMessageType[0], sizeof(aDHCPMessageType));
 
-    uint32_t beExtendedIp = host_to_net(nIpToExtend);
+    uint32_t beExtendedIp = bswap32(nIpToExtend);
     DHCPOptionsWriterAddOption(&dhcpOptionsWriter, DHCP_OPTION_REQUESTED_IP_ADDR, (uint8_t*)&beExtendedIp, 4);
 
-    uint32_t beDHCPServerIp = host_to_net(nDHCPServerIp);
+    uint32_t beDHCPServerIp = bswap32(nDHCPServerIp);
     DHCPOptionsWriterAddOption(&dhcpOptionsWriter, DHCP_OPTION_DHCP_SERVER_ID, (uint8_t*)&beDHCPServerIp, 4);
 
     // TODO @since 15/10/2025 -- 13:36
@@ -244,7 +244,7 @@ int DHCPClientHandlePacket(DHCPClientState* pClientState, DHCPSendPacketFN pSend
 
     switch (pMessageTypeOption->m_aValue[0]) {
         case DHCP_MESSAGE_TYPE_DHCPACK: {
-            if (pClientState->m_nOfferdIP != net_to_host<uint32_t>(pPacket->m_nYourIPAddress) ||
+            if (pClientState->m_nOfferdIP != bswap32(pPacket->m_nYourIPAddress) ||
                 !pSubnetMaskOption || !pRouterOption)
                 return DHCP_CLIENT_RECIEVE_ERR;
 
@@ -257,7 +257,7 @@ int DHCPClientHandlePacket(DHCPClientState* pClientState, DHCPSendPacketFN pSend
             if (!pDHCPServerIDOption || !pIPLeaseTime)
                 return DHCP_CLIENT_RECIEVE_ERR;
 
-            pClientState->m_nOfferdIP = net_to_host<uint32_t>(pPacket->m_nYourIPAddress);
+            pClientState->m_nOfferdIP = bswap32(pPacket->m_nYourIPAddress);
             pClientState->m_nDHCPServerIP = TO_IP(pDHCPServerIDOption->m_aValue[0], pDHCPServerIDOption->m_aValue[1], pDHCPServerIDOption->m_aValue[2], pDHCPServerIDOption->m_aValue[3]);
             pClientState->m_nIPLeaseTimeS = DHCPFieldToNumber(&pIPLeaseTime->m_aValue[0], 4);
 

@@ -15,15 +15,15 @@ uint32_t DNSGenerateHeaderID() {
 std::dynamic_array<uint8_t> DNSQueryBuild(const char* szHostname, DNSQueryType nType) {
     DNSHeader dnsHeader {};
     dnsHeader.m_nId = DNSGenerateHeaderID();
-    dnsHeader.m_nFlags = host_to_net<uint16_t>(0x0100);
-    dnsHeader.m_nQDCount = host_to_net<uint16_t>(1);
+    dnsHeader.m_nFlags = bswap16(0x0100);
+    dnsHeader.m_nQDCount = bswap16(1);
     dnsHeader.m_nANCount = 0;
     dnsHeader.m_nNSCount = 0;
     dnsHeader.m_nARCount = 0;
 
     std::dynamic_array<uint8_t> arrEncodedName = DNSEncodeHostname(szHostname);
-    uint16_t nQType = host_to_net((uint16_t)nType);
-    uint16_t nQClass = host_to_net((uint16_t)1);
+    uint16_t nQType = bswap16((uint16_t)nType);
+    uint16_t nQClass = bswap16((uint16_t)1);
 
     std::dynamic_array<uint8_t> arrQuery {};
     arrQuery.resize(sizeof(DNSHeader) + arrEncodedName.length() + 4);
@@ -162,8 +162,8 @@ int DNSClientHandlePacket(DNSClientState* pClientState, uint8_t* pPacket, size_t
         return 1;
 
     DNSHeader* dnsHeader = (DNSHeader*)pPacket;
-    uint16_t nANCount = net_to_host(dnsHeader->m_nANCount);
-    uint16_t nQDCount = net_to_host(dnsHeader->m_nQDCount);
+    uint16_t nANCount = bswap16(dnsHeader->m_nANCount);
+    uint16_t nQDCount = bswap16(dnsHeader->m_nQDCount);
 
     size_t nOffset = sizeof(DNSHeader);
 
@@ -184,16 +184,16 @@ int DNSClientHandlePacket(DNSClientState* pClientState, uint8_t* pPacket, size_t
         if (nOffset + 10 > nSize)
             return 1;
 
-        uint16_t nQType = net_to_host(*(uint16_t*)&pPacket[nOffset]);
+        uint16_t nQType = bswap16(*(uint16_t*)&pPacket[nOffset]);
         nOffset += sizeof(uint16_t);
 
-        uint16_t nQClass = net_to_host(*(uint16_t*)&pPacket[nOffset]);
+        uint16_t nQClass = bswap16(*(uint16_t*)&pPacket[nOffset]);
         nOffset += sizeof(uint16_t);
 
-        uint32_t nTTL = net_to_host(*(uint32_t*)&pPacket[nOffset]);
+        uint32_t nTTL = bswap32(*(uint32_t*)&pPacket[nOffset]);
         nOffset += sizeof(uint32_t);
         
-        uint16_t nRDLength = net_to_host(*(uint16_t*)&pPacket[nOffset]);
+        uint16_t nRDLength = bswap16(*(uint16_t*)&pPacket[nOffset]);
         nOffset += sizeof(uint16_t);
 
         if (nOffset + nRDLength > nSize)
@@ -201,7 +201,7 @@ int DNSClientHandlePacket(DNSClientState* pClientState, uint8_t* pPacket, size_t
 
         if (nQType == 1 && nRDLength == 4) {
             uint32_t nIP = *(uint32_t*)&pPacket[nOffset];
-            DNSClientSetRecord(pClientState, strHostname.c_str(), net_to_host(nIP));
+            DNSClientSetRecord(pClientState, strHostname.c_str(), bswap32(nIP));
             KsPrint("stored new dns record");
         }
 

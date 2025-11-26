@@ -142,7 +142,7 @@ vga_gm_color_index_t rgb_to_vga(const desktop_render_color_t& c) {
 
 void desktop_render_init() {
     // initialize render buffer
-    g_desktop_back_buffer = (vga_buffer_t*)heap_alloc(get_global_heap(), sizeof(vga_buffer_t));
+    g_desktop_back_buffer = (vga_buffer_t*)malloc(sizeof(vga_buffer_t));
     vga_gm_buffer_create(desktop_render_get_buffer());
 
     // initialize vga -> our render target
