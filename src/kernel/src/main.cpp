@@ -307,7 +307,7 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
         return 0;
     };
 
-    vthread_create(net_test, p_kpml4, out_streams);
+    // vthread_create(net_test, p_kpml4, out_streams);
 
     // kernel finished
     kprintf("kernel finished initializing\n");
@@ -329,6 +329,8 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
 
     while (true) {
         nidm_process_packet();
+        ps2_mouse_process_packet();
+        ps2_keyboard_process_packet();
     }
 
     // we shoudn t reach this point since the kernel should never stop

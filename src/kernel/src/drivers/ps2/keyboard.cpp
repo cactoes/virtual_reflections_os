@@ -2,9 +2,12 @@
 #include "drivers/ps2/ps2.hpp"
 #include "utils/debug.hpp"
 #include "utils/event.hpp"
+#include "std/ring_buffer.hpp"
 
 static uint32_t g_last_scan_code = MAX_UINT32;
 static ps2_key_state_t g_key_state_array[PS2_KEYBOARD_KEY_STATE_ARRAY_SIZE] {};
+static std::ring_buffer<8, ps2_key_state_t> global_keyboard_state_buffer {};
+static event_manager_t<const ps2_key_state_t*> g_keyboard_event_manager {};
 
 cpu_state_t* ps2_keyboard_handle_interrupt(cpu_state_t* p_rsp) {
     ps2_key_state_t key_state {};
@@ -27,12 +30,12 @@ cpu_state_t* ps2_keyboard_handle_interrupt(cpu_state_t* p_rsp) {
 
     // BUG @since 25/09/2025 -- 12:31
     // for some reason PS2_KEYBOARD_FULL_CODE_ESCAPED is not sent when releasing the key?
-    if (!key_state.is_escaped && g_key_state_array[key_state.scan_code].is_escaped) {
+    if (!key_state.is_escaped && g_key_state_array[key_state.scan_code].is_escaped)
         key_state.is_escaped = true;
-    }
 
     g_key_state_array[key_state.scan_code] = key_state;
     g_last_scan_code = key_state.scan_code;
+    global_keyboard_state_buffer.insert(key_state);
 
     return p_rsp;
 }
@@ -57,4 +60,14 @@ bool ps2_keyboard_is_scan_code_extended(uint32_t scan_code) {
         return state->is_escaped;
 
     return false;
+}
+
+void ps2_keyboard_event_subscribe(void(*p_handler)(const ps2_key_state_t*)) {
+    g_keyboard_event_manager.subscribe(p_handler);
+}
+
+void ps2_keyboard_process_packet() {
+    ps2_key_state_t packet {};
+    if (global_keyboard_state_buffer.get(packet))
+        g_keyboard_event_manager.fire_event(&packet);
 }

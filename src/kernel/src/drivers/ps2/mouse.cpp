@@ -1,15 +1,15 @@
 #include "drivers/ps2/mouse.hpp"
 #include "drivers/ps2/ps2.hpp"
 #include "utils/event.hpp"
+#include "std/ring_buffer.hpp"
 
-// TODO @since 25/11/2025 -- 20:42
-// remove this event manager
-// it will cause issues with the new mutex architecture
 static event_manager_t<const ps2_mouse_state_t*> g_mouse_event_manager {};
 
 static ps2_mouse_state_t g_mouse_state {};
 static uint8_t g_mouse_packet_buffer[PS2_MOUSE_PACKET_SIZE] {};
 static uint8_t g_mouse_packet_index = 0;
+
+static std::ring_buffer<8, ps2_mouse_state_t> global_mouse_state_buffer {};
 
 void ps2_mouse_sync_packets() {
     for (int i = 1; i < PS2_MOUSE_PACKET_SIZE; ++i) {
@@ -59,7 +59,8 @@ cpu_state_t* ps2_mouse_handle_interrupt(cpu_state_t* p_rsp) {
     g_mouse_state.buttons.middle = status & PS2_MOUSE_STATUS_MB_MIDDLE;
 
     g_mouse_packet_index = 0;
-    g_mouse_event_manager.fire_event(&g_mouse_state);
+    // g_mouse_event_manager.fire_event(&g_mouse_state);
+    global_mouse_state_buffer.insert(g_mouse_state);
 
     return p_rsp;
 }
@@ -98,4 +99,10 @@ void ps2_mouse_event_subscribe(void(*p_handler)(const ps2_mouse_state_t*)) {
 
 const ps2_mouse_state_t* ps2_mouse_get_state() {
     return &g_mouse_state;
+}
+
+void ps2_mouse_process_packet() {
+    ps2_mouse_state_t packet {};
+    if (global_mouse_state_buffer.get(packet))
+        g_mouse_event_manager.fire_event(&packet);
 }
