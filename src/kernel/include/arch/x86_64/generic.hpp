@@ -116,6 +116,27 @@ static inline int x86_64_atomic_exchange(volatile int* p_ptr, int value) {
     return old;
 }
 
+static inline int x86_64_atomic_fetch_add(volatile int* ptr, int value) {
+    asm volatile(
+        "lock xadd %0, %1"
+        : "+r"(value), "+m"(*ptr)
+        :
+        : "memory"
+    );
+    return value;
+}
+
+static inline int x86_64_atomic_fetch_sub(volatile int* ptr, int value) {
+    value = -value;
+    asm volatile(
+        "lock xadd %0, %1"
+        : "+r"(value), "+m"(*ptr)
+        :
+        : "memory"
+    );
+    return value;
+}
+
 static inline void x86_64_pause() {
     asm volatile("pause");
 }

@@ -58,6 +58,14 @@ static inline int atomic_exchange(volatile int* p_ptr, int value) {
     return x86_64_atomic_exchange(p_ptr, value);
 }
 
+static inline int atomic_fetch_add(volatile int* ptr, int value) {
+    return x86_64_atomic_fetch_add(ptr, value);
+}
+
+static inline int atomic_fetch_sub(volatile int* ptr, int value) {
+    return x86_64_atomic_fetch_sub(ptr, value);
+}
+
 static inline void pause() {
     x86_64_pause();
 }
