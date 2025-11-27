@@ -4,10 +4,22 @@
 ;           this code is mess & not setup well
 ;==========================================
 
-section .multiboot
+section .multiboot1
     dd 0x1BADB002                           ; magic
     dd (1 << 0 | 1 << 1)                    ; flags
     dd -(0x1BADB002 + (1 << 0 | 1 << 1))    ; checksum
+
+section .multiboot2
+multiboot2_start:
+    dd 0xE85250D6
+    dd 0x0
+    dd multiboot2_end - multiboot2_start
+    dd -(0xE85250D6 + 0x0 + (multiboot2_end - multiboot2_start))
+
+    dw 0
+    dw 0
+    dd 8
+multiboot2_end:
 
 section .text
     ; 64 bit functions

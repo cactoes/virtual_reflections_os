@@ -62,8 +62,8 @@
 
 extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
     // validate multiboot
-    if (!mb_has_valid_magic((multiboot_t*)p_multiboot_struct))
-        kernel_fatal(KERNEL_FATAL_MULTIBOOT_MAGIC_VALIDATE, "multiboot magic was not valid");
+    if (mb_has_valid_magic((multiboot_t*)p_multiboot_struct) != 2)
+        kernel_fatal(KERNEL_FATAL_MULTIBOOT_MAGIC_VALIDATE, "multiboot magic was not the excpected version");
 
     // initialize the gdt / tss
     gdt_init();

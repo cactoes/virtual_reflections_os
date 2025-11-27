@@ -8,18 +8,19 @@
 #ifndef __MULTIBOOT_HPP__
 #define __MULTIBOOT_HPP__
 
-#define MULTIBOOT_MAGIC 0x2BADB002
+#define MULTIBOOT_MAGIC     0x2BADB002
+#define MULTIBOOT2_MAGIC    0x36D76289
 
 #include "common.hpp"
 
-struct memory_map_entry_t {
+struct multiboot1_mmap_entry_t {
     uint32_t size;
     uint64_t addr;
     uint64_t len;
     uint32_t type;
 } PACKED;
 
-struct multiboot_info_t {
+struct multiboot1_info_t {
     uint32_t flags;
     uint32_t mem_lower;
     uint32_t mem_upper;
@@ -46,9 +47,35 @@ struct multiboot_info_t {
     uint32_t vbe_interface_len;
 } PACKED;
 
+struct multiboot2_mmap_entry_t {
+    uint64_t addr;
+    uint64_t len;
+    uint32_t type;
+    uint32_t zero;
+} PACKED;
+
+struct multiboot2_tag_mmap_t {
+    uint32_t type;
+    uint32_t size;
+    uint32_t entry_size;
+    uint32_t entry_version;
+    multiboot2_mmap_entry_t entries[];
+} PACKED;
+
+struct multiboot2_tag_t {
+    uint32_t type;
+    uint32_t size;
+} PACKED;
+
+struct multiboot2_info_t {
+    uint32_t total_size;
+    uint32_t reserved;
+    multiboot2_tag_t tags[];
+} PACKED;
+
 struct multiboot_t {
     uint64_t magic;
-    multiboot_info_t* info;
+    void* info;
 };
 
 enum class memory_map_type_t : uint32_t {
@@ -74,20 +101,28 @@ enum class multiboot_flags_t : uint32_t {
     VBE          = (1 << 11)
 };
 
+enum class multiboot_tag_type_t : uint32_t {
+    MMAP = 6,
+};
+
 /// @brief                          checks if the multiboot magic was valid
 /// @param[in] multiboot_struct     pointer to mb struct
-/// @return                         true if mb magic was valid or nullptr if there is no block
-bool mb_has_valid_magic(multiboot_t* p_multiboot_struct);
+/// @return                         1 for version 1, 2 for version 2, 0 for invalid
+int mb_has_valid_magic(multiboot_t* p_multiboot_struct);
 
 /// @brief                          helper for looping over mb entries
 /// @param[in] multiboot_struct     pointer to mb struct
 /// @return                         pointer to first entry
-memory_map_entry_t* mb_get_first_entry(multiboot_t* p_multiboot_struct);
+multiboot1_mmap_entry_t* mb1_get_first_entry(multiboot_t* p_multiboot_struct);
 
 /// @brief                          helper for looping over mb entries
 /// @param[in] multiboot_struct     pointer to the mb struct
 /// @param[in] prev                 pointer to last mme
 /// @return                         pointer to next entry or nullptr if there are no more blocks
-memory_map_entry_t* mb_get_next_entry(multiboot_t* p_multiboot_struct, memory_map_entry_t* p_prev);
+multiboot1_mmap_entry_t* mb1_get_next_entry(multiboot_t* p_multiboot_struct, multiboot1_mmap_entry_t* p_prev);
+
+// NOT OPTIMIZED mb2 parsing
+const multiboot2_mmap_entry_t* mb2_get_first_entry(multiboot_t* multiboot_struct);
+const multiboot2_mmap_entry_t* mb2_get_next_entry(multiboot_t* multiboot_struct, const multiboot2_mmap_entry_t* prev);
 
 #endif // __MULTIBOOT_HPP__

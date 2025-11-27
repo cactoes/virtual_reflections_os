@@ -6,21 +6,25 @@
 ENTRY(entry)
 
 SECTIONS {
+    .multiboot2 : ALIGN(8){
+        KEEP(*(.multiboot2));
+    }
+
     . = 2M;
 
-    .boot : ALIGN(4) {
-        KEEP(*(.multiboot))
+    .boot : ALIGN(8) {
+        KEEP(*(.multiboot1));
     }
 
     .text : ALIGN(4K) {
-        *(.text*)
-        *(.rodata)
+        *(.text*);
+        *(.rodata);
     }
 
     .data : ALIGN(4K) {
         __lnk_start_ctors = .;
-        KEEP(*( .init_array ));
-        KEEP(*(SORT_BY_INIT_PRIORITY( .init_array.* )));
+        KEEP(*(.init_array));
+        KEEP(*(SORT_BY_INIT_PRIORITY(.init_array.*)));
         __lnk_end_ctors = .;
         *(.data*)
     }
@@ -35,7 +39,7 @@ SECTIONS {
     __lnk_end_kernel = .;
 
     /DISCARD/ : {
-        *(.fini_array*)
-        *(.comment)
+        *(.fini_array*);
+        *(.comment);
     }
 }

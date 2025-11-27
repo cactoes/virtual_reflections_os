@@ -162,7 +162,7 @@ bool vmem_init(void* p_multiboot_struct, void* p_pml4) {
     if (!pmem_reserve_at_adress(0, kernel_page_count))
         return false;
 
-    for (auto mm_entry = mb_get_first_entry((multiboot_t*)p_multiboot_struct); mm_entry; mm_entry = mb_get_next_entry((multiboot_t*)p_multiboot_struct, mm_entry)) {
+    for (auto mm_entry = mb2_get_first_entry((multiboot_t*)p_multiboot_struct); mm_entry; mm_entry = mb2_get_next_entry((multiboot_t*)p_multiboot_struct, mm_entry)) {
         // reserve physical pages for reserved memory
         if (mm_entry->type != (uint32_t)memory_map_type_t::USABLE) {
             if (!pmem_is_in_memory_range((void*)(mm_entry->addr + mm_entry->len)))
