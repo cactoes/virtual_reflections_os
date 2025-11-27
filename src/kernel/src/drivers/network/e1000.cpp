@@ -59,7 +59,7 @@ int e1000_receive_init(e1000_t* p_device) {
     if (!p_device->rdesc_buffer_array)
         return 2;
     
-    for (int i = 0; i < E1000_RECEIVE_DESC_COUNT; ++i) {
+    for (int i = 0; i < E1000_RECEIVE_DESC_COUNT; i++) {
         memzero(&p_device->rdesc_array[i], sizeof(e1000_rdesc_t));
         p_device->rdesc_array[i].buffer_addr = dma_get_physical(g_e1000_dma_heap, (p_device->rdesc_buffer_array + i * E1000_BUFFER_SIZE));
     }
@@ -91,7 +91,7 @@ int e1000_transmit_init(e1000_t* p_device) {
     if (!p_device->tdesc_buffer_array)
         return 2;
     
-    for (int i = 0; i < E1000_TRANSMIT_DESC_COUNT; ++i) {
+    for (int i = 0; i < E1000_TRANSMIT_DESC_COUNT; i++) {
         memzero(&p_device->tdesc_array[i], sizeof(e1000_tdesc_t));
         p_device->tdesc_array[i].buffer_addr = dma_get_physical(g_e1000_dma_heap, (p_device->tdesc_buffer_array + i * E1000_BUFFER_SIZE));
     }

@@ -180,7 +180,7 @@ void vga_gm_startup(vga_buffer_t* p_back_buffer) {
         0xFF
     };
 
-    for (uint8_t i = 0; i < ARRAY_SIZE(s_crtc_320x200); ++i) {
+    for (uint8_t i = 0; i < ARRAY_SIZE(s_crtc_320x200); i++) {
         out_port<uint8_t>(VGA_CRTC_INDEX, i);
         out_port<uint8_t>(VGA_CRTC_DATA, s_crtc_320x200[i]);
     }
@@ -195,7 +195,7 @@ void vga_gm_startup(vga_buffer_t* p_back_buffer) {
     out_port<uint8_t>(VGA_GC_INDEX, 0x07); out_port<uint8_t>(VGA_GC_DATA, 0x0F);
     out_port<uint8_t>(VGA_GC_INDEX, 0x08); out_port<uint8_t>(VGA_GC_DATA, 0xFF);
 
-    for (uint8_t i = 0; i < 16; ++i) {
+    for (uint8_t i = 0; i < 16; i++) {
         in_port<uint8_t>(VGA_INSTAT_READ);
         out_port<uint8_t>(VGA_AC_INDEX, i);
         out_port<uint8_t>(VGA_AC_WRITE, i);
@@ -217,7 +217,7 @@ void vga_gm_startup(vga_buffer_t* p_back_buffer) {
         {255, 85, 85}, {255, 85,255}, {255,255, 85}, {255,255,255}
     };
 
-    for (uint8_t i = 0; i < 16; ++i)
+    for (uint8_t i = 0; i < 16; i++)
         vga_gm_set_palette_color(i, s_ega16[i][0], s_ega16[i][1], s_ega16[i][2]);
 
     memzero((void*)VGA_GM_BUFFER_ADDR, VGA_GM_BUFFER_WIDTH * VGA_GM_BUFFER_HEIGHT * sizeof(uint8_t));
@@ -287,7 +287,7 @@ bool vga_gm_draw::lineh(vga_buffer_t* p_back_buffer, uint64_t x, uint64_t y, siz
     if (!IS_VALID_BUFFER(p_back_buffer) || x >= VGA_GM_BUFFER_WIDTH || y >= VGA_GM_BUFFER_HEIGHT)
         return false;
 
-    for (size_t i = x; i < x + len && i < VGA_GM_BUFFER_WIDTH; ++i)
+    for (size_t i = x; i < x + len && i < VGA_GM_BUFFER_WIDTH; i++)
         p_back_buffer->buffer[y * VGA_GM_BUFFER_WIDTH + i] = (uint8_t)color_index;
 
     return true;
@@ -297,7 +297,7 @@ bool vga_gm_draw::linev(vga_buffer_t* p_back_buffer, uint64_t x, uint64_t y, siz
     if (!IS_VALID_BUFFER(p_back_buffer) || x >= VGA_GM_BUFFER_WIDTH || y >= VGA_GM_BUFFER_HEIGHT)
         return false;
 
-    for (size_t i = y; i < y + len && i < VGA_GM_BUFFER_HEIGHT; ++i)
+    for (size_t i = y; i < y + len && i < VGA_GM_BUFFER_HEIGHT; i++)
         p_back_buffer->buffer[i * VGA_GM_BUFFER_WIDTH + x] = (uint8_t)color_index;
 
     return true;
@@ -315,8 +315,8 @@ bool vga_gm_draw::square(vga_buffer_t* p_back_buffer, uint64_t x, uint64_t y, si
     if (max_y > VGA_GM_BUFFER_HEIGHT)
         max_y = VGA_GM_BUFFER_HEIGHT;
 
-    for (size_t j = y; j < max_y; ++j) {
-        for (size_t i = x; i < max_x; ++i) {
+    for (size_t j = y; j < max_y; j++) {
+        for (size_t i = x; i < max_x; i++) {
             p_back_buffer->buffer[j * VGA_GM_BUFFER_WIDTH + i] = (uint8_t)color_index;
         }
     }

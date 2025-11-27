@@ -124,7 +124,7 @@ vga_gm_color_index_t rgb_to_vga(const desktop_render_color_t& c) {
     int best_dist = MAX_INT32;
     vga_gm_color_index_t best = vga_gm_color_index_t::BLACK;
 
-    for (int i = 0; i < 16; ++i) {
+    for (int i = 0; i < 16; i++) {
         int dr = int(c.r) - int(s_palette[i][0]);
         int dg = int(c.g) - int(s_palette[i][1]);
         int db = int(c.b) - int(s_palette[i][2]);

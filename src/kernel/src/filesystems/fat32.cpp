@@ -59,7 +59,7 @@ std::unique_ptr<uint8_t> fat32_read_cluster_from_disk(storage_driver_interface_t
     std::unique_ptr<uint8_t> data = std::unique_ptr<uint8_t>((uint8_t*)malloc(fat32_data->bytes_per_sector * fat32_data->sectors_per_cluster));
 
     *error = false;
-    for (uint32_t sector = 0; sector < fat32_data->sectors_per_cluster; ++sector) {
+    for (uint32_t sector = 0; sector < fat32_data->sectors_per_cluster; sector++) {
         if (!storage_interface->read(cluster_to_lba(fat32_data, cluster) + sector, data.get() + (sector * fat32_data->bytes_per_sector), fat32_data->bytes_per_sector)) {
             *error = true;
             break;
@@ -164,7 +164,7 @@ bool fat32_find_node(storage_driver_interface_t* storage_interface, fat32_data_t
                 size_t name_len = strlen(short_filename);
                 short_filename[name_len++] = '.';
 
-                for (int j = 0; j < 3 && entry->name[8 + j] != ' '; ++j)
+                for (int j = 0; j < 3 && entry->name[8 + j] != ' '; j++)
                     short_filename[name_len++] = entry->name[8 + j];
 
                 short_filename[name_len] = '\0';
@@ -312,7 +312,7 @@ bool fat32_filesystem_interface_t::enumerate_directory(const char* path, std::dy
             if (entry->name[8] != ' ') {
                 size_t name_len = strlen(short_filename);
                 short_filename[name_len++] = '.';
-                for (int j = 0; j < 3 && entry->name[8 + j] != ' '; ++j)
+                for (int j = 0; j < 3 && entry->name[8 + j] != ' '; j++)
                     short_filename[name_len++] = entry->name[8 + j];
                 short_filename[name_len] = '\0';
             }

@@ -49,6 +49,9 @@ void mutex_lock(mutex_t* p_mutex) {
         vthread_yield();
 
     p_mutex->handle = __thread_tls->handle;
+
+    if (!append_to_mutex_array(global_mutex_array, p_mutex))
+        debug_puts("[WARN] mutex array full\n");
 }
 
 void mutex_unlock(mutex_t* p_mutex) {
@@ -61,6 +64,8 @@ void mutex_unlock(mutex_t* p_mutex) {
 
     if (__thread_tls->irq_disable_depth == 0)
         restore_flags(__thread_tls->saved_irq_flags);
+
+    remove_from_mutex_array(global_mutex_array, p_mutex);
     
     atomic_exchange(&p_mutex->locked, 0);
 }

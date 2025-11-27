@@ -81,7 +81,7 @@ public:
     }
 
     linked_list(const T* p_arr, size_t arr_size) {
-        for (size_t i = 0; i < arr_size; ++i)
+        for (size_t i = 0; i < arr_size; i++)
             insert_back(p_arr[i]);
     }
 

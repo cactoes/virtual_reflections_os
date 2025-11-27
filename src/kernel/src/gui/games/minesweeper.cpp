@@ -4,6 +4,7 @@
 #include "std/array.hpp"
 #include "memory/heap.hpp"
 #include "std/random.hpp"
+#include "time/clock.hpp"
 
 struct tile_t {
     int bomb_count;
@@ -372,7 +373,7 @@ void minesweeper_init() {
     desktop_register_target(target);
 
     // random
-    seed_random(930123);
+    seed_random(clock_get_time_since_boot());
 
     // setup game board
     // if (g_game_board)
@@ -397,7 +398,7 @@ void minesweeper_init() {
 
     loop_game_board([&bomb_spots](tile_t* tile) { bomb_spots.insert_back({ tile->grid_x, tile->grid_y }); });
 
-    for (int n = 0; n <= game_config.bomb_count; n++) {
+    for (int n = 0; n < game_config.bomb_count; n++) {
         int index = random_number() % bomb_spots.length();
         int x = bomb_spots[index][0];
         int y = bomb_spots[index][1];

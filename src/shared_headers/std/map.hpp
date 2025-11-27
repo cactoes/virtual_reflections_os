@@ -28,7 +28,7 @@ public:
     }
 
     linear_map_iterator& advance() {
-        ++ptr;
+        ptr++;
         return *this;
     }
 

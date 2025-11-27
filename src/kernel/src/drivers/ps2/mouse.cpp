@@ -12,9 +12,9 @@ static uint8_t g_mouse_packet_index = 0;
 static std::ring_buffer<8, ps2_mouse_state_t> global_mouse_state_buffer {};
 
 void ps2_mouse_sync_packets() {
-    for (int i = 1; i < PS2_MOUSE_PACKET_SIZE; ++i) {
+    for (int i = 1; i < PS2_MOUSE_PACKET_SIZE; i++) {
         if (g_mouse_packet_buffer[i] & PS2_MOUSE_STATUS_VALID_PKT) {
-            for (int j = 0; j < PS2_MOUSE_PACKET_SIZE - i; ++j)
+            for (int j = 0; j < PS2_MOUSE_PACKET_SIZE - i; j++)
                 g_mouse_packet_buffer[j] = g_mouse_packet_buffer[i + j];
 
             g_mouse_packet_index = PS2_MOUSE_PACKET_SIZE - i;

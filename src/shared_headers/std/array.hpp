@@ -47,7 +47,7 @@ public:
         resize(arr_size);
         size = arr_size;
 
-        for (size_t i = 0; i < arr_size; ++i)
+        for (size_t i = 0; i < arr_size; i++)
             new (&data[i]) T(p_arr[i]);
     }
 
@@ -59,7 +59,7 @@ public:
         capacity = other.capacity;
 
         data = (T*)malloc(capacity * sizeof(T));
-        for (size_t i = 0; i < size; ++i) {
+        for (size_t i = 0; i < size; i++) {
             new (&data[i]) T(other.data[i]);
         }
     }
@@ -80,7 +80,7 @@ public:
         }
 
         size = other.size;
-        for (size_t i = 0; i < size; ++i) {
+        for (size_t i = 0; i < size; i++) {
             new (&data[i]) T(other.data[i]);
         }
 
@@ -159,7 +159,7 @@ public:
 
         data[index].~T();
 
-        for (size_t i = index; i < size - 1; ++i) {
+        for (size_t i = index; i < size - 1; i++) {
             new (&data[i]) T(move(data[i + 1]));
             data[i + 1].~T();
         }
@@ -210,7 +210,7 @@ public:
     }
 
     void clear() {
-        for (size_t i = 0; i < size; ++i)
+        for (size_t i = 0; i < size; i++)
             data[i].~T();
 
         size = 0;
@@ -228,7 +228,7 @@ public:
         if (!new_data)
             return false;
 
-        for (size_t i = 0; i < size; ++i) {
+        for (size_t i = 0; i < size; i++) {
             new (&new_data[i]) T(move(data[i]));
             data[i].~T();
         }

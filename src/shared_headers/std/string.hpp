@@ -472,7 +472,7 @@ static void str_unpack_be16(const uint16_t* src, int word_count, char* dst, int 
     int pos = 0;
     memzero(dst, max_len);
 
-    for (int i = 0; i < word_count && pos + 1 < max_len; ++i) {
+    for (int i = 0; i < word_count && pos + 1 < max_len; i++) {
         dst[pos++] = (char)(src[i] >> 8);
         dst[pos++] = (char)(src[i] & 0xFF);
     }
@@ -586,9 +586,9 @@ public:
         if (string.length() > len || start >= len)
             return npos;
 
-        for (size_t i = start; i <= len - string.length(); ++i) {
+        for (size_t i = start; i <= len - string.length(); i++) {
             bool match = true;
-            for (size_t j = 0; j < string.length(); ++j) {
+            for (size_t j = 0; j < string.length(); j++) {
                 if (str[i + j] != string.str[j]) {
                     match = false;
                     break;
@@ -753,7 +753,7 @@ static std::dynamic_array<std::string> str_split(const std::string& instr, char 
     while (i < len) {
         // Skip leading separators
         while (i < len && str[i] == ch)
-            ++i;
+            i++;
 
         if (i == len)
             break;
@@ -761,7 +761,7 @@ static std::dynamic_array<std::string> str_split(const std::string& instr, char 
         size_t start = i;
 
         while (i < len && str[i] != ch)
-            ++i;
+            i++;
 
         if (i > start) {
             parts.insert_back(instr.substr(start, i - start));

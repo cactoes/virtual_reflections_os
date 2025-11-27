@@ -136,7 +136,7 @@ int ide_send_identify(ide_device_t* p_device, uint16_t* p_out_buf) {
     if (!(status & IDE_STATUS_DRQ))
         return 2;
 
-    for (size_t i = 0; i < 256; ++i)
+    for (size_t i = 0; i < 256; i++)
         p_out_buf[i] = in_port<uint16_t>(p_device->io_base + IDE_REG_DATA);
 
     return 0;

@@ -182,7 +182,7 @@ bool iso9660_filesystem_interface_t::read(const char* path, void** data, size_t*
 
     storage_interface->read(node_data.lba, buff.get(), raw_size);
 
-    *data = (void*)GALLOC(node_data.size);
+    *data = (void*)malloc(node_data.size);
     if (!*data)
         return false;
 
