@@ -36,6 +36,13 @@ SECTIONS {
     }
     __lnk_bss_size = ABSOLUTE(.) - __lnk_bss_start;
 
+    . = ALIGN(4K);
+    __lnk_page_table_temp_start = .;
+    . += 5*4K;
+    __lnk_page_table_temp_end = .;
+
+    . = ALIGN(2M);
+
     __lnk_end_kernel = .;
 
     /DISCARD/ : {

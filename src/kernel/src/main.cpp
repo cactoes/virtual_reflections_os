@@ -77,6 +77,27 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
     // initialze the debug out stream
     debug_init();
 
+    vmem2_init(p_kpml4, p_multiboot_struct);
+    
+    heap_t heap2 {};
+    heap_init2(&heap2, p_kpml4, (void*)0x60000000, 0x100000 * 256); // 512mb
+    set_global_heap(&heap2);
+
+    malloc(0x100000 * 256);
+    malloc(0x100000);
+
+    int* b = (int*)malloc(sizeof(int));
+    *b = 10;
+
+    if (*b == 10)
+        vga_tm_puts(&g_vga_tm_buffer, "was 10!");
+    else
+        vga_tm_puts(&g_vga_tm_buffer, "was NOT 10 ...");
+
+    // catch for testing
+    while (true)
+        halt();
+
     // initialze virtual memory
     if (!vmem_init(p_multiboot_struct, p_kpml4))
         kernel_fatal(KERNEL_FATAL_VMEM_INIT, "vmem failed to initialize");

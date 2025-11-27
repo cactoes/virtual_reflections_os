@@ -13,6 +13,8 @@
 #define KERNEL_PAGE_RESERVED_BITMAP_SIZE    0x2000 // 1024mb    0x2000 * 64 = page count
 #define KERNEL_PAGE_BITMAP_SIZE             0x3000 // 1536mb    0x3000 * 64 = page count
 
+#define PAGING_BITMAP_SIZE2                 0x2000 // 1024mb    0x2000 * 64 = page count
+
 // helper functions for page tables
 #define KPAGING_GET_PE(virtual_addr, offset)    ((((uint64_t)(virtual_addr)) >> (offset)) & 0x1FF)
 #define KPAGING_GET_ENTRY(table, entry)         ((uint64_t*)(((uint64_t*)(table))[((uint64_t)(entry))] & ~0xFFF))
@@ -48,5 +50,9 @@ void* pmem_get_page();
 NODISCARD bool pmem_reserve_at_adress(uint64_t address, size_t count = 1);
 
 bool pmem_is_in_memory_range(void* p_addr);
+
+void* pmem2_get_page();
+bool pmem2_try_reserve_address(void* address, size_t count = 1);
+bool pmem2_is_in_memory_range(void* address);
 
 #endif // __MEMORY_PAGING_HPP__

@@ -192,4 +192,6 @@ void operator delete(void* p_ptr, __SIZE_TYPE__) noexcept;
 void operator delete[](void* ptr) noexcept;
 void operator delete[](void* ptr, __SIZE_TYPE__) noexcept;
 
+bool heap_init2(heap_t* heap, void* pml4, void* vaddr, size_t size);
+
 #endif // __MEMORY_HEAP_HPP__

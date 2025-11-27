@@ -76,22 +76,13 @@ boot_kernel:
     mov   rsp,    KSTACK_TOP
     and   rsp,    -16
 
-    ; setup basic new page table (KPML4[0] -> KPDP[0] -> KPDT)
-    mov   rax,      KPDP
-    or    rax,      0b11
-    mov   [KPML4], rax
-
-    mov   rax,      KPD
-    or    rax,      0b11
-    mov   [KPDP],  rax
-
     ; setup remaining c++ stuff
     call call_constructors
 
     ; push multiboot struct to func
     mov rdi, MB_MAGIC
     ; push kernel page table struct
-    mov rsi, KPML4
+    mov rsi, cr3
     ; i hope everything has been setup, godspeed o7
     call kernel_entry
 
@@ -104,10 +95,10 @@ boot_kernel:
 section .bss
 align 4096
 ; page table for identity map (preloaded for the kernel to use)
-KPML4:     resb 4096
-KPDP:      resb 4096
-KPD:       resb 4096
+KPML4T:     resb 4096
+KPDPT:      resb 4096
+KPDT:       resb 4096
 
-; 1024 kb of kernel stack
-KSTACK_BOTTOM: resb 1024 * 1024
+; 2 MB of kernel stack
+KSTACK_BOTTOM: resb 1024 * 1024 * 2
 KSTACK_TOP:

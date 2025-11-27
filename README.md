@@ -69,3 +69,27 @@ It is public for reference and educational purposes only.
 [MmdOS - https://github.com/Rostamborn/MmdOS](https://github.com/Rostamborn/MmdOS)<br>
 [cavOS - https://github.com/malwarepad/cavOS](https://github.com/malwarepad/cavOS)<br>
 [RedactedOS - https://github.com/differrari/RedactedOS](https://github.com/differrari/RedactedOS)<br>
+
+256M identity mapped memory
+
+allocator can use 200M
+
+virtual addresses MUST start above this 200M
+
+allocator wants to map 0xA000000
+-> page table entry does not exists so we need to create a new one
+    -> get physical page from memory
+    -> this page address is _physical_ so we also need to map that
+        -> this address could be anywhere but we map it low in an existing 4k entry
+    -> map the physical address actual resource to 0xA000000
+= mapped memory in a safe way?
+
+
+-> the intial 200M is a safe space that we already ampped to make sure we can continue mapping
+
+
+
+
+4k page from pmem
+-> not yet mapped
+we need to first map that inside a table that exists!

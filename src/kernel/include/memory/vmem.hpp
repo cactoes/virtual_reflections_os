@@ -56,4 +56,12 @@ NODISCARD bool vmem_init(void* p_multiboot_struct, void* p_pml4);
 /// @return                     the virtual address its mapped to if success else nullptr
 void* vmem_map_mmio_region(void* pml4, void* physical_address);
 
+// only use this at the very beginning
+void vmem2_identity_map(void* pml4);
+void* get_page_temp_x(uint64_t x);
+bool vmem2_map_page_table_temp(void* pml4, void* vaddr, void* paddr);
+bool vmem2_map_2mb(void* pml4, void* vaddr, void* paddr);
+size_t vmem2_smart_alloc_pages(void* pml4, void* vaddr, size_t size);
+bool vmem2_init(void* pml4, void* mbstruct);
+
 #endif // __MEMORY_VMEM_HPP__
