@@ -177,7 +177,7 @@ void terminal_execute(const std::string& path, const std::dynamic_array<std::str
         }
         case hash_fnv1a_64("gui"): {
             printf("Starting graphical environment ...\n");
-            if (vthread_create(desktop_init, get_pml4(), __thread_tls->out_streams) == VTHREAD_HANDLE_INVALID)
+            if (vthread_create(desktop_init, get_pml4()) == VTHREAD_HANDLE_INVALID)
                 printf("Failed start graphical environment\n");
 
             // TODO @since 29/10/2025 -- 00:10

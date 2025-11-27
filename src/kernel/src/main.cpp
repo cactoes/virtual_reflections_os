@@ -111,27 +111,9 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
     set_global_vfs(&vfs);
     vfs_create_directory(get_global_vfs(), "/mnt");
     vfs_create_directory(get_global_vfs(), "/dev");
-    vfs_create_directory(get_global_vfs(), "/pipe");
-
-    auto dbg_stream = std::make_unique<vfs_out_stream_interface>(debug_puts);
-    vfs_mount(get_global_vfs(), "/dev/dbg", move(dbg_stream));
-
-    auto std_out_writer = [](const char* str) {
-        // todo check vga mode
-        vga_tm_puts(&g_vga_tm_buffer, str);
-    };
-
-    auto vga_stream = std::make_unique<vfs_out_stream_interface>(std_out_writer);
-    vfs_mount(get_global_vfs(), "/pipe/std/0", move(vga_stream));
-    
-    file_descriptor_t out_streams[3] {
-        vfs_open_file(get_global_vfs(), "/pipe/std/0/stream"),
-        FILE_DESCRIPTOR_INVALID,
-        FILE_DESCRIPTOR_INVALID
-    };
 
     // initialize threading
-    if (vthread_start_and_setup_main(out_streams) == VTHREAD_HANDLE_INVALID)
+    if (vthread_start_and_setup_main() == VTHREAD_HANDLE_INVALID)
         kernel_fatal(KERNEL_FATAL_VTHREAD_INIT, "virtual threads failed to intialize");
 
     pit_add_interrupt_function(vthread_handle_interrupt);
@@ -318,7 +300,7 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
     // while (!is_desktop_ready());
     // minesweeper_init();
 
-    vthread_handle_t vth = vthread_create(terminal_thread_main, p_kpml4, out_streams);
+    vthread_handle_t vth = vthread_create(terminal_thread_main, p_kpml4);
     if (vth == VTHREAD_HANDLE_INVALID) {
         kprintf("failed to start terminal");
     } // else {

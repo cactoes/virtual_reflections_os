@@ -7,8 +7,6 @@
 #include "io.hpp"
 
 void __kernel_fatal(uint64_t code, const char* p_message, cpu_state_t* p_cpu_state) {
-    io_flag_set(io_flag::KPRINT_BYPASS_VFS, true);
-
     kprintf("kernel fatal triggerd: 0x%uh \"%s\"\n", code, p_message);
 
     // if not main thread just terminate the thread not the system
