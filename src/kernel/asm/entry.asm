@@ -25,6 +25,9 @@ section .text
     ; 64 bit functions
     extern boot_kernel
 
+    ; linker variables
+    extern __lnk_end_kernel
+
     ; globals
     global entry
     global MB_MAGIC
@@ -66,17 +69,24 @@ setup_page_tables:
     mov     eax,            PDT
     or      eax,            0b11 ; present, writable
     mov     [PDPT],         eax
-    
-    mov ecx, 0
+
+    mov     eax, __lnk_end_kernel
+    shr     eax, 21
+    mov     ecx, eax
+
+    xor     edx, edx
+
     .loop:
-        mov     eax,                0x200000 ; 2MB
-        mul     ecx
-        or      eax,                0b10000011 ; present, writable, huge
-        mov     [PDT + ecx * 8],    eax
-        inc ecx
-        cmp ecx, 64
-        jne .loop
-        ret
+        mov     eax, edx
+        shl     eax, 21
+        or      eax, 0b10000011
+        mov     [PDT + edx * 8], eax
+
+        inc     edx
+        cmp     edx, ecx
+        jne     .loop
+
+    ret
 
 enable_paging:
     ; pass page table to cpu
