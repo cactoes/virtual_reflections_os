@@ -33,6 +33,7 @@
 #define PACKED              __attribute__((packed))
 #define NAKED               __attribute__((naked))
 #define ALIGNED(x)          __attribute__((aligned(x)))
+#define USED                __attribute__((used))
 #define NODISCARD           [[nodiscard]]
 #define NORETURN            [[noreturn]]
 #define UNUSED_PARAM        [[maybe_unused]]

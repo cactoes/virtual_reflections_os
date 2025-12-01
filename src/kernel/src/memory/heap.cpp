@@ -17,7 +17,6 @@ bool heap_block_filters::last_block_filter(const heap_block_t* p_block, const vo
     return p_block->used && !p_block->next;
 }
 
-
 int heap_filter_blocks(heap_t* p_heap, void* p_param, heap_block_filter_callback_t p_hbfc_array[], size_t bfc_array_size, heap_block_t* p_block_array[], size_t block_array_size) {
     if (bfc_array_size != block_array_size)
         return -1;
@@ -46,38 +45,38 @@ int heap_filter_blocks(heap_t* p_heap, void* p_param, heap_block_filter_callback
     return found_size;
 }
 
-bool heap_init(heap_t* p_heap, void* p_pml4, void* p_virtual_address, size_t size) {
+bool heap_init(heap_t* heap, void* pml4, void* vaddr, size_t size) {
     // the heap is just raw memory no data structures
-    uint64_t heap_size = vmem_smart_alloc_pages(p_pml4, p_virtual_address, size);
+    uint64_t heap_size = vmem_smart_alloc_pages(pml4, (void*)((uint64_t)vaddr + PAGE_SIZE_LARGE), size);
 
-    // heap struct (identity mapped memory)
-    void* p_page = pmem_get_page_reserved();
+    // heap struct
+    void* p_page = pmem_get_page();
     while (p_page && !is_aligned((uint64_t)p_page, PAGE_SIZE_LARGE))
-        p_page = pmem_get_page_reserved();
+        p_page = pmem_get_page();
 
     if (p_page == nullptr)
         return false;
 
-    if (!pmem_reserve_at_adress((uint64_t)p_page + PAGE_SIZE, (PAGE_SIZE_LARGE / PAGE_SIZE - 1)))
+    if (!pmem_try_reserve_address((void*)((uint64_t)p_page + PAGE_SIZE), (PAGE_SIZE_LARGE / PAGE_SIZE - 1)))
         return false;
 
-    if (!vmem_map_2mb_page(p_pml4, p_page, p_page))
+    if (!vmem_map_2mb(pml4, vaddr, p_page))
         return false;
 
     // setup heap stuct
-    p_heap->heap_block_array = (heap_block_t*)p_page;
-    p_heap->heap_block_array_size = PAGE_SIZE_LARGE / sizeof(heap_block_t);
-    p_heap->heap_block_count = 1;
-    p_heap->start_virtual_addr = p_virtual_address;
-    p_heap->size = heap_size;
-    p_heap->pml4 = p_pml4;
+    heap->heap_block_array = (heap_block_t*)vaddr;
+    heap->heap_block_array_size = PAGE_SIZE_LARGE / sizeof(heap_block_t);
+    heap->heap_block_count = 1;
+    heap->start_virtual_addr = (void*)((uint64_t)vaddr + PAGE_SIZE_LARGE);
+    heap->size = heap_size;
+    heap->pml4 = pml4;
 
     // first block is size of entire heap, but un allocated
-    p_heap->heap_block_array->start_real_addr = p_virtual_address;
-    p_heap->heap_block_array->next = nullptr;
-    p_heap->heap_block_array->size = heap_size;
-    p_heap->heap_block_array->free = true;
-    p_heap->heap_block_array->used = true;
+    heap->heap_block_array->start_real_addr = (void*)((uint64_t)vaddr + PAGE_SIZE_LARGE);
+    heap->heap_block_array->next = nullptr;
+    heap->heap_block_array->size = heap_size;
+    heap->heap_block_array->free = true;
+    heap->heap_block_array->used = true;
 
     return true;
 }
@@ -300,35 +299,36 @@ int dma_heap_init(void* p_pml4, heap_t* p_dma_heap, void* p_virtual_address, siz
         return 1;
 
     // the heap is just raw memory no data structures
-    uint64_t heap_size = vmem_smart_alloc_pages(p_pml4, p_virtual_address, size);
+    uint64_t heap_size = vmem_smart_alloc_pages(p_pml4, (void*)((uint64_t)p_virtual_address + PAGE_SIZE_LARGE), size);
 
     if (heap_size != size)
         return 2;
 
-    // heap struct (identity mapped memory)
-    void* p_page = pmem_get_page_reserved();
-    while (p_page && !is_aligned((uint64_t)p_page, PAGE_SIZE_LARGE))
-        p_page = pmem_get_page_reserved();
+    // heap struct
+    void* p_page = pmem_get_page();
+    while (p_page && !is_aligned((uint64_t)p_page, PAGE_SIZE_LARGE)) {
+        p_page = pmem_get_page();
+    }
 
     if (p_page == nullptr)
         return 3;
 
-    if (!pmem_reserve_at_adress((uint64_t)p_page + PAGE_SIZE, (PAGE_SIZE_LARGE / PAGE_SIZE - 1)))
+    if (!pmem_try_reserve_address((void*)((uint64_t)p_page + PAGE_SIZE), (PAGE_SIZE_LARGE / PAGE_SIZE - 1)))
         return 3;
 
-    if (!vmem_map_2mb_page(p_pml4, p_page, p_page))
+    if (!vmem_map_2mb(p_pml4, p_virtual_address, p_page))
         return 3;
 
     // setup heap stuct
-    p_dma_heap->heap_block_array = (heap_block_t*)p_page;
+    p_dma_heap->heap_block_array = (heap_block_t*)p_virtual_address;
     p_dma_heap->heap_block_array_size = PAGE_SIZE_LARGE / sizeof(heap_block_t);
     p_dma_heap->heap_block_count = 1;
-    p_dma_heap->start_virtual_addr = p_virtual_address;
+    p_dma_heap->start_virtual_addr = (void*)((uint64_t)p_virtual_address + PAGE_SIZE_LARGE);
     p_dma_heap->size = heap_size;
     p_dma_heap->pml4 = p_pml4;
 
     // first block is size of entire heap, but un allocated
-    p_dma_heap->heap_block_array->start_real_addr = p_virtual_address;
+    p_dma_heap->heap_block_array->start_real_addr = (void*)((uint64_t)p_virtual_address + PAGE_SIZE_LARGE);
     p_dma_heap->heap_block_array->next = nullptr;
     p_dma_heap->heap_block_array->size = heap_size;
     p_dma_heap->heap_block_array->free = true;
@@ -366,7 +366,7 @@ void* dma_heap_manager_get_virtual_address(dma_heap_manager_t* manager, size_t s
 
         for (auto& heap : manager->heaps) {
             uint64_t heap_begin = (uint64_t)heap.start_virtual_addr;
-            uint64_t heap_end = (uint64_t)heap.start_virtual_addr + heap.size;
+            uint64_t heap_end = (uint64_t)heap.start_virtual_addr + heap.size + PAGE_SIZE_LARGE;
 
             if (begin < heap_end && begin + size > heap_begin) {
                 begin = heap_end;
@@ -375,9 +375,8 @@ void* dma_heap_manager_get_virtual_address(dma_heap_manager_t* manager, size_t s
             }
         }
 
-        if (found) {
+        if (found)
             return (void*)begin;
-        }
     }
 
     return nullptr;
@@ -455,43 +454,4 @@ void operator delete[](void* ptr) noexcept {
 void operator delete[](void* ptr, __SIZE_TYPE__) noexcept {
    if (auto heap = get_global_heap())
         heap_free(heap, ptr);
-}
-
-bool heap_init2(heap_t* heap, void* pml4, void* vaddr, size_t size) {
-    // the heap is just raw memory no data structures
-    uint64_t heap_size = vmem2_smart_alloc_pages(pml4, vaddr, size);
-
-    // heap struct (identity mapped memory)
-    void* p_page = pmem2_get_page();
-    vmem2_map_page_table_temp(pml4, get_page_temp_x(3), p_page);
-    while (p_page && !is_aligned((uint64_t)p_page, PAGE_SIZE_LARGE)) {
-        p_page = pmem_get_page_reserved();
-        vmem2_map_page_table_temp(pml4, get_page_temp_x(3), p_page);
-    }
-
-    if (p_page == nullptr)
-        return false;
-
-    if (!pmem2_try_reserve_address((void*)((uint64_t)p_page + PAGE_SIZE), (PAGE_SIZE_LARGE / PAGE_SIZE - 1)))
-        return false;
-
-    if (!vmem2_map_2mb(pml4, p_page, p_page))
-        return false;
-
-    // setup heap stuct
-    heap->heap_block_array = (heap_block_t*)p_page;
-    heap->heap_block_array_size = PAGE_SIZE_LARGE / sizeof(heap_block_t);
-    heap->heap_block_count = 1;
-    heap->start_virtual_addr = vaddr;
-    heap->size = heap_size;
-    heap->pml4 = pml4;
-
-    // first block is size of entire heap, but un allocated
-    heap->heap_block_array->start_real_addr = vaddr;
-    heap->heap_block_array->next = nullptr;
-    heap->heap_block_array->size = heap_size;
-    heap->heap_block_array->free = true;
-    heap->heap_block_array->used = true;
-
-    return true;
 }

@@ -85,10 +85,10 @@ int heap_filter_blocks(heap_t* p_heap, void* p_param, heap_block_filter_callback
 /// @brief                      initiates a heap
 /// @param[inout] heap          heap to initiate
 /// @param[inout] pml4          page table to use
-/// @param[in] virtual_address  virtual address to start the heap from
+/// @param[in] vaddr            virtual address to start the heap from
 /// @param size                 starting size of the heap
 /// @return                     success status
-NODISCARD bool heap_init(heap_t* p_heap, void* p_pml4, void* p_virtual_address, size_t size);
+bool heap_init(heap_t* heap, void* pml4, void* vaddr, size_t size);
 
 /// @brief              expands the heap ontop of current heap
 ///                     make sure the virtual address above is not yet reserved
@@ -191,7 +191,5 @@ void operator delete(void* p_ptr) noexcept;
 void operator delete(void* p_ptr, __SIZE_TYPE__) noexcept;
 void operator delete[](void* ptr) noexcept;
 void operator delete[](void* ptr, __SIZE_TYPE__) noexcept;
-
-bool heap_init2(heap_t* heap, void* pml4, void* vaddr, size_t size);
 
 #endif // __MEMORY_HEAP_HPP__

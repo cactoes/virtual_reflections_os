@@ -15,53 +15,33 @@
 
 #include "common.hpp"
 
-/// @brief              maps the firtst ~1gb one-one in the page table
-///                     so that those values are always valid
-/// @param[inout] pml4  pointer to the page table struct
-void vmem_identity_map(void* p_pml4);
-
-/// @brief                      maps a 4kb page to a virtual address from a phisical address
-/// @param[inout] pml4          page table to use
-/// @param[in] virtual_addr     pointer to virtual address to map to
-/// @param[in] physical_addr    pointer to physical address to map to
-/// @return                     success status
-NODISCARD bool vmem_map_2kb_page(void* p_pml4, void* p_virtual_addr, void* p_physical_addr);
-
-/// @brief                      maps a 2mb page to a virtual address from a phisical address
-/// @param[inout] pml4          page table to use
-/// @param[in] virtual_addr     pointer to virtual address to map to
-/// @param[in] physical_addr    pointer to physical address to map to
-/// @return                     success status
-NODISCARD bool vmem_map_2mb_page(void* p_pml4, void* p_virtual_addr, void* p_physical_addr);
+/// @brief                  maps a 2mb page to a virtual address from a phisical address
+/// @param[inout] pml4      page table to use
+/// @param[in] vaddr        pointer to virtual address to map to
+/// @param[in] paddr        pointer to physical address to map to
+/// @return                 success status
+bool vmem_map_2mb(const void* pml4, const void* vaddr, const void* paddr);
 
 /// @brief                      allocates memory pages per 2mb if size != large page
 ///                             it will round up too the nearest 2mb
 /// @param[inout] pml4          page table to use
-/// @param[in] virtual_addr     pointer to virtual address to map to
+/// @param[in] vaddr            pointer to virtual address to map to
 /// @param size                 memory size to allocate
 /// @return                     allocated amount of memory
-NODISCARD size_t vmem_smart_alloc_pages(void* pml4, void* virtual_addr, size_t size);
-
-NODISCARD void* vmem_virtual_to_physical(void* p_pml4, void* p_virtual_addr);
+size_t vmem_smart_alloc_pages(const void* pml4, const void* vaddr, size_t size);
 
 /// @brief                      initiates virtual memory
-/// @param[in] multiboot_struct pointer to the custom mb struct for memory regions
 /// @param[inout] pml4          page table to use
+/// @param[in] multiboot_struct pointer to the custom mb struct for memory regions
 /// @return                     success status
-NODISCARD bool vmem_init(void* p_multiboot_struct, void* p_pml4);
+bool vmem_init(const void* pml4, const void* mbstruct);
 
 /// @brief                      memory maps an region to virtual memory
 /// @param[inout] pml4          target page table to map to
 /// @param physical_address     the address to map
 /// @return                     the virtual address its mapped to if success else nullptr
-void* vmem_map_mmio_region(void* pml4, void* physical_address);
+void* vmem_map_mmio_region(void* pml4, void* paddr);
 
-// only use this at the very beginning
-void vmem2_identity_map(void* pml4);
-void* get_page_temp_x(uint64_t x);
-bool vmem2_map_page_table_temp(void* pml4, void* vaddr, void* paddr);
-bool vmem2_map_2mb(void* pml4, void* vaddr, void* paddr);
-size_t vmem2_smart_alloc_pages(void* pml4, void* vaddr, size_t size);
-bool vmem2_init(void* pml4, void* mbstruct);
+void* vmem_virtual_to_physical(void* pml4, void* vaddr);
 
 #endif // __MEMORY_VMEM_HPP__

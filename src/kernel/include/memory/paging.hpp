@@ -10,15 +10,19 @@
 
 // MAKE SURE TO KEEP IN LINE WITH SYSTEM RAM
 // OR REPLACE THIS WITH ACTUAL SYSTEM RAM CHECKING
-#define KERNEL_PAGE_RESERVED_BITMAP_SIZE    0x2000 // 1024mb    0x2000 * 64 = page count
-#define KERNEL_PAGE_BITMAP_SIZE             0x3000 // 1536mb    0x3000 * 64 = page count
-
-#define PAGING_BITMAP_SIZE2                 0x2000 // 1024mb    0x2000 * 64 = page count
+#define PAGING_BITMAP_SIZE                  0x4000 // 4096mb    0x4000 * 64 = page count
 
 // helper functions for page tables
 #define KPAGING_GET_PE(virtual_addr, offset)    ((((uint64_t)(virtual_addr)) >> (offset)) & 0x1FF)
 #define KPAGING_GET_ENTRY(table, entry)         ((uint64_t*)(((uint64_t*)(table))[((uint64_t)(entry))] & ~0xFFF))
 #define KPAGING_CHECK_ENTRY(table, entry)       ((((uint64_t*)(table))[((uint64_t)(entry))]) & 1)
+
+#define RECURSIVE_SLOT 511ULL
+#define SIGN_EXT 0xFFFF000000000000ULL
+#define GET_PML4_VIRT()                                     ((uint64_t*)(SIGN_EXT | (RECURSIVE_SLOT << 39) | (RECURSIVE_SLOT << 30)         | (RECURSIVE_SLOT << 21)            | (RECURSIVE_SLOT << 12)))
+#define GET_PDPT_VIRT(pml4_index)                           ((uint64_t*)(SIGN_EXT | (RECURSIVE_SLOT << 39) | (RECURSIVE_SLOT << 30)         | (RECURSIVE_SLOT << 21)            | ((uint64_t)(pml4_index) << 12)))
+#define GET_PDT_VIRT(pml4_index, pdpt_index)                ((uint64_t*)(SIGN_EXT | (RECURSIVE_SLOT << 39) | (RECURSIVE_SLOT << 30)         | ((uint64_t)(pml4_index) << 21)    | ((uint64_t)(pdpt_index) << 12)))
+#define GET_PT_VIRT(pml4_index, pdpt_index, pdt_index)      ((uint64_t*)(SIGN_EXT | (RECURSIVE_SLOT << 39) | ((uint64_t)(pml4_index) << 30) | ((uint64_t)(pdpt_index) << 21)    | ((uint64_t)(pdt_index) << 12)))
 
 // page flags
 #define PF_PRESENT              (1 << 0)
@@ -33,26 +37,17 @@
 
 #include "common.hpp"
 
-/// @brief      gets a physical address in the reserved section
-/// @return     physical memroy address
-void* pmem_get_page_reserved();
-
-/// @brief      gets a physical address after the reserved section
+/// @brief      gets a physical address
 /// @return     physical memroy address
 void* pmem_get_page();
 
 /// @brief              sets bitmap values so that those addresses
-///                     can no longer be used for getting physical pages.
-///                     automatically determines the bitmap
-/// @param address      address to start reserving from (4k aligned)
+///                     can no longer be used for getting physical pages
+/// @param[in] paddr    address to start reserving from (4k aligned)
 /// @param count        amount of pages to reserve at that address
 /// @return             success status
-NODISCARD bool pmem_reserve_at_adress(uint64_t address, size_t count = 1);
+bool pmem_try_reserve_address(const void* paddr, size_t count = 1);
 
-bool pmem_is_in_memory_range(void* p_addr);
-
-void* pmem2_get_page();
-bool pmem2_try_reserve_address(void* address, size_t count = 1);
-bool pmem2_is_in_memory_range(void* address);
+bool pmem_is_in_memory_range(const void* address);
 
 #endif // __MEMORY_PAGING_HPP__
