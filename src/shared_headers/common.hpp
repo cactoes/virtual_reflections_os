@@ -87,6 +87,9 @@ extern "C" bool  memeq_impl(const void* a, const void* b, size_t size) noexcept;
 extern "C" void* malloc(size_t size) noexcept;
 extern "C" void free(void* ptr) noexcept;
 
+extern "C" void* malloc_aligned(size_t size, size_t align) noexcept;
+extern "C" void free_aligned(void* ptr) noexcept;
+
 void* operator new(__SIZE_TYPE__ size) noexcept;
 void* operator new(__SIZE_TYPE__ size, void* p_ptr) noexcept;
 void* operator new[](__SIZE_TYPE__ size) noexcept;

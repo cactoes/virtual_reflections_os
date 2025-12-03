@@ -42,6 +42,8 @@ system_driver_handle_t driver_load(driver_manager_t* driver_manager, const char*
     std::linear_map<std::string, void*> symbol_map {};
     symbol_map["malloc"] = (void*)&malloc;
     symbol_map["free"] = (void*)&free;
+    symbol_map["malloc_aligned"] = (void*)&malloc_aligned;
+    symbol_map["free_aligned"] = (void*)&free_aligned;
     symbol_map["kprint"] = (void*)&kprint;
     symbol_map["ksleep"] = (void*)&ksleep;
     symbol_map["ktime_since_boot"] = (void*)&ktime_since_boot;

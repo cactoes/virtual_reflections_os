@@ -182,6 +182,9 @@ heap_t* get_global_heap();
 void* malloc(size_t size) noexcept;
 void free(void* ptr) noexcept;
 
+void* malloc_aligned(size_t size, size_t align) noexcept;
+void free_aligned(void* ptr) noexcept;
+
 void* operator new(__SIZE_TYPE__ size) noexcept;
 void* operator new(__SIZE_TYPE__ size, void* p_ptr) noexcept;
 void* operator new[](__SIZE_TYPE__ size) noexcept;

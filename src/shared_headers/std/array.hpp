@@ -58,7 +58,7 @@ public:
         size = other.size;
         capacity = other.capacity;
 
-        data = (T*)malloc(capacity * sizeof(T));
+        data = (T*)malloc_aligned(capacity * sizeof(T), alignof(T));
         for (size_t i = 0; i < size; i++) {
             new (&data[i]) T(other.data[i]);
         }
@@ -74,9 +74,9 @@ public:
 
         clear();
         if (capacity < other.size) {
-            free(data);
+            free_aligned(data);
             capacity = other.capacity;
-            data = (T*)malloc(capacity * sizeof(T));
+            data = (T*)malloc_aligned(capacity * sizeof(T), alignof(T));
         }
 
         size = other.size;
@@ -102,7 +102,7 @@ public:
             return *this;
 
         clear();
-        free(data);
+        free_aligned(data);
 
         data = other.data;
         size = other.size;
@@ -117,7 +117,7 @@ public:
 
     ~dynamic_array() {
         clear();
-        free(data);
+        free_aligned(data);
     }
 
     array_iterator<T> begin() {
@@ -224,7 +224,7 @@ public:
         if (new_size <= capacity)
             return false;
 
-        T* new_data = (T*)malloc(new_size * sizeof(T));
+        T* new_data = (T*)malloc_aligned(new_size * sizeof(T), alignof(T));
         if (!new_data)
             return false;
 
@@ -234,7 +234,7 @@ public:
         }
 
         if (data)
-            free(data);
+            free_aligned(data);
 
         data = new_data;
         capacity = new_size;

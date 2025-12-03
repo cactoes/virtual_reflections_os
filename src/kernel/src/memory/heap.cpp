@@ -415,6 +415,23 @@ void free(void* ptr) noexcept {
        heap_free(heap, ptr);
 }
 
+void* malloc_aligned(size_t size, size_t align) noexcept {
+    uint64_t raw = (uint64_t)malloc(size + align + sizeof(uint64_t));
+    if (!raw)
+        return nullptr;
+    
+    uint64_t* aligned = (uint64_t*)align_up(raw + sizeof(uint64_t), align);
+    
+    aligned[-1] = (uint64_t)raw;
+
+    return (void*)aligned;
+}
+
+void free_aligned(void* ptr) noexcept {
+    if (ptr)
+        free(((void**)ptr)[-1]);
+}
+
 void* operator new(__SIZE_TYPE__ size) noexcept {
     if (auto heap = get_global_heap())
         return heap_alloc(heap, size);
