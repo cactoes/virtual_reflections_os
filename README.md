@@ -36,7 +36,7 @@ PS> .\vrtlkt.ps1 -Tool run
     - [ ] write
 
 ## Resources
-## General
+### General
 [OSDev - https://wiki.osdev.org/Expanded_Main_Page](https://wiki.osdev.org/Expanded_Main_Page) <br>
 [stackoverflow - https://stackoverflow.com](https://stackoverflow.com) <br>
 [DHCP Reference - https://datatracker.ietf.org/doc/html/rfc2131](https://datatracker.ietf.org/doc/html/rfc2131) <br>
