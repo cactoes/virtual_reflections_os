@@ -1,6 +1,8 @@
 #include "drivers/keyboard.hpp"
 #include "drivers/ps2/keyboard.hpp"
 
+static event_manager_t<virtual_key_t> global_keyboard_event_manager {};
+
 bool holding_shift() {
     return ps2_keyboard_get_key_state(PS2_KEYBOARD_SC_LSHIFT)->is_pressed || ps2_keyboard_get_key_state(PS2_KEYBOARD_SC_RSHIFT)->is_pressed;
 }
@@ -208,22 +210,18 @@ char vk_to_ascii(virtual_key_t vk, bool shift, bool caps) {
     }
 }
 
-void keyboard_initialize() {
+void ps2_keyboard_event_handler(const ps2_key_state_t* state) {
+    if (!state->is_pressed)
+        return;
+
+    virtual_key_t vk = scan_to_virtual(state->scan_code, state->is_escaped);
+    global_keyboard_event_manager.fire_event(vk);
 }
 
-virtual_key_t wait_for_key() {
-    uint32_t scan_code = 0;
-    virtual_key_t vk = VK_NONE;
-    while (scan_code == MAX_UINT32 || vk == 0) {
-        scan_code = ps2_keyboard_get_last_scancode();
-        auto key_state = ps2_keyboard_get_key_state(scan_code);
+void keyboard_initialize() {
+    ps2_keyboard_event_subscribe(ps2_keyboard_event_handler);
+}
 
-        if (scan_code == MAX_UINT32 || !key_state->is_pressed || key_state->is_escaped)
-            continue;
-
-        vk = scan_to_virtual(scan_code, key_state->is_escaped);
-    }
-
-    ps2_keyboard_clear_last_scancode();
-    return vk;
+void subscribe_on_key_down(void(*callback)(virtual_key_t vk)) {
+    global_keyboard_event_manager.subscribe(callback);
 }

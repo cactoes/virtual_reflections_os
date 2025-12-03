@@ -93,7 +93,6 @@ void keyboard_initialize();
 bool holding_shift();
 bool holding_caps();
 char vk_to_ascii(virtual_key_t vk, bool shift, bool caps);
-virtual_key_t wait_for_key();
 void subscribe_on_key_down(void(*callback)(virtual_key_t vk));
 
 #endif // __DRIVERS_KEYBOARD_HPP__
