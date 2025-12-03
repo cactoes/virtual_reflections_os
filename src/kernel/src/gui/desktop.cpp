@@ -8,6 +8,7 @@
 #include "time/clock.hpp"
 #include "virtual_thread.hpp"
 #include "gui/games/minesweeper.hpp"
+#include "gui/font8x8.hpp"
 
 static vga_buffer_t* g_desktop_back_buffer = nullptr;
 static bool g_desktop_ready = false;
@@ -181,6 +182,35 @@ bool desktop_render_square(int x, int y, size_t w, size_t h, const desktop_rende
     return vga_gm_draw::square(desktop_render_get_buffer(), x, y, w, h, rgb_to_vga(color));
 }
 
+bool desktop_render_char(int x, int y, char ch, const desktop_render_color_t& color) {
+    if (ch < 0 || ch >= 128)
+        ch = 128;
+    
+    for (int row = 0; row < 8; row++) {
+        uint8_t line = font8x8[(int)ch][row];
+        for (int col = 0; col < 8; col++) {
+            if (line & (128 >> col))
+                desktop_render_pixel(x + col, y + row, color);
+        }
+    }
+
+    return true;
+}
+
+bool desktop_render_text(int x, int y, const char* str, const desktop_render_color_t& color) {
+    if (str == nullptr || !*str)
+        return false;
+
+    int offset = 0;
+    while (*str) {
+        desktop_render_char(x + offset, y, *str, color);
+        offset += 8;
+        str++;
+    }
+
+    return true;
+}
+
 void desktop_render_draw_cursor() {
     const uint64_t x = g_desktop_mouse_pos[0];
     const uint64_t y = g_desktop_mouse_pos[1];
@@ -266,6 +296,8 @@ void desktop_render_window(const desktop_render_target_t* target) {
     desktop_render_linev(target->x - 1, target->y + 10, target->h, { 255, 255, 255 });
     desktop_render_lineh(target->x - 1, target->y + 10 + target->h, target->w + 2, { 255, 255, 255 });
     desktop_render_linev(target->x + target->w, target->y + 10, target->h, { 255, 255, 255 });
+
+    desktop_render_text(target->x + 1, target->y + 2, target->name.c_str(), { 0, 0, 0 });
 }
 
 int desktop_init() {
@@ -298,7 +330,8 @@ int desktop_init() {
         desktop_render_clear_buffer();
 
         // render targets
-        for (auto& target : g_render_targets) {
+        for (size_t i = 0; i < g_render_targets.length(); i++) {
+            auto& target = g_render_targets[i];
             target.callback(dt, target.x, target.y + 10);
             desktop_render_window(&target);
         }

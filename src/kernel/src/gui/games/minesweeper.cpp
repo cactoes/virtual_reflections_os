@@ -370,18 +370,13 @@ void minesweeper_init() {
     target.y = 1;
     target.w = game_config.size.width * tile_size;
     target.h = game_config.size.height * tile_size;
+    target.name = "Minesweeper";
     desktop_register_target(target);
 
     // random
     seed_random(clock_get_time_since_boot());
 
     // setup game board
-    // if (g_game_board)
-    //     free(g_game_board);
-    
-    // g_game_board = (tile_t**)malloc(sizeof(tile_t) * game_config.size.width * game_config.size.height);
-    // if (!g_game_board)
-    //     return;
 
     // init the tiles
     for (int i = 0; i < game_config.size.width; i++) {
