@@ -106,8 +106,7 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
     vfs_t vfs {};
     vfs_init(&vfs);
     set_global_vfs(&vfs);
-    vfs_create_directory(get_global_vfs(), "/mnt");
-    vfs_create_directory(get_global_vfs(), "/dev");
+    // vfs_create_directory(get_global_vfs(), "/mnt");
 
     // initialize threading
     if (vthread_start_and_setup_main() == VTHREAD_HANDLE_INVALID)
@@ -152,7 +151,7 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
         auto ide_storage = std::make_unique<ide_storage_driver_t>(&drive);
 
         char disk_mount_name_buffer[20];
-        sprintf(disk_mount_name_buffer, 20, "/mnt/disk%i", ide_device_index++);
+        sprintf(disk_mount_name_buffer, 20, "/disk%i", ide_device_index++);
 
         if (!mount_disk(move(ide_storage), disk_mount_name_buffer)) {
             kprintf("failed to mount disk: %s\n", disk_mount_name_buffer);
@@ -174,7 +173,7 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
             auto ahci_storage = std::make_unique<ahci_storage_driver_t>(&drive);
 
             char disk_mount_name_buffer[20];
-            sprintf(disk_mount_name_buffer, 20, "/mnt/drive%i", ahci_device_index++);
+            sprintf(disk_mount_name_buffer, 20, "/drive%i", ahci_device_index++);
 
             if (!mount_disk(move(ahci_storage), disk_mount_name_buffer)) {
                 kprintf("failed to mount drive: %s\n", disk_mount_name_buffer);
@@ -188,13 +187,13 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
     set_global_driver_manager(&driver_manager);
 
     std::dynamic_array<vfs_node_t*> nodes {};
-    if (vfs_list_directory(get_global_vfs(), "/mnt/disk0", &nodes)) {
+    if (vfs_list_directory(get_global_vfs(), "/disk0", &nodes)) {
         for (auto& node : nodes) {
             if (str_ends_with(node->meta.name.c_str(), ".sys")) {
                 std::string driver_name = node->meta.name.substr(0, node->meta.name.length() - 4);
 
                 std::dynamic_array<uint8_t> driver_file {};
-                file_descriptor_t driver_file_handle = vfs_open_file(get_global_vfs(), std::string("/mnt/disk0/") + driver_name + ".sys");
+                file_descriptor_t driver_file_handle = vfs_open_file(get_global_vfs(), std::string("/disk0/") + driver_name + ".sys");
                 if (driver_file_handle == FILE_DESCRIPTOR_INVALID) {
                     kprintf("failed to open handle to driver '%s'\n", driver_name.c_str());
                     continue;
