@@ -1,2 +1,0 @@
-# VirtualReflectionsOS Toolkit Manual
-(todo)

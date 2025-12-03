@@ -1,13 +1,32 @@
 # virtual reflections e0
 A 64-bit custom made operating system, using grub as bootloader
 
+## VirtualReflectionsOS Toolkit
+This is a simple helper powershell script for managing the build environment.
+
+### Managing the build environment
+```powershell
+PS> .\vrtlkt.ps1 -Tool install
+PS> .\vrtlkt.ps1 -Tool build
+PS> .\vrtlkt.ps1 -Tool clean
+```
+
+### Starting the kernel
+Adding the `-Debug` flag make qemu be able to connect to gdb on port `1234`
+```powershell
+PS> .\vrtlkt.ps1 -Tool run
+```
+
+## Diagrams for a quick overview
+![](docs/svg/kernel%20diagram.svg)
+![](docs/svg/storage%20diagram.svg)
+
 ## TODO
 - [ ] redo subsystem manager
 - [ ] (generic?) device drivers
 - [ ] rethink vfs "layout"
 - [ ] rework keyboard controller -> move to io etc..
 - [ ] drive / disk manager
-- [ ] processes (kernel mode)
 - [ ] work on vthreads
 - [ ] general cleanup / restructuring
     - [ ] interrupt manager
@@ -15,41 +34,6 @@ A 64-bit custom made operating system, using grub as bootloader
 - [ ] fat32
     - [x] read
     - [ ] write
-
-## Setup build environment
-### Windows host
-```powershell
-PS> .\vrtlkt.ps1 -Tool install
-```
-
-## Setup windows TAP network (optional)
-Make sure to have openVPN for the tap interface.
-1. Rename the tap interface to: `tap0`
-2. Change its ip to: `10.0.2.2`
-3. Change its subnet mask to: `255.255.255.0`
-4. Change the network type in the config to `tap`
-
-## Building the ISO
-### Windows host
-```powershell
-PS> .\vrtlkt.ps1 -Tool build
-```
-
-## Running QEMU
-Start the QEMU environment with the required startup flags.
-
-### Windows host
-```powershell
-PS> .\vrtlkt.ps1 -Tool run
-```
-
-## Diagrams
-![](docs/svg/kernel%20diagram.svg)
-![](docs/svg/storage%20diagram.svg)
-
-## Contributing
-This project is not accepting contributions or pull requests.  
-It is public for reference and educational purposes only.
 
 ## Resources
 ## General
@@ -69,27 +53,8 @@ It is public for reference and educational purposes only.
 [MmdOS - https://github.com/Rostamborn/MmdOS](https://github.com/Rostamborn/MmdOS)<br>
 [cavOS - https://github.com/malwarepad/cavOS](https://github.com/malwarepad/cavOS)<br>
 [RedactedOS - https://github.com/differrari/RedactedOS](https://github.com/differrari/RedactedOS)<br>
+[KeblaOS - https://github.com/baponkar/KeblaOS/tree/main](https://github.com/baponkar/KeblaOS/tree/main)<br>
 
-256M identity mapped memory
-
-allocator can use 200M
-
-virtual addresses MUST start above this 200M
-
-allocator wants to map 0xA000000
--> page table entry does not exists so we need to create a new one
-    -> get physical page from memory
-    -> this page address is _physical_ so we also need to map that
-        -> this address could be anywhere but we map it low in an existing 4k entry
-    -> map the physical address actual resource to 0xA000000
-= mapped memory in a safe way?
-
-
--> the intial 200M is a safe space that we already ampped to make sure we can continue mapping
-
-
-
-
-4k page from pmem
--> not yet mapped
-we need to first map that inside a table that exists!
+## Contributing
+This project is not accepting contributions or pull requests.  
+It is public for reference and educational purposes only.
