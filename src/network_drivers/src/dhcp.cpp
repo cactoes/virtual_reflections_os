@@ -3,6 +3,7 @@
 #include "dhcp.hpp"
 #include "std/random.hpp"
 #include "virtual_reflections_driver.hpp"
+#include "std/string.hpp"
 
 void DHCPOptionsWriterInit(DHCPOptionsWriter* pWriter, uint8_t* pBuffer, size_t nBufferSize) {
     pWriter->m_pBuffer = pBuffer;
@@ -123,11 +124,7 @@ DHCPPacket DHCPCreateRequestPacket(const char* szHostName, uint32_t nWantedIP, u
     uint32_t beWantedIP = bswap32(nWantedIP);
     DHCPOptionsWriterAddOption(&dhcpOptionsWriter, DHCP_OPTION_REQUESTED_IP_ADDR, (uint8_t*)&beWantedIP, 4);
 
-    // TODO @since 15/10/2025 -- 13:36
-    // replace with strlen
-    size_t nHostNameLen = 0;
-    for (const char* p = szHostName; *p; p++)
-        nHostNameLen++;
+    size_t nHostNameLen = strlen(szHostName);
     DHCPOptionsWriterAddOption(&dhcpOptionsWriter, DHCP_OPTION_HOSTNAME, (uint8_t*)szHostName, nHostNameLen);
 
     DHCPOptionsWriterShutdown(&dhcpOptionsWriter);
@@ -170,11 +167,7 @@ DHCPPacket DHCPCreateLeaseExtendPacket(const char* szHostName, uint32_t nIpToExt
     uint32_t beDHCPServerIp = bswap32(nDHCPServerIp);
     DHCPOptionsWriterAddOption(&dhcpOptionsWriter, DHCP_OPTION_DHCP_SERVER_ID, (uint8_t*)&beDHCPServerIp, 4);
 
-    // TODO @since 15/10/2025 -- 13:36
-    // replace with strlen
-    size_t nHostNameLen = 0;
-    for (const char* p = szHostName; *p; p++)
-        nHostNameLen++;
+    size_t nHostNameLen = strlen(szHostName);
     DHCPOptionsWriterAddOption(&dhcpOptionsWriter, DHCP_OPTION_HOSTNAME, (uint8_t*)szHostName, nHostNameLen);
 
     DHCPOptionsWriterShutdown(&dhcpOptionsWriter);
@@ -186,14 +179,9 @@ DHCPClientState* DHCPClientInit(const char* szHostName, uint8_t pMac[6]) {
     DHCPClientState* pClientState = (DHCPClientState*)malloc(sizeof(DHCPClientState));
     memzero(pClientState, sizeof(DHCPClientState));
 
-    // TODO @since 15/10/2025 -- 13:36
-    // replace with strlen
-    size_t nHostNameLen = 0;
-    for (const char* p = szHostName; *p; p++)
-        nHostNameLen++;
-
-    if (nHostNameLen >= 128)
-        nHostNameLen = 128;
+    size_t nHostNameLen = strlen(szHostName);
+    if (nHostNameLen >= 127)
+        nHostNameLen = 127;
 
     memcpy(pClientState->m_szHostname, szHostName, nHostNameLen);
     memcpy(pClientState->m_aMac, pMac, 6);
