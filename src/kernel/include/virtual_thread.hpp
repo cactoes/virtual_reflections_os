@@ -119,4 +119,6 @@ void vthread_terminate();
 
 bool vthread_is_closed(vthread_handle_t handle);
 
+vthread_t* vthread_get(vthread_handle_t handle);
+
 #endif // __VIRTUAL_THREAD_HPP__

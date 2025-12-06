@@ -296,19 +296,27 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
     // minesweeper_init();
 
     vthread_handle_t vth = vthread_create(terminal_thread_main, p_kpml4);
-    if (vth == VTHREAD_HANDLE_INVALID) {
+    if (vth == VTHREAD_HANDLE_INVALID)
         kprintf("failed to start terminal");
-    } // else {
-    //     vthread_wait_for_close(vth);
-    //     kprintf("terminal closed\n");
-    //     printf("\n[terminal exited]\n");
-    // }
 
-    while (true) {
-        nidm_process_packet();
-        ps2_mouse_process_packet();
-        ps2_keyboard_process_packet();
+    const vthread_handle_t critical_threads[] = {
+        vthread_create([]() { while (true) nidm_process_packet(); return 1; }, p_kpml4),
+        vthread_create([]() { while (true) ps2_mouse_process_packet(); return 1; }, p_kpml4),
+        vthread_create([]() { while (true) ps2_keyboard_process_packet(); return 1; }, p_kpml4)
+    };
+
+    // make sure the critical threads are not dying
+    // this also checks if any of the threads are actaully valid incase the startup fails
+    while (vthread_get_count() > 1) {
+        for (const auto handle : critical_threads) {
+            if (!vthread_get(handle))
+                kernel_fatal(KERNEL_FATAL_CRITICAL_THREAD_DIED, "critical thread died!");
+        }
+
+        vthread_sleep(1);
     }
+
+    kernel_fatal(KERNEL_FATAL_KERNEL_EXITED, "all kernel processes ended!");
 
     // we shoudn t reach this point since the kernel should never stop
     // incase we do just hang here so we dont break anything

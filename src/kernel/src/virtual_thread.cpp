@@ -245,3 +245,11 @@ bool vthread_is_closed(vthread_handle_t handle) {
 
     return current_thread_it->value->vt_state == vthread_state_t::STOPPING;
 }
+
+vthread_t* vthread_get(vthread_handle_t handle) {
+    auto current_thread_it = g_threads.get(handle);
+    if (current_thread_it == g_threads.end())
+        return nullptr;
+
+    return current_thread_it->value.get();
+}
