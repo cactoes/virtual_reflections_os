@@ -12,9 +12,9 @@
 #include "subsystems/dns/interface.hpp"
 #include "utils/mutex.hpp"
 
-class subsystem_dns_client_driver_t : public subsystem_interface_dns_client_t {
+class subsys_dns_client_driver_t : public subsys_dns_client_t {
 public:
-    subsystem_dns_client_driver_t() {
+    subsys_dns_client_driver_t() {
         mutex_init(&mutex);
     };
 

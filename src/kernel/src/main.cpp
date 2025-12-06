@@ -58,7 +58,7 @@
 
 #define HEAP_START_SIZE 0x100000 * 32 // 32 mb
 #define PIT_TIMER_INTERVAL 1000 // times per second
-#define DEVICE_HOST_NAME "hostname"
+#define DEVICE_HOST_NAME "VirtualReflections Host"
 
 extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
     // validate multiboot
@@ -221,16 +221,15 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
         }
     }
 
-    // start our driver as the dhcp subsystem
-    if (driver_query_capability(get_global_driver_manager(), driver_manager_get_driver_handle(get_global_driver_manager(), "INetDrivers"), "dhcp") >= 1) {
-        subsystem_interface_set(ISUBSYSTEM_DHCP_CLIENT, std::make_unique<subsystem_dhcp_client_driver_t>(DEVICE_HOST_NAME));
-        subsystem_interface_get<subsystem_interface_dhcp_client_t>(ISUBSYSTEM_DHCP_CLIENT)->init();
-    }
+    const system_driver_handle_t inet_driver_handle = driver_manager_get_driver_handle(get_global_driver_manager(), "INetDrivers");
+    if (inet_driver_handle != SYSTEM_DRIVER_HANDLE_INVALID) {
+        // start our driver as the dhcp subsystem
+        if (driver_query_capability(get_global_driver_manager(), inet_driver_handle, "dhcp") >= 1)
+            subsys_init(SUBSYS_DHCP_CLIENT, std::make_unique<subsys_dhcp_client_driver_t>(DEVICE_HOST_NAME));
 
-    // start our driver as the dhcp subsystem
-    if (driver_query_capability(get_global_driver_manager(), driver_manager_get_driver_handle(get_global_driver_manager(), "INetDrivers"), "dns") >= 1) {
-        subsystem_interface_set(ISUBSYSTEM_DNS_CLIENT, std::make_unique<subsystem_dns_client_driver_t>());
-        subsystem_interface_get<subsystem_interface_dns_client_t>(ISUBSYSTEM_DNS_CLIENT)->init();
+        // start our driver as the dhcp subsystem
+        if (driver_query_capability(get_global_driver_manager(), inet_driver_handle, "dns") >= 1)
+            subsys_init(SUBSYS_DNS_CLIENT, std::make_unique<subsys_dns_client_driver_t>());
     }
 
     // network device
@@ -247,7 +246,7 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
         e1000_nid->is_configured = false;
         nidm_register_device(get_global_nidm(), move(e1000_nid));
 
-        auto subsystem_dhcp_client = subsystem_interface_get<subsystem_interface_dhcp_client_t>(ISUBSYSTEM_DHCP_CLIENT);
+        auto subsystem_dhcp_client = subsys_get<subsys_dhcp_client_t>(SUBSYS_DHCP_CLIENT);
         subsystem_dhcp_client->configure(nidm_get_device_on_interface(get_global_nidm(), "eth0"));
     }
 
@@ -261,12 +260,12 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
             free(str);
         };
 
-        auto si_dns_client = subsystem_interface_get<subsystem_interface_dns_client_t>(ISUBSYSTEM_DNS_CLIENT);
+        const auto subsys_dns_client = subsys_get<subsys_dns_client_t>(SUBSYS_DNS_CLIENT);
 
         while (!nidm_get_prefered_device(get_global_nidm())->is_configured);
-        while (!si_dns_client->is_configured());
+        while (!subsys_dns_client->is_configured());
 
-        auto ip = si_dns_client->resolve("cactoes.xyz");
+        auto ip = subsys_dns_client->resolve("cactoes.xyz");
         auto conn = tcp_connect(ip, 80, tcp_callback);
 
         if (conn->state != tcp_state_t::ESTABLISHED) {

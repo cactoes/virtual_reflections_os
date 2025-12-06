@@ -18,7 +18,7 @@
 
 /// @brief generator for the I[X] defines that the user can call
 #define GENERATE_INTERFACE_NAMES(x) \
-    static constexpr uint64_t ISUBSYSTEM_##x = hash_fnv1a_64(#x);
+    static constexpr uint64_t SUBSYS_##x = hash_fnv1a_64(#x);
 
 /// @brief generator for the enum variables
 #define GENERATE_INTERFACE_ENUM(x) SUBSYSTEM_INTERFACE_TO_ENUM_NAME(x),
@@ -37,6 +37,9 @@ class subsystem_interface_t {
 public:
     /// @brief default virtual destructor
     virtual ~subsystem_interface_t() = default;
+
+    virtual bool init() = 0;
+    virtual void shutdown() = 0;
 };
 
 /// @brief interface enum that gets automatically generated
@@ -59,18 +62,20 @@ static inline int subsystem_interface_to_index(uint64_t hash) {
 /// @param interface    the interface hash (I[X])
 /// @param[in] ptr      pointer to the interface
 /// @return             true if valid interface hash else false
-bool subsystem_interface_set(uint64_t interface, std::unique_ptr<subsystem_interface_t> ptr);
+bool subsys_set(uint64_t interface, std::unique_ptr<subsystem_interface_t> ptr);
 
 /// @brief              gets the interface ptr by the hash
 /// @param interface    the interface hash (I[X])
 /// @return             ptr to the interface or nullptr if invalid
-subsystem_interface_t* subsystem_interface_get(uint64_t interface);
+subsystem_interface_t* subsys_get(uint64_t interface);
 
-/// @brief              templated subsystem_interface_get
+/// @brief              templated subsys_get
 template <typename I>
-I* subsystem_interface_get(uint64_t interface) {
-    return (I*)subsystem_interface_get(interface);
+I* subsys_get(uint64_t interface) {
+    return (I*)subsys_get(interface);
 }
+
+bool subsys_init(uint64_t interface, std::unique_ptr<subsystem_interface_t> ptr);
 
 // undef all lol
 #undef GENERATE_CASE_STATEMENT

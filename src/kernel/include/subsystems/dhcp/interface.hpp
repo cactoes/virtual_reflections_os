@@ -12,12 +12,9 @@
 #include "drivers/network/nidm.hpp"
 #include "subsystem_interface.hpp"
 
-class subsystem_interface_dhcp_client_t : public subsystem_interface_t {
+class subsys_dhcp_client_t : public subsystem_interface_t {
 public:
-    virtual ~subsystem_interface_dhcp_client_t() = default;
-
-    virtual bool init() = 0;
-    virtual void shutdown() = 0;
+    virtual ~subsys_dhcp_client_t() = default;
 
     virtual void configure(network_interface_device_t* device) = 0;
 };

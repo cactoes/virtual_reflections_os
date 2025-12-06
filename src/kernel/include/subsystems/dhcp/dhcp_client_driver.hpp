@@ -12,9 +12,9 @@
 #include "subsystems/dhcp/interface.hpp"
 #include "utils/mutex.hpp"
 
-class subsystem_dhcp_client_driver_t : public subsystem_interface_dhcp_client_t {
+class subsys_dhcp_client_driver_t : public subsys_dhcp_client_t {
 public:
-    subsystem_dhcp_client_driver_t(const std::string& hostname) : hostname(hostname) {
+    subsys_dhcp_client_driver_t(const std::string& hostname) : hostname(hostname) {
         mutex_init(&mutex);
     };
 

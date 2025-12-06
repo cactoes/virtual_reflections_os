@@ -8,7 +8,7 @@ int dns_send_packet_wrapper(uint32_t dst_ip, uint16_t dst_port, uint16_t src_por
     return udp_send(dst_ip, src_port, dst_port, data, size);
 }
 
-bool subsystem_dns_client_driver_t::init() {
+bool subsys_dns_client_driver_t::init() {
     system_driver_handle_t driver_handle = driver_manager_get_driver_handle(get_global_driver_manager(), "INetDrivers");
     driver_client_init = (decltype(DNSClientInit)*)driver_get_function(get_global_driver_manager(), driver_handle, "DNSClientInit");
     driver_client_shutdown = (decltype(DNSClientShutdown)*)driver_get_function(get_global_driver_manager(), driver_handle, "DNSClientShutdown");
@@ -18,7 +18,7 @@ bool subsystem_dns_client_driver_t::init() {
 
     state = driver_client_init(random_number(49152, 65535), TO_IP(8, 8, 8, 8));
 
-    if (nidm_udp_bind(get_global_nidm(), state->m_nPort, { this, &subsystem_dns_client_driver_t::network_callback }) != 0)
+    if (nidm_udp_bind(get_global_nidm(), state->m_nPort, { this, &subsys_dns_client_driver_t::network_callback }) != 0)
         return false;
 
     state->m_bIsConfigured = true;
@@ -26,14 +26,14 @@ bool subsystem_dns_client_driver_t::init() {
     return true;
 }
 
-void subsystem_dns_client_driver_t::shutdown() {
+void subsys_dns_client_driver_t::shutdown() {
     mutex_lock_guard guard(&mutex);
 
     if (state)
         driver_client_shutdown(state);
 }
 
-uint32_t subsystem_dns_client_driver_t::resolve(const char* hostname) {
+uint32_t subsys_dns_client_driver_t::resolve(const char* hostname) {
     // mutex_lock_guard guard(&mutex);
     
     if (auto record_ptr = driver_client_get_record(state, hostname))
@@ -42,14 +42,14 @@ uint32_t subsystem_dns_client_driver_t::resolve(const char* hostname) {
     return driver_client_resolve(state, hostname, dns_send_packet_wrapper, 1000);
 }
 
-bool subsystem_dns_client_driver_t::is_configured() {
+bool subsys_dns_client_driver_t::is_configured() {
     return state->m_bIsConfigured;
 }
 
-uint32_t subsystem_dns_client_driver_t::get_dns_server() {
+uint32_t subsys_dns_client_driver_t::get_dns_server() {
     return state->m_nDNSServerIP;
 }
 
-void subsystem_dns_client_driver_t::network_callback(uint8_t* packet, size_t size) {
+void subsys_dns_client_driver_t::network_callback(uint8_t* packet, size_t size) {
     driver_client_handle_packet(state, packet, size);
 }
