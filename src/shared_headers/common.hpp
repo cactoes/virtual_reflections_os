@@ -67,6 +67,9 @@
 #define HTONS bswap16
 #define HTONL bswap32
 
+#define PI 3.14159265358979323846
+#define TWO_PI (2.0 * PI)
+
 typedef __SIZE_TYPE__       size_t;
 
 typedef unsigned long long  uint64_t;
@@ -162,6 +165,17 @@ static double round(double x) {
     return x >= 0.0
         ? static_cast<double>(static_cast<long long>(x + 0.5))
         : static_cast<double>(static_cast<long long>(x - 0.5));
+}
+
+static double sin(double x) {
+    while (x > PI)  x -= TWO_PI;
+    while (x < -PI) x += TWO_PI;
+
+    return 1.27323954 * x - 0.405284735 * x * ( x < 0 ? -x : x );
+}
+
+static double cos(double x) {
+    return sin(x + PI / 2);
 }
 
 static double pow(double base, int exponent) {
