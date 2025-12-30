@@ -29,6 +29,11 @@
                 {
                     "description": "Show the backtrace when crash occurs",
                     "text": "set pagination off"
+                },
+                {
+                    "description": "Source path mapping",
+                    "text": "set substitute-path /root/env/src ./src",
+                    "ignoreFailures": false
                 }
             ],
             "miDebuggerServerAddress": "localhost:1234",
@@ -63,6 +68,11 @@
                 {
                     "description": "Show the backtrace when crash occurs",
                     "text": "set pagination off"
+                },
+                {
+                    "description": "Source path mapping",
+                    "text": "set substitute-path /root/env/src ./src",
+                    "ignoreFailures": false
                 }
             ],
             "miDebuggerServerAddress": "localhost:1234",

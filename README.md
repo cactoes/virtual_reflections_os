@@ -35,6 +35,11 @@ PS> .\vrtlkt.ps1 -Tool run
     - [x] read
     - [ ] write
 
+## Mapping driver symbols in debug mode
+```
+-exec add-symbol-file ./build/{driver} {address}
+```
+
 ## Resources
 ### General
 [OSDev - https://wiki.osdev.org/Expanded_Main_Page](https://wiki.osdev.org/Expanded_Main_Page) <br>
