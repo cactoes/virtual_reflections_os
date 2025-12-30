@@ -7,7 +7,8 @@
 #include "std/random.hpp"
 #include "time/clock.hpp"
 #include "virtual_thread.hpp"
-#include "gui/games/minesweeper.hpp"
+#include "gui/programs/minesweeper.hpp"
+#include "gui/programs/webbrowser.hpp"
 #include "gui/font8x8.hpp"
 
 static vga_buffer_t* g_desktop_back_buffer = nullptr;
@@ -311,7 +312,8 @@ int desktop_init() {
     desktop_event_subscribe(DESKTOP_EVENT_MOUSE_PRESSED, desktop_on_mouse_pressed);
     desktop_event_subscribe(DESKTOP_EVENT_MOUSE_MOVE, desktop_on_mouse_move);
 
-    minesweeper_init();
+    // minesweeper_init();
+    webbrowser_init();
 
     g_desktop_ready = true;
 

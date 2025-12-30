@@ -38,12 +38,12 @@ tcp_connection_t* tcp_connect(uint32_t ip, uint32_t port, tcp_connect_callback_t
     connection_ptr->state = tcp_state_t::SYN_SENT;
     tcp_send_packet(nullptr, 0, TCP_FLAG_SYN, connection_ptr);
     
-    uint64_t time = clock_get_time_since_boot() + 50;
+    uint64_t time = clock_get_time_since_boot() + 400;
     bool keep_alive = true;
     int retry_count_max = 0;
     while (keep_alive) {
         if (time < clock_get_time_since_boot())
-            time = clock_get_time_since_boot() + 100 * (retry_count_max + 1);
+            time = clock_get_time_since_boot() + 400 + 100 * (retry_count_max + 1);
         else
             continue;
 

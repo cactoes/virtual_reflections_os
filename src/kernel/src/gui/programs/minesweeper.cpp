@@ -1,6 +1,5 @@
-#include "gui/games/minesweeper.hpp"
+#include "gui/programs/minesweeper.hpp"
 #include "gui/desktop.hpp"
-#include "std/array.hpp"
 #include "std/array.hpp"
 #include "memory/heap.hpp"
 #include "std/random.hpp"

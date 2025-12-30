@@ -42,7 +42,7 @@
 #include "time/clock.hpp"
 
 #include "gui/desktop.hpp"
-#include "gui/games/minesweeper.hpp"
+#include "gui/programs/minesweeper.hpp"
 
 #include "std/random.hpp"
 
@@ -284,7 +284,7 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
         return 0;
     };
 
-    // vthread_create(net_test, p_kpml4, out_streams);
+    // vthread_create(net_test, p_kpml4);
 
     // kernel finished
     kprintf("kernel finished initializing\n");
