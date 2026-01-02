@@ -71,3 +71,32 @@ void ps2_keyboard_process_packet() {
     if (global_keyboard_state_buffer.get(packet))
         g_keyboard_event_manager.fire_event(&packet);
 }
+
+void ps2_keyboard_init() {
+    ps2_write(PS2_CMD_PORT, PS2_CMD_DISABLE_FIRST_PORT);
+    
+    if (ps2_read(PS2_CMD_PORT) & PS2_CTRL_STATUS_OUT_BUF)
+        ps2_read(PS2_DATA_PORT);
+
+    ps2_write(PS2_CMD_PORT, 0x20);
+    uint8_t config = ps2_read(PS2_DATA_PORT);
+    config |= (1 << 0); // interrupts
+    // config &= ~(1 << 6); // disable translation
+    ps2_write(PS2_CMD_PORT, 0x60);
+    ps2_write(PS2_DATA_PORT, config);
+
+    ps2_write(PS2_CMD_PORT, PS2_CMD_ENABLE_FIRST_PORT);
+    ps2_write(PS2_DATA_PORT, PS2_DEVICE_RESET);
+    
+    ps2_read(PS2_DATA_PORT) == PS2_DEVICE_ACK;
+    ps2_read(PS2_DATA_PORT) == 0xAA;
+
+    // ps2_write(PS2_DATA_PORT, 0xF0);
+    // ps2_read(PS2_DATA_PORT) == PS2_DEVICE_ACK;
+
+    // ps2_write(PS2_DATA_PORT, 0x02);
+    // ps2_read(PS2_DATA_PORT) == PS2_DEVICE_ACK;
+
+    ps2_write(PS2_DATA_PORT, PS2_DEVICE_ENABLE_SCANNING);
+    ps2_read(PS2_DATA_PORT) == PS2_DEVICE_ACK;
+}

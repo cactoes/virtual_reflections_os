@@ -1,7 +1,9 @@
 //==========================================
 /// @file       ps2.hpp
 /// @brief      ps2 generic driver stuff
+///  TODO       expand / rework the ps2 device driver
 //==========================================
+
 #pragma once
 
 #ifndef __DRIVERS_PS2_PS2_HPP__
@@ -30,6 +32,7 @@
 #define PS2_TEST_FAILED             0xFF
 
 #define PS2_DEVICE_DISABLE_SCANNING 0xF5
+#define PS2_DEVICE_ENABLE_SCANNING  0xF4
 #define PS2_DEVICE_IDENTIFY         0xF2
 #define PS2_DEVICE_RESET            0xFF
 

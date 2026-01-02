@@ -219,6 +219,7 @@ void ps2_keyboard_event_handler(const ps2_key_state_t* state) {
 }
 
 void keyboard_initialize() {
+    ps2_keyboard_init();
     ps2_keyboard_event_subscribe(ps2_keyboard_event_handler);
 }
 
