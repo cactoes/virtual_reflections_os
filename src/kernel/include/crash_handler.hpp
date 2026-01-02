@@ -19,33 +19,38 @@
 
 #include "common.hpp"
 
-// NOLINTNEXTLINE
-extern "C" NORETURN void __kernel_fatal(uint64_t code, const char* p_message, cpu_state_t* p_cpu_state = nullptr);
+extern "C" NORETURN void kernel_fatal_internal(uint64_t code, const char* p_message, cpu_state_t* p_cpu_state = nullptr);
 
-NAKED NORETURN inline void kernel_fatal(uint64_t code, const char* p_message) {
-    asm volatile (
-        // reserve space for cpu_state_t
-        "sub %[state_size], %%rsp\n"
-        "and $-16, %%rsp\n"
+// NAKED
+NORETURN inline void kernel_fatal(uint64_t code, const char* p_message) {
 
-        // dump the cpu state
-        "mov %%rsp, %%rdi\n"
-        "call x86_64_get_cpu_state\n"
+    // TODO @since 02/01/2026 -- 18:02
+    // fix get cpu state
+    kernel_fatal_internal(code, p_message, nullptr);
 
-        "mov %[code], %%rcx\n"
-        "mov %[msg], %%r8\n"
+    // asm volatile (
+    //     // reserve space for cpu_state_t
+    //     "sub %[state_size], %%rsp\n"
+    //     "and $-16, %%rsp\n"
 
-        "mov %%rcx, %%rdi\n"
-        "mov %%r8, %%rsi\n"
-        "mov %%rsp, %%rdx\n"
-        "call __kernel_fatal\n"
+    //     // dump the cpu state
+    //     "mov %%rsp, %%rdi\n"
+    //     "call x86_64_get_cpu_state\n"
 
-        :
-        : [code] "r"(code),
-          [msg] "r"(p_message),
-          [state_size] "i"(sizeof(cpu_state_t))
-        : "rcx", "r8", "rdi", "rsi", "rdx", "memory"
-    );
+    //     "mov %[code], %%rcx\n"
+    //     "mov %[msg], %%r8\n"
+
+    //     "mov %%rcx, %%rdi\n"
+    //     "mov %%r8, %%rsi\n"
+    //     "mov %%rsp, %%rdx\n"
+    //     "call kernel_fatal_internal\n"
+
+    //     :
+    //     : [code] "r"(code),
+    //       [msg] "r"(p_message),
+    //       [state_size] "i"(sizeof(cpu_state_t))
+    //     : "rcx", "r8", "rdi", "rsi", "rdx", "memory"
+    // );
 }
 
 #endif // __CRASH_HANDLER_HPP__

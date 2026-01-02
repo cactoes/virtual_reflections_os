@@ -2,12 +2,12 @@
 
 int mb_has_valid_magic(multiboot_t* p_multiboot_struct) {
     if (p_multiboot_struct->magic == MULTIBOOT_MAGIC)
-        return 1;
+        return MULTIBOOT_VER1;
 
     if (p_multiboot_struct->magic == MULTIBOOT2_MAGIC)
-        return 2;
+        return MULTIBOOT_VER2;
 
-    return 0;
+    return MULTIBOOT_VER_UNKOWN;
 }
 
 multiboot1_mmap_entry_t* mb1_get_first_entry(multiboot_t* p_multiboot_struct) {

@@ -11,6 +11,10 @@
 #define MULTIBOOT_MAGIC     0x2BADB002
 #define MULTIBOOT2_MAGIC    0x36D76289
 
+#define MULTIBOOT_VER_UNKOWN    0
+#define MULTIBOOT_VER1          1
+#define MULTIBOOT_VER2          2
+
 #include "common.hpp"
 
 struct multiboot1_mmap_entry_t {

@@ -6,12 +6,12 @@
 #include "virtual_thread.hpp"
 #include "io.hpp"
 
-void __kernel_fatal(uint64_t code, const char* p_message, cpu_state_t* p_cpu_state) {
+void kernel_fatal_internal(uint64_t code, const char* p_message, cpu_state_t* p_cpu_state) {
     kprintf("kernel fatal triggerd: 0x%uh \"%s\"\n", code, p_message);
 
     // if not main thread just terminate the thread not the system
     // & if a valid tls is setup
-    if (__thread_tls && __thread_tls->handle != VTHREAD_MAIN_THREAD_HANDLE) {
+    if (__thread_tls && __thread_tls->handle != VTHREAD_MAIN_THREAD_HANDLE && __thread_tls->handle != VTHREAD_HANDLE_INVALID) {
         kprintf("thread: %ul terminated (crashed or forcefully stopped)\n", __thread_tls->handle);
         mutex_clear_all_thread_references_and_release(__thread_tls->handle);
         vthread_terminate();

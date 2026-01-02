@@ -67,7 +67,7 @@ void* handle_interrupt(uint64_t code, cpu_state_t* p_rsp) {
     const auto interrupt_type = convert_to_interrupt(code);
 
     if (is_interrupt_exception(interrupt_type))
-        __kernel_fatal(code, "critical interrupt triggerd", p_rsp);
+        kernel_fatal_internal(code, "critical interrupt triggerd", p_rsp);
 
     if (is_interrupt_hardware(interrupt_type)) {
         if (auto callback = global_interrupt_callback_array[(size_t)interrupt_type]) {
