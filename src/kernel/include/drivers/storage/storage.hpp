@@ -23,8 +23,8 @@ struct storage_info_t {
 struct storage_driver_interface_t {
     virtual ~storage_driver_interface_t() = default;
 
-    virtual bool read(uint32_t lba, uint8_t* buffer, size_t size) = 0;
-    virtual bool write(uint32_t lba, uint8_t* buffer, size_t size) = 0;
+    virtual bool read(uint64_t lba, uint8_t* buffer, size_t size) = 0;
+    virtual bool write(uint64_t lba, uint8_t* buffer, size_t size) = 0;
     virtual size_t get_block_size() = 0;
     virtual void set_root_lba(uint64_t lba) = 0;
     virtual uint64_t get_root_lba() = 0;

@@ -247,7 +247,7 @@ ide_storage_driver_t::ide_storage_driver_t(ide_device_t* device) {
     this->device = device;
 }
 
-bool ide_storage_driver_t::read(uint32_t lba, uint8_t* buffer, size_t size) {
+bool ide_storage_driver_t::read(uint64_t lba, uint8_t* buffer, size_t size) {
     if (size % IDE_SECTOR_SIZE != 0)
         return false;
 
@@ -267,7 +267,7 @@ bool ide_storage_driver_t::read(uint32_t lba, uint8_t* buffer, size_t size) {
     return true;
 }
 
-bool ide_storage_driver_t::write(uint32_t lba, uint8_t* buffer, size_t size) {
+bool ide_storage_driver_t::write(uint64_t lba, uint8_t* buffer, size_t size) {
     // TODO @since 10/10/2025 -- 20:20
     return 1;
 }

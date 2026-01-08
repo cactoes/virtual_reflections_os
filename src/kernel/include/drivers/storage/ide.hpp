@@ -85,8 +85,8 @@ class ide_storage_driver_t : public storage_driver_interface_t {
 public:
     ide_storage_driver_t(ide_device_t* device);
 
-    bool read(uint32_t lba, uint8_t* buffer, size_t size) override;
-    bool write(uint32_t lba, uint8_t* buffer, size_t size) override;
+    bool read(uint64_t lba, uint8_t* buffer, size_t size) override;
+    bool write(uint64_t lba, uint8_t* buffer, size_t size) override;
     size_t get_block_size() override;
     void set_root_lba(uint64_t lba) override;
     uint64_t get_root_lba() override;

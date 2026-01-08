@@ -9,7 +9,7 @@ ahci_storage_driver_t::ahci_storage_driver_t(ahci_drive_t* drive) {
     this->drive = drive;
 }
 
-bool ahci_storage_driver_t::read(uint32_t lba, uint8_t* buffer, size_t size) {
+bool ahci_storage_driver_t::read(uint64_t lba, uint8_t* buffer, size_t size) {
     if (size % drive->logical_sector_size != 0)
         return false;
 
@@ -34,7 +34,7 @@ bool ahci_storage_driver_t::read(uint32_t lba, uint8_t* buffer, size_t size) {
     return false;
 }
 
-bool ahci_storage_driver_t::write(uint32_t lba, uint8_t* buffer, size_t size) {
+bool ahci_storage_driver_t::write(uint64_t lba, uint8_t* buffer, size_t size) {
     if (size % drive->logical_sector_size != 0)
         return false;
 

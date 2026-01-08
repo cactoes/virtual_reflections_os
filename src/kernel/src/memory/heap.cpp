@@ -194,7 +194,8 @@ void* dma_heap_alloc(heap_t* p_dma_heap, size_t size, uint64_t align) {
     };
     heap_block_t* blocks[HEAP_FILTERS_SIZE(filters)] = {};
     
-    int result = heap_filter_blocks(p_dma_heap, HEAP_MAKE_FILTER_PARAM(size), filters, HEAP_FILTERS_SIZE(filters), blocks, HEAP_FILTERS_SIZE(filters));
+    const auto donor_block_size = size + align;
+    int result = heap_filter_blocks(p_dma_heap, HEAP_MAKE_FILTER_PARAM(donor_block_size), filters, HEAP_FILTERS_SIZE(filters), blocks, HEAP_FILTERS_SIZE(filters));
 
     // heap block that is >= requested size
     // aka the donor block
@@ -225,30 +226,33 @@ void* dma_heap_alloc(heap_t* p_dma_heap, size_t size, uint64_t align) {
     // heap block that we can use to make the unused block our memory aligner
     heap_block_t* filler_block = blocks[2];
 
-    donor_block->size -= size;
+    donor_block->size -= size + align;
 
     unused_block->free = false;
     unused_block->used = true;
-    unused_block->size = size;
+    unused_block->size = size + align;
     unused_block->start_real_addr = (void*)((uint64_t)donor_block->start_real_addr + donor_block->size);
 
     unused_block->next = donor_block->next;
     donor_block->next = unused_block;
 
     if (!is_aligned((uint64_t)unused_block->start_real_addr, align)) {
-        uint64_t correction = (uint64_t)unused_block->start_real_addr - align_down((uint64_t)unused_block->start_real_addr, align);
+        uint64_t misalignment = (uint64_t)unused_block->start_real_addr % align;
+        uint64_t correction = (align - misalignment) % align;
         
-        if (donor_block->size < correction)
-            return nullptr;
+        // if (donor_block->size < correction)
+        //     return nullptr;
 
-        donor_block->size -= correction;
+        // donor_block->size -= correction;
 
         filler_block->free = true;
         filler_block->size = correction;
-        filler_block->start_real_addr = (void*)((uint64_t)donor_block->start_real_addr + donor_block->size);
+        // filler_block->start_real_addr = (void*)((uint64_t)donor_block->start_real_addr + donor_block->size);
+        filler_block->start_real_addr = unused_block->start_real_addr;
         filler_block->used = true;
 
         unused_block->start_real_addr = (void*)((uint64_t)filler_block->start_real_addr + correction);
+        unused_block->size -= correction;
 
         donor_block->next = filler_block;
         filler_block->next = unused_block;
