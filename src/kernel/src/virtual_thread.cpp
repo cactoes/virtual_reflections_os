@@ -198,7 +198,7 @@ void vthread_yield() {
 }
 
 thread_local_storage_t* vthread_get_tls() {
-    return &g_current_thread->tls;
+    return g_current_thread ? &g_current_thread->tls : nullptr;
 }
 
 void vthread_sleep(uint64_t time_ms) {
