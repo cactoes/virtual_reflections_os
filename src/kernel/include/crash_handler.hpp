@@ -19,14 +19,14 @@
 
 #include "common.hpp"
 
-extern "C" NORETURN void kernel_fatal_internal(uint64_t code, const char* p_message, cpu_state_t* p_cpu_state = nullptr);
+extern "C" NORETURN void kernel_fatal_internal(uint64_t code, const char* message, cpu_state_t* cpu_state = nullptr);
 
 // NAKED
-NORETURN inline void kernel_fatal(uint64_t code, const char* p_message) {
+NORETURN inline void kernel_fatal(uint64_t code, const char* message) {
 
     // TODO @since 02/01/2026 -- 18:02
     // fix get cpu state
-    kernel_fatal_internal(code, p_message, nullptr);
+    kernel_fatal_internal(code, message, nullptr);
 
     // asm volatile (
     //     // reserve space for cpu_state_t

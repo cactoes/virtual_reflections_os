@@ -1,112 +1,117 @@
 #include "crash_handler.hpp"
 #include "arch/generic.hpp"
+#include "arch/interrupt.hpp"
 #include "drivers/vga.hpp"
 #include "std/string.hpp"
 #include "utils/debug.hpp"
 #include "virtual_thread.hpp"
 #include "io.hpp"
 
-void kernel_fatal_internal(uint64_t code, const char* p_message, cpu_state_t* p_cpu_state) {
-    kprintf("kernel fatal triggerd: 0x%uh \"%s\"\n", code, p_message);
-
+void kernel_fatal_internal(uint64_t code, const char* message, cpu_state_t* cpu_state) {
     // if not main thread just terminate the thread not the system
     // & if a valid tls is setup
     if (__thread_tls && __thread_tls->handle != VTHREAD_MAIN_THREAD_HANDLE && __thread_tls->handle != VTHREAD_HANDLE_INVALID) {
-        kprintf("thread: %ul terminated (crashed or forcefully stopped)\n", __thread_tls->handle);
+        kprintf("[thread %ul]: terminated (crashed or forcefully stopped). code: 0x%uh (%s).\n", __thread_tls->handle, code, message);
         mutex_clear_all_thread_references_and_release(__thread_tls->handle);
         vthread_terminate();
     }
 
-    vga_tm_color_map_t color {};
-    color.foreground = vga_tm_color_t::WHITE;
-    color.background = vga_tm_color_t::BLACK;
+    kprintf("kernel fatal triggerd!\n");
+    kprintf("code: 0x%uh (%s).\n", code, message);
+    kprintf("    exception: ");
+    switch (code) {
+        case 0x0: kprintf("DIVISION_BY_ZERO"); break;
+        case 0x1: kprintf("SINGLE_STEP_INTERRUPT"); break;
+        case 0x2: kprintf("NMI"); break;
+        case 0x3: kprintf("BREAKPOINT"); break;
+        case 0x4: kprintf("OVERFLOW"); break;
+        case 0x5: kprintf("BOUND_RANGE_EXCEEDED"); break;
+        case 0x6: kprintf("INVALID_OPCODE"); break;
+        case 0x7: kprintf("COPROCESSOR_NOT_AVAILABLE"); break;
+        case 0x8: kprintf("DOUBLE_FAULT"); break;
+        case 0x9: kprintf("COPROCESSOR_SEGMENT_OVERRUN"); break;
+        case 0xA: kprintf("INVALID_TSS"); break;
+        case 0xB: kprintf("SEGMENT_NOT_PRESENT"); break;
+        case 0xC: kprintf("STACK_SEGMENT_FAULT"); break;
+        case 0xD: {
+            uint16_t seg_index = cpu_state->error_code >> 3;
+            bool is_external = cpu_state->error_code & 0x1;
+            bool is_idt = cpu_state->error_code & 0x2;
 
-    vga_tm_set_color(&g_vga_tm_buffer, &color);
-    vga_tm_clear_buffer(&g_vga_tm_buffer);
-    vga_tm_puts(&g_vga_tm_buffer, "*** KERNEL FATAL ***\n");
-
-    char buffer[256];
-    sprintf(buffer, ARRAY_LENGTH(buffer), "> ERROR CODE: 0x%uh\n", code);
-    vga_tm_puts(&g_vga_tm_buffer, buffer);
-
-    if (code >= 0 && code <= 0x15) {
-        vga_tm_puts(&g_vga_tm_buffer, "> ");
-        switch (code) {
-            case 0x0: vga_tm_puts(&g_vga_tm_buffer, "DIVISION_BY_ZERO\n"); break;
-            case 0x1: vga_tm_puts(&g_vga_tm_buffer, "SINGLE_STEP_INTERRUPT\n"); break;
-            case 0x2: vga_tm_puts(&g_vga_tm_buffer, "NMI\n"); break;
-            case 0x3: vga_tm_puts(&g_vga_tm_buffer, "BREAKPOINT\n"); break;
-            case 0x4: vga_tm_puts(&g_vga_tm_buffer, "OVERFLOW\n"); break;
-            case 0x5: vga_tm_puts(&g_vga_tm_buffer, "BOUND_RANGE_EXCEEDED\n"); break;
-            case 0x6: vga_tm_puts(&g_vga_tm_buffer, "INVALID_OPCODE\n"); break;
-            case 0x7: vga_tm_puts(&g_vga_tm_buffer, "COPROCESSOR_NOT_AVAILABLE\n"); break;
-            case 0x8: vga_tm_puts(&g_vga_tm_buffer, "DOUBLE_FAULT\n"); break;
-            case 0x9: vga_tm_puts(&g_vga_tm_buffer, "COPROCESSOR_SEGMENT_OVERRUN\n"); break;
-            case 0xA: vga_tm_puts(&g_vga_tm_buffer, "INVALID_TSS\n"); break;
-            case 0xB: vga_tm_puts(&g_vga_tm_buffer, "SEGMENT_NOT_PRESENT\n"); break;
-            case 0xC: vga_tm_puts(&g_vga_tm_buffer, "STACK_SEGMENT_FAULT\n"); break;
-            case 0xD: {
-                uint16_t seg_index = p_cpu_state->error_code >> 3;
-                bool is_external = p_cpu_state->error_code & 0x1;
-                bool is_idt = p_cpu_state->error_code & 0x2;
-
-                memzero(buffer, ARRAY_LENGTH(buffer));
-                sprintf(buffer, ARRAY_LENGTH(buffer), "GENERAL_PROTECTION_FAULT\nEXTERNAL[%u] TABLE[%s] SEGMENT INDEX: [0x%uh]", is_external, is_idt ? "IDT/LDT" : "GDT", seg_index);
-                vga_tm_puts(&g_vga_tm_buffer, buffer);
-                break;
-            }
-            case 0xE:
-                memzero(buffer, ARRAY_LENGTH(buffer));
-                sprintf(buffer, ARRAY_LENGTH(buffer), "PAGE_FAULT @ 0x%uh\n\nREASON    : %s\nOPERATION : %s\nMODE      : %s\n", read_cr2(),
-                    (p_cpu_state->error_code & 0x1) ? "PROTECTION VIOLATION" : "NON-PRESENT PAGE",
-                    (p_cpu_state->error_code & 0x2) ? "WRITE" : "READ",
-                    (p_cpu_state->error_code & 0x4) ? "USER" : "KERNEL");
-                vga_tm_puts(&g_vga_tm_buffer, buffer);
-                break;
-            case 0xF: vga_tm_puts(&g_vga_tm_buffer, "RESERVED\n"); break;
-            case 0x10: vga_tm_puts(&g_vga_tm_buffer, "X87_FLOATING_POINT_EXCEPTION\n"); break;
-            case 0x11: vga_tm_puts(&g_vga_tm_buffer, "ALIGNMENT_CHECK\n"); break;
-            case 0x12: vga_tm_puts(&g_vga_tm_buffer, "MACHINE_CHECK\n"); break;
-            case 0x13: vga_tm_puts(&g_vga_tm_buffer, "SIMD_FP_EXCEPTION\n"); break;
-            case 0x14: vga_tm_puts(&g_vga_tm_buffer, "VIRTUALIZATION_EXCEPTION\n"); break;
-            case 0x15: vga_tm_puts(&g_vga_tm_buffer, "CONTROL_PROTECTION_EXCEPTION\n"); break;
-            default: vga_tm_puts(&g_vga_tm_buffer, "UNKOWN\n"); break;
+            kprintf("GENERAL_PROTECTION_FAULT\n        extenal:%u\n        table:%s\n        segment index: 0x%uh", is_external, is_idt ? "idt/ldt" : "gdt", seg_index);
+            break;
         }
+        case 0xE:{
+            bool is_reason_protection = (cpu_state->error_code & 0x1);
+            bool is_operation_write = (cpu_state->error_code & 0x2);
+            bool is_mode_user = (cpu_state->error_code & 0x4);
+
+            kprintf("PAGE_FAULT\n        address: 0x%p\n        reason:%s\n        operation:%s\n        mode:%s",
+                read_cr2(),
+                is_reason_protection ? "protection violation" : "non-present page",
+                is_operation_write ? "write" : "read",
+                is_mode_user ? "user" : "kernel");
+
+            break;
+        }
+        case 0xF: kprintf("RESERVED"); break;
+        case 0x10: kprintf("X87_FLOATING_POINT_EXCEPTION"); break;
+        case 0x11: kprintf("ALIGNMENT_CHECK"); break;
+        case 0x12: kprintf("MACHINE_CHECK"); break;
+        case 0x13: kprintf("SIMD_FP_EXCEPTION"); break;
+        case 0x14: kprintf("VIRTUALIZATION_EXCEPTION"); break;
+        case 0x15: kprintf("CONTROL_PROTECTION_EXCEPTION"); break;
+        default: kprintf("UNKOWN"); break;
     }
 
-    if (p_cpu_state) {
-        kprintf("[cf:%ul] ", (p_cpu_state->rflags >> 0) & 1);
-        kprintf("[?:%ul] ", (p_cpu_state->rflags >> 1) & 1);
-        kprintf("[pf:%ul] ", (p_cpu_state->rflags >> 2) & 1);
-        kprintf("[?:%ul] ", (p_cpu_state->rflags >> 3) & 1);
-        kprintf("[af:%ul] ", (p_cpu_state->rflags >> 4) & 1);
-        kprintf("[?:%ul] ", (p_cpu_state->rflags >> 5) & 1);
-        kprintf("[zf:%ul] ", (p_cpu_state->rflags >> 6) & 1);
-        kprintf("[sf:%ul] ", (p_cpu_state->rflags >> 7) & 1);
-        kprintf("[tf:%ul] ", (p_cpu_state->rflags >> 8) & 1);
-        kprintf("[if:%ul] ", (p_cpu_state->rflags >> 9) & 1);
-        kprintf("[df:%ul] ", (p_cpu_state->rflags >> 10) & 1);
-        kprintf("[of:%ul]\n", (p_cpu_state->rflags >> 11) & 1);
+    kprintf("\n");
 
-        kprintf("r8= 0x%uh\n", p_cpu_state->r8);
-        kprintf("r9= 0x%uh\n", p_cpu_state->r9);
-        kprintf("r10=0x%uh\n", p_cpu_state->r10);
-        kprintf("r11=0x%uh\n", p_cpu_state->r11);
-        kprintf("r12=0x%uh\n", p_cpu_state->r12);
-        kprintf("r13=0x%uh\n", p_cpu_state->r13);
-        kprintf("r14=0x%uh\n", p_cpu_state->r14);
-        kprintf("r15=0x%uh\n\n", p_cpu_state->r15);
+    kprintf("cpu dump:\n");
+    kprintf("    cr2:        0x%uh\n", read_cr2());
+    kprintf("    rflags:     0x%uh\n", cpu_state->rflags);
+    kprintf("    error code: 0x%uh\n", cpu_state->error_code);
 
-        kprintf("rax=0x%uh\n", p_cpu_state->rax);
-        kprintf("rcx=0x%uh\n", p_cpu_state->rcx);
-        kprintf("rdx=0x%uh\n", p_cpu_state->rdx);
-        kprintf("rbp=0x%uh\n", p_cpu_state->rbp);
-        kprintf("rsi=0x%uh\n", p_cpu_state->rsi);
-        kprintf("rdi=0x%uh\n", p_cpu_state->rdi);
-        kprintf("rip=0x%uh\n", p_cpu_state->rip);
-        kprintf("rsp=0x%uh\n", p_cpu_state->rsp);
-    }
+    kprintf("    registers:\n");
+    kprintf("        r8:  0x%uh\n", cpu_state->r8);
+    kprintf("        r9:  0x%uh\n", cpu_state->r9);
+    kprintf("        r10: 0x%uh\n", cpu_state->r10);
+    kprintf("        r11: 0x%uh\n", cpu_state->r11);
+    kprintf("        r12: 0x%uh\n", cpu_state->r12);
+    kprintf("        r13: 0x%uh\n", cpu_state->r13);
+    kprintf("        r14: 0x%uh\n", cpu_state->r14);
+    kprintf("        r15: 0x%uh\n", cpu_state->r15);
+    kprintf("        rax: 0x%uh\n", cpu_state->rax);
+    kprintf("        rcx: 0x%uh\n", cpu_state->rcx);
+    kprintf("        rdx: 0x%uh\n", cpu_state->rdx);
+    kprintf("        rbp: 0x%uh\n", cpu_state->rbp);
+    kprintf("        rsi: 0x%uh\n", cpu_state->rsi);
+    kprintf("        rdi: 0x%uh\n", cpu_state->rdi);
+    kprintf("        rip: 0x%uh\n", cpu_state->rip);
+    kprintf("        rsp: 0x%uh\n", cpu_state->rsp);
+
+    // assume we are still in vga text mode
+    vga_tm_color_map_t color_default {};
+    color_default.foreground = vga_tm_color_t::WHITE;
+    color_default.background = vga_tm_color_t::BLACK;
+
+    vga_tm_color_map_t color_highlight {};
+    color_highlight.foreground = vga_tm_color_t::BLACK;
+    color_highlight.background = vga_tm_color_t::WHITE;
+
+    vga_tm_set_color(&g_vga_tm_buffer, &color_default);
+    vga_tm_clear_buffer(&g_vga_tm_buffer);
+
+    vga_tm_set_cursor(&g_vga_tm_buffer, 27, 2);
+    vga_tm_puts_color(&g_vga_tm_buffer, &color_highlight, " Corrupted Beyond Repair ");
+
+    vga_tm_set_cursor(&g_vga_tm_buffer, 0, 5);
+    vga_tm_puts(&g_vga_tm_buffer, "        The system encounterd a critical error.\n");
+    vga_tm_puts(&g_vga_tm_buffer, "        Immediate recovery is not possible.\n\n");
+    vga_tm_puts(&g_vga_tm_buffer, "        Additional diagnostic information generated (if available).\n");
+    vga_tm_puts(&g_vga_tm_buffer, "        A system reboot is required.\n\n");
+
+    // reboot?
 
     while (true)
-        halt();
+        debug_trap("kernel fatal");
 }
