@@ -231,6 +231,10 @@ void terminal_execute(const std::string& path, const std::dynamic_array<std::str
             printf("    resolve <hostname>         Resolves the given hostname\n");
             break;
         }
+        case hash_fnv1a_64("crash"): {
+            vthread_terminate(2);
+            break;
+        }
         default:
             printf("Command not found");
             break;
