@@ -1,6 +1,7 @@
 #include "memory/paging.hpp"
 #include "utils/mutex.hpp"
 #include "utils/bitmap.hpp"
+#include "system_info.hpp"
 
 static uint64_t global_page_bitmap[PAGING_BITMAP_SIZE] {};
 static mutex_t global_pmem_mutex { .locked = 0 };
@@ -8,10 +9,10 @@ static mutex_t global_pmem_mutex { .locked = 0 };
 void* pmem_get_page() {
     const mutex_lock_guard guard(&global_pmem_mutex);
 
-    // TODO @since 27/11/2025 -- 19:53
-    // make sure this doesnt go over the actual memory limit qq
+    const size_t system_memory_kb = get_global_system_info_manager()->memory_size * 0.001;
+    const size_t max_allocatable_size_kb = bitmap_get_size(global_page_bitmap);
 
-    for (size_t i = 1; i < bitmap_get_size(global_page_bitmap); i++) {
+    for (size_t i = 1; i < max_allocatable_size_kb && i < system_memory_kb; i++) {
         if (!bitmap_get(global_page_bitmap, i)) {
             bitmap_set(global_page_bitmap, i, true);
             return (void*)(i * PAGE_SIZE);

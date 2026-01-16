@@ -8,8 +8,9 @@
 #ifndef __MEMORY_PAGING_HPP__
 #define __MEMORY_PAGING_HPP__
 
-// MAKE SURE TO KEEP IN LINE WITH SYSTEM RAM
-// OR REPLACE THIS WITH ACTUAL SYSTEM RAM CHECKING
+// chosen randomly, if system ram is above 4gb it wont support it
+// TODO @since 16/01/2026 -- 20:12
+// dynamic page tracker
 #define PAGING_BITMAP_SIZE                  0x4000 // 4096mb    0x4000 * 64 = page count
 
 // helper functions for page tables
