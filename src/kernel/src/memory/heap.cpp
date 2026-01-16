@@ -369,7 +369,8 @@ void* dma_heap_manager_get_virtual_address(dma_heap_manager_t* manager, size_t s
         bool found = true;
 
         for (auto& heap : manager->heaps) {
-            uint64_t heap_begin = (uint64_t)heap.start_virtual_addr;
+            // take entire heap not just allocatable reagion
+            uint64_t heap_begin = (uint64_t)heap.heap_block_array;
             uint64_t heap_end = (uint64_t)heap.start_virtual_addr + heap.size + PAGE_SIZE_LARGE;
 
             if (begin < heap_end && begin + size > heap_begin) {
