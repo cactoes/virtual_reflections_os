@@ -295,25 +295,6 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
     // while (!is_desktop_ready());
     // minesweeper_init();
 
-    {
-        std::dynamic_array<vfs_node_t*> entries {};
-
-        file_descriptor_t result = vfs_open_file(get_global_vfs(), "/drive0/TEST.TXT");
-
-        if (result == FILE_DESCRIPTOR_INVALID) {
-            kprintf("File not found\n");
-        } else {
-            std::dynamic_array<uint8_t> data {};
-            if (vfs_read_file(get_global_vfs(), result, &data)) {
-                data.insert_back('\n');
-                data.insert_back(0);
-                kprintf((char*)data.get_data());
-            } else {
-                kprintf("Failed to read file\n");
-            }
-        }
-    }
-
     vthread_handle_t vth = vthread_create(terminal_thread_main, p_kpml4);
     if (vth == VTHREAD_HANDLE_INVALID)
         kprintf("failed to start terminal");
