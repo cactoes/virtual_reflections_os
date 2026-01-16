@@ -239,6 +239,7 @@ int ahci_sata_prepare_command(ahci_cmd_context_t* ctx, ahci_drive_t* drive, uint
     ctx->cmdheader[slot].cfl = sizeof(fis_reg_h2d_t) / sizeof(uint32_t);
     ctx->cmdheader[slot].w = write ? 1 : 0;
     ctx->cmdheader[slot].prdtl = 1;
+    ctx->cmdheader[slot].prdbc = 0;
 
     ctx->cmdtable = (hba_cmd_tbl_t*)dma_heap_alloc(global_ahci_dma_heap, PAGE_SIZE, PAGE_SIZE);
     if (!ctx->cmdtable)
@@ -291,22 +292,36 @@ int ahci_sata_read(ahci_drive_t* drive, uint64_t lba, uint16_t sector_count, uin
     if (ahci_sata_prepare_command(&ctx, drive, lba, sector_count, ATA_CMD_READ_DMA_EXT, false, ATA_DEV_LBA, slot) != 0)
         return 2;
 
+    // temp
+    auto release_buffers = [&ctx]() {
+        dma_heap_free(global_ahci_dma_heap, ctx.cmdtable);
+        dma_heap_free(global_ahci_dma_heap, ctx.data_buffer);
+    };
+
     drive->port->is = (uint32_t)-1;
     drive->port->ci |= (1 << slot);
 
-    while (drive->port->ci & (1 << slot))
-        if (drive->port->is & AHCI_PORT_INT_TFES)
+    while (drive->port->ci & (1 << slot)) {
+        if (drive->port->is & AHCI_PORT_INT_TFES) {
+            release_buffers();
             return 2;
+        }
+    }
 
     while ((drive->port->tfd & (0x80 | 0x8)));
 
-    if (drive->port->is & AHCI_PORT_INT_TFES)
+    if (drive->port->is & AHCI_PORT_INT_TFES) {
+        release_buffers();
 		return 3;
+    }
+
+    if (ctx.cmdheader[slot].prdbc == 0) {
+        release_buffers();
+        return 4;
+    }
 
     memcpy(buffer, ctx.data_buffer, drive->logical_sector_size);
-
-    dma_heap_free(global_ahci_dma_heap, ctx.cmdtable);
-    dma_heap_free(global_ahci_dma_heap, ctx.data_buffer);
+    release_buffers();
 
     return 0;
 }
@@ -317,22 +332,33 @@ int ahci_sata_write(ahci_drive_t* drive, uint64_t lba, uint16_t sector_count, co
         return 1;
 
     ahci_cmd_context_t ctx {};
-    ahci_sata_prepare_command(&ctx, drive, lba, sector_count, ATA_CMD_WRITE_DMA_EXT, true, ATA_DEV_LBA, slot);
+    if (ahci_sata_prepare_command(&ctx, drive, lba, sector_count, ATA_CMD_WRITE_DMA_EXT, true, ATA_DEV_LBA, slot) != 0)
+        return 2;
+
+    // temp
+    auto release_buffers = [&ctx]() {
+        dma_heap_free(global_ahci_dma_heap, ctx.cmdtable);
+        dma_heap_free(global_ahci_dma_heap, ctx.data_buffer);
+    };
 
     memcpy(ctx.data_buffer, buffer, sector_count * drive->logical_sector_size);
 
     drive->port->is = (uint32_t)-1;
     drive->port->ci |= (1 << slot);
 
-    while (drive->port->ci & (1 << slot))
-        if (drive->port->is & AHCI_PORT_INT_TFES)
+    while (drive->port->ci & (1 << slot)) {
+        if (drive->port->is & AHCI_PORT_INT_TFES) {
+            release_buffers();
             return 2;
+        }
+    }
 
-    if (drive->port->is & AHCI_PORT_INT_TFES)
+    if (drive->port->is & AHCI_PORT_INT_TFES) {
+        release_buffers();
 		return 3;
+    }
 
-    dma_heap_free(global_ahci_dma_heap, ctx.cmdtable);
-    dma_heap_free(global_ahci_dma_heap, ctx.data_buffer);
+    release_buffers();
 
     return 0;
 }
