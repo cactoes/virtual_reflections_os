@@ -8,10 +8,10 @@
 static heap_t* g_e1000_dma_heap = nullptr;
 static e1000_t* g_e1000 = nullptr;
 
-e1000_nid_t::e1000_nid_t(const e1000_t& e1000) {
-    e1000_data = e1000;
+e1000_nid_t::e1000_nid_t(std::unique_ptr<e1000_t> e1000) {
+    e1000_data = move(e1000);
     name = "Intel E1000";
-    memcpy(mac, e1000.mac, 6);
+    memcpy(mac, e1000_data->mac, 6);
 
     ip.raw = 0;
     gateway.raw = 0;
@@ -19,7 +19,7 @@ e1000_nid_t::e1000_nid_t(const e1000_t& e1000) {
 }
 
 int e1000_nid_t::send_packet(const void* data, size_t size) {
-    return e1000_send_packet((e1000_t*)&e1000_data, data, size);
+    return e1000_send_packet(e1000_data.get(), data, size);
 }
 
 void e1000_write_reg(e1000_t* p_device, uint32_t offset, uint32_t value) {
@@ -58,7 +58,7 @@ int e1000_receive_init(e1000_t* p_device) {
     p_device->rdesc_buffer_array = (uint8_t*)dma_heap_alloc(g_e1000_dma_heap, E1000_RECEIVE_DESC_COUNT * E1000_BUFFER_SIZE, 16);
     if (!p_device->rdesc_buffer_array)
         return 2;
-    
+
     for (int i = 0; i < E1000_RECEIVE_DESC_COUNT; i++) {
         memzero(&p_device->rdesc_array[i], sizeof(e1000_rdesc_t));
         p_device->rdesc_array[i].buffer_addr = dma_get_physical(g_e1000_dma_heap, (p_device->rdesc_buffer_array + i * E1000_BUFFER_SIZE));
@@ -117,12 +117,12 @@ int e1000_transmit_init(e1000_t* p_device) {
 void e1000_recieve_packet(e1000_t* p_device) {
     // get current desc
     e1000_rdesc_t* desc = &p_device->rdesc_array[p_device->rx_tail];
-    
+
     // check if packet is ready
     while (desc->status & E1000_RDESC_STATUS_DONE) {
         uint8_t* packet = p_device->rdesc_buffer_array + (p_device->rx_tail * E1000_BUFFER_SIZE);
         size_t length = desc->length;
-        
+
         nidm_packet_recieve(get_global_nidm(), nidm_get_device(get_global_nidm(), "Intel E1000"), packet, length);
         
         desc->status = 0;
@@ -264,4 +264,11 @@ e1000_t* e1000_get_global_device() {
 
 void e1000_set_global_device(e1000_t* p_device) {
     g_e1000 = p_device;
+}
+
+bool is_e1000_device(const pci_device_t* device) {
+    return device->vendor_device_id.vendor_id == 0x8086 &&
+           device->vendor_device_id.device_id == 0x100E &&
+           device->class_info.class_code == 0x2 &&
+           device->class_info.sub_class == 0x0;
 }

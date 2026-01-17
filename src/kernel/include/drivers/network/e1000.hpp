@@ -105,11 +105,11 @@ struct e1000_t {
 
 class e1000_nid_t : public network_interface_device_t {
 public:
-    e1000_nid_t(const e1000_t& e1000);
+    e1000_nid_t(std::unique_ptr<e1000_t> e1000);
     int send_packet(const void* data, size_t size) override;
 
 private:
-    e1000_t e1000_data;
+    std::unique_ptr<e1000_t> e1000_data;
 };
 
 int e1000_init_device(const pci_device_t* p_pcie_device, e1000_t* p_network_device);
@@ -118,5 +118,7 @@ int e1000_send_packet(e1000_t* p_device, const void* data, size_t size);
 
 e1000_t* e1000_get_global_device();
 void e1000_set_global_device(e1000_t* p_device);
+
+bool is_e1000_device(const pci_device_t* device);
 
 #endif // __DRIVER_NETWORK_E1000_HPP__
