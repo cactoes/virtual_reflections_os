@@ -61,6 +61,8 @@
 #define DEVICE_HOST_NAME "VirtualReflections Host"
 
 void init_pci_devices(const pci_device_t* device) {
+    // TODO @since 17/01/2026 -- 01:21
+    // add logging
     if (is_e1000_device(device)) {
         auto e1000 = std::make_unique<e1000_t>();
         if (e1000_init_device(device, e1000.get()) == 0) {
