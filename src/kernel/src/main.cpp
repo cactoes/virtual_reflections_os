@@ -60,6 +60,26 @@
 #define PIT_TIMER_INTERVAL 1000 // times per second
 #define DEVICE_HOST_NAME "VirtualReflections Host"
 
+void init_pci_devices(const pci_device_t* device) {
+    if (is_e1000_device(device)) {
+        auto e1000 = std::make_unique<e1000_t>();
+        if (e1000_init_device(device, e1000.get()) == 0) {
+            std::unique_ptr<e1000_nid_t> e1000_nid = std::make_unique<e1000_nid_t>(move(e1000));
+            e1000_nid->is_up = true;
+            e1000_nid->is_configured = false;
+
+            // TODO: move these into nidm since its responsible for managing network devices
+            e1000_nid->is_prefered = true;
+            e1000_nid->interface = "eth0";
+            
+            nidm_register_device(get_global_nidm(), move(e1000_nid));
+        }
+
+        // valid device so we can continue to the next device
+        return;
+    }
+};
+
 extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
     // validate multiboot
     if (mb_has_valid_magic((multiboot_t*)p_multiboot_struct) != MULTIBOOT_VER2)
@@ -130,16 +150,12 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
 
     pcie_device_manager_t pciedm {};
     set_global_pcie_device_manager(&pciedm);
-    
+
     pci_enumerate_devices(get_global_pcie_device_manager());
 
     // ide device
-    pci_class_info_t ide_device_class_info {
-        .revision_id = (uint8_t)PCI_UNKNOWN,
-        .prog_if = (uint8_t)PCI_UNKNOWN,
-        .sub_class = (uint8_t)1,
-        .class_code = (uint8_t)1
-    };
+    // TODO: move into init pcie devices function
+    pci_class_info_t ide_device_class_info { .revision_id = (uint8_t)PCI_UNKNOWN, .prog_if = (uint8_t)PCI_UNKNOWN, .sub_class = (uint8_t)1, .class_code = (uint8_t)1 };
     const pci_device_t* ide_controller = pci_find_device(get_global_pcie_device_manager(), &ide_device_class_info);
 
     linked_list<ide_device_t> ide_devices {};
@@ -161,6 +177,7 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
     }
 
     // ahci device
+    // TODO: move into init pcie devices function
     pci_class_info_t ahci_device_class_info { .revision_id = (uint8_t)PCI_UNKNOWN, .prog_if = (uint8_t)1, .sub_class = (uint8_t)6, .class_code = (uint8_t)1 };
     const pci_device_t* ahci_controller = pci_find_device(get_global_pcie_device_manager(), &ahci_device_class_info);
 
@@ -182,6 +199,8 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
             }
         }
     }
+
+    pci_loop_devices(get_global_pcie_device_manager(), init_pci_devices);
 
     driver_manager_t driver_manager {};
     set_global_driver_manager(&driver_manager);
@@ -232,23 +251,9 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
             subsys_init(SUBSYS_DNS_CLIENT, std::make_unique<subsys_dns_client_driver_t>());
     }
 
-    // network device
-    pci_class_info_t network_device_class_info { .revision_id = (uint8_t)PCI_UNKNOWN, .prog_if = (uint8_t)PCI_UNKNOWN, .sub_class = (uint8_t)0, .class_code = (uint8_t)2 };
-    const pci_device_t* network_controller = pci_find_device(get_global_pcie_device_manager(), &network_device_class_info);
-
-    e1000_t e1000 {};
-    const auto e1000_init_result = e1000_init_device(network_controller, &e1000);
-    if (e1000_init_result == 0) {
-        std::unique_ptr<e1000_nid_t> e1000_nid = std::make_unique<e1000_nid_t>(e1000);
-        e1000_nid->is_up = true;
-        e1000_nid->is_prefered = true;
-        e1000_nid->interface = "eth0";
-        e1000_nid->is_configured = false;
-        nidm_register_device(get_global_nidm(), move(e1000_nid));
-
-        auto subsystem_dhcp_client = subsys_get<subsys_dhcp_client_t>(SUBSYS_DHCP_CLIENT);
-        subsystem_dhcp_client->configure(nidm_get_device_on_interface(get_global_nidm(), "eth0"));
-    }
+    // lets hope that eth0 was configured qq
+    auto subsystem_dhcp_client = subsys_get<subsys_dhcp_client_t>(SUBSYS_DHCP_CLIENT);
+    subsystem_dhcp_client->configure(nidm_get_device_on_interface(get_global_nidm(), "eth0"));
 
     auto net_test = []() {
         auto tcp_callback = [](const uint8_t* data, size_t size) {
