@@ -133,3 +133,11 @@ pci_device_t* pci_find_device(pcie_device_manager_t* device_manager, const pci_c
 
     return nullptr;
 }
+
+void pci_loop_devices(pcie_device_manager_t* device_manager, void(*callback)(const pci_device_t*)) {
+    if (!device_manager || !callback)
+        return;
+
+    for (const auto& device : device_manager->devices)
+        callback(&device);
+}

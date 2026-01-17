@@ -74,4 +74,6 @@ bool pci_enumerate_devices(pcie_device_manager_t* device_manager);
 pci_device_t* pci_find_device(pcie_device_manager_t* device_manager, const pci_vendor_device_id_t* p_vendor_device_id_target);
 pci_device_t* pci_find_device(pcie_device_manager_t* device_manager, const pci_class_info_t* p_class_info_target);
 
+void pci_loop_devices(pcie_device_manager_t* device_manager, void(*callback)(const pci_device_t*));
+
 #endif // __DRIVERS_PCIE_HPP__
