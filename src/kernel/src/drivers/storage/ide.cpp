@@ -2,20 +2,7 @@
 #include "arch/generic.hpp"
 #include "std/string.hpp"
 
-bool wait_ide_status(uint16_t io_base, uint8_t mask_set, uint8_t mask_clear) {
-    while (true) {
-        uint8_t status = in_port<uint8_t>(io_base + IDE_REG_COMMAND_STATUS);
-
-        if ((status & mask_set) == mask_set && (status & mask_clear) == 0)
-            return true;
-
-        if (status & IDE_STATUS_ERR)
-            return false;
-    }
-
-    // ?
-    return false;
-}
+extern bool wait_ide_status(uint16_t io_base, uint8_t mask_set, uint8_t mask_clear);
 
 bool ide_atapi_send_packet(ide_device_t* p_device, const uint8_t* p_packet, uint8_t* p_buffer, uint16_t buffer_size) {
     out_port<uint8_t>(p_device->io_base + IDE_REG_DEVICE, p_device->type == ide_drive_type_t::SLAVE ? IDE_DEVICE_SLAVE : IDE_DEVICE_MASTER);
@@ -118,29 +105,7 @@ int ide_init(const pci_device_t* p_pcie_device, linked_list<ide_device_t>* p_ide
     return 1;
 }
 
-int ide_send_identify(ide_device_t* p_device, uint16_t* p_out_buf) {
-    out_port<uint8_t>(p_device->io_base + IDE_REG_DEVICE, (p_device->type == ide_drive_type_t::SLAVE ? IDE_DEVICE_SLAVE : IDE_DEVICE_MASTER));
-    out_port<uint8_t>(p_device->io_base + IDE_REG_SECCOUNT, 0);
-    out_port<uint8_t>(p_device->io_base + IDE_REG_LBA_LOW, 0);
-    out_port<uint8_t>(p_device->io_base + IDE_REG_LBA_MID, 0);
-    out_port<uint8_t>(p_device->io_base + IDE_REG_LBA_HIGH, 0);
-    out_port<uint8_t>(p_device->io_base + IDE_REG_COMMAND_STATUS, (p_device->is_atapi ? IDE_CMD_IDENTIFY_PACKET : IDE_CMD_IDENTIFY));
-
-    uint8_t status = in_port<uint8_t>(p_device->io_base + IDE_REG_COMMAND_STATUS);
-    if (status == 0)
-        return 1;
-
-    while ((status & IDE_STATUS_BSY) && !(status & IDE_STATUS_DRQ))
-        status = in_port<uint8_t>(p_device->io_base + IDE_REG_COMMAND_STATUS);
-
-    if (!(status & IDE_STATUS_DRQ))
-        return 2;
-
-    for (size_t i = 0; i < 256; i++)
-        p_out_buf[i] = in_port<uint16_t>(p_device->io_base + IDE_REG_DATA);
-
-    return 0;
-}
+extern int ide_send_identify(ide_device_t* p_device, uint16_t* p_out_buf);
 
 int ide_ata_identify_device(ide_device_t* p_device) {
     uint16_t buffer[256] {};

@@ -82,6 +82,8 @@ void init_pci_devices(const pci_device_t* device) {
     }
 };
 
+#include "storage/controller.hpp"
+
 extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
     // validate multiboot
     if (mb_has_valid_magic((multiboot_t*)p_multiboot_struct) != MULTIBOOT_VER2)
@@ -124,31 +126,31 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
     dma_heap_manager_t allocator {};
     set_global_dma_heap_manager(&allocator);
     dma_heap_manager_init(get_global_dma_heap_manager(), p_kpml4, (void*)VMEM_DMA_ALLOCATOR_START, PAGE_SIZE_LARGE * 128);
-    
-    vfs_t vfs {};
-    vfs_init(&vfs);
-    set_global_vfs(&vfs);
-    // vfs_create_directory(get_global_vfs(), "/mnt");
 
-    // initialize threading
-    if (vthread_start_and_setup_main() == VTHREAD_HANDLE_INVALID)
-        kernel_fatal(KERNEL_FATAL_VTHREAD_INIT, "virtual threads failed to intialize");
+    // vfs_t vfs {};
+    // vfs_init(&vfs);
+    // set_global_vfs(&vfs);
+    // // vfs_create_directory(get_global_vfs(), "/mnt");
 
-    pit_add_interrupt_function(vthread_handle_interrupt);
+    // // initialize threading
+    // if (vthread_start_and_setup_main() == VTHREAD_HANDLE_INVALID)
+    //     kernel_fatal(KERNEL_FATAL_VTHREAD_INIT, "virtual threads failed to intialize");
 
-    system_info_manager_t sim {};
-    set_global_system_info_manager(&sim);
-    system_info_parse_memory_size(get_global_system_info_manager(), (multiboot_t*)p_multiboot_struct);
-    system_info_parse_system_information(get_global_system_info_manager());
-    system_info_get_cpu_name(get_global_system_info_manager());
+    // pit_add_interrupt_function(vthread_handle_interrupt);
 
-    // finished core startup
+    // system_info_manager_t sim {};
+    // set_global_system_info_manager(&sim);
+    // system_info_parse_memory_size(get_global_system_info_manager(), (multiboot_t*)p_multiboot_struct);
+    // system_info_parse_system_information(get_global_system_info_manager());
+    // system_info_get_cpu_name(get_global_system_info_manager());
 
-    keyboard_initialize();
+    // // finished core startup
 
-    nidm_t nidm {};
-    nidm_init(&nidm);
-    set_global_nidm(&nidm);
+    // keyboard_initialize();
+
+    // nidm_t nidm {};
+    // nidm_init(&nidm);
+    // set_global_nidm(&nidm);
 
     pcie_device_manager_t pciedm {};
     set_global_pcie_device_manager(&pciedm);
@@ -159,6 +161,10 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
     // TODO: move into init pcie devices function
     pci_class_info_t ide_device_class_info { .revision_id = (uint8_t)PCI_UNKNOWN, .prog_if = (uint8_t)PCI_UNKNOWN, .sub_class = (uint8_t)1, .class_code = (uint8_t)1 };
     const pci_device_t* ide_controller = pci_find_device(get_global_pcie_device_manager(), &ide_device_class_info);
+
+    testidk(ide_controller);
+
+    return;
 
     linked_list<ide_device_t> ide_devices {};
     ide_init(ide_controller, &ide_devices);
