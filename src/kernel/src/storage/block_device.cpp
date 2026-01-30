@@ -1,5 +1,6 @@
 #include "storage/block_device.hpp"
 #include "storage/drivers/ide.hpp"
+#include "storage/drivers/ahci.hpp"
 
 bool block_read_sized(block_device_t* device, uint64_t lba, uint8_t* buffer, size_t size) {
     if (!device || !buffer)
@@ -26,6 +27,8 @@ bool block_read(block_device_t* device, uint64_t lba, uint8_t* buffer) {
     switch (device->type) {
         case block_device_type_t::IDE:
             return ide_read((ide_device_t*)device->disk_device, device->start_lba + lba, buffer, device->block_size);
+        case block_device_type_t::AHCI:
+            return ahci_read((ahci_device_t*)device->disk_device, device->start_lba + lba, buffer, device->block_size);
         default:
             return false;
     }
