@@ -33,8 +33,10 @@
 // #include "filesystems/vfs.hpp"
 
 #include "storage/drivers/ide.hpp"
+#include "storage/drivers/ahci.hpp"
 #include "storage/block_device.hpp"
 #include "storage/vfs.hpp"
+#include "storage/mbr.hpp"
 #include "storage/filesystems/iso9660.hpp"
 
 #include "memory/vmem.hpp"
@@ -150,6 +152,10 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
     nidm_init(&nidm);
     set_global_nidm(&nidm);
 
+    vfs_t vfs {};
+    vfs_init(&vfs);
+    set_global_vfs(&vfs);
+
     pcie_device_manager_t pciedm {};
     set_global_pcie_device_manager(&pciedm);
 
@@ -160,43 +166,43 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
     pci_class_info_t ide_device_class_info { .revision_id = (uint8_t)PCI_UNKNOWN, .prog_if = (uint8_t)PCI_UNKNOWN, .sub_class = (uint8_t)1, .class_code = (uint8_t)1 };
     const pci_device_t* ide_controller = pci_find_device(get_global_pcie_device_manager(), &ide_device_class_info);
 
-    std::dynamic_array<ide_device_t> devices {};
-    devices.resize(4);
+    std::dynamic_array<ide_device_t> ide_devices {};
+    ide_devices.resize(4);
 
-    if (!ide_init(ide_controller, &devices))
+    if (!ide_init(ide_controller, &ide_devices))
         debug_trap("ide init");
 
-    ide_device_t* device = devices.get_at(0);
+    ide_device_t* ide_device = ide_devices.get_at(0);
+    // LIFETIME PROBLEMS
+    block_device_t ide_block_device {};
+    if (ide_device) {
+        ide_block_device.disk_device = ide_device;
+        ide_block_device.type = block_device_type_t::IDE;
+        ide_block_device.start_lba = 0;
+        ide_block_device.end_lba = ide_device->lba_count - 1;
+        ide_block_device.block_size = ide_device->logical_sector_size;
 
-    uint8_t* buffer = (uint8_t*)malloc(device->logical_sector_size);
-    if (!ide_read(device, 16, buffer, device->logical_sector_size))
-        debug_trap("ide read");
+        uint8_t* buffer = (uint8_t*)malloc(ide_device->logical_sector_size);
+        if (!block_read(&ide_block_device, 16, buffer))
+            debug_trap("block read");
 
-    // ide check
-    if (!memeq(&buffer[1], "CD001", 5))
-        debug_trap("ide check");
-    
-    free(buffer);
+        // uint8_t* buffer = (uint8_t*)malloc(ide_device->logical_sector_size);
+        // if (!ide_read(ide_device, 16, buffer, ide_device->logical_sector_size))
+        //     debug_trap("ide read");
 
-    block_device_t block_device {};
-    block_device.disk_device = device;
-    block_device.type = block_device_type_t::IDE;
-    block_device.start_lba = 0;
-    block_device.end_lba = device->lba_count - 1;
-    block_device.block_size = device->logical_sector_size;
+        // iso9660 check
+        if (!memeq(&buffer[1], "CD001", 5))
+            debug_trap("ide check");
+        
+        free(buffer);
 
-    iso9660_fsdata_t fs_data {};
-    if (!iso9660_init(&block_device, &fs_data))
-        debug_trap("iso9660 init");
+        iso9660_fsdata_t fs_data {};
+        if (!iso9660_init(&ide_block_device, &fs_data))
+            debug_trap("iso9660 init");
 
-    vfs_t vfs {};
-    vfs.file_handles = {};
-    vfs.last_fd = 0;
-    vfs.mount_points = {};
-    set_global_vfs(&vfs);
-
-    if (!vfs_mount_file_system(&vfs, "HardDisk0", fs_type_t::ISO9660, &fs_data))
-        debug_trap("vfs mount fs");
+        if (!vfs_mount_file_system(get_global_vfs(), "HardDisk0", fs_type_t::ISO9660, &fs_data))
+            debug_trap("vfs mount fs");
+    }
 
     // const file_descriptor_t fd = vfs_open_file(&vfs, "/HardDisk0/.env");
 
@@ -225,8 +231,43 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
     pci_class_info_t ahci_device_class_info { .revision_id = (uint8_t)PCI_UNKNOWN, .prog_if = (uint8_t)1, .sub_class = (uint8_t)6, .class_code = (uint8_t)1 };
     const pci_device_t* ahci_controller = pci_find_device(get_global_pcie_device_manager(), &ahci_device_class_info);
 
-    // linked_list<ahci_drive_t> ahci_devices {};
-    // ahci_init(ahci_controller, &ahci_devices);
+    ahci_driver_ctx_t ahci_driver_ctx {};
+    std::dynamic_array<ahci_device_t> ahci_devices {};
+    if (!ahci_init(ahci_controller, &ahci_driver_ctx, &ahci_devices))
+        debug_trap("ahci init");
+
+    ahci_device_t* ahci_device = ahci_devices.get_at(0);
+    // LIFETIME PROBLEMS
+    block_device_t ahci_block_device_p0 {};
+    if (ahci_device) {
+        // uint8_t* buffer = (uint8_t*)malloc(ide_device->logical_sector_size);
+        // if (!ide_read(ide_device, 16, buffer, ide_device->logical_sector_size))
+        //     debug_trap("ide read");
+
+        // // ide check
+        // if (!memeq(&buffer[1], "CD001", 5))
+        //     debug_trap("ide check");
+        
+        // free(buffer);
+
+        // ahci_block_device_p0.disk_device = ahci_device;
+        // ahci_block_device_p0.type = block_device_type_t::AHCI;
+        // ahci_block_device_p0.start_lba = 0;
+        // ahci_block_device_p0.end_lba = ahci_device->lba_count - 1;
+        // ahci_block_device_p0.block_size = ahci_device->logical_sector_size;
+
+        uint8_t* buffer = (uint8_t*)malloc(ahci_device->logical_sector_size);
+        if (!ahci_read(ahci_device, 0, buffer, ahci_device->logical_sector_size))
+            debug_trap("ahci initial read");
+
+        // check MBR
+        mbr_t* mbr = (mbr_t*)buffer;
+        if (mbr->signature == 0xAA55) {
+            // todo mbr shit
+        } else {
+            // idunno
+        }
+    }
 
     // size_t ahci_device_index = 0;
     // for (auto& drive : ahci_devices) {

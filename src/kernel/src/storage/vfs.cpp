@@ -11,6 +11,12 @@ void set_global_vfs(vfs_t* vfs) {
     global_vfs = vfs;
 }
 
+void vfs_init(vfs_t* vfs) {
+    vfs->file_handles = {};
+    vfs->last_fd = 0;
+    vfs->mount_points = {};
+}
+
 bool vfs_mount_file_system(vfs_t* vfs, const char* name, fs_type_t type, void* fs_data) {
     if (vfs->mount_points.contains(std::string(name)))
         return false;

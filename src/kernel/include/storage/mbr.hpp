@@ -18,10 +18,10 @@ struct mbr_entry_t {
 
 struct mbr_t {
     char bootstrap[440];
-    uint32_t signature;
+    uint32_t disk_id;
     uint16_t reserved;
     mbr_entry_t partitions[MBR_PARTITIONS];
-    uint16_t signatre;
+    uint16_t signature;
 } PACKED;
 
 #endif // __MBR_HPP__

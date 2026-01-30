@@ -37,6 +37,8 @@ struct vfs_t {
 vfs_t* get_global_vfs();
 void set_global_vfs(vfs_t* vfs);
 
+void vfs_init(vfs_t* vfs);
+
 bool vfs_mount_file_system(vfs_t* vfs, const char* name, fs_type_t type, void* fs_data);
 const vfs_mount_point_t* vfs_get_mount_point(vfs_t* vfs, const char* path);
 file_descriptor_t vfs_open_file(vfs_t* vfs, const char* path);
