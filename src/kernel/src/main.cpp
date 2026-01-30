@@ -175,6 +175,7 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
     ide_device_t* ide_device = ide_devices.get_at(0);
     // LIFETIME PROBLEMS
     block_device_t ide_block_device {};
+    iso9660_fsdata_t ide_fs_data {};
     if (ide_device) {
         ide_block_device.disk_device = ide_device;
         ide_block_device.type = block_device_type_t::IDE;
@@ -186,21 +187,16 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
         if (!block_read(&ide_block_device, 16, buffer))
             debug_trap("block read");
 
-        // uint8_t* buffer = (uint8_t*)malloc(ide_device->logical_sector_size);
-        // if (!ide_read(ide_device, 16, buffer, ide_device->logical_sector_size))
-        //     debug_trap("ide read");
-
         // iso9660 check
         if (!memeq(&buffer[1], "CD001", 5))
             debug_trap("ide check");
         
         free(buffer);
 
-        iso9660_fsdata_t fs_data {};
-        if (!iso9660_init(&ide_block_device, &fs_data))
+        if (!iso9660_init(&ide_block_device, &ide_fs_data))
             debug_trap("iso9660 init");
 
-        if (!vfs_mount_file_system(get_global_vfs(), "HardDisk0", fs_type_t::ISO9660, &fs_data))
+        if (!vfs_mount_file_system(get_global_vfs(), "HardDisk0", fs_type_t::ISO9660, &ide_fs_data))
             debug_trap("vfs mount fs");
     }
 
@@ -240,21 +236,6 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
     // LIFETIME PROBLEMS
     block_device_t ahci_block_device_p0 {};
     if (ahci_device) {
-        // uint8_t* buffer = (uint8_t*)malloc(ide_device->logical_sector_size);
-        // if (!ide_read(ide_device, 16, buffer, ide_device->logical_sector_size))
-        //     debug_trap("ide read");
-
-        // // ide check
-        // if (!memeq(&buffer[1], "CD001", 5))
-        //     debug_trap("ide check");
-        
-        // free(buffer);
-
-        // ahci_block_device_p0.disk_device = ahci_device;
-        // ahci_block_device_p0.type = block_device_type_t::AHCI;
-        // ahci_block_device_p0.start_lba = 0;
-        // ahci_block_device_p0.end_lba = ahci_device->lba_count - 1;
-        // ahci_block_device_p0.block_size = ahci_device->logical_sector_size;
 
         uint8_t* buffer = (uint8_t*)malloc(ahci_device->logical_sector_size);
         if (!ahci_read(ahci_device, 0, buffer, ahci_device->logical_sector_size))
@@ -263,9 +244,34 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
         // check MBR
         mbr_t* mbr = (mbr_t*)buffer;
         if (mbr->signature == 0xAA55) {
-            // todo mbr shit
+            for (size_t i = 0; i < MBR_PARTITIONS; i++) {
+                const auto& partition = mbr->partitions[i];
+                // for now only support 1 partition cuz of life time issues
+                if (i > 0)
+                    continue;
+
+                ahci_block_device_p0.disk_device = ahci_device;
+                ahci_block_device_p0.type = block_device_type_t::AHCI;
+                ahci_block_device_p0.start_lba = partition.lba_start;
+                ahci_block_device_p0.end_lba = partition.lba_end;
+                ahci_block_device_p0.block_size = ahci_device->logical_sector_size;
+
+                uint8_t* buffer2 = (uint8_t*)malloc(ahci_device->logical_sector_size);
+                if (!block_read(&ahci_block_device_p0, 0, buffer2))
+                    debug_trap("ahci block read");
+
+                if (!memeq(&buffer2[0x52], "FAT32", 5))
+                    debug_trap("not fat32");
+
+                // iso9660_fsdata_t fs_data {};
+                // if (!iso9660_init(&ide_block_device, &fs_data))
+                //     debug_trap("iso9660 init");
+
+                // if (!vfs_mount_file_system(get_global_vfs(), "Drive0p0", fs_type_t::ISO9660, &fs_data))
+                //     debug_trap("vfs mount fs");
+            }
         } else {
-            // idunno
+            // not mbr
         }
     }
 
