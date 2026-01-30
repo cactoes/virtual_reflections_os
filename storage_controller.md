@@ -1,12 +1,13 @@
 ## Storage Controller Design (including VFS)
-- [ ] vfs is storage only
+- [x] vfs is storage only
 - [ ] supported file systems
     - [ ] fat32
-    - [ ] iso9660
+    - [x] iso9660
 - [ ] supported storage interfaces
     - [ ] ahci
-    - [ ] ide
-- [ ] drive addressing is clear / absolute
+    - [x] ide
+- [x] drive addressing is clear
+- [ ] drive addressing is absolute
 - [ ] support partitioning
     - [ ] mbr
 
