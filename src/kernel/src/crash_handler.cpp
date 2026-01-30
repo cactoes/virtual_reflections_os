@@ -6,6 +6,7 @@
 #include "utils/debug.hpp"
 #include "virtual_thread.hpp"
 #include "io.hpp"
+#include "utils/mutex.hpp"
 
 void kernel_fatal_internal(uint64_t code, const char* message, cpu_state_t* cpu_state) {
     // if not main thread just terminate the thread not the system

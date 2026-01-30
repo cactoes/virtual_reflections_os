@@ -1,7 +1,11 @@
+#include <stdarg.h>
+
 #include "io.hpp"
 #include "virtual_thread.hpp"
 #include "utils/bitmap.hpp"
+#include "utils/debug.hpp"
 #include "drivers/vga.hpp"
+#include "std/string.hpp"
 
 static uint64_t global_io_bitmap[1];
 

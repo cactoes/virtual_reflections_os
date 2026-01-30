@@ -11,8 +11,8 @@
 #include "drivers/ps2/mouse.hpp"
 #include "drivers/ps2/ps2.hpp"
 #include "drivers/driver.hpp"
-#include "drivers/storage/ide.hpp"
-#include "drivers/storage/ahci.hpp"
+// #include "drivers/storage/ide.hpp"
+// #include "drivers/storage/ahci.hpp"
 #include "drivers/network/e1000.hpp"
 #include "drivers/network/nidm.hpp"
 #include "drivers/network/tcp.hpp"
@@ -28,9 +28,14 @@
 
 #include "interrupt_manager.hpp"
 
-#include "filesystems/iso9660.hpp"
-#include "filesystems/fat32.hpp"
-#include "filesystems/vfs.hpp"
+// #include "filesystems/iso9660.hpp"
+// #include "filesystems/fat32.hpp"
+// #include "filesystems/vfs.hpp"
+
+#include "storage/drivers/ide.hpp"
+#include "storage/block_device.hpp"
+#include "storage/vfs.hpp"
+#include "storage/filesystems/iso9660.hpp"
 
 #include "memory/vmem.hpp"
 #include "memory/heap.hpp"
@@ -82,8 +87,6 @@ void init_pci_devices(const pci_device_t* device) {
     }
 };
 
-#include "storage/controller.hpp"
-
 extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
     // validate multiboot
     if (mb_has_valid_magic((multiboot_t*)p_multiboot_struct) != MULTIBOOT_VER2)
@@ -127,30 +130,25 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
     set_global_dma_heap_manager(&allocator);
     dma_heap_manager_init(get_global_dma_heap_manager(), p_kpml4, (void*)VMEM_DMA_ALLOCATOR_START, PAGE_SIZE_LARGE * 128);
 
-    // vfs_t vfs {};
-    // vfs_init(&vfs);
-    // set_global_vfs(&vfs);
-    // // vfs_create_directory(get_global_vfs(), "/mnt");
+    // initialize threading
+    if (vthread_start_and_setup_main() == VTHREAD_HANDLE_INVALID)
+        kernel_fatal(KERNEL_FATAL_VTHREAD_INIT, "virtual threads failed to intialize");
 
-    // // initialize threading
-    // if (vthread_start_and_setup_main() == VTHREAD_HANDLE_INVALID)
-    //     kernel_fatal(KERNEL_FATAL_VTHREAD_INIT, "virtual threads failed to intialize");
+    pit_add_interrupt_function(vthread_handle_interrupt);
 
-    // pit_add_interrupt_function(vthread_handle_interrupt);
+    system_info_manager_t sim {};
+    set_global_system_info_manager(&sim);
+    system_info_parse_memory_size(get_global_system_info_manager(), (multiboot_t*)p_multiboot_struct);
+    system_info_parse_system_information(get_global_system_info_manager());
+    system_info_get_cpu_name(get_global_system_info_manager());
 
-    // system_info_manager_t sim {};
-    // set_global_system_info_manager(&sim);
-    // system_info_parse_memory_size(get_global_system_info_manager(), (multiboot_t*)p_multiboot_struct);
-    // system_info_parse_system_information(get_global_system_info_manager());
-    // system_info_get_cpu_name(get_global_system_info_manager());
+    // finished core startup
 
-    // // finished core startup
+    keyboard_initialize();
 
-    // keyboard_initialize();
-
-    // nidm_t nidm {};
-    // nidm_init(&nidm);
-    // set_global_nidm(&nidm);
+    nidm_t nidm {};
+    nidm_init(&nidm);
+    set_global_nidm(&nidm);
 
     pcie_device_manager_t pciedm {};
     set_global_pcie_device_manager(&pciedm);
@@ -162,84 +160,127 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
     pci_class_info_t ide_device_class_info { .revision_id = (uint8_t)PCI_UNKNOWN, .prog_if = (uint8_t)PCI_UNKNOWN, .sub_class = (uint8_t)1, .class_code = (uint8_t)1 };
     const pci_device_t* ide_controller = pci_find_device(get_global_pcie_device_manager(), &ide_device_class_info);
 
-    testidk(ide_controller);
+    std::dynamic_array<ide_device_t> devices {};
+    devices.resize(4);
 
-    return;
+    if (!ide_init(ide_controller, &devices))
+        debug_trap("ide init");
 
-    linked_list<ide_device_t> ide_devices {};
-    ide_init(ide_controller, &ide_devices);
+    ide_device_t* device = devices.get_at(0);
+
+    uint8_t* buffer = (uint8_t*)malloc(device->logical_sector_size);
+    if (!ide_read(device, 16, buffer, device->logical_sector_size))
+        debug_trap("ide read");
+
+    // ide check
+    if (!memeq(&buffer[1], "CD001", 5))
+        debug_trap("ide check");
     
-    size_t ide_device_index = 0;
-    for (auto& drive : ide_devices) {
-        // init device interface
-        auto ide_storage = std::make_unique<ide_storage_driver_t>(&drive);
+    free(buffer);
 
-        char disk_mount_name_buffer[20];
-        sprintf(disk_mount_name_buffer, 20, "/disk%i", ide_device_index++);
+    block_device_t block_device {};
+    block_device.disk_device = device;
+    block_device.type = block_device_type_t::IDE;
+    block_device.start_lba = 0;
+    block_device.end_lba = device->lba_count - 1;
+    block_device.block_size = device->logical_sector_size;
 
-        if (!mount_disk(move(ide_storage), disk_mount_name_buffer)) {
-            kprintf("failed to mount disk: %s\n", disk_mount_name_buffer);
-        } else {
-            kprintf("mounted: %s\n", disk_mount_name_buffer);
-        }
-    }
+    iso9660_fsdata_t fs_data {};
+    if (!iso9660_init(&block_device, &fs_data))
+        debug_trap("iso9660 init");
+
+    vfs_t vfs {};
+    vfs.file_handles = {};
+    vfs.last_fd = 0;
+    vfs.mount_points = {};
+    set_global_vfs(&vfs);
+
+    if (!vfs_mount_file_system(&vfs, "HardDisk0", fs_type_t::ISO9660, &fs_data))
+        debug_trap("vfs mount fs");
+
+    // const file_descriptor_t fd = vfs_open_file(&vfs, "/HardDisk0/.env");
+
+    // uint8_t* data;
+    // size_t size;
+    // if (!vfs_read_file(&vfs, fd, &data, &size))
+    //     debug_trap("vfs file read");
+
+    // size_t ide_device_index = 0;
+    // for (auto& drive : ide_devices) {
+    //     // init device interface
+    //     auto ide_storage = std::make_unique<ide_storage_driver_t>(&drive);
+
+    //     char disk_mount_name_buffer[20];
+    //     sprintf(disk_mount_name_buffer, 20, "/disk%i", ide_device_index++);
+
+    //     if (!mount_disk(move(ide_storage), disk_mount_name_buffer)) {
+    //         kprintf("failed to mount disk: %s\n", disk_mount_name_buffer);
+    //     } else {
+    //         kprintf("mounted: %s\n", disk_mount_name_buffer);
+    //     }
+    // }
 
     // ahci device
     // TODO: move into init pcie devices function
     pci_class_info_t ahci_device_class_info { .revision_id = (uint8_t)PCI_UNKNOWN, .prog_if = (uint8_t)1, .sub_class = (uint8_t)6, .class_code = (uint8_t)1 };
     const pci_device_t* ahci_controller = pci_find_device(get_global_pcie_device_manager(), &ahci_device_class_info);
 
-    linked_list<ahci_drive_t> ahci_devices {};
-    ahci_init(ahci_controller, &ahci_devices);
+    // linked_list<ahci_drive_t> ahci_devices {};
+    // ahci_init(ahci_controller, &ahci_devices);
 
-    size_t ahci_device_index = 0;
-    for (auto& drive : ahci_devices) {
-        if (drive.was_setup) {
-            auto ahci_storage = std::make_unique<ahci_storage_driver_t>(&drive);
+    // size_t ahci_device_index = 0;
+    // for (auto& drive : ahci_devices) {
+    //     if (drive.was_setup) {
+    //         auto ahci_storage = std::make_unique<ahci_storage_driver_t>(&drive);
 
-            char disk_mount_name_buffer[20];
-            sprintf(disk_mount_name_buffer, 20, "/drive%i", ahci_device_index++);
+    //         char disk_mount_name_buffer[20];
+    //         sprintf(disk_mount_name_buffer, 20, "/drive%i", ahci_device_index++);
 
-            if (!mount_disk(move(ahci_storage), disk_mount_name_buffer)) {
-                kprintf("failed to mount drive: %s\n", disk_mount_name_buffer);
-            } else {
-                kprintf("mounted: %s\n", disk_mount_name_buffer);
-            }
-        }
-    }
+    //         if (!mount_disk(move(ahci_storage), disk_mount_name_buffer)) {
+    //             kprintf("failed to mount drive: %s\n", disk_mount_name_buffer);
+    //         } else {
+    //             kprintf("mounted: %s\n", disk_mount_name_buffer);
+    //         }
+    //     }
+    // }
 
     pci_loop_devices(get_global_pcie_device_manager(), init_pci_devices);
 
     driver_manager_t driver_manager {};
     set_global_driver_manager(&driver_manager);
 
-    std::dynamic_array<vfs_node_t*> nodes {};
-    if (vfs_list_directory(get_global_vfs(), "/disk0", &nodes)) {
+    std::dynamic_array<vfs_node_t> nodes {};
+    if (vfs_list_directory(&vfs, "/HardDisk0", &nodes)) {
         for (auto& node : nodes) {
-            if (str_ends_with(node->meta.name.c_str(), ".sys")) {
-                std::string driver_name = node->meta.name.substr(0, node->meta.name.length() - 4);
+            if (str_ends_with(node.name.c_str(), ".sys")) {
+                std::string driver_name = node.name.substr(0, node.name.length() - 4);
 
-                std::dynamic_array<uint8_t> driver_file {};
-                file_descriptor_t driver_file_handle = vfs_open_file(get_global_vfs(), std::string("/disk0/") + driver_name + ".sys");
+                const std::string driver_path = std::string("/HardDisk0/") + driver_name + ".sys";
+                file_descriptor_t driver_file_handle = vfs_open_file(&vfs, driver_path.c_str());
                 if (driver_file_handle == FILE_DESCRIPTOR_INVALID) {
                     kprintf("failed to open handle to driver '%s'\n", driver_name.c_str());
                     continue;
                 }
 
-                if (!vfs_read_file(get_global_vfs(), driver_file_handle, &driver_file)) {
+                // DONT FREE IT!
+                uint8_t* driver_file_data = nullptr;
+                size_t size;
+                if (!vfs_read_file(&vfs, driver_file_handle, &driver_file_data, &size)) {
                     kprintf("failed to read driver '%s'\n", driver_name.c_str());
                     continue;
                 }
 
-                system_driver_handle_t driver_handle = driver_load(get_global_driver_manager(), driver_name.c_str(), driver_file.get_data());
+                system_driver_handle_t driver_handle = driver_load(get_global_driver_manager(), driver_name.c_str(), driver_file_data);
                 if (driver_handle == SYSTEM_DRIVER_HANDLE_INVALID) {
                     kprintf("failed to load driver '%s'\n", driver_name.c_str());
+                    free(driver_file_data);
                     continue;
                 }
 
                 int result = driver_start(get_global_driver_manager(), driver_handle);
                 if (result != 0) {
                     kprintf("failed to start driver '%s'. code: %i\n", driver_name.c_str(), result);
+                    free(driver_file_data);
                     continue;
                 }
 

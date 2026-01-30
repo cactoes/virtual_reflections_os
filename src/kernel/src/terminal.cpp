@@ -19,6 +19,7 @@
 
 #include "subsystem_interface.hpp"
 #include "subsystems/dns/interface.hpp"
+#include "storage/vfs.hpp"
 
 static std::dynamic_array<char> terminal_current_input {};
 bool keep_terminal_alive = true;
@@ -78,38 +79,41 @@ void terminal_execute(const std::string& path, const std::dynamic_array<std::str
         case hash_fnv1a_64("ls"): {
             // TODO @since 11/10/2025 -- 01:09
             // check if is file
-            std::dynamic_array<vfs_node_t*> entries {};
+            std::dynamic_array<vfs_node_t> entries {};
             std::string arg_path = "";
             if (args.length() >= 1)
                 arg_path = *args.get_at(0);
 
-            bool result = vfs_list_directory(get_global_vfs(), arg_path, &entries);
+            bool result = vfs_list_directory(get_global_vfs(), arg_path.c_str(), &entries);
             if (!result) {
                 printf("Directory not found");
                 break;
             }
 
             for (auto& dir : entries)
-                printf("%s\n", dir->meta.name.c_str());
+                printf("%s\n", dir.name.c_str());
 
             break;
         }
         case hash_fnv1a_64("cat"): {
             // TODO @since 11/10/2025 -- 01:09
             // check if is directory
-            std::dynamic_array<vfs_node_t*> entries {};
+            std::dynamic_array<vfs_node_t> entries {};
             std::string arg_path = "";
             if (args.length() >= 1)
                 arg_path = *args.get_at(0);
 
-            file_descriptor_t result = vfs_open_file(get_global_vfs(), arg_path);
+            file_descriptor_t result = vfs_open_file(get_global_vfs(), arg_path.c_str());
             if (result == FILE_DESCRIPTOR_INVALID) {
                 printf("File not found");
                 break;
             }
 
-            std::dynamic_array<uint8_t> data {};
-            if (vfs_read_file(get_global_vfs(), result, &data)) {
+            uint8_t* buffer;
+            size_t size;
+            if (vfs_read_file(get_global_vfs(), result, &buffer, &size)) {
+                std::dynamic_array<uint8_t> data {};
+                data.assign(buffer, size);
                 data.insert_back('\n');
                 data.insert_back(0);
                 printf((char*)data.get_data());
@@ -154,16 +158,16 @@ void terminal_execute(const std::string& path, const std::dynamic_array<std::str
             if (args.length() >= 1) {
                 auto arg0 = *args.get_at(0);
     
-                vfs_storage_info_t storage_info {};
-                if (!vfs_get_disk_info(get_global_vfs(), arg0.c_str(), &storage_info)) {
-                    printf("Disk or drive not found\n");
-                    break;
-                }
+                // vfs_storage_info_t storage_info {};
+                // if (!vfs_get_disk_info(get_global_vfs(), arg0.c_str(), &storage_info)) {
+                //     printf("Disk or drive not found\n");
+                //     break;
+                // }
     
-                printf("%s:\n", storage_info.model.c_str());
-                printf("    Serial: %s\n", storage_info.serial.c_str());
-                printf("    Firmware: %s\n", storage_info.firmare.c_str());
-                printf("    Disk size: %s\n", size_format_to_string(storage_info.capacity).c_str());
+                // printf("%s:\n", storage_info.model.c_str());
+                // printf("    Serial: %s\n", storage_info.serial.c_str());
+                // printf("    Firmware: %s\n", storage_info.firmare.c_str());
+                // printf("    Disk size: %s\n", size_format_to_string(storage_info.capacity).c_str());
             }
             break;
         }

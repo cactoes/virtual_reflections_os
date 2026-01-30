@@ -2,6 +2,7 @@
 #include "arch/generic.hpp"
 #include "virtual_thread.hpp"
 #include "interrupt_manager.hpp"
+#include "utils/debug.hpp"
 
 #define MUTEX_ARRAY_SIZE 128
 
