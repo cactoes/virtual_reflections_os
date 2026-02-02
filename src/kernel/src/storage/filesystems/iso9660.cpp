@@ -203,6 +203,9 @@ bool iso9660_find_node(iso9660_fsdata_t* fs_data, const char* path, uint64_t siz
 }
 
 bool iso9660_directory_exists(iso9660_fsdata_t* fs_data, const char* path) {
+    if (!fs_data)
+        return false;
+
     iso9660_node_t node {};
     if (!iso9660_find_node(fs_data, path, fs_data->root_node.size, fs_data->root_node.lba, &node))
         return false;
@@ -211,6 +214,9 @@ bool iso9660_directory_exists(iso9660_fsdata_t* fs_data, const char* path) {
 }
 
 bool iso9660_file_exists(iso9660_fsdata_t* fs_data, const char* path) {
+    if (!fs_data)
+        return false;
+
     iso9660_node_t node {};
     if (!iso9660_find_node(fs_data, path, fs_data->root_node.size, fs_data->root_node.lba, &node))
         return false;
@@ -219,6 +225,9 @@ bool iso9660_file_exists(iso9660_fsdata_t* fs_data, const char* path) {
 }
 
 bool iso9660_read(iso9660_fsdata_t* fs_data, const char* path, uint8_t** out_data, size_t* out_size) {
+    if (!fs_data || !out_data || !out_size)
+        return false;
+
     iso9660_node_t node {};
     if (!iso9660_find_node(fs_data, path, fs_data->root_node.size, fs_data->root_node.lba, &node))
         return false;

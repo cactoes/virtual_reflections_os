@@ -2,6 +2,9 @@
 #include "std/string.hpp"
 #include "std/pointer.hpp"
 
+// TODO @since 02/02/2026 -- 17:13
+// move these string functions
+
 void convert_utf16_to_ascii(char* destination, const uint16_t* source, size_t count) {
     while (count-- && *source && *source != 0xFFFF) {
         *destination++ = (char)(*source++ & 0xFF);
@@ -25,11 +28,17 @@ int compare_ascii_case_insensitive(const char* a, const char* b) {
     return *a - *b;
 }
 
-uint32_t cluster_to_lba(const fat32_fsdata_t* fs, uint32_t cluster) {
-    return fs->layout.first_data_sector + (cluster - 2) * fs->layout.sectors_per_cluster;
+uint32_t cluster_to_lba(const fat32_fsdata_t* fs_data, uint32_t cluster) {
+    if (!fs_data)
+        return false;
+
+    return fs_data->layout.first_data_sector + (cluster - 2) * fs_data->layout.sectors_per_cluster;
 }
 
 uint32_t get_next_cluster(const fat32_fsdata_t* fs_data, uint32_t cluster) {
+    if (!fs_data)
+        return false;
+
     uint32_t offset = cluster * 4;
     uint32_t fat_sector = fs_data->layout.first_fat_sector + (offset / fs_data->layout.bytes_per_sector);
     uint32_t entry_offset = offset % fs_data->layout.bytes_per_sector;
@@ -61,6 +70,46 @@ std::unique_ptr<uint8_t> fat32_read_from_disk(fat32_fsdata_t* fs_data, size_t cl
     }
 
     return data;
+}
+
+bool fat32_validate(uint8_t* buffer, size_t size) {
+    if (!buffer)
+        return false;
+
+    if (size > sizeof(fat32_bpb_extended_t))
+        return false;
+
+    const fat32_bpb_extended_t* bpb = (fat32_bpb_extended_t*)buffer;
+
+    if (*(uint16_t*)(buffer + 510) != 0xAA55)
+        return false;
+
+    if (bpb->bpb.bytes_per_sector != 512 &&
+        bpb->bpb.bytes_per_sector != 1024 &&
+        bpb->bpb.bytes_per_sector != 2048 &&
+        bpb->bpb.bytes_per_sector != 4096)
+        return false;
+
+    uint8_t sectors_per_cluster = bpb->bpb.sectors_per_cluster;
+    if (sectors_per_cluster == 0 || (sectors_per_cluster & (sectors_per_cluster - 1)))
+        return false;
+
+    if (bpb->bpb.reserved_sectors == 0)
+        return false;
+
+    if (bpb->bpb.fat_count == 0)
+        return false;
+
+    if (bpb->bpb.root_entry_count != 0)
+        return false;
+
+    if (bpb->bpb.fat_size_16 != 0)
+        return false;
+
+    if (bpb->fat_size_32 == 0)
+        return false;
+    
+    return true;
 }
 
 bool fat32_init(block_device_t* device, fat32_fsdata_t* fs_data) {
@@ -206,6 +255,9 @@ bool fat32_directory_exists(fat32_fsdata_t* fs_data, const char* path) {
 }
 
 bool fat32_file_exists(fat32_fsdata_t* fs_data, const char* path) {
+    if (!fs_data)
+        return false;
+
     fat32_node_t node {};
     if (!fat32_find_node(fs_data, path, fs_data->layout.bytes_per_sector * fs_data->layout.sectors_per_cluster, fs_data->layout.root_cluster, &node))
         return false;
@@ -214,6 +266,9 @@ bool fat32_file_exists(fat32_fsdata_t* fs_data, const char* path) {
 }
 
 bool fat32_read(fat32_fsdata_t* fs_data, const char* path, uint8_t** out_data, size_t* out_size) {
+    if (!fs_data || !out_data || !out_size)
+        return false;
+
     fat32_node_t node {};
     if (!fat32_find_node(fs_data, path, fs_data->layout.bytes_per_sector * fs_data->layout.sectors_per_cluster, fs_data->layout.root_cluster, &node))
         return false;

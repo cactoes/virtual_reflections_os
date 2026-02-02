@@ -261,11 +261,8 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
                 if (!block_read(&ahci_block_device_p0, 0, buffer2))
                     debug_trap("ahci block read");
 
-                // if (!memeq(&buffer2[0x52], "FAT32", 5))
-                //     debug_trap("not fat32");
-
-                // TODO @since 02/02/2026 -- 12:52
-                // fat32 check
+                if (!fat32_validate(buffer2, ahci_device->logical_sector_size))
+                    debug_trap("not fat32");
 
                 if (!fat32_init(&ahci_block_device_p0, &ahci_fat32_data))
                     debug_trap("fat32 init");

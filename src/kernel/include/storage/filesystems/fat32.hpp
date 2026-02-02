@@ -119,6 +119,8 @@ struct fat32_fsdata_t {
     } layout;
 };
 
+bool fat32_validate(uint8_t* buffer, size_t size);
+
 bool fat32_init(block_device_t* device, fat32_fsdata_t* fs_data);
 bool fat32_find_node(fat32_fsdata_t* fs_data, const char* path, size_t size, uint32_t cluster, fat32_node_t* out_node);
 bool fat32_directory_exists(fat32_fsdata_t* fs_data, const char* path);
