@@ -38,6 +38,7 @@
 #include "storage/vfs.hpp"
 #include "storage/mbr.hpp"
 #include "storage/filesystems/iso9660.hpp"
+#include "storage/filesystems/fat32.hpp"
 
 #include "memory/vmem.hpp"
 #include "memory/heap.hpp"
@@ -235,8 +236,8 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
     ahci_device_t* ahci_device = ahci_devices.get_at(0);
     // LIFETIME PROBLEMS
     block_device_t ahci_block_device_p0 {};
+    fat32_fsdata_t ahci_fat32_data {};
     if (ahci_device) {
-
         uint8_t* buffer = (uint8_t*)malloc(ahci_device->logical_sector_size);
         if (!ahci_read(ahci_device, 0, buffer, ahci_device->logical_sector_size))
             debug_trap("ahci initial read");
@@ -260,15 +261,17 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
                 if (!block_read(&ahci_block_device_p0, 0, buffer2))
                     debug_trap("ahci block read");
 
-                if (!memeq(&buffer2[0x52], "FAT32", 5))
-                    debug_trap("not fat32");
+                // if (!memeq(&buffer2[0x52], "FAT32", 5))
+                //     debug_trap("not fat32");
 
-                // iso9660_fsdata_t fs_data {};
-                // if (!iso9660_init(&ide_block_device, &fs_data))
-                //     debug_trap("iso9660 init");
+                // TODO @since 02/02/2026 -- 12:52
+                // fat32 check
 
-                // if (!vfs_mount_file_system(get_global_vfs(), "Drive0p0", fs_type_t::ISO9660, &fs_data))
-                //     debug_trap("vfs mount fs");
+                if (!fat32_init(&ahci_block_device_p0, &ahci_fat32_data))
+                    debug_trap("fat32 init");
+
+                if (!vfs_mount_file_system(get_global_vfs(), "Drive0p0", fs_type_t::FAT32, &ahci_fat32_data))
+                    debug_trap("vfs mount fs2");
             }
         } else {
             // not mbr
