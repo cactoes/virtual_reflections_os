@@ -99,6 +99,8 @@ bool iso9660_init(block_device_t* device, iso9660_fsdata_t* fs_data) {
     fs_data->root_node.lba = root_record->extent_lba.le;
     fs_data->root_node.size = root_record->data_length.le;
 
+    free(buffer);
+
     return true;
 }
 
@@ -131,22 +133,22 @@ bool iso9660_find_node(iso9660_fsdata_t* fs_data, const char* path, uint64_t siz
         out_node->size = size;
         out_node->is_directory = true;
         out_node->name[0] = '/';
-        out_node->name[0] = '\0';
+        out_node->name[1] = '\0';
         return true;
     }
 
-    // read target disk section
-    bool error;
-    std::unique_ptr<uint8_t> disk_data = iso9660_read_from_disk(fs_data->block_device, size, lba, &error);
-    if (error)
-        return false;
-    
     // split string to get the next node to look for
     std::dynamic_array<std::string> path_parts = str_split(path, '/');
     if (path_parts.length() == 0)
         return false;
 
     std::string& target = *path_parts.get_at(0);
+
+    // read target disk section
+    bool error;
+    std::unique_ptr<uint8_t> disk_data = iso9660_read_from_disk(fs_data->block_device, size, lba, &error);
+    if (error)
+        return false;
 
     size_t offset = 0;
     while (offset < size) {
@@ -278,16 +280,14 @@ bool iso9660_list_directory(iso9660_fsdata_t* fs_data, const char* path, std::dy
             continue;
         }
 
-        bool is_directory = (record->file_flags & 0x02) != 0;
+        iso9660_node_t out_node {};
+        out_node.lba = record->extent_lba.le;
+        out_node.size = record->data_length.le;
+        out_node.is_directory = (record->file_flags & 0x02) != 0;
 
-        iso9660_node_t node {};
-        node.lba = record->extent_lba.le;
-        node.size = record->data_length.le;
-        node.is_directory = is_directory;
+        memcpy(out_node.name, name, 255);
 
-        memcpy(node.name, name, 256);
-
-        out_nodes->insert_back(node);
+        out_nodes->insert_back(out_node);
 
         offset += record->length;
     }
