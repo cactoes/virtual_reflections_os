@@ -1,5 +1,6 @@
 #include "storage/vfs.hpp"
 #include "storage/filesystems/iso9660.hpp"
+#include "storage/filesystems/fat32.hpp"
 
 static vfs_t* global_vfs = nullptr;
 
@@ -64,6 +65,9 @@ file_descriptor_t vfs_open_file(vfs_t* vfs, const char* path) {
         case fs_type_t::ISO9660:
             file_exists = iso9660_file_exists((iso9660_fsdata_t*)mount_point->data, mount_point_relative_path.c_str());
             break;
+        case fs_type_t::FAT32:
+            file_exists = fat32_file_exists((fat32_fsdata_t*)mount_point->data, mount_point_relative_path.c_str());
+            break;
         default:
             file_exists = false;
             break;
@@ -112,6 +116,8 @@ bool vfs_read_file(vfs_t* vfs, file_descriptor_t fd, uint8_t** data, size_t* siz
     switch (mount_point->type) {
         case fs_type_t::ISO9660:
             return iso9660_read((iso9660_fsdata_t*)mount_point->data, mount_point_relative_path.c_str(), data, size);
+        case fs_type_t::FAT32:
+            return fat32_read((fat32_fsdata_t*)mount_point->data, mount_point_relative_path.c_str(), data, size);
         default:
             return false;
     }
@@ -143,6 +149,21 @@ bool vfs_list_directory(vfs_t* vfs, const char* path, std::dynamic_array<vfs_nod
                 out_nodes->insert_back(vfs_node);
             }
 
+            return true;
+        }
+        case fs_type_t::FAT32: {
+            std::dynamic_array<fat32_node_t> fat32_nodes {};
+            if (!fat32_list_directory((fat32_fsdata_t*)mount_point->data, mount_point_relative_path.c_str(), &fat32_nodes))
+                return false;
+
+            for (const auto& node : fat32_nodes) {
+                vfs_node_t vfs_node {};
+                vfs_node.is_directory = node.is_directory;
+                vfs_node.name = std::string(node.name);
+                vfs_node.size = node.size;
+                out_nodes->insert_back(vfs_node);
+            }
+            
             return true;
         }
         default:

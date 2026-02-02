@@ -13,7 +13,8 @@ typedef uint64_t file_descriptor_t;
 
 enum class fs_type_t {
     UNKNOWN = 0,
-    ISO9660
+    ISO9660,
+    FAT32
 };
 
 struct vfs_mount_point_t {
