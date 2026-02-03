@@ -6,6 +6,7 @@
 #include "common.hpp"
 #include "storage/block_device.hpp"
 #include "std/array.hpp"
+#include "std/pointer.hpp"
 
 struct iso9660_lbs_msb_32 {
     uint32_t le;
@@ -123,13 +124,13 @@ struct iso9660_node_t {
 };
 
 struct iso9660_fsdata_t {
-    block_device_t* block_device;
+    std::unique_ptr<block_device_t> block_device;
     uint64_t volume_size;
     iso9660_node_t root_node;
     iso9660_volume_primary_volume_descriptor_t pvd;
 };
 
-bool iso9660_init(block_device_t* device, iso9660_fsdata_t* fs_data);
+bool iso9660_init(std::unique_ptr<block_device_t> device, iso9660_fsdata_t* fs_data);
 bool iso9660_find_node(iso9660_fsdata_t* fs_data, const char* path, uint64_t size, uint64_t lba, iso9660_node_t* out_node);
 bool iso9660_directory_exists(iso9660_fsdata_t* fs_data, const char* path);
 bool iso9660_file_exists(iso9660_fsdata_t* fs_data, const char* path);

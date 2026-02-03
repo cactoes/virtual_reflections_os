@@ -44,7 +44,7 @@ uint32_t get_next_cluster(const fat32_fsdata_t* fs_data, uint32_t cluster) {
     uint32_t entry_offset = offset % fs_data->layout.bytes_per_sector;
 
     uint8_t* sector_data = (uint8_t*)malloc(fs_data->block_device->block_size);
-    if (!block_read(fs_data->block_device, fat_sector, sector_data)) {
+    if (!block_read(fs_data->block_device.get(), fat_sector, sector_data)) {
         free(sector_data);
         return FAT32_EOC32;
     }
@@ -63,7 +63,7 @@ std::unique_ptr<uint8_t> fat32_read_from_disk(fat32_fsdata_t* fs_data, size_t cl
     if (error) *error = false;
 
     for (uint32_t sector = 0; sector < fs_data->layout.sectors_per_cluster; sector++) {
-        if (!block_read_sized(fs_data->block_device, cluster_to_lba(fs_data, cluster) + sector, data.get() + (sector * fs_data->layout.bytes_per_sector), fs_data->layout.bytes_per_sector)) {
+        if (!block_read_sized(fs_data->block_device.get(), cluster_to_lba(fs_data, cluster) + sector, data.get() + (sector * fs_data->layout.bytes_per_sector), fs_data->layout.bytes_per_sector)) {
             if (error) *error = true;
             break;
         }
@@ -112,17 +112,17 @@ bool fat32_validate(uint8_t* buffer, size_t size) {
     return true;
 }
 
-bool fat32_init(block_device_t* device, fat32_fsdata_t* fs_data) {
+bool fat32_init(std::unique_ptr<block_device_t> device, fat32_fsdata_t* fs_data) {
     if (!device || !fs_data)
         return false;
 
     uint8_t* buffer = (uint8_t*)malloc(device->block_size);
-    if (!block_read(device, 0, buffer))
+    if (!block_read(device.get(), 0, buffer))
         return false;
 
     const fat32_bpb_extended_t* bpb_extended = (fat32_bpb_extended_t*)buffer;
 
-    fs_data->block_device = device;
+    fs_data->block_device = move(device);
     fs_data->layout.bytes_per_sector = bpb_extended->bpb.bytes_per_sector;
     fs_data->layout.sectors_per_cluster = bpb_extended->bpb.sectors_per_cluster;
     fs_data->layout.first_fat_sector = bpb_extended->bpb.reserved_sectors;

@@ -76,7 +76,7 @@ bool get_name(iso9660_dir_record_t* record, char* out, size_t out_size) {
     return fmt_name(record->name, record->name_len, out);
 }
 
-bool iso9660_init(block_device_t* device, iso9660_fsdata_t* fs_data) {
+bool iso9660_init(std::unique_ptr<block_device_t> device, iso9660_fsdata_t* fs_data) {
     if (!device || !fs_data)
         return false;
 
@@ -84,7 +84,7 @@ bool iso9660_init(block_device_t* device, iso9660_fsdata_t* fs_data) {
     if (!buffer)
         return false;
 
-    if (!block_read(device, 16, buffer))
+    if (!block_read(device.get(), 16, buffer))
         return false;
 
     iso9660_volume_primary_volume_descriptor_t* pvd = (iso9660_volume_primary_volume_descriptor_t*)buffer;
@@ -93,8 +93,8 @@ bool iso9660_init(block_device_t* device, iso9660_fsdata_t* fs_data) {
     
     iso9660_dir_record_t* root_record = (iso9660_dir_record_t*)pvd->directory_entry_root;
     
-    fs_data->block_device = device;
-    fs_data->volume_size = pvd->volume_space_size.le * device->block_size;
+    fs_data->block_device = move(device);
+    fs_data->volume_size = pvd->volume_space_size.le * fs_data->block_device->block_size;
     fs_data->root_node.is_directory = true;
     fs_data->root_node.lba = root_record->extent_lba.le;
     fs_data->root_node.size = root_record->data_length.le;
@@ -146,7 +146,7 @@ bool iso9660_find_node(iso9660_fsdata_t* fs_data, const char* path, uint64_t siz
 
     // read target disk section
     bool error;
-    std::unique_ptr<uint8_t> disk_data = iso9660_read_from_disk(fs_data->block_device, size, lba, &error);
+    std::unique_ptr<uint8_t> disk_data = iso9660_read_from_disk(fs_data->block_device.get(), size, lba, &error);
     if (error)
         return false;
 
@@ -240,7 +240,7 @@ bool iso9660_read(iso9660_fsdata_t* fs_data, const char* path, uint8_t** out_dat
     if (!file_buffer.get())
         return false;
 
-    if (!block_read_sized(fs_data->block_device, node.lba, file_buffer.get(), aligned_size))
+    if (!block_read_sized(fs_data->block_device.get(), node.lba, file_buffer.get(), aligned_size))
         return false;
 
     *out_size = 0;
@@ -265,7 +265,7 @@ bool iso9660_list_directory(iso9660_fsdata_t* fs_data, const char* path, std::dy
         return false;
 
     bool error;
-    std::unique_ptr<uint8_t> disk_data = iso9660_read_from_disk(fs_data->block_device, node.size, node.lba, &error);
+    std::unique_ptr<uint8_t> disk_data = iso9660_read_from_disk(fs_data->block_device.get(), node.size, node.lba, &error);
     if (error)
         return false;
 

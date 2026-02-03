@@ -30,6 +30,7 @@
 #include "common.hpp"
 #include "storage/block_device.hpp"
 #include "std/array.hpp"
+#include "std/pointer.hpp"
 
 typedef uint16_t fat32_date_t;
 typedef uint16_t fat32_time_t;
@@ -105,7 +106,7 @@ struct fat32_node_t {
 };
 
 struct fat32_fsdata_t {
-    block_device_t* block_device;
+    std::unique_ptr<block_device_t> block_device;
     uint64_t volume_size;
     fat32_node_t root_node;
 
@@ -121,7 +122,7 @@ struct fat32_fsdata_t {
 
 bool fat32_validate(uint8_t* buffer, size_t size);
 
-bool fat32_init(block_device_t* device, fat32_fsdata_t* fs_data);
+bool fat32_init(std::unique_ptr<block_device_t> device, fat32_fsdata_t* fs_data);
 bool fat32_find_node(fat32_fsdata_t* fs_data, const char* path, size_t size, uint32_t cluster, fat32_node_t* out_node);
 bool fat32_directory_exists(fat32_fsdata_t* fs_data, const char* path);
 bool fat32_file_exists(fat32_fsdata_t* fs_data, const char* path);
