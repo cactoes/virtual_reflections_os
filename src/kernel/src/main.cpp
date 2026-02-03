@@ -90,6 +90,141 @@ void init_pci_devices(const pci_device_t* device) {
     }
 };
 
+fs_type_t get_filesystem(block_device_t* device) {
+    if (!device)
+        return fs_type_t::UNKNOWN;
+
+    uint8_t* buffer = (uint8_t*)malloc(device->block_size);
+    if (!block_read(device, 16, buffer))
+        return fs_type_t::UNKNOWN;
+
+    if (memeq(&buffer[1], "CD001", 5)) {
+        free(buffer);
+        return fs_type_t::ISO9660;        
+    }
+
+    memzero(buffer, device->block_size);
+    if (!block_read(device, 0, buffer))
+        return fs_type_t::UNKNOWN;
+
+    if (fat32_validate(buffer, device->block_size)) {
+        free(buffer);
+        return fs_type_t::FAT32;
+    }
+
+    free(buffer);
+    return fs_type_t::UNKNOWN;
+}
+
+bool mount_block_device(std::unique_ptr<block_device_t> device, const char* name) {
+    switch (get_filesystem(device.get())) {
+        case fs_type_t::ISO9660: {
+            iso9660_fsdata_t* data = new (malloc(sizeof(iso9660_fsdata_t))) iso9660_fsdata_t();
+            if (!data)
+                return false;
+
+            if (!iso9660_init(move(device), data)) {
+                free(data);
+                return false;
+            }
+
+            return vfs_mount_file_system(get_global_vfs(), name, fs_type_t::ISO9660, std::unique_ptr<void>(data));
+        }
+        case fs_type_t::FAT32: {
+            fat32_fsdata_t* data = new (malloc(sizeof(fat32_fsdata_t))) fat32_fsdata_t();
+            if (!data)
+                return false;
+
+            if (!fat32_init(move(device), data)) {
+                free(data);
+                return false;
+            }
+
+            return vfs_mount_file_system(get_global_vfs(), name, fs_type_t::FAT32, std::unique_ptr<void>(data));
+        }
+        case fs_type_t::UNKNOWN:
+        default:
+            return false;
+    }
+
+    return false;
+}
+
+bool storage_controller_mount_device(vfs_t* vfs, void* device, block_device_type_t type, const char* name) {
+    if (!vfs || !device || !name)
+        return false;
+    
+    if (type == block_device_type_t::UNKOWN)
+        return false;
+
+    uint8_t* buffer = nullptr;
+    uint64_t logical_sector_size = 0;
+    uint64_t lba_count = 0;
+    switch (type) {
+        case block_device_type_t::IDE:
+            logical_sector_size = ((ide_device_t*)device)->logical_sector_size;
+            lba_count = ((ide_device_t*)device)->lba_count;
+            buffer = (uint8_t*)malloc(logical_sector_size);
+            if (!buffer) return false;
+            if (!ide_read((ide_device_t*)device, 0, buffer, ((ide_device_t*)device)->logical_sector_size)) {
+                free(buffer);
+                return false;
+            }
+            break;
+        case block_device_type_t::AHCI:
+            logical_sector_size = ((ahci_device_t*)device)->logical_sector_size;
+            lba_count = ((ahci_device_t*)device)->lba_count;
+            buffer = (uint8_t*)malloc(logical_sector_size);
+            if (!buffer) return false;
+            if (!ahci_read((ahci_device_t*)device, 0, buffer, ((ahci_device_t*)device)->logical_sector_size)) {
+                free(buffer);
+                return false;
+            }
+            break;
+    }
+
+    std::unique_ptr<block_device_t> initial_block_device = std::make_unique<block_device_t>();
+    initial_block_device->disk_device = device;
+    initial_block_device->type = type;
+    initial_block_device->start_lba = 0;
+    initial_block_device->end_lba = lba_count - 1;
+    initial_block_device->block_size = logical_sector_size;
+
+    if (mount_block_device(move(initial_block_device), name)) {
+        free(buffer);
+        return true;
+    }
+
+    // might be mbr
+    if (!is_mbr(buffer, logical_sector_size)) {
+        free(buffer);
+        return false;
+    }
+
+    mbr_t* mbr = (mbr_t*)buffer;
+
+    for (size_t i = 0; i < MBR_PARTITIONS; i++) {
+        const mbr_entry_t* partition = &mbr->partitions[i];
+        if (!mbr_is_entry_valid(partition))
+            continue;
+
+        std::unique_ptr<block_device_t> block_device = std::make_unique<block_device_t>();
+        block_device->disk_device = device;
+        block_device->type = type;
+        block_device->start_lba = partition->lba_start;
+        block_device->end_lba = partition->lba_start + partition->sector_count - 1;
+        block_device->block_size = logical_sector_size;
+
+        char* name_buffer = (char*)malloc(strlen(name) + 6);
+        sprintf(name_buffer, strlen(name) + 6, "%sp%u", name, i);
+        (void)mount_block_device(move(block_device), name_buffer);
+        free(name_buffer);
+    }
+
+    free(buffer);
+    return true;
+}
+
 extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
     // validate multiboot
     if (mb_has_valid_magic((multiboot_t*)p_multiboot_struct) != MULTIBOOT_VER2)
@@ -170,58 +305,20 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
     std::dynamic_array<ide_device_t> ide_devices {};
     ide_devices.resize(4);
 
-    if (!ide_init(ide_controller, &ide_devices))
-        debug_trap("ide init");
-
-    ide_device_t* ide_device = ide_devices.get_at(0);
-    // LIFETIME PROBLEMS
-    block_device_t ide_block_device {};
-    iso9660_fsdata_t ide_fs_data {};
-    if (ide_device) {
-        ide_block_device.disk_device = ide_device;
-        ide_block_device.type = block_device_type_t::IDE;
-        ide_block_device.start_lba = 0;
-        ide_block_device.end_lba = ide_device->lba_count - 1;
-        ide_block_device.block_size = ide_device->logical_sector_size;
-
-        uint8_t* buffer = (uint8_t*)malloc(ide_device->logical_sector_size);
-        if (!block_read(&ide_block_device, 16, buffer))
-            debug_trap("block read");
-
-        // iso9660 check
-        if (!memeq(&buffer[1], "CD001", 5))
-            debug_trap("ide check");
-        
-        free(buffer);
-
-        if (!iso9660_init(&ide_block_device, &ide_fs_data))
-            debug_trap("iso9660 init");
-
-        if (!vfs_mount_file_system(get_global_vfs(), "HardDisk0", fs_type_t::ISO9660, &ide_fs_data))
-            debug_trap("vfs mount fs");
+    if (ide_init(ide_controller, &ide_devices)) {
+        size_t ide_device_index = 0;
+        for (auto& device : ide_devices) {
+            char name[18];
+            sprintf(name, sizeof(name), "harddisk%i", ide_device_index++);
+            if (!storage_controller_mount_device(get_global_vfs(), &device, block_device_type_t::IDE, name)) {
+                kprintf("failed to mount drive: %s\n", name);
+            } else {
+                kprintf("mounted: %s\n", name);
+            }
+        }
+    } else {
+        kprintf("ide driver failed to init\n");
     }
-
-    // const file_descriptor_t fd = vfs_open_file(&vfs, "/HardDisk0/.env");
-
-    // uint8_t* data;
-    // size_t size;
-    // if (!vfs_read_file(&vfs, fd, &data, &size))
-    //     debug_trap("vfs file read");
-
-    // size_t ide_device_index = 0;
-    // for (auto& drive : ide_devices) {
-    //     // init device interface
-    //     auto ide_storage = std::make_unique<ide_storage_driver_t>(&drive);
-
-    //     char disk_mount_name_buffer[20];
-    //     sprintf(disk_mount_name_buffer, 20, "/disk%i", ide_device_index++);
-
-    //     if (!mount_disk(move(ide_storage), disk_mount_name_buffer)) {
-    //         kprintf("failed to mount disk: %s\n", disk_mount_name_buffer);
-    //     } else {
-    //         kprintf("mounted: %s\n", disk_mount_name_buffer);
-    //     }
-    // }
 
     // ahci device
     // TODO: move into init pcie devices function
@@ -230,66 +327,20 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
 
     ahci_driver_ctx_t ahci_driver_ctx {};
     std::dynamic_array<ahci_device_t> ahci_devices {};
-    if (!ahci_init(ahci_controller, &ahci_driver_ctx, &ahci_devices))
-        debug_trap("ahci init");
-
-    ahci_device_t* ahci_device = ahci_devices.get_at(0);
-    // LIFETIME PROBLEMS
-    block_device_t ahci_block_device_p0 {};
-    fat32_fsdata_t ahci_fat32_data {};
-    if (ahci_device) {
-        uint8_t* buffer = (uint8_t*)malloc(ahci_device->logical_sector_size);
-        if (!ahci_read(ahci_device, 0, buffer, ahci_device->logical_sector_size))
-            debug_trap("ahci initial read");
-
-        // check MBR
-        mbr_t* mbr = (mbr_t*)buffer;
-        if (mbr->signature == 0xAA55) {
-            for (size_t i = 0; i < MBR_PARTITIONS; i++) {
-                const auto& partition = mbr->partitions[i];
-                // for now only support 1 partition cuz of life time issues
-                if (i > 0)
-                    continue;
-
-                ahci_block_device_p0.disk_device = ahci_device;
-                ahci_block_device_p0.type = block_device_type_t::AHCI;
-                ahci_block_device_p0.start_lba = partition.lba_start;
-                ahci_block_device_p0.end_lba = partition.lba_end;
-                ahci_block_device_p0.block_size = ahci_device->logical_sector_size;
-
-                uint8_t* buffer2 = (uint8_t*)malloc(ahci_device->logical_sector_size);
-                if (!block_read(&ahci_block_device_p0, 0, buffer2))
-                    debug_trap("ahci block read");
-
-                if (!fat32_validate(buffer2, ahci_device->logical_sector_size))
-                    debug_trap("not fat32");
-
-                if (!fat32_init(&ahci_block_device_p0, &ahci_fat32_data))
-                    debug_trap("fat32 init");
-
-                if (!vfs_mount_file_system(get_global_vfs(), "Drive0p0", fs_type_t::FAT32, &ahci_fat32_data))
-                    debug_trap("vfs mount fs2");
+    if (ahci_init(ahci_controller, &ahci_driver_ctx, &ahci_devices)) {
+        size_t ahci_device_index = 0;
+        for (auto& device : ahci_devices) {
+            char name[18];
+            sprintf(name, sizeof(name), "drive%i", ahci_device_index++);
+            if (!storage_controller_mount_device(get_global_vfs(), &device, block_device_type_t::AHCI, name)) {
+                kprintf("failed to mount drive: %s\n", name);
+            } else {
+                kprintf("mounted: %s\n", name);
             }
-        } else {
-            // not mbr
         }
+    } else {
+        kprintf("ahci driver failed to init\n");
     }
-
-    // size_t ahci_device_index = 0;
-    // for (auto& drive : ahci_devices) {
-    //     if (drive.was_setup) {
-    //         auto ahci_storage = std::make_unique<ahci_storage_driver_t>(&drive);
-
-    //         char disk_mount_name_buffer[20];
-    //         sprintf(disk_mount_name_buffer, 20, "/drive%i", ahci_device_index++);
-
-    //         if (!mount_disk(move(ahci_storage), disk_mount_name_buffer)) {
-    //             kprintf("failed to mount drive: %s\n", disk_mount_name_buffer);
-    //         } else {
-    //             kprintf("mounted: %s\n", disk_mount_name_buffer);
-    //         }
-    //     }
-    // }
 
     pci_loop_devices(get_global_pcie_device_manager(), init_pci_devices);
 
@@ -297,12 +348,12 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
     set_global_driver_manager(&driver_manager);
 
     std::dynamic_array<vfs_node_t> nodes {};
-    if (vfs_list_directory(&vfs, "/HardDisk0", &nodes)) {
+    if (vfs_list_directory(&vfs, "/harddisk0", &nodes)) {
         for (auto& node : nodes) {
             if (str_ends_with(node.name.c_str(), ".sys")) {
                 std::string driver_name = node.name.substr(0, node.name.length() - 4);
 
-                const std::string driver_path = std::string("/HardDisk0/") + driver_name + ".sys";
+                const std::string driver_path = std::string("/harddisk0/") + driver_name + ".sys";
                 file_descriptor_t driver_file_handle = vfs_open_file(&vfs, driver_path.c_str());
                 if (driver_file_handle == FILE_DESCRIPTOR_INVALID) {
                     kprintf("failed to open handle to driver '%s'\n", driver_name.c_str());
