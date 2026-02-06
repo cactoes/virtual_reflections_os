@@ -19,6 +19,7 @@
 #include "storage/block_device.hpp"
 
 typedef uint64_t file_descriptor_t;
+typedef file_descriptor_t fd_t;
 
 enum class fs_type_t {
     UNKNOWN = 0,
