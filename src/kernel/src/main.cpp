@@ -191,6 +191,8 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
 
     // finished core startup
 
+    // TODO @since 06/02/2026 -- 10:34
+    // proper ps2 startup etc
     keyboard_initialize();
 
     nidm_t nidm {};
@@ -313,9 +315,13 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
     // while (!is_desktop_ready());
     // minesweeper_init();
 
-    vthread_handle_t vth = vthread_create(terminal_thread_main, p_kpml4);
-    if (vth == VTHREAD_HANDLE_INVALID)
-        kprintf("failed to start terminal");
+    // if (vthread_create(terminal_thread_main, p_kpml4) == VTHREAD_HANDLE_INVALID)
+    //     kprintf("failed to start terminal");
+
+    // if (vthread_create(desktop_init, p_kpml4) == VTHREAD_HANDLE_INVALID)
+    //     printf("Failed start graphical environment\n");
+
+    desktop_init();
 
     const vthread_handle_t critical_threads[] = {
         vthread_create([]() { while (true) nidm_process_packet(); return 1; }, p_kpml4),

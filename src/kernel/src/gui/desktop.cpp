@@ -10,6 +10,7 @@
 #include "gui/programs/minesweeper.hpp"
 #include "gui/programs/webbrowser.hpp"
 #include "gui/font8x8.hpp"
+#include "storage/vfs.hpp"
 
 static vga_buffer_t* g_desktop_back_buffer = nullptr;
 static bool g_desktop_ready = false;
@@ -301,6 +302,86 @@ void desktop_render_window(const desktop_render_target_t* target) {
     desktop_render_text(target->x + 1, target->y + 2, target->name.c_str(), { 0, 0, 0 });
 }
 
+#include "io.hpp"
+
+struct bmp_file_header_t {
+    uint8_t signature[2];
+    uint32_t file_size;
+    uint16_t unused[2];
+    uint32_t image_data_offset;
+} PACKED;
+
+struct bmp_info_header_t {
+    uint32_t header_size;
+    int width;
+    int height;
+    uint16_t planes;
+    uint16_t bits_per_pixel;
+    uint32_t compression;
+    uint32_t uncompressed_size;
+    int pixels_per_m_x;
+    int pixels_per_m_y;
+    uint32_t number_of_colors;
+    uint32_t number_of_importand_colors;
+} PACKED;
+
+struct bmp_color_t {
+    uint8_t r;
+    uint8_t g;
+    uint8_t b;
+} PACKED;
+
+bool is_bmp(uint8_t* data, size_t size) {
+    if (!data)
+        return false;
+
+    if (size < sizeof(bmp_file_header_t) + sizeof(bmp_info_header_t) + sizeof(bmp_color_t))
+        return false;
+
+    return data[0] == 'B' && data[1] == 'M';
+}
+
+void load_background() {
+    fd_t fd = vfs_open_file(get_global_vfs(), "harddisk0/media/logo.bmp");
+    if (fd == FILE_DESCRIPTOR_INVALID)
+        return kprintf("failed to open logo.bmp\n");
+
+    uint8_t* data;
+    size_t size;
+    if (!vfs_read_file(get_global_vfs(), fd, &data, &size))
+        return kprintf("failed to read logo.bmp");
+    
+    if (!is_bmp(data, size))
+        return kprintf("not bmp!\n");
+
+    bmp_file_header_t* file_header = (bmp_file_header_t*)data;
+    bmp_info_header_t* info_header = (bmp_info_header_t*)(data + sizeof(bmp_file_header_t));
+
+    if (info_header->bits_per_pixel != 8)
+        return kprintf("not 8-bit image\n");
+
+    uint8_t* color_pallet = (uint8_t*)(data + sizeof(bmp_file_header_t) + sizeof(bmp_info_header_t));
+
+    bmp_color_t pallet[256] {};
+    for (int i = 0; i < info_header->number_of_colors; i++) {
+        pallet[i].b = *(color_pallet + (i * 4) + 0);
+        pallet[i].g = *(color_pallet + (i * 4) + 1);
+        pallet[i].r = *(color_pallet + (i * 4) + 2);
+    }
+
+    uint8_t* image_data = (uint8_t*)(data + file_header->image_data_offset);
+
+    for (int y = info_header->height - 1; y >= 0; y--) {
+        for (int x = 0; x < info_header->width; x++) {
+            uint8_t index = image_data[y * info_header->width + x];
+            desktop_render_pixel(x, y - 10, { .r = pallet[index].r, .g = pallet[index].g, .b = pallet[index].b });
+        }
+    }
+
+    // free(data);
+    // vfs_close_file(get_global_vfs(), fd);
+}
+
 int desktop_init() {
     // setup renderer
     desktop_render_init();
@@ -313,7 +394,16 @@ int desktop_init() {
     desktop_event_subscribe(DESKTOP_EVENT_MOUSE_MOVE, desktop_on_mouse_move);
 
     // minesweeper_init();
-    webbrowser_init();
+    // webbrowser_init();
+
+    load_background();
+
+    desktop_render_end();
+
+    while (1)
+    {
+    }
+    
 
     g_desktop_ready = true;
 
