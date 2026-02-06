@@ -1,3 +1,8 @@
+//==========================================
+/// @file       vfs.hpp
+/// @brief      
+//==========================================
+
 #pragma once
 
 #ifndef __VFS_HPP__
@@ -11,6 +16,7 @@
 #include "std/pointer.hpp"
 #include "storage/drivers/ahci.hpp"
 #include "storage/drivers/ide.hpp"
+#include "storage/block_device.hpp"
 
 typedef uint64_t file_descriptor_t;
 
@@ -49,5 +55,8 @@ file_descriptor_t vfs_open_file(vfs_t* vfs, const char* path);
 bool vfs_close_file(vfs_t* vfs, file_descriptor_t fd);
 bool vfs_read_file(vfs_t* vfs, file_descriptor_t fd, uint8_t** data, size_t* size);
 bool vfs_list_directory(vfs_t* vfs, const char* path, std::dynamic_array<vfs_node_t>* out_nodes);
+
+bool vfs_mount_block_device(vfs_t* vfs, std::unique_ptr<block_device_t> device, const char* name);
+bool vfs_mount_device(vfs_t* vfs, void* device, block_device_type_t type, const char* name);
 
 #endif // __VFS_HPP__

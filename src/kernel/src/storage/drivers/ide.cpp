@@ -245,3 +245,8 @@ bool ide_write(ide_device_t* device) {
 
     return false;
 }
+
+bool is_ide_device(const pci_device_t* device) {
+    return device->class_info.class_code == 0x1 &&
+           device->class_info.sub_class == 0x1;
+}

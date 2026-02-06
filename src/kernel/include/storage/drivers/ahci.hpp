@@ -246,5 +246,6 @@ bool ahci_init(const pci_device_t* device, ahci_driver_ctx_t* ahci_driver_ctx, s
 bool ahci_device_init(ahci_device_t* device);
 bool ahci_read(ahci_device_t* device, uint64_t lba, uint8_t* buffer, size_t size);
 bool ahci_write(ahci_device_t* device);
+bool is_ahci_device(const pci_device_t* device);
 
 #endif // __AHCI_HPP__

@@ -88,5 +88,6 @@ bool ide_init(const pci_device_t* device, std::dynamic_array<ide_device_t>* devi
 bool ide_device_init(ide_device_t* device);
 bool ide_read(ide_device_t* device, uint64_t lba, uint8_t* buffer, size_t size);
 bool ide_write(ide_device_t* device);
+bool is_ide_device(const pci_device_t* device);
 
 #endif // __IDE_HPP__

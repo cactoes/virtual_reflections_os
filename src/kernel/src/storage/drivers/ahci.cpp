@@ -299,3 +299,9 @@ bool ahci_write(ahci_device_t* device) {
 
     return false;
 }
+
+bool is_ahci_device(const pci_device_t* device) {
+    return device->class_info.prog_if == 0x1 &&
+           device->class_info.class_code == 0x1 &&
+           device->class_info.sub_class == 0x6;
+}
