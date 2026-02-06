@@ -30,7 +30,6 @@
 
 #define IS_VALID_BUFFER(buff) ((buff) && (buff)->buffer && (buff)->size.width == VGA_GM_BUFFER_WIDTH && (buff)->size.height == VGA_GM_BUFFER_HEIGHT)
 
-
 #include "common.hpp"
 
 enum class vga_tm_color_t : uint8_t {
