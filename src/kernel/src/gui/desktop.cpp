@@ -362,19 +362,38 @@ void load_background() {
 
     uint8_t* color_pallet = (uint8_t*)(data + sizeof(bmp_file_header_t) + sizeof(bmp_info_header_t));
 
-    bmp_color_t pallet[256] {};
+    bmp_color_t colors[256] {};
     for (int i = 0; i < info_header->number_of_colors; i++) {
-        pallet[i].b = *(color_pallet + (i * 4) + 0);
-        pallet[i].g = *(color_pallet + (i * 4) + 1);
-        pallet[i].r = *(color_pallet + (i * 4) + 2);
+        colors[i].b = *(color_pallet + (i * 4) + 0);
+        colors[i].g = *(color_pallet + (i * 4) + 1);
+        colors[i].r = *(color_pallet + (i * 4) + 2);
     }
 
     uint8_t* image_data = (uint8_t*)(data + file_header->image_data_offset);
 
-    for (int y = info_header->height - 1; y >= 0; y--) {
-        for (int x = 0; x < info_header->width; x++) {
-            uint8_t index = image_data[y * info_header->width + x];
-            desktop_render_pixel(x, y - 10, { .r = pallet[index].r, .g = pallet[index].g, .b = pallet[index].b });
+    int width  = info_header->width;
+    int height = info_header->height;
+    bool bottom_up = true;
+
+    if (height < 0) {
+        height = -height;
+        bottom_up = false;
+    }
+
+    /* Each row is padded to 4 bytes */
+    int row_stride = (width + 3) & ~3;
+
+    for (int y = 0; y < height; y++) {
+        int bmp_y = bottom_up ? (height - 1 - y) : y;
+
+        for (int x = 0; x < width; x++) {
+            uint8_t index = image_data[bmp_y * row_stride + x];
+            bmp_color_t c = colors[index];
+            desktop_render_pixel(
+                x,
+                y,
+                desktop_render_color_t{ .r = c.r, .g = c.g, .b = c.b }
+            );
         }
     }
 
