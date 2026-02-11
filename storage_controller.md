@@ -2,14 +2,17 @@
 - [x] vfs is storage only
 - [ ] supported file systems
     - [ ] fat32
+        - [x] read
+        - [ ] write
     - [x] iso9660
-- [ ] supported storage interfaces
-    - [ ] ahci
+- [x] supported storage interfaces
+    - [x] ahci
     - [x] ide
 - [x] drive addressing is clear
 - [ ] drive addressing is absolute
-- [ ] support partitioning
-    - [ ] mbr
+- [x] support partitioning
+    - [x] mbr
+    - [ ] gpt
 
 ```
 [ vfs ]                -> resolve full path -> "drive/part/test.txt"
