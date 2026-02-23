@@ -198,6 +198,7 @@ bool ide_init(const pci_device_t* device, std::dynamic_array<ide_device_t>* devi
             uint8_t ch = in_port<uint8_t>(channel.io_base + IDE_REG_LBA_HIGH);
 
             ide_device_t ide_device {};
+            mutex_init(&ide_device.mutex);
             ide_device.channel = channel;
             ide_device.type = type;
             ide_device.is_atapi = cl == ATAPI_SIG_LBA_MID && ch == ATAPI_SIG_LBA_HIGH;
@@ -234,6 +235,8 @@ bool ide_read(ide_device_t* device, uint64_t lba, uint8_t* buffer, size_t size) 
     if (device->logical_sector_size != size)
         return false;
 
+    mutex_lock_guard guard(&device->mutex);
+
     return device->is_atapi ? ide_atapi_read(device, lba, buffer) : ide_ata_read(device, lba, buffer);
 }
 
@@ -242,6 +245,7 @@ bool ide_write(ide_device_t* device) {
         return false;
 
     // TODO @since 24/01/2026 -- 03:06
+    mutex_lock_guard guard(&device->mutex);
 
     return false;
 }

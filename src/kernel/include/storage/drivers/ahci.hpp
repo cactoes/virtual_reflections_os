@@ -103,6 +103,7 @@
 #include "drivers/pcie.hpp"
 #include "std/array.hpp"
 #include "memory/heap.hpp"
+#include "utils/mutex.hpp"
 
 struct hba_port_t {
     volatile uint32_t clb;
@@ -234,6 +235,8 @@ struct ahci_device_t {
     uint64_t physical_sector_size;
 
     ahci_driver_ctx_t* ahci_driver_ctx;
+
+    mutex_t mutex;
 
     struct {
         char model[41];

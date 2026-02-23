@@ -236,6 +236,7 @@ bool ahci_init(const pci_device_t* device, ahci_driver_ctx_t* ahci_driver_ctx, s
             continue;
 
         ahci_device_t ahci_device {};
+        mutex_init(&ahci_device.mutex);
         ahci_device.port = port;
         ahci_device.ahci_driver_ctx = ahci_driver_ctx;
 
@@ -283,6 +284,8 @@ bool ahci_read(ahci_device_t* device, uint64_t lba, uint8_t* buffer, size_t size
     if (device->logical_sector_size != size)
         return false;
 
+    mutex_lock_guard guard(&device->mutex);
+
     switch (device->type) {
         case ahci_device_type_t::SATA: return ahci_sata_read(device, lba, buffer);
         default: return false;
@@ -296,6 +299,7 @@ bool ahci_write(ahci_device_t* device) {
         return false;
 
     // TODO @since 30/01/2026 -- 19:35
+    mutex_lock_guard guard(&device->mutex);
 
     return false;
 }

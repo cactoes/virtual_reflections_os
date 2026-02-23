@@ -47,6 +47,7 @@
 #include "common.hpp"
 #include "drivers/pcie.hpp"
 #include "std/array.hpp"
+#include "utils/mutex.hpp"
 
 enum class ide_channel_type_t {
     NONE = 0,
@@ -76,6 +77,8 @@ struct ide_device_t {
     uint64_t capacity;
     uint64_t logical_sector_size;
     uint64_t physical_sector_size;
+
+    mutex_t mutex;
 
     struct {
         char model[41];
