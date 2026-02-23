@@ -7,6 +7,7 @@
 #include "crash_handler.hpp"
 #include "std/pointer.hpp"
 #include "time/clock.hpp"
+#include "std/string.hpp"
 
 // TODO @since 23/10/2025 -- 19:06
 // change into 1 "bigger" thread handler
@@ -48,6 +49,12 @@ void vthread_handle_sleeping(vthread_t* p_vthread) {
 void vthread_handle_stopping(vthread_t* p_vthread) {
     // mutex_lock_guard guard(&g_mutex);
 
+    if (p_vthread->is_critical) {
+        char buffer[256];
+        (void)sprintf(buffer, sizeof(buffer), "critical thread died! (%s)", p_vthread->name ? p_vthread->name : "unknown");
+        kernel_fatal(KERNEL_FATAL_CRITICAL_THREAD_DIED, buffer);
+    }
+
     free(p_vthread->stack_bottom);
     free(p_vthread->fpu_area);
     g_threads.remove(p_vthread->handle);
@@ -79,9 +86,9 @@ vthread_handle_t vthread_start_and_setup_main() {
     p_vthread->handle = VTHREAD_MAIN_THREAD_HANDLE;
     p_vthread->pml4 = get_pml4();
     p_vthread->tls.handle = VTHREAD_MAIN_THREAD_HANDLE;
-    // p_vthread->tls.out_streams[0] = out_streams[0];
-    // p_vthread->tls.out_streams[1] = out_streams[1];
-    // p_vthread->tls.out_streams[2] = out_streams[2];
+
+    const char name[] = "main";
+    memcpy(p_vthread->name, name, sizeof(name));
     
     p_vthread->fpu_area = (uint8_t*)malloc(sizeof(uint8_t) * 512 + 32);
     p_vthread->fpu_state = (uint8_t*)align_up((uint64_t)p_vthread->fpu_area, 16);
@@ -91,7 +98,7 @@ vthread_handle_t vthread_start_and_setup_main() {
     return vthread_add(move(p_vthread)) ? 0 : VTHREAD_HANDLE_INVALID;
 }
 
-vthread_handle_t vthread_create(thread_entry_t p_thread_entry, void* pml4) {
+vthread_handle_t vthread_create(thread_entry_t p_thread_entry, void* pml4, const char name[VTHREAD_MAX_NAME_SIZE]) {
     uint64_t* stack = (uint64_t*)malloc(VTHREAD_STACK_SIZE);
     if (!stack)
         return VTHREAD_HANDLE_INVALID;
@@ -130,9 +137,12 @@ vthread_handle_t vthread_create(thread_entry_t p_thread_entry, void* pml4) {
     p_vthread->vt_state = vthread_state_t::RUNNING;
     p_vthread->pml4 = pml4;
     p_vthread->tls.handle = new_handle;
-    // p_vthread->tls.out_streams[0] = out_streams[0];
-    // p_vthread->tls.out_streams[1] = out_streams[1];
-    // p_vthread->tls.out_streams[2] = out_streams[2];
+
+    if (name) {
+        const size_t name_length = strlen(name);
+        memzero(p_vthread->name, VTHREAD_MAX_NAME_SIZE + 1);
+        memcpy(p_vthread->name, name, MIN(name_length, VTHREAD_MAX_NAME_SIZE));
+    }
 
     if (vthread_add(move(p_vthread)))
         return new_handle;
@@ -252,4 +262,14 @@ vthread_t* vthread_get(vthread_handle_t handle) {
         return nullptr;
 
     return current_thread_it->value.get();
+}
+
+bool vthread_set_critical(vthread_handle_t handle, bool state) {
+    auto current_thread_it = g_threads.get(handle);
+    if (current_thread_it == g_threads.end())
+        return false;
+
+    current_thread_it->value->is_critical = state;
+
+    return true;
 }

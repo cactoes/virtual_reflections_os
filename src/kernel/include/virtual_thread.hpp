@@ -14,6 +14,7 @@
 #define VTHREAD_STACK_SIZE          2000000     // 2M (randomly chosen)
 #define VTHREAD_STACK_DEADZONE      64000       // 64K (randomly chosen)
 #define VTHREAD_MAIN_THREAD_HANDLE  (vthread_handle_t)0
+#define VTHREAD_MAX_NAME_SIZE       63          // 63 actual chars, + a null terminator which makes 64
 
 #define VTHREAD_HANDLE_INVALID (vthread_handle_t)-1
 
@@ -60,6 +61,8 @@ struct vthread_t {
     // internal thread stuff
     uint64_t sleep_until_ms;
     int exit_code;
+    bool is_critical;
+    char name[VTHREAD_MAX_NAME_SIZE + 1];
 
     // memory map
     void* pml4;
@@ -77,7 +80,7 @@ vthread_handle_t vthread_start_and_setup_main();
 /// @param[in] p_thread_entry   entry point function for the new thread
 /// @param[in] pml4             pointer to the pml4 for the thread address space
 /// @return                     handle to the created vthread
-vthread_handle_t vthread_create(thread_entry_t p_thread_entry, void* pml4);
+vthread_handle_t vthread_create(thread_entry_t p_thread_entry, void* pml4, const char name[VTHREAD_MAX_NAME_SIZE] = nullptr);
 
 /// @brief                      handles a vthread interrupt & updates cpu state
 /// @param[in] p_cpu_state      pointer to the current cpu state
@@ -120,5 +123,7 @@ void vthread_terminate();
 bool vthread_is_closed(vthread_handle_t handle);
 
 vthread_t* vthread_get(vthread_handle_t handle);
+
+bool vthread_set_critical(vthread_handle_t handle, bool state = true);
 
 #endif // __VIRTUAL_THREAD_HPP__

@@ -321,28 +321,21 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
     // if (vthread_create(desktop_init, p_kpml4) == VTHREAD_HANDLE_INVALID)
     //     printf("Failed start graphical environment\n");
 
-    desktop_init();
+    // desktop_init();
 
     const vthread_handle_t critical_threads[] = {
-        vthread_create([]() { while (true) nidm_process_packet(); return 1; }, p_kpml4),
-        vthread_create([]() { while (true) ps2_mouse_process_packet(); return 1; }, p_kpml4),
-        vthread_create([]() { while (true) ps2_keyboard_process_packet(); return 1; }, p_kpml4)
+        vthread_create([]() { while (true) nidm_process_packet(); return 1; }, p_kpml4, "NIDM"),
+        vthread_create([]() { while (true) ps2_mouse_process_packet(); return 1; }, p_kpml4, "PS/2 Mouse"),
+        vthread_create([]() { while (true) ps2_keyboard_process_packet(); return 1; }, p_kpml4, "PS/2 Keyboard")
     };
 
-    // make sure the critical threads are not dying
-    // this also checks if any of the threads are actaully valid incase the startup fails
-    while (vthread_get_count() > 1) {
-        for (const auto handle : critical_threads) {
-            if (!vthread_get(handle))
-                kernel_fatal(KERNEL_FATAL_CRITICAL_THREAD_DIED, "critical thread died!");
-        }
+    for (const auto& thread : critical_threads)
+        vthread_set_critical(thread, true);
 
-        vthread_sleep(1);
-    }
-
-    kernel_fatal(KERNEL_FATAL_KERNEL_EXITED, "all kernel processes ended!");
+    // seems to crash loop?
+    vthread_terminate(1);
 
     // we shoudn t reach this point since the kernel should never stop
     // incase we do just hang here so we dont break anything
-    while (true);
+    while (true) vthread_sleep(1);
 }
