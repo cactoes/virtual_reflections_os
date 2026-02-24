@@ -69,6 +69,34 @@
 #define PIT_TIMER_INTERVAL 1000 // times per second
 #define DEVICE_HOST_NAME "VirtualReflections Machine"
 
+bool setup_network_functionality() {
+    const system_driver_handle_t inet_driver_handle = driver_manager_get_driver_handle(get_global_driver_manager(), "INetDrivers");
+
+    if (inet_driver_handle == SYSTEM_DRIVER_HANDLE_INVALID)
+        return false;
+
+    // start our driver as the dhcp subsystem
+    if (driver_query_capability(get_global_driver_manager(), inet_driver_handle, "dhcp") >= 1)
+        subsys_init(SUBSYS_DHCP_CLIENT, std::make_unique<subsys_dhcp_client_driver_t>(DEVICE_HOST_NAME));
+
+    // start our driver as the dhcp subsystem
+    if (driver_query_capability(get_global_driver_manager(), inet_driver_handle, "dns") >= 1)
+        subsys_init(SUBSYS_DNS_CLIENT, std::make_unique<subsys_dns_client_driver_t>());
+
+    // lets hope that eth0 was configured qq
+    auto subsystem_dhcp_client = subsys_get<subsys_dhcp_client_t>(SUBSYS_DHCP_CLIENT);
+    if (!subsystem_dhcp_client)
+        return false;
+
+    auto network_interface = nidm_get_device_on_interface(get_global_nidm(), "eth0");
+    if (!network_interface)
+        return false;
+
+    subsystem_dhcp_client->configure(network_interface);
+
+    return true;
+}
+
 void init_pci_devices(const pci_device_t* device) {
     if (is_e1000_device(device)) {
         // TODO @since 06/02/2026 -- 09:50
@@ -255,20 +283,8 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
         }
     }
 
-    const system_driver_handle_t inet_driver_handle = driver_manager_get_driver_handle(get_global_driver_manager(), "INetDrivers");
-    if (inet_driver_handle != SYSTEM_DRIVER_HANDLE_INVALID) {
-        // start our driver as the dhcp subsystem
-        if (driver_query_capability(get_global_driver_manager(), inet_driver_handle, "dhcp") >= 1)
-            subsys_init(SUBSYS_DHCP_CLIENT, std::make_unique<subsys_dhcp_client_driver_t>(DEVICE_HOST_NAME));
-
-        // start our driver as the dhcp subsystem
-        if (driver_query_capability(get_global_driver_manager(), inet_driver_handle, "dns") >= 1)
-            subsys_init(SUBSYS_DNS_CLIENT, std::make_unique<subsys_dns_client_driver_t>());
-    }
-
-    // lets hope that eth0 was configured qq
-    auto subsystem_dhcp_client = subsys_get<subsys_dhcp_client_t>(SUBSYS_DHCP_CLIENT);
-    subsystem_dhcp_client->configure(nidm_get_device_on_interface(get_global_nidm(), "eth0"));
+    if (!setup_network_functionality())
+        kprintf("failed to setup network functionality!\n");
 
     auto net_test = []() {
         auto tcp_callback = [](const uint8_t* data, size_t size) {
