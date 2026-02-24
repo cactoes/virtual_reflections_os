@@ -100,6 +100,37 @@ static x86_64_gdt_entry_t g_x86_64_kernel_64_code_entry  {
     .base_high8 = 0,
 };
 
+static x86_64_gdt_entry_t g_x86_64_kernel_64_data_entry {
+    .limit = 0,
+    .base_low16 = 0,
+    .base_mid8 = 0,
+    .access = X86_64_GDT_ACCESS_PRESENT | X86_64_GDT_ACCESS_RING0 | 
+              X86_64_GDT_ACCESS_SEGMENT | X86_64_GDT_ACCESS_READWRITE,
+    .granularity = 0, 
+    .base_high8 = 0,
+};
+
+static x86_64_gdt_entry_t g_x86_64_user_64_code_entry  {
+    .limit = 0,
+    .base_low16 = 0,
+    .base_mid8 = 0,
+    .access = X86_64_GDT_ACCESS_PRESENT | X86_64_GDT_ACCESS_RING3 |
+              X86_64_GDT_ACCESS_SEGMENT | X86_64_GDT_ACCESS_EXECUTABLE |
+              X86_64_GDT_ACCESS_READWRITE,
+    .granularity = X86_64_GDT_LONG_MODE,
+    .base_high8 = 0,
+};
+
+static x86_64_gdt_entry_t g_x86_64_user_64_data_entry  {
+    .limit = 0,
+    .base_low16 = 0,
+    .base_mid8 = 0,
+    .access = X86_64_GDT_ACCESS_PRESENT | X86_64_GDT_ACCESS_RING3 |
+              X86_64_GDT_ACCESS_SEGMENT | X86_64_GDT_ACCESS_READWRITE,
+    .granularity = 0,
+    .base_high8 = 0,
+};
+
 template <size_t entry_count>
 void x86_64_gdt_init(x86_64_gdt_t<entry_count>* p_gdt) {
     memzero(p_gdt, sizeof(x86_64_gdt_t<entry_count>));
@@ -115,7 +146,7 @@ void x86_64_gdt_set_entry(x86_64_gdt_t<entry_count>* p_gdt, x86_64_gdt_entry_t* 
 
 template <size_t entry_count>
 void x86_64_gdt_set_tss(x86_64_gdt_t<entry_count>* p_gdt, x86_64_tss_t* p_tss) {
-    p_gdt->tss_entry.length = sizeof(x86_64_tss_t);
+    p_gdt->tss_entry.length = sizeof(x86_64_tss_t) - 1;
     p_gdt->tss_entry.base_low16 = (uint16_t)(((uint64_t)p_tss) & MAX_UINT16);
     p_gdt->tss_entry.base_mid8 = (uint8_t)(((uint64_t)p_tss >> 16) & MAX_UINT8);
     p_gdt->tss_entry.flags1 = 0b10001001;

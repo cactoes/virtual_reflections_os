@@ -13,8 +13,11 @@
 #define ARCH_X86_64
 #ifdef ARCH_X86_64
 
-#define GDT_ENTRY_COUNT 2
+#define GDT_ENTRY_COUNT 5
 #define KERNEL_CODE_SELECTOR_INDEX 1
+#define KERNEL_DATA_SELECTOR_INDEX 2
+#define USER_CODE_SELECTOR_INDEX 4
+#define USER_DATA_SELECTOR_INDEX 3
 
 #include "arch/x86_64/gdt.hpp"
 

@@ -162,6 +162,117 @@ void init_pci_devices(const pci_device_t* device) {
     }
 };
 
+struct cpu_local_t {
+    uint64_t kernel_rsp;
+    uint64_t user_rsp;
+};
+
+static cpu_local_t cpu0 {};
+
+void enter_usermode(uint64_t entry_point, uint64_t user_stack_top) {
+    cli();
+
+    uint16_t user_ds = (uint16_t)(X86_64_GDT_INDEX_TO_ENTRY(USER_DATA_SELECTOR_INDEX) | 3);
+    uint16_t user_cs = (uint16_t)(X86_64_GDT_INDEX_TO_ENTRY(USER_CODE_SELECTOR_INDEX) | 3);
+
+    asm volatile (
+        // set data segments
+        "mov %w[ds], %%ax\n"
+        "mov %%ax, %%ds\n"
+        "mov %%ax, %%es\n"
+        "mov %%ax, %%fs\n"
+        "mov %%ax, %%gs\n"
+        // build iretq frame
+        "pushq %[ss]\n"
+        "pushq %[rsp]\n"
+        "pushq %[rflags]\n"
+        "pushq %[cs]\n"
+        "pushq %[rip]\n"
+        "iretq\n"
+        :
+        : [ds]     "r" ((uint64_t)user_ds),
+          [ss]     "r" ((uint64_t)user_ds),
+          [rsp]    "r" (user_stack_top),
+          [rflags] "r" (0x202ULL),
+          [cs]     "r" ((uint64_t)user_cs),
+          [rip]    "r" (entry_point)
+        : "rax", "memory"
+    );
+}
+
+void user_function() {
+    uint64_t ret;
+    asm volatile(
+        "mov $0, %%rax\n"
+        "syscall\n"
+        : "=a"(ret)
+        :
+        : "rcx", "r11", "memory"
+    );
+
+    // we cant leave user mode in the current state
+    while (true);
+}
+
+static inline uint64_t rdmsr(uint32_t addr) {
+    uint32_t low, high;
+
+    __asm__ volatile (
+        "rdmsr"
+        : "=a"(low), "=d"(high)
+        : "c"(addr)
+    );
+
+    return ((uint64_t)high << 32) | low;
+}
+
+static inline void wrmsr(uint32_t addr, uint64_t value) {
+    uint32_t low  = (uint32_t)(value & 0xFFFFFFFF);
+    uint32_t high = (uint32_t)(value >> 32);
+
+    __asm__ volatile (
+        "wrmsr"
+        :
+        : "c"(addr), "a"(low), "d"(high)
+    );
+}
+
+extern "C" uint64_t syscall_dispatch(uint64_t syscall_num) {
+    kprintf("syscall_num = %ul\n", syscall_num);
+    return 0;
+}
+
+extern "C" void x86_64_syscall_handler();
+
+void user_mode() {
+    // TODO @since 24/02/2026 -- 21:01
+    // 1. custom pml4 struct per process
+    // 2. kernel api via syscalls
+    // 3. process exit
+    // 4. make this actually the part that the user interacts with, no longer with the kernel terminal etc....
+
+    extern uint8_t KSTACK_TOP[];
+    cpu0.kernel_rsp = (uint64_t)KSTACK_TOP;
+
+    wrmsr(0xC0000102, (uint64_t)&cpu0);
+
+    uint64_t efer = rdmsr(0xC0000080);
+    efer |= 1;
+    wrmsr(0xC0000080, efer);
+
+    uint64_t star = ((uint64_t)X86_64_GDT_INDEX_TO_ENTRY(KERNEL_DATA_SELECTOR_INDEX) << 48)
+              | ((uint64_t)X86_64_GDT_INDEX_TO_ENTRY(KERNEL_CODE_SELECTOR_INDEX) << 32);
+    wrmsr(0xC0000081, star);
+    wrmsr(0xC0000082, (uint64_t)x86_64_syscall_handler);
+    wrmsr(0xC0000084, 0x300);
+
+    void* kernel_page_table = get_pml4();
+
+    void* user_stack_virtual = malloc_aligned(PAGE_SIZE, 16);
+
+    enter_usermode((uint64_t)user_function, (uint64_t)((uint8_t*)user_stack_virtual + PAGE_SIZE));
+}
+
 extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
     // validate multiboot
     if (mb_has_valid_magic((multiboot_t*)p_multiboot_struct) != MULTIBOOT_VER2)
@@ -331,9 +442,6 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
     // while (!is_desktop_ready());
     // minesweeper_init();
 
-    // if (vthread_create(terminal_thread_main, p_kpml4) == VTHREAD_HANDLE_INVALID)
-    //     kprintf("failed to start terminal");
-
     // if (vthread_create(desktop_init, p_kpml4) == VTHREAD_HANDLE_INVALID)
     //     printf("Failed start graphical environment\n");
 
@@ -347,6 +455,12 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
 
     for (const auto& thread : critical_threads)
         vthread_set_critical(thread, true);
+
+    if (vthread_create(terminal_thread_main, p_kpml4) == VTHREAD_HANDLE_INVALID)
+        kprintf("failed to start terminal");
+
+    // after usermode switch it basically shouldnt go back
+    user_mode();
 
     // we shoudn t reach this point since the kernel should never stop
     // incase we do just hang here so we dont break anything

@@ -63,11 +63,11 @@ entry:
 
 setup_page_tables:
     mov     eax,            PDPT
-    or      eax,            0b11 ; present, writable
+    or      eax,            0b111 ; present, writable, user ; TODO: remove the user bit
     mov     [PML4T],        eax
 
     mov     eax,            PDT
-    or      eax,            0b11 ; present, writable
+    or      eax,            0b111 ; present, writable, user ; TODO: remove the user bit
     mov     [PDPT],         eax
 
     mov     eax, __lnk_end_kernel
@@ -79,7 +79,7 @@ setup_page_tables:
     .loop:
         mov     eax, edx
         shl     eax, 21
-        or      eax, 0b10000011
+        or      eax, 0b10000111 ; TODO: remove the user bit
         mov     [PDT + edx * 8], eax
 
         inc     edx

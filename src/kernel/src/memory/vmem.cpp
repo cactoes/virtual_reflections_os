@@ -56,32 +56,35 @@ void* vmem_map_mmio_region(void* pml4, void* paddr) {
     return (void*)((uint64_t)vaddr + offset);
 }
 
+
 bool vmem_map_2mb(const void* pml4, const void* vaddr, const void* paddr) {
+    // TODO @since 24/02/2026 -- 21:00
+    // remove all the | PF_USER
     if (!is_aligned((uint64_t)vaddr, PAGE_SIZE_LARGE) ||
         !is_aligned((uint64_t)paddr, PAGE_SIZE_LARGE)) {
         return false;
     }
-    
+
     const uint64_t pml4e =  KPAGING_GET_PE(vaddr, 39);
     const uint64_t pdpe =   KPAGING_GET_PE(vaddr, 30);
     const uint64_t pde =    KPAGING_GET_PE(vaddr, 21);
-    
+
     uint64_t* pml4_virt = GET_PML4_VIRT();
     if (!KPAGING_CHECK_ENTRY(pml4_virt, pml4e)) {
         const void* page = pmem_get_page();
-        pml4_virt[pml4e] = ((uint64_t)page & ~0xFFF) | PF_PRESENT | PF_READ_WRITE;
+        pml4_virt[pml4e] = ((uint64_t)page & ~0xFFF) | PF_PRESENT | PF_READ_WRITE | PF_USER_SUPERVISOR;
         memzero(GET_PDPT_VIRT(pml4e), PAGE_SIZE);
     }
-    
+
     uint64_t* pdpt_virt = GET_PDPT_VIRT(pml4e);
     if (!KPAGING_CHECK_ENTRY(pdpt_virt, pdpe)) {
         const void* page = pmem_get_page();
-        pdpt_virt[pdpe] = ((uint64_t)page & ~0xFFF) | PF_PRESENT | PF_READ_WRITE;
+        pdpt_virt[pdpe] = ((uint64_t)page & ~0xFFF) | PF_PRESENT | PF_READ_WRITE | PF_USER_SUPERVISOR;
         memzero(GET_PDT_VIRT(pml4e, pdpe), PAGE_SIZE);
     }
-    
+
     uint64_t* pdt_virt = GET_PDT_VIRT(pml4e, pdpe);
-    pdt_virt[pde] = ((uint64_t)paddr & ~0x1FFFFF) | PF_PRESENT | PF_READ_WRITE | PF_PAGE_SIZE;
+    pdt_virt[pde] = ((uint64_t)paddr & ~0x1FFFFF) | PF_PRESENT | PF_READ_WRITE | PF_PAGE_SIZE | PF_USER_SUPERVISOR;
     flush_tlb((void*)vaddr);
     return true;
 }
@@ -117,9 +120,12 @@ size_t vmem_smart_alloc_pages(const void* pml4, const void* vaddr, size_t size) 
 }
 
 bool vmem_init(const void* pml4, const void* mbstruct) {
+    // TODO @since 24/02/2026 -- 21:00
+    // remove all the | PF_USER
+
     // recusive map the page table
     uint64_t* pml4_entries = (uint64_t*)pml4;
-    pml4_entries[511] = ((uint64_t)pml4 & ~0xFFF) | PF_PRESENT | PF_READ_WRITE;
+    pml4_entries[511] = ((uint64_t)pml4 & ~0xFFF) | PF_PRESENT | PF_READ_WRITE | PF_USER_SUPERVISOR;
 
     // TODO @since 01/12/2025 -- 02:16
     // place into arch wrapper

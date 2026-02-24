@@ -7,12 +7,14 @@ bits 64
 section .text
     ; c functions
     extern x86_64_int_handler
+    extern syscall_dispatch
 
     ; globals
     global x86_64_get_cpu_state
     global x86_64_isr_stub_table
     global x86_64_memcpy
     global x86_64_memset
+    global x86_64_syscall_handler
 
 ;==========================================
 ; @macro    push_all_regs
@@ -154,6 +156,52 @@ x86_64_memset:
     rep     stosb
     pop     rax
     ret
+
+
+; TODO: function def
+x86_64_syscall_handler:
+    swapgs
+    cli
+    mov  [gs:8], rsp
+    mov  rsp, [gs:0]
+
+    push rcx
+    push r11
+
+    push rdi
+    push rsi
+    push rdx
+    push r8
+    push r9
+    push r10
+    push rbx
+    push rbp
+    push r12
+    push r13
+    push r14
+    push r15
+
+    mov  rdi, rax
+    call syscall_dispatch
+
+    pop  r15
+    pop  r14
+    pop  r13
+    pop  r12
+    pop  rbp
+    pop  rbx
+    pop  r10
+    pop  r9
+    pop  r8
+    pop  rdx
+    pop  rsi
+    pop  rdi
+
+    pop  r11
+    pop  rcx
+
+    swapgs
+    o64 sysret
 
 ;==========================================
 ; @macro                    isr_stub

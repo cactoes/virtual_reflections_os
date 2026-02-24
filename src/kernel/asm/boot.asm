@@ -19,6 +19,7 @@ section .text
     ; globals
     global boot_kernel
     global KPML4T
+    global KSTACK_TOP
 
 bits 64
 
