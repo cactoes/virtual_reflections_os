@@ -126,4 +126,6 @@ vthread_t* vthread_get(vthread_handle_t handle);
 
 bool vthread_set_critical(vthread_handle_t handle, bool state = true);
 
+vthread_state_t vthread_get_state();
+
 #endif // __VIRTUAL_THREAD_HPP__

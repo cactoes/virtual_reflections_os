@@ -273,3 +273,10 @@ bool vthread_set_critical(vthread_handle_t handle, bool state) {
 
     return true;
 }
+
+vthread_state_t vthread_get_state() {
+    if (!g_current_thread)
+        return vthread_state_t::UNKNOWN;
+
+    return g_current_thread->vt_state;
+}

@@ -348,9 +348,6 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
     for (const auto& thread : critical_threads)
         vthread_set_critical(thread, true);
 
-    // seems to crash loop?
-    vthread_terminate(1);
-
     // we shoudn t reach this point since the kernel should never stop
     // incase we do just hang here so we dont break anything
     while (true) vthread_sleep(1);
