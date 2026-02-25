@@ -258,12 +258,6 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
     // initialize the gdt / tss
     gdt_init();
 
-    // initialze vga text mode
-    // TODO @since 10/10/2025 -- 01:24
-    // vga (device) manager
-    vga_tm_init_buffer(&g_vga_tm_buffer, (void*)VGA_TM_BUFFER_ADDR, VGA_TM_NUM_COLS, VGA_TM_NUM_ROWS);
-    vga_tm_clear_buffer(&g_vga_tm_buffer);
-
     // initialze the debug out stream
     debug_init();
 
@@ -275,7 +269,7 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
     heap_t heap {};
     if (!heap_init(&heap, p_kpml4, (void*)VMEM_KERNEL_HEAP_START, HEAP_START_SIZE))
         kernel_fatal(KERNEL_FATAL_HEAP_INIT, "kernel heap fail to initialze");
-    
+
     set_global_heap(&heap);
 
     // initialze the interrupt line(s)
@@ -288,6 +282,12 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
     ps2_mouse_init();
     pit_init(PIT_TIMER_INTERVAL);
     interrupt_init(gdt_get_kernel_code_selector());
+
+    // initialze vga text mode
+    // TODO @since 10/10/2025 -- 01:24
+    // vga (device) manager
+    vga_tm_init_buffer(&g_vga_tm_buffer, (void*)VGA_TM_BUFFER_ADDR, VGA_TM_NUM_COLS, VGA_TM_NUM_ROWS);
+    vga_tm_clear_buffer(&g_vga_tm_buffer);
 
     dma_heap_manager_t allocator {};
     set_global_dma_heap_manager(&allocator);
