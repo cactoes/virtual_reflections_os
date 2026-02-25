@@ -188,4 +188,27 @@ static inline void x86_64_fpu_load(void* store) {
     asm volatile("fxrstor (%0)" :: "r"(store));
 }
 
+static inline uint64_t x86_64_rdmsr(uint32_t addr) {
+    uint32_t low, high;
+
+    __asm__ volatile (
+        "rdmsr"
+        : "=a"(low), "=d"(high)
+        : "c"(addr)
+    );
+
+    return ((uint64_t)high << 32) | low;
+}
+
+static inline void x86_64_wrmsr(uint32_t addr, uint64_t value) {
+    uint32_t low  = (uint32_t)(value & 0xFFFFFFFF);
+    uint32_t high = (uint32_t)(value >> 32);
+
+    __asm__ volatile (
+        "wrmsr"
+        :
+        : "c"(addr), "a"(low), "d"(high)
+    );
+}
+
 #endif // __X86_64_GENERIC_HPP__

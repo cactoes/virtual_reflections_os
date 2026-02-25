@@ -214,29 +214,6 @@ void user_function() {
     while (true);
 }
 
-static inline uint64_t rdmsr(uint32_t addr) {
-    uint32_t low, high;
-
-    __asm__ volatile (
-        "rdmsr"
-        : "=a"(low), "=d"(high)
-        : "c"(addr)
-    );
-
-    return ((uint64_t)high << 32) | low;
-}
-
-static inline void wrmsr(uint32_t addr, uint64_t value) {
-    uint32_t low  = (uint32_t)(value & 0xFFFFFFFF);
-    uint32_t high = (uint32_t)(value >> 32);
-
-    __asm__ volatile (
-        "wrmsr"
-        :
-        : "c"(addr), "a"(low), "d"(high)
-    );
-}
-
 extern "C" uint64_t syscall_dispatch(uint64_t syscall_num) {
     kprintf("syscall_num = %ul\n", syscall_num);
     return 0;
@@ -460,7 +437,7 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
         kprintf("failed to start terminal");
 
     // after usermode switch it basically shouldnt go back
-    user_mode();
+    // user_mode();
 
     // we shoudn t reach this point since the kernel should never stop
     // incase we do just hang here so we dont break anything

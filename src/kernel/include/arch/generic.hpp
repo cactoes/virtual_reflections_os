@@ -171,6 +171,14 @@ inline bool memeq_impl(const void* a, const void* b, size_t size) noexcept {
     return true;
 }
 
+inline uint64_t rdmsr(uint32_t addr) {
+    return x86_64_rdmsr(addr);
+}
+
+inline void wrmsr(uint32_t addr, uint64_t value) {
+    x86_64_wrmsr(addr, value);
+}
+
 #endif // ARCH_X86_64
 
 #endif // __GENERIC_HPP__
