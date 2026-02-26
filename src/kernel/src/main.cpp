@@ -446,7 +446,7 @@ extern "C" void virtual_kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
 
 #include "memory/paging.hpp"
 #define KERNEL_VIRTUAL_BASE 0xFFFFF80000000000
-#define KERNEL_PHYSICAL_BASE 0x200000
+#define KERNEL_PHYSICAL_BASE 0
 
 /// @brief variable placed at the end of the kernel
 // NOLINTNEXTLINE
@@ -454,6 +454,11 @@ extern "C" uint64_t __lnk_end_kernel;
 extern uint8_t KSTACK_TOP[];
 
 extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
+    // TODO @since 26/02/2026 -- 02:20
+    // 1. create a new stack
+    // <<< here we jump to the virtual kernel entry >>>
+    // 2. clear out old kernel identity mapped pages
+
     // safe identity mapped space
 
     gdt_init();
@@ -465,37 +470,18 @@ extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
     if (!vmem_init(p_kpml4, p_multiboot_struct))
         debug_trap("initial vmem failed!");
 
-    // random heap for now
-    heap_t heap {};
-    if (!heap_init(&heap, p_kpml4, (void*)0x20000000, HEAP_START_SIZE))
-        debug_trap("kernel heap failed to initialize");
-
-    set_global_heap(&heap);
-
-    // create the new page table
-    uint64_t* new_pt = (uint64_t*)malloc(PAGE_SIZE);
-    void* new_pt_physical = vmem_virtual_to_physical(p_kpml4, new_pt);
-
-    // make the new page table recursive
-    new_pt[511] = ((uint64_t)new_pt_physical & ~0xFFF) | PF_PRESENT | PF_READ_WRITE;
-
     // map the kernel pages
     const uint64_t aligned_kernel_end_addr = align_up((uint64_t)&__lnk_end_kernel, PAGE_SIZE_LARGE);
     uint64_t kernel_page_count = aligned_kernel_end_addr / PAGE_SIZE_LARGE;
 
     uint64_t kernel_virtual_start = KERNEL_VIRTUAL_BASE;
     for (uint64_t i = 0; i < kernel_page_count; i++)
-        vmem_map_2mb(new_pt, (void*)(kernel_virtual_start + (i * PAGE_SIZE_LARGE)), (void*)(KERNEL_PHYSICAL_BASE + i * PAGE_SIZE_LARGE));
+        vmem_map_2mb(p_kpml4, (void*)(kernel_virtual_start + (i * PAGE_SIZE_LARGE)), (void*)(i * PAGE_SIZE_LARGE));
 
     void (*high_kernel_entry)(void*, void*) = (void (*)(void*, void*)) (KERNEL_VIRTUAL_BASE + ((uint64_t)virtual_kernel_entry - KERNEL_PHYSICAL_BASE));
-    uint64_t new_stack = KERNEL_VIRTUAL_BASE + ((uint64_t)KSTACK_TOP - KERNEL_PHYSICAL_BASE);
+    // uint64_t new_stack = KERNEL_VIRTUAL_BASE + ((uint64_t)KSTACK_TOP - KERNEL_PHYSICAL_BASE);
 
-    // inlined with a reason
-    // set new pt
-    asm volatile("mov %0, %%cr3" : : "r"(new_pt_physical) : "memory");
-    asm volatile("mov %0, %%rsp" : : "r"(new_stack) : "memory");
-
-    high_kernel_entry(p_multiboot_struct, nullptr);
+    high_kernel_entry(p_multiboot_struct, p_kpml4);
 
     while (true);
 }

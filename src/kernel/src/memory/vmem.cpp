@@ -72,19 +72,19 @@ bool vmem_map_2mb(const void* pml4, const void* vaddr, const void* paddr) {
     uint64_t* pml4_virt = GET_PML4_VIRT();
     if (!KPAGING_CHECK_ENTRY(pml4_virt, pml4e)) {
         const void* page = pmem_get_page();
-        pml4_virt[pml4e] = ((uint64_t)page & ~0xFFF) | PF_PRESENT | PF_READ_WRITE | PF_USER_SUPERVISOR;
+        pml4_virt[pml4e] = ((uint64_t)page & ~0xFFF) | PF_PRESENT | PF_READ_WRITE;
         memzero(GET_PDPT_VIRT(pml4e), PAGE_SIZE);
     }
 
     uint64_t* pdpt_virt = GET_PDPT_VIRT(pml4e);
     if (!KPAGING_CHECK_ENTRY(pdpt_virt, pdpe)) {
         const void* page = pmem_get_page();
-        pdpt_virt[pdpe] = ((uint64_t)page & ~0xFFF) | PF_PRESENT | PF_READ_WRITE | PF_USER_SUPERVISOR;
+        pdpt_virt[pdpe] = ((uint64_t)page & ~0xFFF) | PF_PRESENT | PF_READ_WRITE;
         memzero(GET_PDT_VIRT(pml4e, pdpe), PAGE_SIZE);
     }
 
     uint64_t* pdt_virt = GET_PDT_VIRT(pml4e, pdpe);
-    pdt_virt[pde] = ((uint64_t)paddr & ~0x1FFFFF) | PF_PRESENT | PF_READ_WRITE | PF_PAGE_SIZE | PF_USER_SUPERVISOR;
+    pdt_virt[pde] = ((uint64_t)paddr & ~0x1FFFFF) | PF_PRESENT | PF_READ_WRITE | PF_PAGE_SIZE;
     flush_tlb((void*)vaddr);
     return true;
 }
@@ -120,12 +120,9 @@ size_t vmem_smart_alloc_pages(const void* pml4, const void* vaddr, size_t size) 
 }
 
 bool vmem_init(const void* pml4, const void* mbstruct) {
-    // TODO @since 24/02/2026 -- 21:00
-    // remove all the | PF_USER
-
     // recusive map the page table
     uint64_t* pml4_entries = (uint64_t*)pml4;
-    pml4_entries[511] = ((uint64_t)pml4 & ~0xFFF) | PF_PRESENT | PF_READ_WRITE | PF_USER_SUPERVISOR;
+    pml4_entries[511] = ((uint64_t)pml4 & ~0xFFF) | PF_PRESENT | PF_READ_WRITE;
 
     // TODO @since 01/12/2025 -- 02:16
     // place into arch wrapper

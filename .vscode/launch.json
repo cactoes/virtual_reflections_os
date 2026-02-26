@@ -34,6 +34,11 @@
                     "description": "Source path mapping",
                     "text": "set substitute-path /root/env/src ./src",
                     "ignoreFailures": false
+                },
+                {
+                    "description": "Load kernel symbols at high virtual address",
+                    "text": "source ${workspaceFolder}/build/.gdbinit_symbols",
+                    "ignoreFailures": false
                 }
             ],
             "miDebuggerServerAddress": "localhost:1234",
@@ -72,6 +77,11 @@
                 {
                     "description": "Source path mapping",
                     "text": "set substitute-path /root/env/src ./src",
+                    "ignoreFailures": false
+                },
+                {
+                    "description": "Load kernel symbols at high virtual address",
+                    "text": "source ${workspaceFolder}/.gdbinit_symbols",
                     "ignoreFailures": false
                 }
             ],

@@ -18,7 +18,7 @@ function Install-DockerEnvironment {
 }
 
 function Start-DockerEnvironment {
-    docker run --name VirtualReflectionsOS --rm -v "${PWD}:/root/env" -e GIT_COMMIT_HASH=$git_commit_hash virtual_reflections_os_buildenv
+    docker run --name VirtualReflectionsOS --rm -v "${PWD}:/root/env" -e GIT_COMMIT_HASH=$git_commit_hash -e WINDOWS_PATH="${PWD}" virtual_reflections_os_buildenv
 }
 
 function Start-QEMU {
