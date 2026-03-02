@@ -56,7 +56,7 @@ void vthread_handle_stopping(vthread_t* p_vthread) {
     }
 
     free(p_vthread->stack_bottom);
-    free(p_vthread->fpu_area);
+    free(p_vthread->fpu_state);
     g_threads.remove(p_vthread->handle);
 }
 
@@ -84,14 +84,13 @@ vthread_handle_t vthread_start_and_setup_main() {
     std::unique_ptr<vthread_t> p_vthread = std::make_unique<vthread_t>();
 
     p_vthread->handle = VTHREAD_MAIN_THREAD_HANDLE;
-    p_vthread->pml4 = get_pml4();
+    // p_vthread->pml4 = get_pml4();
     p_vthread->tls.handle = VTHREAD_MAIN_THREAD_HANDLE;
 
     const char name[] = "main";
     memcpy(p_vthread->name, name, sizeof(name));
     
-    p_vthread->fpu_area = (uint8_t*)malloc(sizeof(uint8_t) * 512 + 32);
-    p_vthread->fpu_state = (uint8_t*)align_up((uint64_t)p_vthread->fpu_area, 16);
+    p_vthread->fpu_state = (uint8_t*)malloc_aligned(sizeof(uint8_t) * 512, 16);
 
     g_current_thread = p_vthread.get();
 
@@ -108,17 +107,14 @@ vthread_handle_t vthread_create(thread_entry_t p_thread_entry, void* pml4, const
     p_vthread->stack_bottom = stack;
     uint64_t* stack_top = (uint64_t*)(((uint64_t)stack + VTHREAD_STACK_SIZE - sizeof(cpu_state_t)) & ~0xF);
 
-    g_current_thread->fpu_area = (uint8_t*)malloc(sizeof(uint8_t) * 512 + 32);
-    g_current_thread->fpu_state = (uint8_t*)align_up((uint64_t)g_current_thread->fpu_area, 16);
-
     // padding since the next section is only 19 * 8
     // which means its no longer 16-byte alignd
     *(--stack_top);
-
+    
     // itret frame
     *(--stack_top) = (uint64_t)stack_top;
     *(--stack_top) = 0x202;
-    *(--stack_top) = 0x8;
+    *(--stack_top) = gdt_get_kernel_code_selector();
     *(--stack_top) = (uint64_t)vthread_entry_point;
     *(--stack_top) = 0;
 
@@ -135,7 +131,9 @@ vthread_handle_t vthread_create(thread_entry_t p_thread_entry, void* pml4, const
     p_vthread->stack_top = stack_top;
     p_vthread->handle = new_handle;
     p_vthread->vt_state = vthread_state_t::RUNNING;
-    p_vthread->pml4 = pml4;
+    p_vthread->fpu_state = (uint8_t*)malloc_aligned(sizeof(uint8_t) * 512, 16);
+
+    // p_vthread->pml4 = pml4;
     p_vthread->tls.handle = new_handle;
 
     if (name) {
@@ -170,7 +168,7 @@ bool vthread_check_stack(vthread_t* thread) {
 }
 
 cpu_state_t* vthread_schedule(cpu_state_t* p_cpu_state) {
-    if (g_threads.size() == 0)
+    if (g_threads.size() <= 1)
         return p_cpu_state;
 
     g_current_thread->stack_top = (void*)p_cpu_state;
@@ -197,7 +195,7 @@ cpu_state_t* vthread_schedule(cpu_state_t* p_cpu_state) {
     } while (g_current_thread->vt_state != vthread_state_t::RUNNING);
 
     gdt_set_stack_pointer0(g_current_thread->stack_top);
-    set_pml4(g_current_thread->pml4);
+    // set_pml4(g_current_thread->pml4);
     fpu_load(g_current_thread->fpu_state);
 
     return (cpu_state_t*)g_current_thread->stack_top;
@@ -212,7 +210,7 @@ thread_local_storage_t* vthread_get_tls() {
 }
 
 void vthread_sleep(uint64_t time_ms) {
-    if (g_current_thread->handle == 0) {
+    if (g_current_thread->handle == VTHREAD_MAIN_THREAD_HANDLE) {
         uint64_t sleep_until_ms = clock_get_time_since_boot() + time_ms;
         while (clock_get_time_since_boot() < sleep_until_ms)
             vthread_yield();

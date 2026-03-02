@@ -67,8 +67,7 @@ struct vthread_t {
     // memory map
     void* pml4;
 
-    //64-byte aligned fpu area
-    uint8_t* fpu_area;
+    // 64-byte aligned fpu area
     uint8_t* fpu_state;
 };
 
