@@ -44,4 +44,16 @@ void* vmem_map_mmio_region(void* pml4, void* paddr);
 
 void* vmem_virtual_to_physical(void* pml4, void* vaddr);
 
+/// @brief                      unmaps a 2mb page from a virtual address
+/// @param pml4                 page table to target
+/// @param vaddr                virtual address to unmap
+/// @return                     success status
+bool vmem_unmap_2mb(void* pml4, void* vaddr);
+
+/// @brief                          recursively maps a page table to itself to create a virtual mapping for the page table
+/// @param[in] page_table_vaddr     virtual address of the page table to map
+/// @param[in] page_table_paddr     physical address of the page table to map
+/// @return                         success status
+bool vmem_recusive_map_page_table(void* page_table_vaddr, void* page_table_paddr);
+
 #endif // __MEMORY_VMEM_HPP__

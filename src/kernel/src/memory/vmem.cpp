@@ -3,14 +3,11 @@
 #include "arch/generic.hpp"
 #include "multiboot.hpp"
 #include "utils/bitmap.hpp"
+#include "linker.hpp"
 
 // 2 * 64 = 128
 // 128 2mb regions
 static uint64_t global_mapped_mmio_bitmap[2] {};
-
-/// @brief variable placed at the end of the kernel
-// NOLINTNEXTLINE
-extern "C" uint64_t __lnk_end_kernel;
 
 void* vmem_virtual_to_physical(void* pml4, void* vaddr) {
     const uint64_t pml4e =  KPAGING_GET_PE(vaddr, 39);
@@ -58,8 +55,6 @@ void* vmem_map_mmio_region(void* pml4, void* paddr) {
 
 
 bool vmem_map_2mb(const void* pml4, const void* vaddr, const void* paddr) {
-    // TODO @since 24/02/2026 -- 21:00
-    // remove all the | PF_USER
     if (!is_aligned((uint64_t)vaddr, PAGE_SIZE_LARGE) ||
         !is_aligned((uint64_t)paddr, PAGE_SIZE_LARGE)) {
         return false;
@@ -120,16 +115,7 @@ size_t vmem_smart_alloc_pages(const void* pml4, const void* vaddr, size_t size) 
 }
 
 bool vmem_init(const void* pml4, const void* mbstruct) {
-    // recusive map the page table
-    uint64_t* pml4_entries = (uint64_t*)pml4;
-    pml4_entries[511] = ((uint64_t)pml4 & ~0xFFF) | PF_PRESENT | PF_READ_WRITE;
-
-    // TODO @since 01/12/2025 -- 02:16
-    // place into arch wrapper
-    // reload the page tables
-    asm volatile("mov %%cr3, %%rax; mov %%rax, %%cr3" ::: "rax", "memory");
-
-    const uint64_t aligned_kernel_end_addr = align_up((uint64_t)&__lnk_end_kernel, PAGE_SIZE_LARGE);
+    const uint64_t aligned_kernel_end_addr = align_up(LINKER_END_KERNEL_PHYS, PAGE_SIZE_LARGE);
     uint64_t kernel_page_count = aligned_kernel_end_addr / PAGE_SIZE;
 
     if (!pmem_try_reserve_address(0, kernel_page_count))
@@ -149,5 +135,40 @@ bool vmem_init(const void* pml4, const void* mbstruct) {
         }
     }
 
+    return true;
+}
+
+bool vmem_unmap_2mb(void* pml4, void* vaddr) {
+    // BUG @since 26/02/2026 -- 11:55
+    // if its last entry it leaves a dangling page table
+
+    if (!is_aligned((uint64_t)vaddr, PAGE_SIZE_LARGE))
+        return false;
+
+    const uint64_t pml4e =  KPAGING_GET_PE(vaddr, 39);
+    const uint64_t pdpe =   KPAGING_GET_PE(vaddr, 30);
+    const uint64_t pde =    KPAGING_GET_PE(vaddr, 21);
+
+    uint64_t* pml4_virt = GET_PML4_VIRT();
+    if (!KPAGING_CHECK_ENTRY(pml4_virt, pml4e))
+        return false;
+
+    uint64_t* pdpt_virt = GET_PDPT_VIRT(pml4e);
+    if (!KPAGING_CHECK_ENTRY(pdpt_virt, pdpe))
+        return false;
+
+    uint64_t* pdt_virt = GET_PDT_VIRT(pml4e, pdpe);
+    pdt_virt[pde] = 0;
+    flush_tlb((void*)vaddr);
+    return true;
+}
+
+bool vmem_recusive_map_page_table(void* page_table_vaddr, void* page_table_paddr) {
+    if (!is_aligned((uint64_t)page_table_vaddr, PAGE_SIZE) ||
+        !is_aligned((uint64_t)page_table_paddr, PAGE_SIZE)) {
+        return false;
+    }
+
+    ((uint64_t*)page_table_vaddr)[511] = ((uint64_t)page_table_paddr & ~0xFFF) | PF_PRESENT | PF_READ_WRITE;
     return true;
 }
