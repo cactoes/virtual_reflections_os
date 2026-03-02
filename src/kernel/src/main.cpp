@@ -64,6 +64,7 @@
 #include "smbios.hpp"
 #include "io.hpp"
 #include "terminal.hpp"
+#include "linker.hpp"
 
 #define HEAP_START_SIZE 0x100000 * 32 // 32 mb
 #define PIT_TIMER_INTERVAL 1000 // times per second
@@ -250,7 +251,7 @@ void user_mode() {
     enter_usermode((uint64_t)user_function, (uint64_t)((uint8_t*)user_stack_virtual + PAGE_SIZE));
 }
 
-extern "C" void virtual_kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
+void virtual_kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
     // validate multiboot
     if (mb_has_valid_magic((multiboot_t*)p_multiboot_struct) != MULTIBOOT_VER2)
         kernel_fatal(KERNEL_FATAL_MULTIBOOT_MAGIC_VALIDATE, "multiboot was not the excpected version");
@@ -260,6 +261,18 @@ extern "C" void virtual_kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
 
     // initialze the debug out stream
     debug_init();
+
+    // we already need system info here ...
+    // just make sure we dont use the string's yet since memory is not setup yet
+    system_info_manager_t sim {};
+    set_global_system_info_manager(&sim);
+    system_info_parse_memory_size(get_global_system_info_manager(), (multiboot_t*)p_multiboot_struct);
+
+    const uint64_t aligned_kernel_end_addr = align_up(LINKER_END_KERNEL_PHYS, PAGE_SIZE_LARGE);
+    const uint64_t kernel_page_count = aligned_kernel_end_addr / PAGE_SIZE_LARGE;
+
+    for (uint64_t i = 0; i < kernel_page_count; i++)
+        vmem_unmap_2mb(p_kpml4, (void*)(i * PAGE_SIZE_LARGE));
 
     // initialze virtual memory
     if (!vmem_init(p_kpml4, p_multiboot_struct))
@@ -299,9 +312,6 @@ extern "C" void virtual_kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
 
     pit_add_interrupt_function(vthread_handle_interrupt);
 
-    system_info_manager_t sim {};
-    set_global_system_info_manager(&sim);
-    system_info_parse_memory_size(get_global_system_info_manager(), (multiboot_t*)p_multiboot_struct);
     system_info_parse_system_information(get_global_system_info_manager());
     system_info_get_cpu_name(get_global_system_info_manager());
 
@@ -444,44 +454,20 @@ extern "C" void virtual_kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
     while (true) vthread_sleep(1);
 }
 
-#include "memory/paging.hpp"
-#define KERNEL_VIRTUAL_BASE 0xFFFFF80000000000
-#define KERNEL_PHYSICAL_BASE 0
+extern "C" void kernel_entry(void* multiboot_struct, void* kernel_page_table) {
+    vmem_recusive_map_page_table(kernel_page_table, kernel_page_table);
+    reload_page_table();
 
-/// @brief variable placed at the end of the kernel
-// NOLINTNEXTLINE
-extern "C" uint64_t __lnk_end_kernel;
-extern uint8_t KSTACK_TOP[];
+    uint64_t new_stack;
+    asm volatile (
+        "mov %%rsp, %0\n\t"
+        "add %1, %0\n\t"
+        "mov %0, %%rsp"
+        : "=&r"(new_stack)
+        : "r"(KERNEL_VIRTUAL_BASE)
+        : "memory"
+    );
 
-extern "C" void kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
-    // TODO @since 26/02/2026 -- 02:20
-    // 1. create a new stack
-    // <<< here we jump to the virtual kernel entry >>>
-    // 2. clear out old kernel identity mapped pages
-
-    // safe identity mapped space
-
-    gdt_init();
-    debug_init();
-
-    if (mb_has_valid_magic((multiboot_t*)p_multiboot_struct) != MULTIBOOT_VER2)
-        debug_trap("failed multiboot check");
-
-    if (!vmem_init(p_kpml4, p_multiboot_struct))
-        debug_trap("initial vmem failed!");
-
-    // map the kernel pages
-    const uint64_t aligned_kernel_end_addr = align_up((uint64_t)&__lnk_end_kernel, PAGE_SIZE_LARGE);
-    uint64_t kernel_page_count = aligned_kernel_end_addr / PAGE_SIZE_LARGE;
-
-    uint64_t kernel_virtual_start = KERNEL_VIRTUAL_BASE;
-    for (uint64_t i = 0; i < kernel_page_count; i++)
-        vmem_map_2mb(p_kpml4, (void*)(kernel_virtual_start + (i * PAGE_SIZE_LARGE)), (void*)(i * PAGE_SIZE_LARGE));
-
-    void (*high_kernel_entry)(void*, void*) = (void (*)(void*, void*)) (KERNEL_VIRTUAL_BASE + ((uint64_t)virtual_kernel_entry - KERNEL_PHYSICAL_BASE));
-    // uint64_t new_stack = KERNEL_VIRTUAL_BASE + ((uint64_t)KSTACK_TOP - KERNEL_PHYSICAL_BASE);
-
-    high_kernel_entry(p_multiboot_struct, p_kpml4);
-
-    while (true);
+    ((multiboot_t*)multiboot_struct)->info = (void*)PTOV_I(((multiboot_t*)multiboot_struct)->info);
+    virtual_kernel_entry((uint8_t*)PTOV_I(multiboot_struct), (uint8_t*)PTOV_I(kernel_page_table));
 }

@@ -4,10 +4,10 @@
 ;           this code is mess & not setup well
 ;==========================================
 
-section .multiboot1
-    dd 0x1BADB002                           ; magic
-    dd (1 << 0 | 1 << 1)                    ; flags
-    dd -(0x1BADB002 + (1 << 0 | 1 << 1))    ; checksum
+; section .multiboot1
+;     dd 0x1BADB002                           ; magic
+;     dd (1 << 0 | 1 << 1)                    ; flags
+;     dd -(0x1BADB002 + (1 << 0 | 1 << 1))    ; checksum
 
 section .multiboot2
 multiboot2_start:
@@ -21,12 +21,12 @@ multiboot2_start:
     dd 8
 multiboot2_end:
 
-section .text
+section .boot.text
     ; 64 bit functions
     extern boot_kernel
 
     ; linker variables
-    extern __lnk_end_kernel
+    extern __lnk_end_kernel_phys
 
     ; globals
     global entry
@@ -62,30 +62,51 @@ entry:
     jmp gdt64.code_segment:boot_kernel
 
 setup_page_tables:
+    mov     ebx,            PML4T
     mov     eax,            PDPT
-    or      eax,            0b111 ; present, writable, user ; TODO: remove the user bit
-    mov     [PML4T],        eax
+    or      eax,            0b011
+    mov     [ebx],          eax
 
+    mov     ebx,            PDPT
     mov     eax,            PDT
-    or      eax,            0b111 ; present, writable, user ; TODO: remove the user bit
-    mov     [PDPT],         eax
+    or      eax,            0b011
+    mov     [ebx],          eax
 
-    mov     eax, __lnk_end_kernel
-    shr     eax, 21
-    mov     ecx, eax
-
-    xor     edx, edx
-
-    .loop:
-        mov     eax, edx
-        shl     eax, 21
-        or      eax, 0b10000111 ; TODO: remove the user bit
-        mov     [PDT + edx * 8], eax
-
+    mov     eax,            __lnk_end_kernel_phys
+    shr     eax,            21
+    add     eax,            4
+    mov     ecx,            eax
+    xor     edx,            edx
+    .identity_loop:
+        mov     eax,        edx
+        shl     eax,        21
+        or      eax,        0b10000011
+        mov     ebx,        PDT
+        mov     [ebx + edx * 8], eax
         inc     edx
-        cmp     edx, ecx
-        jne     .loop
+        cmp     edx,        ecx
+        jne     .identity_loop
 
+    mov     ebx,            PML4T
+    mov     eax,            PDPT_HIGH
+    or      eax,            0b011
+    mov     [ebx + 496 * 8], eax
+
+    mov     ebx,            PDPT_HIGH
+    mov     eax,            PDT_HIGH
+    or      eax,            0b011
+    mov     [ebx],          eax
+
+    xor     edx,            edx
+    .high_loop:
+        mov     eax,        edx
+        shl     eax,        21
+        or      eax,        0b10000011
+        mov     ebx,        PDT_HIGH
+        mov     [ebx + edx * 8], eax
+        inc     edx
+        cmp     edx,        ecx
+        jne     .high_loop
     ret
 
 enable_paging:
@@ -114,12 +135,15 @@ enable_paging:
 
     ret
 
-section .bss
+section .boot.bss
 align 4096
 ; page table for jumping to x64, discarded later
 PML4T:      resb 4096
 PDPT:       resb 4096   
 PDT:        resb 4096
+
+PDPT_HIGH:  resb 4096
+PDT_HIGH:   resb 4096
 
 ; 512 b of boot stack
 BSTACK_BOTTOM: resb 512
@@ -131,7 +155,7 @@ MB_MAGIC:    resq 1; uint64_t
 MB_INFO:     resq 1; void*
 __end_bss_keep:     resq 1; uint64_t
 
-section .rodata
+section .boot.rodata
 gdt64:
     dq 0
 .code_segment: equ $ - gdt64

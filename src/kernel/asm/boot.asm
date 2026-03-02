@@ -4,7 +4,7 @@
 ;           also responsible for setting up the c/c++ env
 ;==========================================
 
-section .text
+section .boot.text
     ; c functions
     extern kernel_entry
     extern MB_MAGIC
@@ -39,17 +39,15 @@ memzero:
 ; @brief
 call_constructors:
     push    rbx
-    mov     rsi,    __lnk_start_ctors
-
+    mov     rsi, qword __lnk_start_ctors
     .loop:
-        cmp     rsi,    __lnk_end_ctors
+        mov     rax, qword __lnk_end_ctors
+        cmp     rsi, rax
         jge     .done
-
-        mov     rdi,    [rsi]
+        mov     rdi, [rsi]
         call    rdi
-        add     rsi,    8
+        add     rsi, 8
         jmp     .loop
-
     .done:
         pop     rbx
         ret
@@ -64,14 +62,10 @@ boot_kernel:
     mov   gs,    ax
 
     ; clear bss w/o clearing critical sections
-    lea   rax,   [__end_bss_keep]
-    lea   rbx,   __lnk_bss_start
-    sub   rax,   rbx
-
-    mov   rdi,   __end_bss_keep
-    mov   rsi,   __lnk_bss_size
-    sub   rsi,   rax
-    call  memzero
+    mov   rdi, qword __lnk_bss_start
+    mov   rcx, qword __lnk_bss_size
+    xor   rax, rax
+    rep   stosb
 
     ; set kernel stack
     mov   rsp,    KSTACK_TOP
@@ -81,11 +75,12 @@ boot_kernel:
     call call_constructors
 
     ; push multiboot struct to func
-    mov rdi, MB_MAGIC
+    mov rdi, qword MB_MAGIC
     ; push kernel page table struct
     mov rsi, cr3
     ; i hope everything has been setup, godspeed o7
-    call kernel_entry
+    mov   rax, qword kernel_entry
+    call  rax
 
     ; infinite loop incase kernel exits
 .loop:
@@ -93,7 +88,7 @@ boot_kernel:
     hlt
     jmp   .loop
 
-section .bss
+section .boot.bss
 align 4096
 ; page table for identity map (preloaded for the kernel to use)
 KPML4T:     resb 4096

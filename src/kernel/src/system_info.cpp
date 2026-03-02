@@ -1,6 +1,7 @@
 #include "system_info.hpp"
 #include "smbios.hpp"
 #include "arch/generic.hpp"
+#include "linker.hpp"
 
 system_info_manager_t* global_boot_info_manager;
 
@@ -37,12 +38,12 @@ bool system_info_dump(smbios_entry_header_t* entry, void* system_info_manager) {
 
 void system_info_parse_system_information(system_info_manager_t* system_info_manager) {
     if (smbios_t* struct_pointer = (smbios_t*)smbios_find_struct_entry(SMBIOS_SIGNATUE, ARRAY_SIZE(SMBIOS_SIGNATUE) - 1)) {
-        smbios_iterate(struct_pointer->table_address, system_info_manager, system_info_dump);
+        smbios_iterate(PTOV_I(struct_pointer->table_address), system_info_manager, system_info_dump);
         return;
     }
 
     if (smbios64_t* struct_pointer = (smbios64_t*)smbios_find_struct_entry(SMBIOS64_SIGNATUE, ARRAY_SIZE(SMBIOS64_SIGNATUE) - 1)) {
-        smbios_iterate(struct_pointer->table_address, system_info_manager, system_info_dump);
+        smbios_iterate(PTOV_I(struct_pointer->table_address), system_info_manager, system_info_dump);
         return;
     }
 }

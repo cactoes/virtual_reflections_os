@@ -20,17 +20,18 @@
 #define VGA_GC_DATA         0x03CF
 #define VGA_INSTAT_READ     0x03DA
 
-#define VGA_TM_BUFFER_ADDR  0xB8000
+#define VGA_TM_BUFFER_ADDR  PTOV_I(0xB8000)
 #define VGA_TM_NUM_COLS     80
 #define VGA_TM_NUM_ROWS     25
 
-#define VGA_GM_BUFFER_ADDR     0xA0000
+#define VGA_GM_BUFFER_ADDR     PTOV_I(0xA0000)
 #define VGA_GM_BUFFER_WIDTH    320
 #define VGA_GM_BUFFER_HEIGHT   200
 
 #define IS_VALID_BUFFER(buff) ((buff) && (buff)->buffer && (buff)->size.width == VGA_GM_BUFFER_WIDTH && (buff)->size.height == VGA_GM_BUFFER_HEIGHT)
 
 #include "common.hpp"
+#include "linker.hpp"
 
 enum class vga_tm_color_t : uint8_t {
     BLACK =       0,

@@ -1,5 +1,6 @@
 #include "smbios.hpp"
 #include "std/string.hpp"
+#include "linker.hpp"
 
 size_t smbios_entry_length(const smbios_entry_header_t* entry) {
     size_t size = 0;
@@ -12,8 +13,8 @@ size_t smbios_entry_length(const smbios_entry_header_t* entry) {
 }
 
 void* smbios_find_struct_entry(const char* signature, size_t signature_size) {
-    static uint8_t* smbios_start = (uint8_t*)0x000F0000;
-    static uint8_t* smbios_end = (uint8_t*)0x000FFFFF;
+    static uint8_t* smbios_start = (uint8_t*)PTOV_I(0x000F0000);
+    static uint8_t* smbios_end = (uint8_t*)PTOV_I(0x000FFFFF);
 
     for (uint8_t* i = smbios_start; i < smbios_end; i += 16)
         if (memeq(i, signature, signature_size))
