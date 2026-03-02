@@ -24,16 +24,15 @@ PS> .\vrtlkt.ps1 -Tool run
 ## TODO
 - [ ] redo subsystem manager
 - [ ] (generic?) device drivers
-- [ ] rethink vfs "layout"
+- [ ] reworking vfs -> [storage_controller.md](storage_controller.md)
 - [ ] rework keyboard controller -> move to io etc..
 - [ ] drive / disk manager
+    - [ ] interfaceable
+    - [x] list of all disks
 - [ ] work on vthreads
 - [ ] general cleanup / restructuring
     - [ ] interrupt manager
 - [ ] gui
-- [ ] fat32
-    - [x] read
-    - [ ] write
 
 ## Mapping driver symbols in debug mode
 ```
