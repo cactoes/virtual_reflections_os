@@ -211,4 +211,8 @@ static inline void x86_64_wrmsr(uint32_t addr, uint64_t value) {
     );
 }
 
+static inline void x86_64_reload_page_table() {
+    asm volatile("mov %%cr3, %%rax; mov %%rax, %%cr3" ::: "rax", "memory");
+}
+
 #endif // __X86_64_GENERIC_HPP__

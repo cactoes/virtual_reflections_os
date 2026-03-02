@@ -179,6 +179,10 @@ inline void wrmsr(uint32_t addr, uint64_t value) {
     x86_64_wrmsr(addr, value);
 }
 
+inline void reload_page_table() {
+    x86_64_reload_page_table();
+}
+
 #endif // ARCH_X86_64
 
 #endif // __GENERIC_HPP__
