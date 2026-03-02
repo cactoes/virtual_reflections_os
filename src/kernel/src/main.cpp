@@ -251,9 +251,9 @@ void user_mode() {
     enter_usermode((uint64_t)user_function, (uint64_t)((uint8_t*)user_stack_virtual + PAGE_SIZE));
 }
 
-void virtual_kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
+NORETURN void virtual_kernel_entry(multiboot_t* p_multiboot_struct, void* p_kpml4) {
     // validate multiboot
-    if (mb_has_valid_magic((multiboot_t*)p_multiboot_struct) != MULTIBOOT_VER2)
+    if (mb_has_valid_magic(p_multiboot_struct) != MULTIBOOT_VER2)
         kernel_fatal(KERNEL_FATAL_MULTIBOOT_MAGIC_VALIDATE, "multiboot was not the excpected version");
 
     // initialize the gdt / tss
@@ -266,7 +266,7 @@ void virtual_kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
     // just make sure we dont use the string's yet since memory is not setup yet
     system_info_manager_t sim {};
     set_global_system_info_manager(&sim);
-    system_info_parse_memory_size(get_global_system_info_manager(), (multiboot_t*)p_multiboot_struct);
+    system_info_parse_memory_size(get_global_system_info_manager(), p_multiboot_struct);
 
     const uint64_t aligned_kernel_end_addr = align_up(LINKER_END_KERNEL_PHYS, PAGE_SIZE_LARGE);
     const uint64_t kernel_page_count = aligned_kernel_end_addr / PAGE_SIZE_LARGE;
@@ -314,8 +314,6 @@ void virtual_kernel_entry(void* p_multiboot_struct, void* p_kpml4) {
 
     system_info_parse_system_information(get_global_system_info_manager());
     system_info_get_cpu_name(get_global_system_info_manager());
-
-    // finished core startup
 
     // TODO @since 06/02/2026 -- 10:34
     // proper ps2 startup etc
@@ -469,5 +467,5 @@ extern "C" void kernel_entry(void* multiboot_struct, void* kernel_page_table) {
     );
 
     ((multiboot_t*)multiboot_struct)->info = (void*)PTOV_I(((multiboot_t*)multiboot_struct)->info);
-    virtual_kernel_entry((uint8_t*)PTOV_I(multiboot_struct), (uint8_t*)PTOV_I(kernel_page_table));
+    virtual_kernel_entry((multiboot_t*)PTOV_I(multiboot_struct), (void*)PTOV_I(kernel_page_table));
 }

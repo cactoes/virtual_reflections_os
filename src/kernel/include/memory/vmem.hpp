@@ -8,7 +8,8 @@
 #ifndef __MEMORY_VMEM_HPP__
 #define __MEMORY_VMEM_HPP__
 
-#define VMEM_IDENTITY_MAP           0x0         // 1gb size
+// TODO @since 02/03/2026 -- 15:30
+// change to higher addressing
 #define VMEM_DMA_ALLOCATOR_START    0x40000000  // 256mb size
 #define VMEM_MAPPED_MMIO_REGION     0x50000000  // 256mb size
 #define VMEM_KERNEL_HEAP_START      0x60000000  // unlimited?
