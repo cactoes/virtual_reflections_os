@@ -41,30 +41,36 @@ void mutex_lock(mutex_t* p_mutex) {
     if (is_in_interrupt())
         debug_trap("lock while inside interrupt");
 
-    if (__thread_tls->irq_disable_depth == 0)
-        __thread_tls->saved_irq_flags = save_flags_and_cli();
-
-    __thread_tls->irq_disable_depth++;
+    if (thread_local_storage_t* tls = __thread_tls) {
+        if (tls->irq_disable_depth == 0)
+            tls->saved_irq_flags = save_flags_and_cli();
+    
+        tls->irq_disable_depth++;
+    }
 
     while (atomic_exchange(&p_mutex->locked, 1) != 0)
         vthread_yield();
 
-    p_mutex->handle = __thread_tls->handle;
+    if (thread_local_storage_t* tls = __thread_tls) {
+        p_mutex->handle = tls->handle;
+    }
 
     if (!append_to_mutex_array(global_mutex_array, p_mutex))
         debug_puts("[WARN] mutex array full\n");
 }
 
 void mutex_unlock(mutex_t* p_mutex) {
-    if (p_mutex->handle != __thread_tls->handle)
-        debug_trap("wrong thread tried mutex unlock");
+    if (thread_local_storage_t* tls = __thread_tls) {
+        if (p_mutex->handle != tls->handle)
+            debug_trap("wrong thread tried mutex unlock");
 
-    p_mutex->handle = VTHREAD_HANDLE_INVALID;
+        p_mutex->handle = VTHREAD_HANDLE_INVALID;
 
-    __thread_tls->irq_disable_depth--;
+        tls->irq_disable_depth--;
 
-    if (__thread_tls->irq_disable_depth == 0)
-        restore_flags(__thread_tls->saved_irq_flags);
+        if (tls->irq_disable_depth == 0)
+            restore_flags(tls->saved_irq_flags);
+    }
 
     remove_from_mutex_array(global_mutex_array, p_mutex);
     
