@@ -79,7 +79,8 @@ void mutex_unlock(mutex_t* p_mutex) {
 
 void mutex_clear_all_thread_references_and_release(vthread_handle_t handle) {
     for (size_t i = 0; i < MUTEX_ARRAY_SIZE; i++) {
-        if (global_mutex_array[i]->handle == handle)
+        const mutex_t* mutex = global_mutex_array[i];
+        if (mutex && mutex->handle == handle)
             mutex_unlock(global_mutex_array[i]);
     }
 }
