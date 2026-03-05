@@ -171,6 +171,15 @@ inline bool memeq_impl(const void* a, const void* b, size_t size) noexcept {
     return true;
 }
 
+inline bool memreq_impl(const void* a, uint8_t val, size_t size) noexcept {
+    for (size_t i = 0; i < size; i++) {
+        if (((uint8_t*)a)[i] != val)
+            return false;
+    }
+
+    return true;
+}
+
 inline uint64_t rdmsr(uint32_t addr) {
     return x86_64_rdmsr(addr);
 }
