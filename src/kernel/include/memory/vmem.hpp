@@ -20,7 +20,7 @@
 /// @param[in] vaddr        pointer to virtual address to map to
 /// @param[in] paddr        pointer to physical address to map to
 /// @return                 success status
-bool vmem_map_2mb(const void* pml4, const void* vaddr, const void* paddr);
+bool vmem_map_2mb(const void* pml4, const void* vaddr, const void* paddr, bool is_user = false);
 
 /// @brief                      allocates memory pages per 2mb if size != large page
 ///                             it will round up too the nearest 2mb
@@ -28,7 +28,7 @@ bool vmem_map_2mb(const void* pml4, const void* vaddr, const void* paddr);
 /// @param[in] vaddr            pointer to virtual address to map to
 /// @param size                 memory size to allocate
 /// @return                     allocated amount of memory
-size_t vmem_smart_alloc_pages(const void* pml4, const void* vaddr, size_t size);
+size_t vmem_smart_alloc_pages(const void* pml4, const void* vaddr, size_t size, bool is_user = false);
 
 /// @brief                      initiates virtual memory
 /// @param[inout] pml4          page table to use

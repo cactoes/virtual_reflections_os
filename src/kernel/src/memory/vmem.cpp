@@ -7,6 +7,7 @@
 
 // 2 * 64 = 128
 // 128 2mb regions
+// same size as defined in header
 static uint64_t global_mapped_mmio_bitmap[2] {};
 
 void* vmem_virtual_to_physical(void* vaddr) {
@@ -54,7 +55,7 @@ void* vmem_map_mmio_region(void* pml4, void* paddr) {
 }
 
 
-bool vmem_map_2mb(const void* pml4, const void* vaddr, const void* paddr) {
+bool vmem_map_2mb(const void* pml4, const void* vaddr, const void* paddr, bool is_user) {
     if (!is_aligned((uint64_t)vaddr, PAGE_SIZE_LARGE) ||
         !is_aligned((uint64_t)paddr, PAGE_SIZE_LARGE)) {
         return false;
@@ -63,6 +64,10 @@ bool vmem_map_2mb(const void* pml4, const void* vaddr, const void* paddr) {
     const uint64_t pml4e =  KPAGING_GET_PE(vaddr, 39);
     const uint64_t pdpe =   KPAGING_GET_PE(vaddr, 30);
     const uint64_t pde =    KPAGING_GET_PE(vaddr, 21);
+
+    const uint64_t basic_page_flags = is_user
+        ? PF_PRESENT | PF_READ_WRITE | PF_USER_SUPERVISOR
+        : PF_PRESENT | PF_READ_WRITE;
 
     uint64_t* pml4_virt = GET_PML4_VIRT();
     if (!KPAGING_CHECK_ENTRY(pml4_virt, pml4e)) {
@@ -78,13 +83,20 @@ bool vmem_map_2mb(const void* pml4, const void* vaddr, const void* paddr) {
         memzero(GET_PDT_VIRT(pml4e, pdpe), PAGE_SIZE);
     }
 
+    // FIXME @since 05/03/2026 -- 12:21
+    // MAKE SURE THE PARENT PAGE TABLES DONT CONTAIN KERNEL PAGE ENTRIES
+    if (is_user) {
+        pdpt_virt[pdpe] |= PF_USER_SUPERVISOR;
+        pml4_virt[pml4e] |= PF_USER_SUPERVISOR;
+    }
+
     uint64_t* pdt_virt = GET_PDT_VIRT(pml4e, pdpe);
-    pdt_virt[pde] = ((uint64_t)paddr & ~0x1FFFFF) | PF_PRESENT | PF_READ_WRITE | PF_PAGE_SIZE;
+    pdt_virt[pde] = ((uint64_t)paddr & ~0x1FFFFF) | PF_PAGE_SIZE | basic_page_flags;
     flush_tlb((void*)vaddr);
     return true;
 }
 
-size_t vmem_smart_alloc_pages(const void* pml4, const void* vaddr, size_t size) {
+size_t vmem_smart_alloc_pages(const void* pml4, const void* vaddr, size_t size, bool is_user) {
     size_t allocated = 0;
     uint64_t current_virtual_address = (uint64_t)vaddr;
 
@@ -103,7 +115,7 @@ size_t vmem_smart_alloc_pages(const void* pml4, const void* vaddr, size_t size) 
             return allocated;
 
         // map the address
-        if (!vmem_map_2mb(pml4, (void*)current_virtual_address, target_physical_address))
+        if (!vmem_map_2mb(pml4, (void*)current_virtual_address, target_physical_address, is_user))
             return allocated;
 
         // update counters
@@ -140,7 +152,7 @@ bool vmem_init(const void* pml4, const void* mbstruct) {
 
 bool vmem_unmap_2mb(void* pml4, void* vaddr) {
     // BUG @since 26/02/2026 -- 11:55
-    // if its last entry it leaves a dangling page table
+    // empty enties get removed but are still alocated by the page allocator
 
     if (!is_aligned((uint64_t)vaddr, PAGE_SIZE_LARGE))
         return false;
@@ -160,6 +172,13 @@ bool vmem_unmap_2mb(void* pml4, void* vaddr) {
     uint64_t* pdt_virt = GET_PDT_VIRT(pml4e, pdpe);
     pdt_virt[pde] = 0;
     flush_tlb((void*)vaddr);
+
+    if (memreq_impl(pdt_virt, 0, PAGE_SIZE))
+        pdpt_virt[pdpe] = 0;
+    
+    if (memreq_impl(pdpt_virt, 0, PAGE_SIZE))
+        pml4_virt[pml4e] = 0;
+
     return true;
 }
 
