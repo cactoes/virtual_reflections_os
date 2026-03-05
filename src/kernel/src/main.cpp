@@ -2,6 +2,7 @@
 #include "arch/gdt.hpp"
 #include "arch/interrupt.hpp"
 #include "arch/pit.hpp"
+#include "arch/msr.hpp"
 
 #include "drivers/vga.hpp"
 #include "drivers/pcie.hpp"
@@ -173,8 +174,8 @@ static cpu_local_t cpu0 {};
 void enter_usermode(uint64_t entry_point, uint64_t user_stack_top) {
     cli();
 
-    uint16_t user_ds = (uint16_t)(X86_64_GDT_INDEX_TO_ENTRY(USER_DATA_SELECTOR_INDEX) | 3);
-    uint16_t user_cs = (uint16_t)(X86_64_GDT_INDEX_TO_ENTRY(USER_CODE_SELECTOR_INDEX) | 3);
+    uint16_t user_ds = (uint16_t)((USER_DATA_SELECTOR_INDEX << 3) | 3);
+    uint16_t user_cs = (uint16_t)((USER_CODE_SELECTOR_INDEX << 3) | 3);
 
     asm volatile (
         // set data segments
@@ -234,33 +235,30 @@ void usermode_test() {
     extern uint8_t KSTACK_TOP[];
     cpu0.kernel_rsp = (uint64_t)KSTACK_TOP;
 
-    wrmsr(0xC0000102, (uint64_t)&cpu0);
+    uint64_t star = ((uint64_t)(KERNEL_DATA_SELECTOR_INDEX << 3) << 48)
+                | ((uint64_t)(KERNEL_CODE_SELECTOR_INDEX << 3) << 32);
 
-    uint64_t efer = rdmsr(0xC0000080);
-    efer |= 1;
-    wrmsr(0xC0000080, efer);
+    msr_set_kernel_gs_base(&cpu0);
+    msr_enable_sce();
+    msr_set_star(star);
+    msr_set_lstar((void*)x86_64_syscall_handler);
+    msr_set_sf_mask(RFLAGS_TF | RFLAGS_IF);
 
-    uint64_t star = ((uint64_t)X86_64_GDT_INDEX_TO_ENTRY(KERNEL_DATA_SELECTOR_INDEX) << 48)
-              | ((uint64_t)X86_64_GDT_INDEX_TO_ENTRY(KERNEL_CODE_SELECTOR_INDEX) << 32);
-    wrmsr(0xC0000081, star);
-    wrmsr(0xC0000082, (uint64_t)x86_64_syscall_handler);
-    wrmsr(0xC0000084, 0x300);
-
-    void* user_stack_virtual_og = malloc_aligned(PAGE_SIZE, 16);
-
+    void* user_stack_kernel_virt = malloc_aligned(PAGE_SIZE_LARGE, PAGE_SIZE_LARGE);
+    memzero(user_stack_kernel_virt, PAGE_SIZE_LARGE);
+    void* user_stack_physical = vmem_virtual_to_physical(user_stack_kernel_virt);
     void* user_stack_virtual = (void*)(PAGE_SIZE_LARGE * 1ULL);
-    void* user_function_virtual = (void*)(PAGE_SIZE_LARGE * 2ULL);
+    vmem_map_2mb(get_pml4(), user_stack_virtual, user_stack_physical, true);
+    uint64_t user_stack_top = (uint64_t)user_stack_virtual + PAGE_SIZE_LARGE;
 
-    uint64_t user_stack_physical_raw = (uint64_t)vmem_virtual_to_physical(user_stack_virtual_og);
-    uint64_t user_stack_physical = align_down(user_stack_physical_raw, PAGE_SIZE_LARGE);
-    vmem_map_2mb(get_pml4(), user_stack_virtual, (void*)user_stack_physical, true);
-
-    uint64_t user_function_physical_raw = (uint64_t)vmem_virtual_to_physical((void*)&user_function);
-    uint64_t user_function_physical = align_down(user_function_physical_raw, PAGE_SIZE_LARGE);
-    uint64_t user_function_offset = user_function_physical_raw - user_function_physical;
-    vmem_map_2mb(get_pml4(), user_function_virtual, (void*)user_function_physical, true);
-
-    enter_usermode((uint64_t)user_function_virtual + user_function_offset, (uint64_t)user_stack_virtual + PAGE_SIZE_LARGE);
+    void* user_code_kernel_virt = malloc_aligned(PAGE_SIZE_LARGE, PAGE_SIZE_LARGE);
+    memzero(user_code_kernel_virt, PAGE_SIZE_LARGE);
+    memcpy(user_code_kernel_virt, (void*)&user_function, PAGE_SIZE);
+    void* user_code_physical = vmem_virtual_to_physical(user_code_kernel_virt);
+    void* user_code_virtual = (void*)(PAGE_SIZE_LARGE * 2ULL);
+    vmem_map_2mb(get_pml4(), user_code_virtual, user_code_physical, true);
+    
+    enter_usermode((uint64_t)user_code_virtual, user_stack_top);
 }
 
 int process_2_entry() {
@@ -307,14 +305,8 @@ NORETURN void virtual_kernel_entry(multiboot_t* p_multiboot_struct, void* kernel
     set_global_system_info_manager(&sim);
     system_info_parse_memory_size(get_global_system_info_manager(), p_multiboot_struct);
 
-    const uint64_t aligned_kernel_end_addr = align_up(LINKER_END_KERNEL_PHYS, PAGE_SIZE_LARGE);
-    // BUG @since 05/03/2026 -- 13:31
-    // shr 21, add 4
-    // so we should unmap the enitre identity map here
-    // but adding more than +2 causes a crash
-    // something is using it for some reason
-    const uint64_t kernel_page_count = aligned_kernel_end_addr / PAGE_SIZE_LARGE + 4;
-
+    // same as the assembly
+    const uint64_t kernel_page_count = (LINKER_END_KERNEL_PHYS + (PAGE_SIZE_LARGE - 1)) >> 21;
     for (uint64_t i = 0; i < kernel_page_count; i++)
         vmem_unmap_2mb(kernel_pt_vaddr, (void*)(i * PAGE_SIZE_LARGE));
 

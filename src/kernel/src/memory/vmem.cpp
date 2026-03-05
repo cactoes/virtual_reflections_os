@@ -65,10 +65,6 @@ bool vmem_map_2mb(const void* pml4, const void* vaddr, const void* paddr, bool i
     const uint64_t pdpe =   KPAGING_GET_PE(vaddr, 30);
     const uint64_t pde =    KPAGING_GET_PE(vaddr, 21);
 
-    const uint64_t basic_page_flags = is_user
-        ? PF_PRESENT | PF_READ_WRITE | PF_USER_SUPERVISOR
-        : PF_PRESENT | PF_READ_WRITE;
-
     uint64_t* pml4_virt = GET_PML4_VIRT();
     if (!KPAGING_CHECK_ENTRY(pml4_virt, pml4e)) {
         const void* page = pmem_get_page();
@@ -89,6 +85,10 @@ bool vmem_map_2mb(const void* pml4, const void* vaddr, const void* paddr, bool i
         pdpt_virt[pdpe] |= PF_USER_SUPERVISOR;
         pml4_virt[pml4e] |= PF_USER_SUPERVISOR;
     }
+
+    const uint64_t basic_page_flags = is_user
+        ? PF_PRESENT | PF_READ_WRITE | PF_USER_SUPERVISOR
+        : PF_PRESENT | PF_READ_WRITE;
 
     uint64_t* pdt_virt = GET_PDT_VIRT(pml4e, pdpe);
     pdt_virt[pde] = ((uint64_t)paddr & ~0x1FFFFF) | PF_PAGE_SIZE | basic_page_flags;
@@ -172,13 +172,6 @@ bool vmem_unmap_2mb(void* pml4, void* vaddr) {
     uint64_t* pdt_virt = GET_PDT_VIRT(pml4e, pdpe);
     pdt_virt[pde] = 0;
     flush_tlb((void*)vaddr);
-
-    if (memreq_impl(pdt_virt, 0, PAGE_SIZE))
-        pdpt_virt[pdpe] = 0;
-    
-    if (memreq_impl(pdpt_virt, 0, PAGE_SIZE))
-        pml4_virt[pml4e] = 0;
-
     return true;
 }
 

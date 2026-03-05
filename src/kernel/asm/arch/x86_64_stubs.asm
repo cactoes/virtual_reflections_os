@@ -157,11 +157,14 @@ x86_64_memset:
     pop     rax
     ret
 
-
-; TODO: function def
+;==========================================
+; @function                 x86_64_syscall_handler
+; @brief                    syscall handler that gets invoked
+; @remarks                  destroyed registers: ?
+;==========================================
 x86_64_syscall_handler:
     swapgs
-    cli
+
     mov  [gs:8], rsp
     mov  rsp, [gs:0]
 
@@ -199,6 +202,9 @@ x86_64_syscall_handler:
 
     pop  r11
     pop  rcx
+
+    cli
+    mov  rsp, [gs:8]
 
     swapgs
     o64 sysret

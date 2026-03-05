@@ -73,8 +73,8 @@ setup_page_tables:
     mov     [ebx],          eax
 
     mov     eax,            __lnk_end_kernel_phys
+    add     eax,            0x1FFFFF
     shr     eax,            21
-    add     eax,            4
     mov     ecx,            eax
     xor     edx,            edx
     .identity_loop:
