@@ -224,7 +224,7 @@ extern "C" void x86_64_syscall_handler();
 
 #include "memory/paging.hpp"
 
-void user_mode() {
+void usermode_test() {
     // TODO @since 24/02/2026 -- 21:01
     // 1. custom pml4 struct per process
     // 2. kernel api via syscalls
@@ -246,11 +246,21 @@ void user_mode() {
     wrmsr(0xC0000082, (uint64_t)x86_64_syscall_handler);
     wrmsr(0xC0000084, 0x300);
 
-    void* kernel_page_table = get_pml4();
+    void* user_stack_virtual_og = malloc_aligned(PAGE_SIZE, 16);
 
-    void* user_stack_virtual = malloc_aligned(PAGE_SIZE, 16);
+    void* user_stack_virtual = (void*)(PAGE_SIZE_LARGE * 1ULL);
+    void* user_function_virtual = (void*)(PAGE_SIZE_LARGE * 2ULL);
 
-    enter_usermode((uint64_t)user_function, (uint64_t)((uint8_t*)user_stack_virtual + PAGE_SIZE));
+    uint64_t user_stack_physical_raw = (uint64_t)vmem_virtual_to_physical(user_stack_virtual_og);
+    uint64_t user_stack_physical = align_down(user_stack_physical_raw, PAGE_SIZE_LARGE);
+    vmem_map_2mb(get_pml4(), user_stack_virtual, (void*)user_stack_physical, true);
+
+    uint64_t user_function_physical_raw = (uint64_t)vmem_virtual_to_physical((void*)&user_function);
+    uint64_t user_function_physical = align_down(user_function_physical_raw, PAGE_SIZE_LARGE);
+    uint64_t user_function_offset = user_function_physical_raw - user_function_physical;
+    vmem_map_2mb(get_pml4(), user_function_virtual, (void*)user_function_physical, true);
+
+    enter_usermode((uint64_t)user_function_virtual + user_function_offset, (uint64_t)user_stack_virtual + PAGE_SIZE_LARGE);
 }
 
 int process_2_entry() {
@@ -298,7 +308,12 @@ NORETURN void virtual_kernel_entry(multiboot_t* p_multiboot_struct, void* kernel
     system_info_parse_memory_size(get_global_system_info_manager(), p_multiboot_struct);
 
     const uint64_t aligned_kernel_end_addr = align_up(LINKER_END_KERNEL_PHYS, PAGE_SIZE_LARGE);
-    const uint64_t kernel_page_count = aligned_kernel_end_addr / PAGE_SIZE_LARGE;
+    // BUG @since 05/03/2026 -- 13:31
+    // shr 21, add 4
+    // so we should unmap the enitre identity map here
+    // but adding more than +2 causes a crash
+    // something is using it for some reason
+    const uint64_t kernel_page_count = aligned_kernel_end_addr / PAGE_SIZE_LARGE + 4;
 
     for (uint64_t i = 0; i < kernel_page_count; i++)
         vmem_unmap_2mb(kernel_pt_vaddr, (void*)(i * PAGE_SIZE_LARGE));
@@ -476,9 +491,8 @@ NORETURN void virtual_kernel_entry(multiboot_t* p_multiboot_struct, void* kernel
         kprintf("failed to start terminal");
 
     // after usermode switch it basically shouldnt go back
-    // user_mode();
-
-    create_process_test();
+    usermode_test();
+    // create_process_test();
 
     // we shoudn t reach this point since the kernel should never stop
     // incase we do just hang here so we dont break anything
