@@ -282,7 +282,8 @@ void dma_heap_free(heap_t* p_dma_heap, void* p_block) {
 }
 
 uint64_t dma_get_physical(heap_t* p_dma_heap, void* p_block) {
-    return (uint64_t)vmem_virtual_to_physical(p_dma_heap->pml4, p_block);
+    // return (uint64_t)vmem_virtual_to_physical(p_dma_heap->pml4, p_block);
+    return (uint64_t)vmem_virtual_to_physical(p_block);
 }
 
 uint32_t dma_get_physical_lower(heap_t* p_dma_heap, void* p_block) {

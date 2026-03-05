@@ -222,6 +222,8 @@ extern "C" uint64_t syscall_dispatch(uint64_t syscall_num) {
 
 extern "C" void x86_64_syscall_handler();
 
+#include "memory/paging.hpp"
+
 void user_mode() {
     // TODO @since 24/02/2026 -- 21:01
     // 1. custom pml4 struct per process
@@ -251,7 +253,34 @@ void user_mode() {
     enter_usermode((uint64_t)user_function, (uint64_t)((uint8_t*)user_stack_virtual + PAGE_SIZE));
 }
 
-NORETURN void virtual_kernel_entry(multiboot_t* p_multiboot_struct, void* p_kpml4) {
+int process_2_entry() {
+    kprintf("diff page table print\n");
+    return 0;
+}
+
+void create_process_test() {
+    // BUG @since 05/03/2026 -- 09:22
+    // page table never free'd
+
+    // create new page table
+    uint64_t* new_pt_virt = (uint64_t*)malloc_aligned(PAGE_SIZE, PAGE_SIZE);
+    memzero(new_pt_virt, PAGE_SIZE);
+    uint64_t new_pt_phys = (uint64_t)vmem_virtual_to_physical((void*)new_pt_virt);
+
+    // revursive map page table
+    vmem_recusive_map_page_table((void*)new_pt_virt, (void*)new_pt_phys);
+
+    // copy the kernel entries so its always linked
+    uint64_t* current_pml4 = GET_PML4_VIRT();
+    const uint64_t pml4e = KPAGING_GET_PE(KERNEL_VIRTUAL_BASE, 39);
+    for (int i = pml4e; i < 511; i++)
+        new_pt_virt[i] = current_pml4[i];
+
+    // create a new thread with the new page table
+    vthread_create(process_2_entry, (void*)new_pt_phys);
+}
+
+NORETURN void virtual_kernel_entry(multiboot_t* p_multiboot_struct, void* kernel_pt_vaddr) {
     // validate multiboot
     if (mb_has_valid_magic(p_multiboot_struct) != MULTIBOOT_VER2)
         kernel_fatal(KERNEL_FATAL_MULTIBOOT_MAGIC_VALIDATE, "multiboot was not the excpected version");
@@ -272,15 +301,15 @@ NORETURN void virtual_kernel_entry(multiboot_t* p_multiboot_struct, void* p_kpml
     const uint64_t kernel_page_count = aligned_kernel_end_addr / PAGE_SIZE_LARGE;
 
     for (uint64_t i = 0; i < kernel_page_count; i++)
-        vmem_unmap_2mb(p_kpml4, (void*)(i * PAGE_SIZE_LARGE));
+        vmem_unmap_2mb(kernel_pt_vaddr, (void*)(i * PAGE_SIZE_LARGE));
 
     // initialze virtual memory
-    if (!vmem_init(p_kpml4, p_multiboot_struct))
+    if (!vmem_init(kernel_pt_vaddr, p_multiboot_struct))
         kernel_fatal(KERNEL_FATAL_VMEM_INIT, "vmem failed to initialize");
 
     // initialze the global heap
     heap_t heap {};
-    if (!heap_init(&heap, p_kpml4, (void*)VMEM_KERNEL_HEAP_START, HEAP_START_SIZE))
+    if (!heap_init(&heap, kernel_pt_vaddr, (void*)VMEM_KERNEL_HEAP_START, HEAP_START_SIZE))
         kernel_fatal(KERNEL_FATAL_HEAP_INIT, "kernel heap fail to initialze");
 
     set_global_heap(&heap);
@@ -304,7 +333,7 @@ NORETURN void virtual_kernel_entry(multiboot_t* p_multiboot_struct, void* p_kpml
 
     dma_heap_manager_t allocator {};
     set_global_dma_heap_manager(&allocator);
-    dma_heap_manager_init(get_global_dma_heap_manager(), p_kpml4, (void*)VMEM_DMA_ALLOCATOR_START, PAGE_SIZE_LARGE * 128);
+    dma_heap_manager_init(get_global_dma_heap_manager(), kernel_pt_vaddr, (void*)VMEM_DMA_ALLOCATOR_START, PAGE_SIZE_LARGE * 128);
 
     // initialize threading
     if (vthread_start_and_setup_main() == VTHREAD_HANDLE_INVALID)
@@ -432,20 +461,24 @@ NORETURN void virtual_kernel_entry(multiboot_t* p_multiboot_struct, void* p_kpml
 
     // desktop_init();
 
+    void* kernel_pt_paddr = vmem_virtual_to_physical(kernel_pt_vaddr);
+
     const vthread_handle_t critical_threads[] = {
-        vthread_create([]() { while (true) nidm_process_packet(); return 1; }, p_kpml4, "NIDM"),
-        vthread_create([]() { while (true) ps2_mouse_process_packet(); return 1; }, p_kpml4, "PS/2 Mouse"),
-        vthread_create([]() { while (true) ps2_keyboard_process_packet(); return 1; }, p_kpml4, "PS/2 Keyboard")
+        vthread_create([]() { while (true) nidm_process_packet(); return 1; }, kernel_pt_paddr, "NIDM"),
+        vthread_create([]() { while (true) ps2_mouse_process_packet(); return 1; }, kernel_pt_paddr, "PS/2 Mouse"),
+        vthread_create([]() { while (true) ps2_keyboard_process_packet(); return 1; }, kernel_pt_paddr, "PS/2 Keyboard")
     };
 
     for (const auto& thread : critical_threads)
         vthread_set_critical(thread, true);
 
-    if (vthread_create(terminal_thread_main, p_kpml4) == VTHREAD_HANDLE_INVALID)
+    if (vthread_create(terminal_thread_main, kernel_pt_paddr) == VTHREAD_HANDLE_INVALID)
         kprintf("failed to start terminal");
 
     // after usermode switch it basically shouldnt go back
     // user_mode();
+
+    create_process_test();
 
     // we shoudn t reach this point since the kernel should never stop
     // incase we do just hang here so we dont break anything

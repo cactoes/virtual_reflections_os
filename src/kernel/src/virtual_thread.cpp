@@ -84,7 +84,7 @@ vthread_handle_t vthread_start_and_setup_main() {
     std::unique_ptr<vthread_t> p_vthread = std::make_unique<vthread_t>();
 
     p_vthread->handle = VTHREAD_MAIN_THREAD_HANDLE;
-    // p_vthread->pml4 = get_pml4();
+    p_vthread->pml4 = get_pml4();
     p_vthread->tls.handle = VTHREAD_MAIN_THREAD_HANDLE;
 
     const char name[] = "main";
@@ -133,7 +133,7 @@ vthread_handle_t vthread_create(thread_entry_t p_thread_entry, void* pml4, const
     p_vthread->vt_state = vthread_state_t::RUNNING;
     p_vthread->fpu_state = (uint8_t*)malloc_aligned(sizeof(uint8_t) * 512, 16);
 
-    // p_vthread->pml4 = pml4;
+    p_vthread->pml4 = pml4;
     p_vthread->tls.handle = new_handle;
 
     if (name) {
@@ -195,7 +195,7 @@ cpu_state_t* vthread_schedule(cpu_state_t* p_cpu_state) {
     } while (g_current_thread->vt_state != vthread_state_t::RUNNING);
 
     gdt_set_stack_pointer0(g_current_thread->stack_top);
-    // set_pml4(g_current_thread->pml4);
+    set_pml4(g_current_thread->pml4);
     fpu_load(g_current_thread->fpu_state);
 
     return (cpu_state_t*)g_current_thread->stack_top;

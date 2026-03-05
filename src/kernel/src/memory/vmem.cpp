@@ -9,7 +9,7 @@
 // 128 2mb regions
 static uint64_t global_mapped_mmio_bitmap[2] {};
 
-void* vmem_virtual_to_physical(void* pml4, void* vaddr) {
+void* vmem_virtual_to_physical(void* vaddr) {
     const uint64_t pml4e =  KPAGING_GET_PE(vaddr, 39);
     const uint64_t pdpe =   KPAGING_GET_PE(vaddr, 30);
     const uint64_t pde =    KPAGING_GET_PE(vaddr, 21);

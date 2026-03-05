@@ -8,11 +8,10 @@
 #ifndef __MEMORY_VMEM_HPP__
 #define __MEMORY_VMEM_HPP__
 
-// TODO @since 02/03/2026 -- 15:30
-// change to higher addressing
-#define VMEM_DMA_ALLOCATOR_START    0x40000000  // 256mb size
-#define VMEM_MAPPED_MMIO_REGION     0x50000000  // 256mb size
-#define VMEM_KERNEL_HEAP_START      0x60000000  // unlimited?
+// addresses are based on kernel location, if the kernel is bigger than 256mb it will go wrong
+#define VMEM_DMA_ALLOCATOR_START    0xFFFFF80100000000  // 256mb
+#define VMEM_MAPPED_MMIO_REGION     0xFFFFF80200000000  // 256mb
+#define VMEM_KERNEL_HEAP_START      0xFFFFF80300000000  // remainder
 
 #include "common.hpp"
 
@@ -43,7 +42,7 @@ bool vmem_init(const void* pml4, const void* mbstruct);
 /// @return                     the virtual address its mapped to if success else nullptr
 void* vmem_map_mmio_region(void* pml4, void* paddr);
 
-void* vmem_virtual_to_physical(void* pml4, void* vaddr);
+void* vmem_virtual_to_physical(void* vaddr);
 
 /// @brief                      unmaps a 2mb page from a virtual address
 /// @param pml4                 page table to target
