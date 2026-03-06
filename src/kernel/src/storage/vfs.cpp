@@ -57,9 +57,9 @@ std::string get_mount_point_relative_path(const vfs_mount_point_t* mount_point, 
 file_descriptor_t vfs_open_file(vfs_t* vfs, const char* path) {
     const vfs_mount_point_t* mount_point = vfs_get_mount_point(vfs, path);
     if (!mount_point)
-        return false;
+        return FILE_DESCRIPTOR_INVALID;
 
-    const std::string mount_point_relative_path = get_mount_point_relative_path(mount_point, path);
+    const std::string mount_point_relative_path = get_mount_point_relative_path(mount_point, std::string(path));
 
     bool file_exists = false;
     switch (mount_point->type) {
@@ -75,13 +75,13 @@ file_descriptor_t vfs_open_file(vfs_t* vfs, const char* path) {
     }
 
     if (!file_exists)
-        return false;
+        return FILE_DESCRIPTOR_INVALID;
 
     // TODO @since 30/01/2026 -- 01:13
     // better fd logic
     const file_descriptor_t file_descriptor = vfs->last_fd++;
     if (file_descriptor == FILE_DESCRIPTOR_INVALID)
-        return false;
+        return FILE_DESCRIPTOR_INVALID;
 
     vfs->file_handles[file_descriptor] = std::string(path);
     return file_descriptor;
