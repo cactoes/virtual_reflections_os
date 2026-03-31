@@ -14,18 +14,21 @@ param (
 
 # functions
 function Install-DockerEnvironment {
-    docker build . -t virtual_reflections_os_buildenv
+    docker build . -t virtual_reflections_os_buildenv_aarch64
 }
 
 function Start-DockerEnvironment {
-    docker run --name VirtualReflectionsOS --rm -v "${PWD}:/root/env" -e GIT_COMMIT_HASH=$git_commit_hash -e WINDOWS_PATH="${PWD}" virtual_reflections_os_buildenv
+    docker run --name VirtualReflectionsOS --rm -v "${PWD}:/root/env" -e GIT_COMMIT_HASH=$git_commit_hash -e WINDOWS_PATH="${PWD}" virtual_reflections_os_buildenv_aarch64
 }
 
 function Start-QEMU {
     $argument_list = @(
-        "-boot", "d",
-        "-machine", "pc",
-        "-m", "$($config["qemu_system_memory"])"
+        # "-boot", "d",
+        "-nographic",
+        "-kernel", "$($config["qemu_path_kernel"])",
+        "-machine", "$($config["qemu_machine"])",
+        "-m", "$($config["qemu_system_memory"])",
+        "-cpu", "$($config["qemu_cpu"])"
     )
 
     if ($config["qemu_enable_ahci"]) {
@@ -87,7 +90,7 @@ function Start-QEMU {
     Write-Host "Args: $($argument_list -join ' ')"
     Write-Host ""
 
-    qemu-system-x86_64.exe @argument_list
+    & $config["qemu_exe"] @argument_list
 }
 
 function Start-CleanBuildEnvironment {
