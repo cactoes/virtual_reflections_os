@@ -1,10 +1,10 @@
-ENTRY(_start)
+ENTRY(_entry)
 
 SECTIONS {
-    . = 0x80000;
+    . = 0x40000000;
  
     .text : { 
-        KEEP(*(.boot)); 
+        KEEP(*(.text.boot));
         *(.text*) 
     } 
  
@@ -18,7 +18,11 @@ SECTIONS {
 
     . = ALIGN(8);
     __bss_start = .;
-    .bss : { *(.bss*) *(COMMON) }
+    .bss : {
+        *(.bss.boot)
+        *(.bss*)
+        *(COMMON)
+    }
     . = ALIGN(8);
     __bss_end = .;
 }
