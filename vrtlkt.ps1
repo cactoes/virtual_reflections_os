@@ -23,7 +23,6 @@ function Start-DockerEnvironment {
 
 function Start-QEMU {
     $argument_list = @(
-        # "-boot", "d",
         "-nographic",
         "-kernel", "$($config["qemu_path_kernel"])",
         "-machine", "$($config["qemu_machine"])",
