@@ -9,6 +9,9 @@
 #include "time/clock.hpp"
 #include "std/string.hpp"
 
+#include "linker.hpp"
+#include "utils/debug.hpp"
+
 // TODO @since 23/10/2025 -- 19:06
 // change into 1 "bigger" thread handler
 
@@ -70,9 +73,18 @@ bool vthread_add(std::unique_ptr<vthread_t> p_vthread) {
     // mutex_lock_guard guard(&g_mutex);
 
     p_vthread->vt_state = vthread_state_t::RUNNING;
-    
-    if (!g_threads.insert(p_vthread->handle, move(p_vthread)))
+
+    // FIXME @since 16/04/2026 -- 12:15
+    // temp fix for the race condition
+
+    cli();
+
+    if (!g_threads.insert(p_vthread->handle, move(p_vthread))) {
+        sti();
         return false;
+    }
+
+    sti();
 
     return true;
 }
@@ -176,6 +188,9 @@ cpu_state_t* vthread_schedule(cpu_state_t* p_cpu_state) {
 
     do {
         g_current_thread = vthread_get_next_thead(g_current_thread->handle);
+        if (!g_current_thread)
+            debug_trap("invalid thread");
+
         switch (g_current_thread->vt_state) {
             case vthread_state_t::STARTING: vthread_handle_starting(g_current_thread); break;
             case vthread_state_t::SLEEPING: vthread_handle_sleeping(g_current_thread); break;
