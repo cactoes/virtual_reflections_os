@@ -288,22 +288,37 @@ void create_process_test() {
     vthread_create(process_2_entry, (void*)new_pt_phys);
 }
 
-NORETURN void virtual_kernel_entry(multiboot_t* p_multiboot_struct, void* kernel_pt_vaddr) {
+NORETURN void virtual_kernel_entry(multiboot_t* multiboot_struct, void* kernel_pt_vaddr) {
+    // initialze vga text mode
+    // TODO @since 10/10/2025 -- 01:24
+    // vga (device) manager
+    vga_tm_init_buffer(&g_vga_tm_buffer, (void*)VGA_TM_BUFFER_ADDR, VGA_TM_NUM_COLS, VGA_TM_NUM_ROWS);
+    vga_tm_clear_buffer(&g_vga_tm_buffer);
+
+    // initialze the debug out stream
+    debug_init();
+
     // validate multiboot
-    if (mb_has_valid_magic(p_multiboot_struct) != MULTIBOOT_VER2)
+    if (mb_has_valid_magic(multiboot_struct) != MULTIBOOT_VER2)
         kernel_fatal(KERNEL_FATAL_MULTIBOOT_MAGIC_VALIDATE, "multiboot was not the excpected version");
+
+    kprintf("[ \033[92mOK\033[0m ] multiboot validated\n");
+    printf("[ \033[92mOK\033[0m ] multiboot validated\n");
 
     // initialize the gdt / tss
     gdt_init();
 
-    // initialze the debug out stream
-    debug_init();
+    kprintf("[ \033[92mOK\033[0m ] installed gdt / tss\n");
+    printf("[ \033[92mOK\033[0m ] installed gdt / tss\n");
 
     // we already need system info here ...
     // just make sure we dont use the string's yet since memory is not setup yet
     system_info_manager_t sim {};
     set_global_system_info_manager(&sim);
-    system_info_parse_memory_size(get_global_system_info_manager(), p_multiboot_struct);
+    system_info_parse_memory_size(get_global_system_info_manager(), multiboot_struct);
+
+    kprintf("[ \033[92mOK\033[0m ] parsed memory: %ul\n", sim.memory_size);
+    printf("[ \033[92mOK\033[0m ] parsed memory: %ul\n", sim.memory_size);
 
     // same as the assembly
     const uint64_t kernel_page_count = (LINKER_END_KERNEL_PHYS + (PAGE_SIZE_LARGE - 1)) >> 21;
@@ -311,7 +326,7 @@ NORETURN void virtual_kernel_entry(multiboot_t* p_multiboot_struct, void* kernel
         vmem_unmap_2mb(kernel_pt_vaddr, (void*)(i * PAGE_SIZE_LARGE));
 
     // initialze virtual memory
-    if (!vmem_init(kernel_pt_vaddr, p_multiboot_struct))
+    if (!vmem_init(kernel_pt_vaddr, multiboot_struct))
         kernel_fatal(KERNEL_FATAL_VMEM_INIT, "vmem failed to initialize");
 
     // initialze the global heap
@@ -320,6 +335,9 @@ NORETURN void virtual_kernel_entry(multiboot_t* p_multiboot_struct, void* kernel
         kernel_fatal(KERNEL_FATAL_HEAP_INIT, "kernel heap fail to initialze");
 
     set_global_heap(&heap);
+
+    kprintf("[ \033[92mOK\033[0m ] initialized memory\n");
+    printf("[ \033[92mOK\033[0m ] initialized memory\n");
 
     // initialze the interrupt line(s)
     set_interrupt_callback(interrupt_t::HARDWARE_PIT, pit_handle_interrupt);
@@ -332,12 +350,6 @@ NORETURN void virtual_kernel_entry(multiboot_t* p_multiboot_struct, void* kernel
     pit_init(PIT_TIMER_INTERVAL);
     interrupt_init(gdt_get_kernel_code_selector());
 
-    // initialze vga text mode
-    // TODO @since 10/10/2025 -- 01:24
-    // vga (device) manager
-    vga_tm_init_buffer(&g_vga_tm_buffer, (void*)VGA_TM_BUFFER_ADDR, VGA_TM_NUM_COLS, VGA_TM_NUM_ROWS);
-    vga_tm_clear_buffer(&g_vga_tm_buffer);
-
     dma_heap_manager_t allocator {};
     set_global_dma_heap_manager(&allocator);
     dma_heap_manager_init(get_global_dma_heap_manager(), kernel_pt_vaddr, (void*)VMEM_DMA_ALLOCATOR_START, PAGE_SIZE_LARGE * 128);
@@ -345,6 +357,9 @@ NORETURN void virtual_kernel_entry(multiboot_t* p_multiboot_struct, void* kernel
     // initialize threading
     if (vthread_start_and_setup_main() == VTHREAD_HANDLE_INVALID)
         kernel_fatal(KERNEL_FATAL_VTHREAD_INIT, "virtual threads failed to intialize");
+
+    kprintf("[ \033[92mOK\033[0m ] enabled virtual threading\n");
+    printf("[ \033[92mOK\033[0m ] enabled virtual threading\n");
 
     pit_add_interrupt_function(vthread_handle_interrupt);
 
@@ -384,7 +399,8 @@ NORETURN void virtual_kernel_entry(multiboot_t* p_multiboot_struct, void* kernel
                 const std::string driver_path = std::string("/harddisk0/") + driver_name + ".sys";
                 file_descriptor_t driver_file_handle = vfs_open_file(&vfs, driver_path.c_str());
                 if (driver_file_handle == FILE_DESCRIPTOR_INVALID) {
-                    kprintf("failed to open handle to driver '%s'\n", driver_name.c_str());
+                    kprintf("[ \033[91mERROR\033[0m ] failed open file handle to driver: '%s'\n", driver_name.c_str());
+                    printf("[ \033[91mERROR\033[0m ] failed open file handle to driver: '%s'\n", driver_name.c_str());
                     continue;
                 }
 
@@ -392,31 +408,40 @@ NORETURN void virtual_kernel_entry(multiboot_t* p_multiboot_struct, void* kernel
                 uint8_t* driver_file_data = nullptr;
                 size_t size;
                 if (!vfs_read_file(&vfs, driver_file_handle, &driver_file_data, &size)) {
-                    kprintf("failed to read driver '%s'\n", driver_name.c_str());
+                    kprintf("[ \033[91mERROR\033[0m ] failed to parse driver file '%s'\n", driver_name.c_str());
+                    printf("[ \033[91mERROR\033[0m ] failed to parse driver file '%s'\n", driver_name.c_str());
                     continue;
                 }
 
                 system_driver_handle_t driver_handle = driver_load(get_global_driver_manager(), driver_name.c_str(), driver_file_data);
                 if (driver_handle == SYSTEM_DRIVER_HANDLE_INVALID) {
-                    kprintf("failed to load driver '%s'\n", driver_name.c_str());
+                    kprintf("[ \033[91mERROR\033[0m ] failed to load driver '%s'\n", driver_name.c_str());
+                    printf("[ \033[91mERROR\033[0m ] failed to load driver '%s'\n", driver_name.c_str());
                     free(driver_file_data);
                     continue;
                 }
 
                 int result = driver_start(get_global_driver_manager(), driver_handle);
                 if (result != 0) {
-                    kprintf("failed to start driver '%s'. code: %i\n", driver_name.c_str(), result);
+                    kprintf("[ \033[91mERROR\033[0m ] failed to start driver '%s'. code: %i\n", driver_name.c_str(), result);
+                    printf("[ \033[91mERROR\033[0m ] failed to start driver '%s'. code: %i\n", driver_name.c_str(), result);
                     free(driver_file_data);
                     continue;
                 }
 
-                kprintf("loaded driver '%s'. code: %i\n", driver_name.c_str(), result);
+                kprintf("[ \033[92mOK\033[0m ] loaded driver '%s'. code: %i\n", driver_name.c_str(), result);
+                printf("[ \033[92mOK\033[0m ] loaded driver '%s'. code: %i\n", driver_name.c_str(), result);
             }
         }
     }
 
-    if (!setup_network_functionality())
-        kprintf("failed to setup network functionality!\n");
+    if (setup_network_functionality()) {
+        kprintf("[ \033[92mOK\033[0m ] initialized networking\n");
+        printf("[ \033[92mOK\033[0m ] initialized networking\n");
+    } else {
+        kprintf("[ \033[91mERROR\033[0m ] failed to setup networking\n");
+        printf("[ \033[91mERROR\033[0m ] failed to setup networking\n");
+    }
 
     auto net_test = []() {
         auto tcp_callback = [](const uint8_t* data, size_t size) {
@@ -454,9 +479,6 @@ NORETURN void virtual_kernel_entry(multiboot_t* p_multiboot_struct, void* kernel
 
     // vthread_create(net_test, p_kpml4);
 
-    // kernel finished
-    kprintf("kernel finished initializing\n");
-
     // if (vthread_create(desktop_init, p_kpml4) == VTHREAD_HANDLE_INVALID)
     //     kprintf("failed to create desktop thread\n");
     
@@ -478,6 +500,10 @@ NORETURN void virtual_kernel_entry(multiboot_t* p_multiboot_struct, void* kernel
 
     for (const auto& thread : critical_threads)
         vthread_set_critical(thread, true);
+
+    // kernel finished
+    kprintf("[ KERNEL SETUP FINISHED ]\n");
+    printf("[ KERNEL SETUP FINISHED ]\n");
 
     if (vthread_create(terminal_thread_main, kernel_pt_paddr) == VTHREAD_HANDLE_INVALID)
         kprintf("failed to start terminal");
