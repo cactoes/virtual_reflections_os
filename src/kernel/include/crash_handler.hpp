@@ -15,7 +15,8 @@
 #define KERNEL_FATAL_VTHREAD_INIT                   0xF0000003
 #define KERNEL_FATAL_CRITICAL_THREAD_DIED           0xF0000004
 
-#define KERNEL_FATAL_VTHREAD_STACK_PROTECTION       0xA0000000
+#define KERNEL_FATAL_VTHREAD_STACK_PROTECTION       0xF0000005
+#define KERNEL_FATAL_CRITICAL_SECTION_FAILED        0xF0000006
 
 #include "common.hpp"
 
@@ -23,7 +24,6 @@ extern "C" NORETURN void kernel_fatal_internal(uint64_t code, const char* messag
 
 // NAKED
 NORETURN inline void kernel_fatal(uint64_t code, const char* message) {
-
     // TODO @since 02/01/2026 -- 18:02
     // fix get cpu state
     kernel_fatal_internal(code, message, nullptr);
