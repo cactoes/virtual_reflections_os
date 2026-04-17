@@ -14,6 +14,8 @@ NORETURN void kernel_fatal_end() {
 }
 
 void kernel_fatal_internal(uint64_t code, const char* message, cpu_state_t* cpu_state) {
+    cli();
+
     // if not main thread just terminate the thread not the system
     // & if a valid tls is setup
     if (__thread_tls && __thread_tls->handle != VTHREAD_MAIN_THREAD_HANDLE && __thread_tls->handle != VTHREAD_HANDLE_INVALID) {
