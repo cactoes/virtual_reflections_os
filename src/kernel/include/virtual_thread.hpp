@@ -26,6 +26,10 @@
 typedef uint64_t vthread_handle_t;
 typedef int(*thread_entry_t)();
 
+struct critical_section_t {
+    bool is_locked;
+};
+
 struct thread_local_storage_t {
     vthread_handle_t handle;
     // file_descriptor_t out_streams[3] { FILE_DESCRIPTOR_INVALID, FILE_DESCRIPTOR_INVALID, FILE_DESCRIPTOR_INVALID };
@@ -126,5 +130,8 @@ vthread_t* vthread_get(vthread_handle_t handle);
 bool vthread_set_critical(vthread_handle_t handle, bool state = true);
 
 vthread_state_t vthread_get_state();
+
+critical_section_t* enter_critical_section(bool wait_for_lock = true, bool can_fail = false);
+bool leave_critical_section(critical_section_t* section);
 
 #endif // __VIRTUAL_THREAD_HPP__

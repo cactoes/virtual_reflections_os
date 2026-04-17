@@ -20,6 +20,8 @@ static std::linear_map<vthread_handle_t, std::unique_ptr<vthread_t>> g_threads {
 static vthread_handle_t     g_vth_counter = 1;
 static vthread_t*           g_current_thread = nullptr;
 
+static critical_section_t* global_current_critical_section = nullptr;
+
 // static mutex_t g_mutex {};
 
 void vthread_entry_point(thread_entry_t p_thread_entry) {
@@ -60,6 +62,9 @@ void vthread_handle_stopping(vthread_t* p_vthread) {
 
     free(p_vthread->stack_bottom);
     free(p_vthread->fpu_state);
+
+    // TODO @since 17/04/2026 -- 16:28
+    // do we need to do a critical section here?
     g_threads.remove(p_vthread->handle);
 }
 
@@ -74,17 +79,14 @@ bool vthread_add(std::unique_ptr<vthread_t> p_vthread) {
 
     p_vthread->vt_state = vthread_state_t::RUNNING;
 
-    // FIXME @since 16/04/2026 -- 12:15
-    // temp fix for the race condition
-
-    cli();
+    critical_section_t* section = enter_critical_section();
 
     if (!g_threads.insert(p_vthread->handle, move(p_vthread))) {
-        sti();
+        leave_critical_section(section);
         return false;
     }
 
-    sti();
+    leave_critical_section(section);
 
     return true;
 }
@@ -181,6 +183,10 @@ bool vthread_check_stack(vthread_t* thread) {
 
 cpu_state_t* vthread_schedule(cpu_state_t* p_cpu_state) {
     if (g_threads.size() <= 1)
+        return p_cpu_state;
+
+    // we are in critical section so do NOT mess with it until its done
+    if (global_current_critical_section)
         return p_cpu_state;
 
     g_current_thread->stack_top = (void*)p_cpu_state;
@@ -292,4 +298,54 @@ vthread_state_t vthread_get_state() {
         return vthread_state_t::UNKNOWN;
 
     return g_current_thread->vt_state;
+}
+
+critical_section_t* enter_critical_section(bool wait_for_lock, bool can_fail) {
+    cli();
+
+    if (global_current_critical_section) {
+        if (!wait_for_lock) {
+            if (can_fail) {
+                sti();
+                return nullptr;
+            }
+    
+            sti();
+            kernel_fatal(KERNEL_FATAL_CRITICAL_SECTION_FAILED, "double critical section");
+        } else {
+            sti();
+            while (global_current_critical_section)
+                vthread_yield();
+            cli();            
+        }
+    }
+
+    critical_section_t* critical_section = (critical_section_t*)malloc(sizeof(critical_section_t));
+    if (!critical_section) {
+        if (can_fail) {
+            sti();
+            return nullptr;
+        }
+
+        sti();
+        kernel_fatal(KERNEL_FATAL_CRITICAL_SECTION_FAILED, "failed to create critical section");
+    }
+
+    global_current_critical_section = critical_section;
+    global_current_critical_section->is_locked = true;
+
+    sti();
+    return critical_section;
+}
+
+bool leave_critical_section(critical_section_t* section) {
+    if (section != global_current_critical_section || !section || !global_current_critical_section)
+        return false;
+
+    cli();
+    free(section);
+    global_current_critical_section = nullptr;
+    sti();
+
+    return true;
 }
