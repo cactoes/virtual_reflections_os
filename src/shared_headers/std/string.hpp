@@ -483,6 +483,19 @@ static void str_unpack_be16(const uint16_t* src, int word_count, char* dst, int 
     dst[pos < max_len ? pos : max_len - 1] = '\0';
 }
 
+static bool char_is_num(char ch) {
+    return ch >= '0' && ch <= '9';
+}
+
+static int atoi(const char *str) {
+    int result = 0;
+    while (*str >= '0' && *str <= '9') {
+        result = result * 10 + (*str - '0');
+        str++;
+    }
+    return result;
+}
+
 namespace std {
 
 class string {
