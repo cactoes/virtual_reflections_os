@@ -290,8 +290,7 @@ void terminal_keydown_callback(virtual_key_t vk) {
 }
 
 int terminal_thread_main() {
-    vga_tm_clear_buffer(&g_vga_tm_buffer);
-    printf("VirtualReflectionsOS Interactive Terminal [v1:%s]\n", GIT_COMMIT_HASH);
+    printf("\nVirtualReflectionsOS Interactive Terminal [v1:%s]\n", GIT_COMMIT_HASH);
     printf("Copyright (C) Blackline Technologies Ltd. System booted succesfully.\n");
     printf("Type 'help' for a list of commands.\n");
 
