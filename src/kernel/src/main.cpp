@@ -270,6 +270,19 @@ void create_process_test() {
     // BUG @since 05/03/2026 -- 09:22
     // page table never free'd
 
+    // file_descriptor_t fd = vfs_open_file(get_global_vfs(), "harddisk0/TestProgram.exe");
+    // if (fd == FILE_DESCRIPTOR_INVALID) {
+    //     kprintf("failed to open TestProgram.exe");
+    //     return;
+    // }
+
+    // uint8_t* program_file_data = nullptr;
+    // size_t size;
+    // if (!vfs_read_file(get_global_vfs(), fd, &program_file_data, &size)) {
+    //     kprintf("failed to load TestProgram.exe");
+    //     return;
+    // }
+
     // create new page table
     uint64_t* new_pt_virt = (uint64_t*)malloc_aligned(PAGE_SIZE, PAGE_SIZE);
     memzero(new_pt_virt, PAGE_SIZE);
@@ -511,8 +524,8 @@ NORETURN void virtual_kernel_entry(multiboot_t* multiboot_struct, void* kernel_p
     }
 
     // after usermode switch it basically shouldnt go back
-    usermode_test();
-    // create_process_test();
+    // usermode_test();
+    create_process_test();
 
     // we shoudn t reach this point since the kernel should never stop
     // incase we do just hang here so we dont break anything
