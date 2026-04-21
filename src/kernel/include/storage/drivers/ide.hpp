@@ -78,7 +78,7 @@ struct ide_device_t {
     uint64_t logical_sector_size;
     uint64_t physical_sector_size;
 
-    mutex_t mutex;
+    spinlock_t spinlock;
 
     struct {
         char model[41];

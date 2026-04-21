@@ -69,23 +69,31 @@ bool ide_atapi_send_packet(ide_device_t* device, const uint8_t* packet, uint8_t*
 
     out_port<uint8_t>(device->channel.io_base + IDE_REG_DEVICE, device->type == ide_type_t::MASTER ? IDE_DEVICE_MASTER : IDE_DEVICE_SLAVE);
 
-    if (!wait_ide_status(device->channel.io_base, 0, IDE_STATUS_BSY))
+    spinlock_lock(&device->spinlock);
+
+    if (!wait_ide_status(device->channel.io_base, 0, IDE_STATUS_BSY)) {
+        spinlock_unlock(&device->spinlock);
         return false;
+    }
 
     out_port<uint8_t>(device->channel.io_base + IDE_REG_LBA_MID, (uint8_t)(size & 0xFF));
     out_port<uint8_t>(device->channel.io_base + IDE_REG_LBA_HIGH, (uint8_t)((size >> 8) & 0xFF));
     out_port<uint8_t>(device->channel.io_base + IDE_REG_COMMAND_STATUS, IDE_CMD_PACKET);
 
-    if (!wait_ide_status(device->channel.io_base, IDE_STATUS_DRQ, IDE_STATUS_BSY))
+    if (!wait_ide_status(device->channel.io_base, IDE_STATUS_DRQ, IDE_STATUS_BSY)) {
+        spinlock_unlock(&device->spinlock);
         return false;
+    }
 
     for (size_t i = 0; i < 12; i += 2) {
         uint16_t part = (packet[i + 1] << 8) | packet[i];
         out_port<uint16_t>(device->channel.io_base + IDE_REG_DATA, part);
     }
 
-    if (!wait_ide_status(device->channel.io_base, IDE_STATUS_DRQ, IDE_STATUS_BSY))
+    if (!wait_ide_status(device->channel.io_base, IDE_STATUS_DRQ, IDE_STATUS_BSY)) {
+        spinlock_unlock(&device->spinlock);
         return false;
+    }
 
     for (size_t i = 0; i < size; i += 2) {
         uint16_t word = in_port<uint16_t>(device->channel.io_base + IDE_REG_DATA);
@@ -95,9 +103,12 @@ bool ide_atapi_send_packet(ide_device_t* device, const uint8_t* packet, uint8_t*
             buffer[i + 1] = word >> 8;
     }
 
-    if (!wait_ide_status(device->channel.io_base, 0, IDE_STATUS_BSY | IDE_STATUS_DRQ))
+    if (!wait_ide_status(device->channel.io_base, 0, IDE_STATUS_BSY | IDE_STATUS_DRQ)) {
+        spinlock_unlock(&device->spinlock);
         return false;
+    }
 
+    spinlock_unlock(&device->spinlock);
     return true;
 }
 
@@ -198,7 +209,6 @@ bool ide_init(const pci_device_t* device, std::dynamic_array<ide_device_t>* devi
             uint8_t ch = in_port<uint8_t>(channel.io_base + IDE_REG_LBA_HIGH);
 
             ide_device_t ide_device {};
-            mutex_init(&ide_device.mutex);
             ide_device.channel = channel;
             ide_device.type = type;
             ide_device.is_atapi = cl == ATAPI_SIG_LBA_MID && ch == ATAPI_SIG_LBA_HIGH;
@@ -235,8 +245,6 @@ bool ide_read(ide_device_t* device, uint64_t lba, uint8_t* buffer, size_t size) 
     if (device->logical_sector_size != size)
         return false;
 
-    mutex_lock_guard guard(&device->mutex);
-
     return device->is_atapi ? ide_atapi_read(device, lba, buffer) : ide_ata_read(device, lba, buffer);
 }
 
@@ -245,7 +253,6 @@ bool ide_write(ide_device_t* device) {
         return false;
 
     // TODO @since 24/01/2026 -- 03:06
-    mutex_lock_guard guard(&device->mutex);
 
     return false;
 }
