@@ -84,3 +84,13 @@ void mutex_clear_all_thread_references_and_release(vthread_handle_t handle) {
             mutex_unlock(global_mutex_array[i]);
     }
 }
+
+void spinlock_lock(spinlock_t* lock) {
+    lock->prev_interrupt_state = save_flags_and_cli();
+    while (atomic_exchange(&lock->locked, 1) != 0);
+}
+
+void spinlock_unlock(spinlock_t* lock) {
+    atomic_exchange(&lock->locked, 0);
+    restore_flags(lock->prev_interrupt_state);
+}
