@@ -20,7 +20,7 @@ static std::linear_map<vthread_handle_t, std::unique_ptr<vthread_t>> g_threads {
 static vthread_handle_t     g_vth_counter = 1;
 static vthread_t*           g_current_thread = nullptr;
 
-static critical_section_t* global_current_critical_section = nullptr;
+static volatile bool global_is_in_critical_section = false;
 
 // static mutex_t g_mutex {};
 
@@ -79,14 +79,14 @@ bool vthread_add(std::unique_ptr<vthread_t> p_vthread) {
 
     p_vthread->vt_state = vthread_state_t::RUNNING;
 
-    critical_section_t* section = enter_critical_section();
+    critical_section_t section = enter_critical_section();
 
     if (!g_threads.insert(p_vthread->handle, move(p_vthread))) {
-        leave_critical_section(section);
+        leave_critical_section(&section);
         return false;
     }
 
-    leave_critical_section(section);
+    leave_critical_section(&section);
 
     return true;
 }
@@ -124,7 +124,7 @@ vthread_handle_t vthread_create(thread_entry_t p_thread_entry, void* pml4, const
     // padding since the next section is only 19 * 8
     // which means its no longer 16-byte alignd
     *(--stack_top);
-    
+
     // itret frame
     *(--stack_top) = (uint64_t)stack_top;
     *(--stack_top) = 0x202;
@@ -186,7 +186,7 @@ cpu_state_t* vthread_schedule(cpu_state_t* p_cpu_state) {
         return p_cpu_state;
 
     // we are in critical section so do NOT mess with it until its done
-    if (global_current_critical_section)
+    if (global_is_in_critical_section)
         return p_cpu_state;
 
     g_current_thread->stack_top = (void*)p_cpu_state;
@@ -194,8 +194,6 @@ cpu_state_t* vthread_schedule(cpu_state_t* p_cpu_state) {
 
     do {
         g_current_thread = vthread_get_next_thead(g_current_thread->handle);
-        if (!g_current_thread)
-            debug_trap("invalid thread");
 
         switch (g_current_thread->vt_state) {
             case vthread_state_t::STARTING: vthread_handle_starting(g_current_thread); break;
@@ -215,8 +213,8 @@ cpu_state_t* vthread_schedule(cpu_state_t* p_cpu_state) {
         }
     } while (g_current_thread->vt_state != vthread_state_t::RUNNING);
 
-    gdt_set_stack_pointer0(g_current_thread->stack_top);
     set_pml4(g_current_thread->pml4);
+    gdt_set_stack_pointer0(g_current_thread->stack_top);
     fpu_load(g_current_thread->fpu_state);
 
     return (cpu_state_t*)g_current_thread->stack_top;
@@ -300,52 +298,46 @@ vthread_state_t vthread_get_state() {
     return g_current_thread->vt_state;
 }
 
-critical_section_t* enter_critical_section(bool wait_for_lock, bool can_fail) {
+critical_section_t enter_critical_section(bool wait_for_lock, bool can_fail) {
     cli();
 
-    if (global_current_critical_section) {
+    critical_section_t critical_section {};
+    critical_section.is_locked = false;
+
+    if (global_is_in_critical_section) {
         if (!wait_for_lock) {
             if (can_fail) {
                 sti();
-                return nullptr;
+                return critical_section;
             }
     
             sti();
             kernel_fatal(KERNEL_FATAL_CRITICAL_SECTION_FAILED, "double critical section");
         } else {
             sti();
-            while (global_current_critical_section)
+            while (global_is_in_critical_section)
                 vthread_yield();
             cli();            
         }
     }
 
-    critical_section_t* critical_section = (critical_section_t*)malloc(sizeof(critical_section_t));
-    if (!critical_section) {
-        if (can_fail) {
-            sti();
-            return nullptr;
-        }
-
-        sti();
-        kernel_fatal(KERNEL_FATAL_CRITICAL_SECTION_FAILED, "failed to create critical section");
-    }
-
-    global_current_critical_section = critical_section;
-    global_current_critical_section->is_locked = true;
+    global_is_in_critical_section = true;
+    critical_section.is_locked = true;
 
     sti();
     return critical_section;
 }
 
 bool leave_critical_section(critical_section_t* section) {
-    if (section != global_current_critical_section || !section || !global_current_critical_section)
-        return false;
-
     cli();
-    free(section);
-    global_current_critical_section = nullptr;
-    sti();
+    if (!global_is_in_critical_section) {
+        sti();
+        return false;
+    }
 
+    section->is_locked = false;
+    global_is_in_critical_section = false;
+
+    sti();
     return true;
 }

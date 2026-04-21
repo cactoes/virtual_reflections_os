@@ -131,7 +131,7 @@ bool vthread_set_critical(vthread_handle_t handle, bool state = true);
 
 vthread_state_t vthread_get_state();
 
-critical_section_t* enter_critical_section(bool wait_for_lock = true, bool can_fail = false);
+critical_section_t enter_critical_section(bool wait_for_lock = true, bool can_fail = false);
 bool leave_critical_section(critical_section_t* section);
 
 #endif // __VIRTUAL_THREAD_HPP__
