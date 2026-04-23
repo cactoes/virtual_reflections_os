@@ -183,9 +183,7 @@ static heap_t process_heap {};
 
 extern "C" uint64_t syscall_dispatch(uint64_t syscall_num, syscall_regs_t* regs) {
     if (syscall_num == 0) {
-        // vthread_t* current_thread = vthread_get(__thread_tls->handle);
-        // vthread_terminate(__thread_tls->handle);
-        kprintf("[SYSCALL] terminated process\n");
+        kprintf("[ SYSCALL ] terminated process\n");
         vthread_terminate();
 
         // safetey catch
@@ -200,7 +198,7 @@ extern "C" uint64_t syscall_dispatch(uint64_t syscall_num, syscall_regs_t* regs)
             break;
     }
 
-    kprintf("syscall_num = %ul\n", syscall_num);
+    kprintf("[ \033[91mSYSCALL\033[0m ] unhandled syscall = %ul\n", syscall_num);
     return 0;
 }
 
@@ -240,8 +238,6 @@ void create_process_test() {
         kprintf("failed to load TestProgram.exe\n");
         return;
     }
-
-    kprintf("loaded elf file: %ul\n", size);
 
     if (elf_check_file(program_file_data, elf_type_t::EXECUTABLE) != 0) {
         kprintf("not elf file\n");
