@@ -187,6 +187,7 @@ x86_64_syscall_handler:
     push r15
 
     mov  rdi, rax
+    mov  rsi, rsp
     sti
     call syscall_dispatch
     cli
