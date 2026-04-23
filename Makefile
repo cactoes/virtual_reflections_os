@@ -28,8 +28,7 @@ LINKER                      := x86_64-elf-ld
 GRUB_MKRESCUE               := grub-mkrescue
 
 # compiler flags
-# [!!!] -mno-sse2: SSE2 is disabled
-COMPILER_FLAGS              := -mcmodel=large -nostdlib -m64 -mno-red-zone -mno-sse2 -fno-rtti -fno-exceptions -Werror -Wunused-result -fno-use-cxa-atexit -ffreestanding -I$(HEADER_FILES_PATH) -I$(SHARED_HEADERS) -I$(INETDRIVERS_INCLUDES) -g
+COMPILER_FLAGS              := -mcmodel=large -nostdlib -m64 -mno-red-zone -fno-rtti -fno-exceptions -Werror -Wunused-result -fno-use-cxa-atexit -ffreestanding -I$(HEADER_FILES_PATH) -I$(SHARED_HEADERS) -I$(INETDRIVERS_INCLUDES) -g
 NASM_FLAGS                  := -f elf64
 LINKER_FLAGS                := -z max-page-size=0x1000 -n -T $(LINKER_SCRIPT)
 
