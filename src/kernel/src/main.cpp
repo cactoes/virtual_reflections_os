@@ -174,7 +174,14 @@ cpu_local_t cpu0 {};
 #include "memory/paging.hpp"
 #include "elf.hpp"
 
-extern "C" uint64_t syscall_dispatch(uint64_t syscall_num) {
+struct syscall_regs_t {
+    uint64_t r15, r14, r13, r12, rbp, rbx, r10, r9, r8, rdx, rsi, rdi;
+    uint64_t r11, rcx;
+};
+
+static heap_t process_heap {};
+
+extern "C" uint64_t syscall_dispatch(uint64_t syscall_num, syscall_regs_t* regs) {
     if (syscall_num == 0) {
         // vthread_t* current_thread = vthread_get(__thread_tls->handle);
         // vthread_terminate(__thread_tls->handle);
@@ -183,6 +190,14 @@ extern "C" uint64_t syscall_dispatch(uint64_t syscall_num) {
 
         // safetey catch
         while (true);
+    }
+
+    switch (syscall_num) {
+        case 1: {
+            return (uint64_t)heap_alloc(&process_heap, regs->rdi);
+        }
+        default:
+            break;
     }
 
     kprintf("syscall_num = %ul\n", syscall_num);
@@ -251,6 +266,12 @@ void create_process_test() {
     set_pml4(current_pt_phys);
     sti();
 
+    cli();
+    set_pml4((void*)new_pt_phys);
+    heap_init(&process_heap, (void*)new_pt_phys, (void*)PAGE_SIZE_HUGE, PAGE_SIZE_LARGE, true);
+    set_pml4(current_pt_phys);
+    sti();
+
     elf_load_program_sections(program_file_data, (uint8_t*)base_address, &program_section_info);
 
     auto tables = elf_get_tables(program_file_data);
@@ -260,6 +281,8 @@ void create_process_test() {
     // for now skip relocate sections
 
     void* entry = (void*)((elf_header_t*)program_file_data)->entry_point;
+
+    kprintf("[PROCESS] process loaded at: 0x%p\n", entry);
 
     // create a new thread with the new page table
 
