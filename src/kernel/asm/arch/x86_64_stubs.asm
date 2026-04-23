@@ -168,6 +168,7 @@ x86_64_syscall_handler:
 
     mov  [gs:8], rsp
     mov  rsp, [gs:0]
+    push qword [gs:8]
 
     push rcx
     push r11
@@ -205,6 +206,8 @@ x86_64_syscall_handler:
 
     pop  r11
     pop  rcx
+
+    pop rsp
 
     mov  rsp, [gs:8]
 
@@ -251,7 +254,6 @@ isr_stub_%+%1:
     ; jz %%no_swapgs_exit
     ; swapgs
     ; %%no_swapgs_exit:
-    sti
     iretq
 %endmacro
 
