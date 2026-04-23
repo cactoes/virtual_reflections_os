@@ -73,7 +73,7 @@ int vga_tm_puts(vga_buffer_t* p_buffer, const char* p_str) {
     while (*p_ptr)
         vga_tm_putc(p_buffer, *p_ptr++);
 
-    return result == 0;
+    return 0;
 }
 
 int vga_tm_puts_color(vga_buffer_t* p_buffer, const vga_tm_color_map_t* p_color_map, const char* p_str) {
