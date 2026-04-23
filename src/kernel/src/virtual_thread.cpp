@@ -5,7 +5,6 @@
 #include "arch/interrupt.hpp"
 #include "arch/generic.hpp"
 #include "crash_handler.hpp"
-#include "std/pointer.hpp"
 #include "time/clock.hpp"
 #include "std/string.hpp"
 
@@ -60,8 +59,11 @@ void vthread_handle_stopping(vthread_t* p_vthread) {
         kernel_fatal(KERNEL_FATAL_CRITICAL_THREAD_DIED, buffer);
     }
 
-    free(p_vthread->stack_bottom);
-    free(p_vthread->fpu_state);
+    if (p_vthread->stack_bottom_kernel)
+        free_aligned(p_vthread->stack_bottom_kernel);
+    else
+        free(p_vthread->stack_bottom);
+    free_aligned(p_vthread->fpu_state);
 
     // TODO @since 17/04/2026 -- 16:28
     // do we need to do a critical section here?
@@ -100,6 +102,7 @@ vthread_handle_t vthread_start_and_setup_main() {
     p_vthread->handle = VTHREAD_MAIN_THREAD_HANDLE;
     p_vthread->pml4 = get_pml4();
     p_vthread->tls.handle = VTHREAD_MAIN_THREAD_HANDLE;
+    p_vthread->kstack = (void*)(void*)((uint64_t)malloc_aligned(PAGE_SIZE, PAGE_SIZE) + PAGE_SIZE);
 
     const char name[] = "main";
     memcpy(p_vthread->name, name, sizeof(name));
@@ -147,6 +150,7 @@ vthread_handle_t vthread_create(thread_entry_t p_thread_entry, void* pml4, const
     p_vthread->vt_state = vthread_state_t::RUNNING;
     p_vthread->fpu_state = (uint8_t*)malloc_aligned(sizeof(uint8_t) * 512, 16);
 
+    p_vthread->kstack = (void*)(void*)((uint64_t)malloc_aligned(PAGE_SIZE, PAGE_SIZE) + PAGE_SIZE);
     p_vthread->pml4 = pml4;
     p_vthread->tls.handle = new_handle;
 

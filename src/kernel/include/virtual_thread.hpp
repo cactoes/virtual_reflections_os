@@ -22,6 +22,7 @@
 
 #include "common.hpp"
 #include "filesystems/vfs.hpp"
+#include "std/pointer.hpp"
 
 typedef uint64_t vthread_handle_t;
 typedef int(*thread_entry_t)();
@@ -61,6 +62,8 @@ struct vthread_t {
     // stack stuff
     void* stack_top;
     void* stack_bottom;
+    void* stack_bottom_kernel;
+    void* kstack;
 
     // internal thread stuff
     uint64_t sleep_until_ms;
@@ -133,5 +136,7 @@ vthread_state_t vthread_get_state();
 
 critical_section_t enter_critical_section(bool wait_for_lock = true, bool can_fail = false);
 bool leave_critical_section(critical_section_t* section);
+
+bool vthread_add(std::unique_ptr<vthread_t> p_vthread);
 
 #endif // __VIRTUAL_THREAD_HPP__
