@@ -110,6 +110,17 @@ static x86_64_gdt_entry_t g_x86_64_kernel_64_data_entry {
     .base_high8 = 0,
 };
 
+static x86_64_gdt_entry_t g_x86_64_user_32_code_entry = {
+    .limit = 0,
+    .base_low16 = 0,
+    .base_mid8 = 0,
+    .access = X86_64_GDT_ACCESS_PRESENT | X86_64_GDT_ACCESS_RING3 |
+              X86_64_GDT_ACCESS_SEGMENT | X86_64_GDT_ACCESS_EXECUTABLE |
+              X86_64_GDT_ACCESS_READWRITE,
+    .granularity = 0,
+    .base_high8 = 0,
+};
+
 static x86_64_gdt_entry_t g_x86_64_user_64_code_entry  {
     .limit = 0,
     .base_low16 = 0,
