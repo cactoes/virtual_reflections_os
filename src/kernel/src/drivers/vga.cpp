@@ -65,7 +65,7 @@ int vga_tm_putc(vga_buffer_t* p_buffer, char ch) {
             break;
     }
 
-    return 0;
+    return vga_tm_set_cursor(p_buffer, p_buffer->cursor.x, p_buffer->cursor.y);
 }
 
 int vga_tm_puts(vga_buffer_t* p_buffer, const char* p_str) {
@@ -73,8 +73,7 @@ int vga_tm_puts(vga_buffer_t* p_buffer, const char* p_str) {
     while (*p_ptr)
         vga_tm_putc(p_buffer, *p_ptr++);
 
-    const int result = vga_tm_set_cursor(p_buffer, p_buffer->cursor.x, p_buffer->cursor.y);
-    return result == 0 ? 0 : 2;
+    return result == 0;
 }
 
 int vga_tm_puts_color(vga_buffer_t* p_buffer, const vga_tm_color_map_t* p_color_map, const char* p_str) {
