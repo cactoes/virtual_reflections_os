@@ -10,6 +10,11 @@ cd src/network_drivers
 make -j$(nproc) build
 cd ../..
 
+echo "Building test program ..."
+cd src/test_program
+make -j$(nproc) build
+cd ../..
+
 # kernel
 echo "Building kernel ..."
 make -j$(nproc) build

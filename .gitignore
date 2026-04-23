@@ -6,3 +6,6 @@ build/
 
 # ignore built drivers
 iso/*.sys
+
+# ignore built programs
+iso/*.exe

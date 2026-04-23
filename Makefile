@@ -18,6 +18,7 @@ LINKER_SCRIPT               := $(PROJECT_PATH)/linker.ld
 TARGET_NAME                 := VirtualReflectionsOS
 SHARED_HEADERS              := $(ROOT_PATH)/src/shared_headers/
 DRIVER_FILES                := $(wildcard $(ROOT_PATH)/build/**/*.sys)
+PROGRAM_FILES               := $(wildcard $(ROOT_PATH)/build/**/*.exe)
 INETDRIVERS_INCLUDES        := $(ROOT_PATH)/src/network_drivers/include
 
 # compilers
@@ -53,7 +54,7 @@ $(BUILD_PATH)/$(TARGET_NAME).bin: $(object_files) $(asm_object_files) $(LINKER_S
 > @mkdir -p $(dir $@)
 > $(SILENT_MODE)$(LINKER) $(LINKER_FLAGS) -o $@ $(object_files) $(asm_object_files)
 
-$(BUILD_PATH)/$(TARGET_NAME).iso: $(BUILD_PATH)/$(TARGET_NAME).bin $(DRIVER_FILES)
+$(BUILD_PATH)/$(TARGET_NAME).iso: $(BUILD_PATH)/$(TARGET_NAME).bin $(DRIVER_FILES) $(PROGRAM_FILES)
 > @echo "creating iso image"
 > @mkdir -p $(BUILD_PATH)/iso/boot
 > @cp -r $(ISO_PATH) $(BUILD_PATH) 2>/dev/null || true
