@@ -23,6 +23,7 @@
 #include "common.hpp"
 #include "filesystems/vfs.hpp"
 #include "std/pointer.hpp"
+#include "cpu.hpp"
 
 typedef uint64_t vthread_handle_t;
 typedef int(*thread_entry_t)();
@@ -55,9 +56,6 @@ struct vthread_t {
     
     // tls data
     thread_local_storage_t tls;
-    
-    // state before interrupt
-    cpu_state_t cpu_state;
 
     // stack stuff
     void* stack_top;
@@ -91,12 +89,12 @@ vthread_handle_t vthread_create(thread_entry_t p_thread_entry, void* pml4, const
 /// @brief                      handles a vthread interrupt & updates cpu state
 /// @param[in] p_cpu_state      pointer to the current cpu state
 /// @return                     pointer to the updated cpu state
-cpu_state_t* vthread_handle_interrupt(cpu_state_t* p_cpu_state);
+interrupt_regs_t* vthread_handle_interrupt(interrupt_regs_t* p_cpu_state);
 
 /// @brief                      schedules the next virtual thread & switches context
 /// @param[in] p_cpu_state      pointer to the current cpu state
 /// @return                     pointer to the cpu state of the next scheduled thread
-cpu_state_t* vthread_schedule(cpu_state_t* p_cpu_state);
+interrupt_regs_t* vthread_schedule(interrupt_regs_t* p_cpu_state);
 
 /// @brief      yield execution of the current virtual thread to allow other threads to run
 void vthread_yield();

@@ -17,7 +17,7 @@
 #define INT_IRQ_PS2_MOUSE       X86_64_INT_IRQ_PS2_MOUSE
 
 void interrupt_init(uint16_t kernel_code_selector);
-void interrupt_set_handler(void*(p_handler)(uint64_t, cpu_state_t*));
+void interrupt_set_handler(void*(p_handler)(uint64_t, void*));
 void interrupt_send_eoi(uint8_t irq_num);
 
 static inline void call_scheduler_interrupt() {

@@ -13,7 +13,7 @@ NORETURN void kernel_fatal_end() {
         debug_trap("kernel fatal");
 }
 
-void kernel_fatal_internal(uint64_t code, const char* message, cpu_state_t* cpu_state) {
+void kernel_fatal_internal(uint64_t code, const char* message, interrupt_regs_t* cpu_state) {
     cli();
 
     kprintf("kernel fatal triggerd!\n");

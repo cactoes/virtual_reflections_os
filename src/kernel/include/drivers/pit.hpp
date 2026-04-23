@@ -10,10 +10,11 @@
 
 #include "arch/pit.hpp"
 #include "common.hpp"
+#include "cpu.hpp"
 
-typedef cpu_state_t*(*pit_interrupt_function_t)(cpu_state_t*);
+typedef interrupt_regs_t*(*pit_interrupt_function_t)(interrupt_regs_t*);
 
-cpu_state_t* pit_handle_interrupt(cpu_state_t* p_cpu_state);
+interrupt_regs_t* pit_handle_interrupt(interrupt_regs_t* p_cpu_state);
 uint64_t pit_get_global_tick_count();
 void pit_add_interrupt_function(pit_interrupt_function_t p_function);
 

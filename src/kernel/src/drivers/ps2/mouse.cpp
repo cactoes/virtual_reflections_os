@@ -25,7 +25,7 @@ void ps2_mouse_sync_packets() {
     g_mouse_packet_index = 0;
 }
 
-cpu_state_t* ps2_mouse_handle_interrupt(cpu_state_t* p_rsp) {
+interrupt_regs_t* ps2_mouse_handle_interrupt(interrupt_regs_t* p_rsp) {
     g_mouse_packet_buffer[g_mouse_packet_index++] = ps2_read(PS2_DATA_PORT);
 
     if (g_mouse_packet_index < PS2_MOUSE_PACKET_SIZE)

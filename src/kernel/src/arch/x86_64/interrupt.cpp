@@ -2,7 +2,7 @@
 
 extern "C" void* x86_64_isr_stub_table[];
 
-void*(*g_handler)(uint64_t, cpu_state_t*);
+void*(*g_handler)(uint64_t, void*);
 
 int x86_64_set_idt_entry(x86_64_idt_entry_t* p_idt, uint16_t kernel_code_selector, uint8_t int_number, void* p_handler) {
     x86_64_idt_entry_t* descriptor = &p_idt[int_number];
@@ -28,13 +28,13 @@ void x86_64_set_idtr(x86_64_idt_register_t* p_idtr, x86_64_idt_entry_t* p_idt) {
     p_idtr->limit = (uint16_t)(sizeof(x86_64_idt_entry_t) * X86_64_INT_IDT_ENTRY_COUNT - 1);
 }
 
-extern "C" void* x86_64_int_handler(uint64_t code, cpu_state_t* p_rsp) {
+extern "C" void* x86_64_int_handler(uint64_t code, void* p_rsp) {
     if (g_handler)
         return g_handler(code, p_rsp);
 
     return p_rsp;
 }
 
-void x86_64_set_handler(void*(p_handler)(uint64_t, cpu_state_t*)) {
+void x86_64_set_handler(void*(p_handler)(uint64_t, void*)) {
     g_handler = p_handler;
 }

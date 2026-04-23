@@ -7,7 +7,7 @@
 #include "crash_handler.hpp"
 #include "time/clock.hpp"
 #include "std/string.hpp"
-
+#include "cpu.hpp"
 #include "linker.hpp"
 #include "utils/debug.hpp"
 
@@ -124,7 +124,7 @@ vthread_handle_t vthread_create(thread_entry_t p_thread_entry, void* pml4, const
     memzero(stack, VTHREAD_STACK_SIZE);
     std::unique_ptr<vthread_t> p_vthread = std::make_unique<vthread_t>();
     p_vthread->stack_bottom = stack;
-    uint64_t* stack_top = (uint64_t*)(((uint64_t)stack + VTHREAD_STACK_SIZE - sizeof(cpu_state_t)) & ~0xF);
+    uint64_t* stack_top = (uint64_t*)(((uint64_t)stack + VTHREAD_STACK_SIZE - sizeof(interrupt_regs_t)) & ~0xF);
 
     // padding since the next section is only 19 * 8
     // which means its no longer 16-byte alignd
@@ -168,7 +168,7 @@ vthread_handle_t vthread_create(thread_entry_t p_thread_entry, void* pml4, const
     return VTHREAD_HANDLE_INVALID;
 }
 
-cpu_state_t* vthread_handle_interrupt(cpu_state_t* p_cpu_state) {
+interrupt_regs_t* vthread_handle_interrupt(interrupt_regs_t* p_cpu_state) {
     return vthread_schedule(p_cpu_state);
 }
 
@@ -185,17 +185,7 @@ bool vthread_check_stack(vthread_t* thread) {
     return true;
 }
 
-// TODO @since 23/04/2026 -- 13:22
-// move this elsewhere
-
-struct cpu_local_t {
-    uint64_t kernel_rsp;
-    uint64_t user_rsp;
-};
-
-extern cpu_local_t cpu0;
-
-cpu_state_t* vthread_schedule(cpu_state_t* p_cpu_state) {
+interrupt_regs_t* vthread_schedule(interrupt_regs_t* p_cpu_state) {
     if (g_threads.size() <= 1)
         return p_cpu_state;
 
@@ -234,10 +224,10 @@ cpu_state_t* vthread_schedule(cpu_state_t* p_cpu_state) {
     // & needs a kernel stack when an interrupt happens
     if (g_current_thread->kstack) {
         gdt_set_stack_pointer0(g_current_thread->kstack);
-        cpu0.kernel_rsp = (uint64_t)g_current_thread->kstack;
+        set_kernel_stack(get_current_cpu(), g_current_thread->kstack);
     }
 
-    return (cpu_state_t*)g_current_thread->stack_top;
+    return (interrupt_regs_t*)g_current_thread->stack_top;
 }
 
 void vthread_yield() {

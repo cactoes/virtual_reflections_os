@@ -9,7 +9,7 @@ static ps2_key_state_t g_key_state_array[PS2_KEYBOARD_KEY_STATE_ARRAY_SIZE] {};
 static std::ring_buffer<8, ps2_key_state_t> global_keyboard_state_buffer {};
 static event_manager_t<const ps2_key_state_t*> g_keyboard_event_manager {};
 
-cpu_state_t* ps2_keyboard_handle_interrupt(cpu_state_t* p_rsp) {
+interrupt_regs_t* ps2_keyboard_handle_interrupt(interrupt_regs_t* p_rsp) {
     ps2_key_state_t key_state {};
     key_state.full_code = ps2_read(PS2_DATA_PORT);
     key_state.is_escaped = false;

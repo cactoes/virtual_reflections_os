@@ -23,6 +23,7 @@
 #define PS2_KEYBOARD_KEY_STATE_ARRAY_SIZE        128
 
 #include "common.hpp"
+#include "cpu.hpp"
 
 struct ps2_key_state_t {
     uint32_t full_code = 0;
@@ -36,7 +37,7 @@ struct ps2_key_state_t {
     };
 } PACKED;
 
-cpu_state_t* ps2_keyboard_handle_interrupt(cpu_state_t* p_rsp);
+interrupt_regs_t* ps2_keyboard_handle_interrupt(interrupt_regs_t* p_rsp);
 uint32_t ps2_keyboard_get_last_scancode();
 void ps2_keyboard_clear_last_scancode();
 const ps2_key_state_t* ps2_keyboard_get_key_state(uint32_t scan_code);

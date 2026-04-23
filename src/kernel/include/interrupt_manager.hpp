@@ -9,8 +9,9 @@
 #define __INTERRUPT_MANAGER_HPP__
 
 #include "common.hpp"
+#include "cpu.hpp"
 
-typedef cpu_state_t*(*interrupt_callback_t)(cpu_state_t*);
+typedef interrupt_regs_t*(*interrupt_callback_t)(interrupt_regs_t*);
 
 enum class interrupt_t : uint64_t {
     EXCEPTION_DIVISION_BY_ZERO = 0,
@@ -103,7 +104,7 @@ uint64_t interrupt_irq_to_int(uint64_t irq);
 /// @param code     interrupt code to handle
 /// @param[in]      p_rsp   pointer to cpu state at time of interrupt
 /// @return         updated cpu state pointer after handling the interrupt
-void* handle_interrupt(uint64_t code, cpu_state_t* p_rsp);
+void* handle_interrupt(uint64_t code, interrupt_regs_t* p_rsp);
 
 /// @brief          checks if current section is in side an interrupt
 /// @return         is in interrupt state

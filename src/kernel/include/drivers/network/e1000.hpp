@@ -68,6 +68,7 @@
 #define E1000_TDESC_STATUS_DONE             (1 << 0)
 
 #include "common.hpp"
+#include "cpu.hpp"
 #include "drivers/pcie.hpp"
 #include "drivers/network/nidm.hpp"
 
@@ -113,7 +114,7 @@ private:
 };
 
 int e1000_init_device(const pci_device_t* p_pcie_device, e1000_t* p_network_device);
-cpu_state_t* e1000_handle_interrupt(cpu_state_t* p_rsp);
+interrupt_regs_t* e1000_handle_interrupt(interrupt_regs_t* p_rsp);
 int e1000_send_packet(e1000_t* p_device, const void* data, size_t size);
 
 e1000_t* e1000_get_global_device();

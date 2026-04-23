@@ -212,7 +212,7 @@ int e1000_init_device(const pci_device_t* p_pcie_device, e1000_t* p_network_devi
     return 0;
 }
 
-cpu_state_t* e1000_handle_interrupt(cpu_state_t* p_rsp) {
+interrupt_regs_t* e1000_handle_interrupt(interrupt_regs_t* p_rsp) {
     auto p_device = e1000_get_global_device();
 
     // get & clear the interrupt

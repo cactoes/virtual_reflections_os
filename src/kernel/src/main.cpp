@@ -66,6 +66,7 @@
 #include "io.hpp"
 #include "terminal.hpp"
 #include "linker.hpp"
+#include "cpu.hpp"
 
 #define HEAP_START_SIZE 0x100000 * 32 // 32 mb
 #define PIT_TIMER_INTERVAL 1000 // times per second
@@ -169,15 +170,8 @@ struct cpu_local_t {
     uint64_t user_rsp;
 };
 
-cpu_local_t cpu0 {};
-
 #include "memory/paging.hpp"
 #include "elf.hpp"
-
-struct syscall_regs_t {
-    uint64_t r15, r14, r13, r12, rbp, rbx, r10, r9, r8, rdx, rsi, rdi;
-    uint64_t r11, rcx;
-};
 
 static heap_t process_heap {};
 
@@ -282,15 +276,6 @@ void create_process_test() {
 
     // create a new thread with the new page table
 
-    uint64_t star = ((uint64_t)(USER_CODE_32_SELECTOR_INDEX << 3) << 48)
-                  | ((uint64_t)(KERNEL_CODE_SELECTOR_INDEX << 3) << 32);
-
-    msr_set_kernel_gs_base(&cpu0);
-    msr_enable_sce();
-    msr_set_star(star);
-    msr_set_lstar((void*)x86_64_syscall_handler);
-    msr_set_sf_mask(RFLAGS_TF | RFLAGS_IF);
-
     uint64_t* user_stack_kernel_virt = (uint64_t*)malloc_aligned(VTHREAD_STACK_SIZE, PAGE_SIZE_LARGE);
     memzero(user_stack_kernel_virt, VTHREAD_STACK_SIZE);
     void* user_stack_physical = vmem_virtual_to_physical(user_stack_kernel_virt);
@@ -306,13 +291,13 @@ void create_process_test() {
     std::unique_ptr<vthread_t> p_vthread = std::make_unique<vthread_t>();
     p_vthread->stack_bottom = user_stack_virtual;
 
-    uint64_t* stack_top = (uint64_t*)(((uint64_t)user_stack_virtual + VTHREAD_STACK_SIZE - sizeof(cpu_state_t)) & ~0xF);
-    uint64_t* mapped_stack_top = (uint64_t*)(((uint64_t)user_stack_kernel_virt + VTHREAD_STACK_SIZE - sizeof(cpu_state_t)) & ~0xF);
+    uint64_t* stack_top = (uint64_t*)(((uint64_t)user_stack_virtual + VTHREAD_STACK_SIZE - sizeof(interrupt_regs_t)) & ~0xF);
+    uint64_t* mapped_stack_top = (uint64_t*)(((uint64_t)user_stack_kernel_virt + VTHREAD_STACK_SIZE - sizeof(interrupt_regs_t)) & ~0xF);
 
     p_vthread->stack_bottom_kernel = (void*)(user_stack_kernel_virt);
 
     p_vthread->kstack = (void*)((uint64_t)malloc_aligned(VTHREAD_STACK_SIZE, 16) + VTHREAD_STACK_SIZE);
-    cpu0.kernel_rsp = (uint64_t)p_vthread->kstack;
+    // cpu0.kernel_rsp = (uint64_t)p_vthread->kstack;
 
     uint16_t user_ds = (uint16_t)((USER_DATA_SELECTOR_INDEX << 3) | 3);
     uint16_t user_cs = (uint16_t)((USER_CODE_SELECTOR_INDEX << 3) | 3);
@@ -400,10 +385,12 @@ NORETURN void virtual_kernel_entry(multiboot_t* multiboot_struct, void* kernel_p
     set_interrupt_callback(interrupt_t::HARDWARE_PS2_MOUSE, ps2_mouse_handle_interrupt);
     set_interrupt_callback(interrupt_t::SOFTWARE_SCHEDULER, vthread_handle_interrupt);
 
-    interrupt_set_handler(handle_interrupt);
+    interrupt_set_handler((void *(*)(uint64_t, void *))handle_interrupt);
     ps2_mouse_init();
     pit_init(PIT_TIMER_INTERVAL);
     interrupt_init(gdt_get_kernel_code_selector());
+
+    initialize_cpus();
 
     dma_heap_manager_t allocator {};
     set_global_dma_heap_manager(&allocator);

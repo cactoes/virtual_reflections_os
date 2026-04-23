@@ -62,7 +62,7 @@ uint64_t interrupt_irq_to_int(uint64_t irq) {
     return irq + 32;
 }
 
-void* handle_interrupt(uint64_t code, cpu_state_t* p_rsp) {
+void* handle_interrupt(uint64_t code, interrupt_regs_t* p_rsp) {
     global_is_in_interupt = true;
     const auto interrupt_type = convert_to_interrupt(code);
 
