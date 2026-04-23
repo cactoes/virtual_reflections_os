@@ -88,7 +88,7 @@ int heap_filter_blocks(heap_t* p_heap, void* p_param, heap_block_filter_callback
 /// @param[in] vaddr            virtual address to start the heap from
 /// @param size                 starting size of the heap
 /// @return                     success status
-bool heap_init(heap_t* heap, void* pml4, void* vaddr, size_t size);
+bool heap_init(heap_t* heap, void* pml4, void* vaddr, size_t size, bool is_user = false);
 
 /// @brief              expands the heap ontop of current heap
 ///                     make sure the virtual address above is not yet reserved

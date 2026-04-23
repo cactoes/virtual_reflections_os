@@ -45,9 +45,9 @@ int heap_filter_blocks(heap_t* p_heap, void* p_param, heap_block_filter_callback
     return found_size;
 }
 
-bool heap_init(heap_t* heap, void* pml4, void* vaddr, size_t size) {
+bool heap_init(heap_t* heap, void* pml4, void* vaddr, size_t size, bool is_user) {
     // the heap is just raw memory no data structures
-    uint64_t heap_size = vmem_smart_alloc_pages(pml4, (void*)((uint64_t)vaddr + PAGE_SIZE_LARGE), size);
+    uint64_t heap_size = vmem_smart_alloc_pages(pml4, (void*)((uint64_t)vaddr + PAGE_SIZE_LARGE), size, is_user);
 
     // heap struct
     void* p_page = pmem_get_page();
@@ -60,7 +60,7 @@ bool heap_init(heap_t* heap, void* pml4, void* vaddr, size_t size) {
     if (!pmem_try_reserve_address((void*)((uint64_t)p_page + PAGE_SIZE), (PAGE_SIZE_LARGE / PAGE_SIZE - 1)))
         return false;
 
-    if (!vmem_map_2mb(pml4, vaddr, p_page))
+    if (!vmem_map_2mb(pml4, vaddr, p_page, is_user))
         return false;
 
     // setup heap stuct
