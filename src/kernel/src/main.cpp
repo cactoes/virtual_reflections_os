@@ -216,7 +216,37 @@ void user_function() {
     while (true);
 }
 
+#include "arch/x86_64/interrupt.hpp"
+
 extern "C" uint64_t syscall_dispatch(uint64_t syscall_num) {
+    extern uint8_t KSTACK_TOP[];
+    uint64_t rsp;
+    asm volatile("mov %%rsp, %0" : "=r"(rsp));
+    kprintf("syscall rsp: 0x%uh\n", rsp);
+    kprintf("KSTACK_TOP:  0x%uh\n", (uint64_t)KSTACK_TOP);
+
+    if (syscall_num == 0) {
+        vthread_t* current_thread = vthread_get(__thread_tls->handle);
+        vthread_terminate(__thread_tls->handle);
+
+        asm volatile ("mov %0, %%rsp" ::"r"(current_thread->stack_top));
+
+        // uint64_t new_stack;
+        // asm volatile (
+        //     "mov %%rsp, %0\n\t"
+        //     "add %1, %0\n\t"
+        //     "mov %0, %%rsp"
+        //     : "=&r"(new_stack)
+        //     : "r"(KERNEL_VIRTUAL_BASE)
+        //     : "memory"
+        // );
+
+        call_scheduler_interrupt();
+
+        // wait for deletion
+        while (true);
+    }
+
     kprintf("syscall_num = %ul\n", syscall_num);
     return 0;
 }
@@ -266,22 +296,11 @@ int process_2_entry() {
     return 0;
 }
 
+#include "elf.hpp"
+
 void create_process_test() {
     // BUG @since 05/03/2026 -- 09:22
     // page table never free'd
-
-    // file_descriptor_t fd = vfs_open_file(get_global_vfs(), "harddisk0/TestProgram.exe");
-    // if (fd == FILE_DESCRIPTOR_INVALID) {
-    //     kprintf("failed to open TestProgram.exe");
-    //     return;
-    // }
-
-    // uint8_t* program_file_data = nullptr;
-    // size_t size;
-    // if (!vfs_read_file(get_global_vfs(), fd, &program_file_data, &size)) {
-    //     kprintf("failed to load TestProgram.exe");
-    //     return;
-    // }
 
     // create new page table
     uint64_t* new_pt_virt = (uint64_t*)malloc_aligned(PAGE_SIZE, PAGE_SIZE);
@@ -293,12 +312,122 @@ void create_process_test() {
 
     // copy the kernel entries so its always linked
     uint64_t* current_pml4 = GET_PML4_VIRT();
-    const uint64_t pml4e = KPAGING_GET_PE(KERNEL_VIRTUAL_BASE, 39);
-    for (int i = pml4e; i < 511; i++)
+    constexpr uint64_t pml4e = KPAGING_GET_PE(KERNEL_VIRTUAL_BASE, 39);
+    for (size_t i = pml4e; i < 511; i++)
         new_pt_virt[i] = current_pml4[i];
 
+    // now load the elf file
+
+    file_descriptor_t fd = vfs_open_file(get_global_vfs(), "harddisk0/TestProgram.exe");
+    if (fd == FILE_DESCRIPTOR_INVALID) {
+        kprintf("failed to open TestProgram.exe\n");
+        return;
+    }
+
+    uint8_t* program_file_data = nullptr;
+    size_t size;
+    if (!vfs_read_file(get_global_vfs(), fd, &program_file_data, &size)) {
+        kprintf("failed to load TestProgram.exe\n");
+        return;
+    }
+
+    kprintf("loaded elf file: %ul\n", size);
+
+    if (elf_check_file(program_file_data, elf_type_t::EXECUTABLE) != 0) {
+        kprintf("not elf file\n");
+        return;
+    }
+
+    auto program_section_info = elf_parse_program_sections(program_file_data);
+    
+    // allocate it in kernel space for now aswell
+    void* base_address = malloc_aligned(align_up(program_section_info.size, PAGE_SIZE_LARGE), PAGE_SIZE_LARGE);
+    void* base_addr_phys = vmem_virtual_to_physical(base_address);
+    if (!base_address) {
+        kprintf("failed to allocate base_address");
+        return;
+    }
+
+    void* current_pt_phys = (void*)(current_pml4[511] & ~0xFFF);
+    cli();
+    set_pml4((void*)new_pt_phys);
+    if (!vmem_map_2mb((void*)new_pt_phys, (void*)program_section_info.min_address, base_addr_phys, true))
+        debug_trap("failed to vmem_map");
+    set_pml4(current_pt_phys);
+    sti();
+
+    elf_load_program_sections(program_file_data, (uint8_t*)base_address, &program_section_info);
+
+    auto tables = elf_get_tables(program_file_data);
+    if (!tables.string_table || !tables.symbol_table)
+        return;
+
+    // for now skip relocate sections
+
+    void* entry = (void*)((elf_header_t*)program_file_data)->entry_point;
+
     // create a new thread with the new page table
-    vthread_create(process_2_entry, (void*)new_pt_phys);
+
+    extern uint8_t KSTACK_TOP[];
+    // cpu0.kernel_rsp = (uint64_t)KSTACK_TOP + KERNEL_VIRTUAL_BASE;
+    cpu0.kernel_rsp = (uint64_t)KSTACK_TOP;
+
+    uint64_t star = ((uint64_t)(KERNEL_DATA_SELECTOR_INDEX << 3) << 48)
+                  | ((uint64_t)(KERNEL_CODE_SELECTOR_INDEX << 3) << 32);
+
+    msr_set_kernel_gs_base(&cpu0);
+    msr_enable_sce();
+    msr_set_star(star);
+    msr_set_lstar((void*)x86_64_syscall_handler);
+    msr_set_sf_mask(RFLAGS_TF | RFLAGS_IF);
+
+    uint64_t* user_stack_kernel_virt = (uint64_t*)malloc_aligned(PAGE_SIZE_LARGE, PAGE_SIZE_LARGE);
+    memzero(user_stack_kernel_virt, PAGE_SIZE_LARGE);
+    void* user_stack_physical = vmem_virtual_to_physical(user_stack_kernel_virt);
+    void* user_stack_virtual = (void*)(PAGE_SIZE_LARGE * 1ULL);
+
+    cli();
+    set_pml4((void*)new_pt_phys);
+    if (!vmem_map_2mb((void*)new_pt_phys, user_stack_virtual, user_stack_physical, true))
+        debug_trap("failed to vmem_map");
+    set_pml4(current_pt_phys);
+    sti();
+
+    std::unique_ptr<vthread_t> p_vthread = std::make_unique<vthread_t>();
+    p_vthread->stack_bottom = user_stack_virtual;
+
+    uint64_t* stack_top = (uint64_t*)(((uint64_t)user_stack_virtual + VTHREAD_STACK_SIZE - sizeof(cpu_state_t)) & ~0xF);
+    uint64_t* mapped_stack_top = (uint64_t*)(((uint64_t)user_stack_kernel_virt + VTHREAD_STACK_SIZE - sizeof(cpu_state_t)) & ~0xF);
+
+    p_vthread->stack_bottom_kernel = (void*)(user_stack_kernel_virt);
+
+    uint16_t user_ds = (uint16_t)((USER_DATA_SELECTOR_INDEX << 3) | 3);
+    uint16_t user_cs = (uint16_t)((USER_CODE_SELECTOR_INDEX << 3) | 3);
+
+    // itret frame
+    *(--mapped_stack_top) = (uint64_t)user_ds;
+    *(--mapped_stack_top) = (uint64_t)stack_top;
+    *(--mapped_stack_top) = 0x202;
+    *(--mapped_stack_top) = user_cs;
+    *(--mapped_stack_top) = (uint64_t)entry;
+    *(--mapped_stack_top) = 0;
+
+    // general registers
+    for (int i = 0; i < 12; i++) {
+        *(--mapped_stack_top) = 0;
+    }
+
+    *(--mapped_stack_top) = 0;
+    *(--mapped_stack_top) = 0;
+
+    p_vthread->stack_top = (void*)mapped_stack_top;
+    p_vthread->vt_state = vthread_state_t::RUNNING;
+    p_vthread->handle = 12345;
+    p_vthread->fpu_state = (uint8_t*)malloc_aligned(sizeof(uint8_t) * 512, 16);
+    p_vthread->pml4 = (void*)new_pt_phys;
+    p_vthread->tls.handle = p_vthread->handle;
+
+    vthread_add(move(p_vthread));
 }
 
 NORETURN void virtual_kernel_entry(multiboot_t* multiboot_struct, void* kernel_pt_vaddr) {

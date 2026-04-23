@@ -163,6 +163,7 @@ x86_64_memset:
 ; @remarks                  destroyed registers: ?
 ;==========================================
 x86_64_syscall_handler:
+    cli
     swapgs
 
     mov  [gs:8], rsp
@@ -185,7 +186,9 @@ x86_64_syscall_handler:
     push r15
 
     mov  rdi, rax
+    sti
     call syscall_dispatch
+    cli
 
     pop  r15
     pop  r14
@@ -203,7 +206,6 @@ x86_64_syscall_handler:
     pop  r11
     pop  rcx
 
-    cli
     mov  rsp, [gs:8]
 
     swapgs
@@ -217,6 +219,12 @@ x86_64_syscall_handler:
 %macro isr_stub 1
 isr_stub_%+%1:
     cli
+
+    ; test byte [rsp + 8], 3
+    ; jz %%no_swapgs
+    ; swapgs
+    ; %%no_swapgs:
+
     %if %1 != 8 && %1 != 10 && %1 != 11 && %1 != 12 && %1 != 13 && %1 != 14 && %1 != 17 && %1 != 30
         push 0
     %endif
@@ -238,8 +246,12 @@ isr_stub_%+%1:
     ; skip error code
     add rsp, 8
 
-    sti
     ; return from interrupt
+    ; test byte [rsp + 8], 3
+    ; jz %%no_swapgs_exit
+    ; swapgs
+    ; %%no_swapgs_exit:
+    sti
     iretq
 %endmacro
 
