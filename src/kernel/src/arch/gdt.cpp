@@ -9,9 +9,10 @@ static x86_64_tss_t                     g_tss;
 
 void gdt_init() {
     x86_64_gdt_init(&g_gdt);
-    x86_64_gdt_set_entry(&g_gdt, &g_x86_64_zero_entry, 0);
+    x86_64_gdt_set_entry(&g_gdt, &g_x86_64_zero_entry, GDT_ZERO_ENTRY);
     x86_64_gdt_set_entry(&g_gdt, &g_x86_64_kernel_64_code_entry, KERNEL_CODE_SELECTOR_INDEX);
     x86_64_gdt_set_entry(&g_gdt, &g_x86_64_kernel_64_data_entry, KERNEL_DATA_SELECTOR_INDEX);
+    x86_64_gdt_set_entry(&g_gdt, &g_x86_64_user_32_code_entry, USER_CODE_32_SELECTOR_INDEX);
     x86_64_gdt_set_entry(&g_gdt, &g_x86_64_user_64_data_entry, USER_DATA_SELECTOR_INDEX);
     x86_64_gdt_set_entry(&g_gdt, &g_x86_64_user_64_code_entry, USER_CODE_SELECTOR_INDEX);
     x86_64_gdt_set_tss(&g_gdt, &g_tss);
