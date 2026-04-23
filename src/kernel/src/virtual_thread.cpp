@@ -21,8 +21,6 @@ static vthread_t*           g_current_thread = nullptr;
 
 static volatile bool global_is_in_critical_section = false;
 
-// static mutex_t g_mutex {};
-
 void vthread_entry_point(thread_entry_t p_thread_entry) {
     g_current_thread->vt_state = vthread_state_t::STARTING;
     while (g_current_thread->vt_state == vthread_state_t::STARTING)
@@ -33,6 +31,9 @@ void vthread_entry_point(thread_entry_t p_thread_entry) {
 
     // catch & wait for deletion
     while (true);
+
+    // FIXME @since 23/04/2026 -- 13:22
+    // yield?
 }
 
 vthread_t* vthread_get_next_thead(vthread_handle_t handle) {
@@ -51,8 +52,6 @@ void vthread_handle_sleeping(vthread_t* p_vthread) {
 }
 
 void vthread_handle_stopping(vthread_t* p_vthread) {
-    // mutex_lock_guard guard(&g_mutex);
-
     if (p_vthread->is_critical) {
         char buffer[256];
         (void)sprintf(buffer, sizeof(buffer), "critical thread died! (%s)", p_vthread->name ? p_vthread->name : "unknown");
@@ -63,11 +62,15 @@ void vthread_handle_stopping(vthread_t* p_vthread) {
         free_aligned(p_vthread->stack_bottom_kernel);
     else
         free(p_vthread->stack_bottom);
+
+    if (p_vthread->kstack)
+        free_aligned(p_vthread->kstack);
+
     free_aligned(p_vthread->fpu_state);
 
-    // TODO @since 17/04/2026 -- 16:28
-    // do we need to do a critical section here?
+    critical_section_t section = enter_critical_section();
     g_threads.remove(p_vthread->handle);
+    leave_critical_section(&section);
 }
 
 void vthread_handle_starting(vthread_t* p_vthread) {
@@ -102,7 +105,6 @@ vthread_handle_t vthread_start_and_setup_main() {
     p_vthread->handle = VTHREAD_MAIN_THREAD_HANDLE;
     p_vthread->pml4 = get_pml4();
     p_vthread->tls.handle = VTHREAD_MAIN_THREAD_HANDLE;
-    p_vthread->kstack = (void*)(void*)((uint64_t)malloc_aligned(PAGE_SIZE, PAGE_SIZE) + PAGE_SIZE);
 
     const char name[] = "main";
     memcpy(p_vthread->name, name, sizeof(name));
@@ -149,8 +151,6 @@ vthread_handle_t vthread_create(thread_entry_t p_thread_entry, void* pml4, const
     p_vthread->handle = new_handle;
     p_vthread->vt_state = vthread_state_t::RUNNING;
     p_vthread->fpu_state = (uint8_t*)malloc_aligned(sizeof(uint8_t) * 512, 16);
-
-    p_vthread->kstack = (void*)(void*)((uint64_t)malloc_aligned(PAGE_SIZE, PAGE_SIZE) + PAGE_SIZE);
     p_vthread->pml4 = pml4;
     p_vthread->tls.handle = new_handle;
 
@@ -185,6 +185,16 @@ bool vthread_check_stack(vthread_t* thread) {
     return true;
 }
 
+// TODO @since 23/04/2026 -- 13:22
+// move this elsewhere
+
+struct cpu_local_t {
+    uint64_t kernel_rsp;
+    uint64_t user_rsp;
+};
+
+extern cpu_local_t cpu0;
+
 cpu_state_t* vthread_schedule(cpu_state_t* p_cpu_state) {
     if (g_threads.size() <= 1)
         return p_cpu_state;
@@ -218,8 +228,14 @@ cpu_state_t* vthread_schedule(cpu_state_t* p_cpu_state) {
     } while (g_current_thread->vt_state != vthread_state_t::RUNNING);
 
     set_pml4(g_current_thread->pml4);
-    gdt_set_stack_pointer0(g_current_thread->stack_top);
     fpu_load(g_current_thread->fpu_state);
+
+    // this means that the thread is a userprocess
+    // & needs a kernel stack when an interrupt happens
+    if (g_current_thread->kstack) {
+        gdt_set_stack_pointer0(g_current_thread->kstack);
+        cpu0.kernel_rsp = (uint64_t)g_current_thread->kstack;
+    }
 
     return (cpu_state_t*)g_current_thread->stack_top;
 }

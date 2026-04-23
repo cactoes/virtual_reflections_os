@@ -169,81 +169,19 @@ struct cpu_local_t {
     uint64_t user_rsp;
 };
 
-static cpu_local_t cpu0 {};
+cpu_local_t cpu0 {};
 
-void enter_usermode(uint64_t entry_point, uint64_t user_stack_top) {
-    cli();
-
-    uint16_t user_ds = (uint16_t)((USER_DATA_SELECTOR_INDEX << 3) | 3);
-    uint16_t user_cs = (uint16_t)((USER_CODE_SELECTOR_INDEX << 3) | 3);
-
-    asm volatile (
-        // set data segments
-        "mov %w[ds], %%ax\n"
-        "mov %%ax, %%ds\n"
-        "mov %%ax, %%es\n"
-        "mov %%ax, %%fs\n"
-        "mov %%ax, %%gs\n"
-        // build iretq frame
-        "pushq %[ss]\n"
-        "pushq %[rsp]\n"
-        "pushq %[rflags]\n"
-        "pushq %[cs]\n"
-        "pushq %[rip]\n"
-        "iretq\n"
-        :
-        : [ds]     "r" ((uint64_t)user_ds),
-          [ss]     "r" ((uint64_t)user_ds),
-          [rsp]    "r" (user_stack_top),
-          [rflags] "r" (0x202ULL),
-          [cs]     "r" ((uint64_t)user_cs),
-          [rip]    "r" (entry_point)
-        : "rax", "memory"
-    );
-}
-
-void user_function() {
-    uint64_t ret;
-    asm volatile(
-        "mov $0, %%rax\n"
-        "syscall\n"
-        : "=a"(ret)
-        :
-        : "rcx", "r11", "memory"
-    );
-
-    // we cant leave user mode in the current state
-    while (true);
-}
-
-#include "arch/x86_64/interrupt.hpp"
+#include "memory/paging.hpp"
+#include "elf.hpp"
 
 extern "C" uint64_t syscall_dispatch(uint64_t syscall_num) {
-    extern uint8_t KSTACK_TOP[];
-    uint64_t rsp;
-    asm volatile("mov %%rsp, %0" : "=r"(rsp));
-    kprintf("syscall rsp: 0x%uh\n", rsp);
-    kprintf("KSTACK_TOP:  0x%uh\n", (uint64_t)KSTACK_TOP);
-
     if (syscall_num == 0) {
-        vthread_t* current_thread = vthread_get(__thread_tls->handle);
-        vthread_terminate(__thread_tls->handle);
+        // vthread_t* current_thread = vthread_get(__thread_tls->handle);
+        // vthread_terminate(__thread_tls->handle);
+        kprintf("[SYSCALL] terminated process\n");
+        vthread_terminate();
 
-        asm volatile ("mov %0, %%rsp" ::"r"(current_thread->stack_top));
-
-        // uint64_t new_stack;
-        // asm volatile (
-        //     "mov %%rsp, %0\n\t"
-        //     "add %1, %0\n\t"
-        //     "mov %0, %%rsp"
-        //     : "=&r"(new_stack)
-        //     : "r"(KERNEL_VIRTUAL_BASE)
-        //     : "memory"
-        // );
-
-        call_scheduler_interrupt();
-
-        // wait for deletion
+        // safetey catch
         while (true);
     }
 
@@ -252,51 +190,6 @@ extern "C" uint64_t syscall_dispatch(uint64_t syscall_num) {
 }
 
 extern "C" void x86_64_syscall_handler();
-
-#include "memory/paging.hpp"
-
-void usermode_test() {
-    // TODO @since 24/02/2026 -- 21:01
-    // 1. custom pml4 struct per process
-    // 2. kernel api via syscalls
-    // 3. process exit
-    // 4. make this actually the part that the user interacts with, no longer with the kernel terminal etc....
-
-    extern uint8_t KSTACK_TOP[];
-    cpu0.kernel_rsp = (uint64_t)KSTACK_TOP;
-
-    uint64_t star = ((uint64_t)(KERNEL_DATA_SELECTOR_INDEX << 3) << 48)
-                | ((uint64_t)(KERNEL_CODE_SELECTOR_INDEX << 3) << 32);
-
-    msr_set_kernel_gs_base(&cpu0);
-    msr_enable_sce();
-    msr_set_star(star);
-    msr_set_lstar((void*)x86_64_syscall_handler);
-    msr_set_sf_mask(RFLAGS_TF | RFLAGS_IF);
-
-    void* user_stack_kernel_virt = malloc_aligned(PAGE_SIZE_LARGE, PAGE_SIZE_LARGE);
-    memzero(user_stack_kernel_virt, PAGE_SIZE_LARGE);
-    void* user_stack_physical = vmem_virtual_to_physical(user_stack_kernel_virt);
-    void* user_stack_virtual = (void*)(PAGE_SIZE_LARGE * 1ULL);
-    vmem_map_2mb(get_pml4(), user_stack_virtual, user_stack_physical, true);
-    uint64_t user_stack_top = (uint64_t)user_stack_virtual + PAGE_SIZE_LARGE;
-
-    void* user_code_kernel_virt = malloc_aligned(PAGE_SIZE_LARGE, PAGE_SIZE_LARGE);
-    memzero(user_code_kernel_virt, PAGE_SIZE_LARGE);
-    memcpy(user_code_kernel_virt, (void*)&user_function, PAGE_SIZE);
-    void* user_code_physical = vmem_virtual_to_physical(user_code_kernel_virt);
-    void* user_code_virtual = (void*)(PAGE_SIZE_LARGE * 2ULL);
-    vmem_map_2mb(get_pml4(), user_code_virtual, user_code_physical, true);
-    
-    enter_usermode((uint64_t)user_code_virtual, user_stack_top);
-}
-
-int process_2_entry() {
-    kprintf("diff page table print\n");
-    return 0;
-}
-
-#include "elf.hpp"
 
 void create_process_test() {
     // BUG @since 05/03/2026 -- 09:22
@@ -324,6 +217,8 @@ void create_process_test() {
         return;
     }
 
+    // FIXME @since 23/04/2026 -- 13:24
+    // leaking program file
     uint8_t* program_file_data = nullptr;
     size_t size;
     if (!vfs_read_file(get_global_vfs(), fd, &program_file_data, &size)) {
@@ -368,11 +263,7 @@ void create_process_test() {
 
     // create a new thread with the new page table
 
-    extern uint8_t KSTACK_TOP[];
-    // cpu0.kernel_rsp = (uint64_t)KSTACK_TOP + KERNEL_VIRTUAL_BASE;
-    cpu0.kernel_rsp = (uint64_t)KSTACK_TOP;
-
-    uint64_t star = ((uint64_t)(KERNEL_DATA_SELECTOR_INDEX << 3) << 48)
+    uint64_t star = ((uint64_t)(USER_CODE_32_SELECTOR_INDEX << 3) << 48)
                   | ((uint64_t)(KERNEL_CODE_SELECTOR_INDEX << 3) << 32);
 
     msr_set_kernel_gs_base(&cpu0);
@@ -381,8 +272,8 @@ void create_process_test() {
     msr_set_lstar((void*)x86_64_syscall_handler);
     msr_set_sf_mask(RFLAGS_TF | RFLAGS_IF);
 
-    uint64_t* user_stack_kernel_virt = (uint64_t*)malloc_aligned(PAGE_SIZE_LARGE, PAGE_SIZE_LARGE);
-    memzero(user_stack_kernel_virt, PAGE_SIZE_LARGE);
+    uint64_t* user_stack_kernel_virt = (uint64_t*)malloc_aligned(VTHREAD_STACK_SIZE, PAGE_SIZE_LARGE);
+    memzero(user_stack_kernel_virt, VTHREAD_STACK_SIZE);
     void* user_stack_physical = vmem_virtual_to_physical(user_stack_kernel_virt);
     void* user_stack_virtual = (void*)(PAGE_SIZE_LARGE * 1ULL);
 
@@ -400,6 +291,9 @@ void create_process_test() {
     uint64_t* mapped_stack_top = (uint64_t*)(((uint64_t)user_stack_kernel_virt + VTHREAD_STACK_SIZE - sizeof(cpu_state_t)) & ~0xF);
 
     p_vthread->stack_bottom_kernel = (void*)(user_stack_kernel_virt);
+
+    p_vthread->kstack = (void*)((uint64_t)malloc_aligned(VTHREAD_STACK_SIZE, 16) + VTHREAD_STACK_SIZE);
+    cpu0.kernel_rsp = (uint64_t)p_vthread->kstack;
 
     uint16_t user_ds = (uint16_t)((USER_DATA_SELECTOR_INDEX << 3) | 3);
     uint16_t user_cs = (uint16_t)((USER_CODE_SELECTOR_INDEX << 3) | 3);
