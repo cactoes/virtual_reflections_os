@@ -12,8 +12,6 @@
 #include "drivers/ps2/mouse.hpp"
 #include "drivers/ps2/ps2.hpp"
 #include "drivers/driver.hpp"
-// #include "drivers/storage/ide.hpp"
-// #include "drivers/storage/ahci.hpp"
 #include "drivers/network/e1000.hpp"
 #include "drivers/network/nidm.hpp"
 #include "drivers/network/tcp.hpp"
@@ -28,10 +26,6 @@
 #include "subsystems/dns/dns_client_driver.hpp"
 
 #include "interrupt_manager.hpp"
-
-// #include "filesystems/iso9660.hpp"
-// #include "filesystems/fat32.hpp"
-// #include "filesystems/vfs.hpp"
 
 #include "storage/drivers/ide.hpp"
 #include "storage/drivers/ahci.hpp"
@@ -67,6 +61,8 @@
 #include "terminal.hpp"
 #include "linker.hpp"
 #include "cpu.hpp"
+#include "memory/paging.hpp"
+#include "elf.hpp"
 
 #define HEAP_START_SIZE 0x100000 * 32 // 32 mb
 #define PIT_TIMER_INTERVAL 1000 // times per second
@@ -165,13 +161,84 @@ void init_pci_devices(const pci_device_t* device) {
     }
 };
 
-struct cpu_local_t {
-    uint64_t kernel_rsp;
-    uint64_t user_rsp;
+struct process_t {
+    heap_t heap;
+    void* page_table;
+    void* stack_kernel;
+    void* stack_user;
+    vthread_handle_t main_thread;
+
+    uint8_t* data;
+    size_t data_size;
+    void* start_address;
 };
 
-#include "memory/paging.hpp"
-#include "elf.hpp"
+static process_t* g_process = nullptr;
+
+process_t* get_current_process() {
+    return g_process;
+}
+
+void set_current_process(process_t* p_process) {
+    g_process = p_process;
+}
+
+bool create_process(process_t* process, const char* path) {
+    if (!process || !path)
+        return false;
+
+    file_descriptor_t fd = vfs_open_file(get_global_vfs(), path);
+    if (fd == FILE_DESCRIPTOR_INVALID)
+        return false;
+
+    if (!vfs_read_file(get_global_vfs(), fd, &process->data, &process->data_size))
+        return false;
+
+    if (elf_check_file(process->data, elf_type_t::EXECUTABLE) != 0)
+        return false;
+
+    elf_program_section_info_t program_section_info = elf_parse_program_sections(process->data);
+    
+    if (program_section_info.size == 0)
+        return false;
+
+    void* base_address_v = malloc_aligned(align_up(program_section_info.size, PAGE_SIZE_LARGE), PAGE_SIZE_LARGE);
+    if (!base_address_v)
+        return false;
+
+    elf_load_program_sections(process->data, (uint8_t*)base_address_v, &program_section_info);
+
+    auto tables = elf_get_tables(process->data);
+    if (!tables.string_table || !tables.symbol_table)
+        return false;
+
+    // TODO @since 24/04/2026 -- 09:51
+    // for now skip relocate sections
+
+    process->page_table = malloc_aligned(PAGE_SIZE, PAGE_SIZE);
+    memzero(process->page_table, PAGE_SIZE);
+    uint64_t new_page_table_p = (uint64_t)vmem_virtual_to_physical(process->page_table);
+
+    // revursive map page table
+    vmem_recusive_map_page_table(process->page_table, (void*)new_page_table_p);
+
+    // copy the kernel entries so its always linked
+    uint64_t* current_page_table_v = GET_PML4_VIRT();
+    for (size_t i = KPAGING_GET_PE(KERNEL_VIRTUAL_BASE, 39); i < 511; i++)
+        ((uint64_t*)process->page_table)[i] = current_page_table_v[i];
+
+    // TODO @since 24/04/2026 -- 09:53
+    // place at a non randomly chosen location
+    process->stack_user = (void*)(PAGE_SIZE_LARGE * 1ULL);
+    process->stack_kernel = malloc_aligned(VTHREAD_STACK_SIZE, PAGE_SIZE_LARGE);
+    memzero(process->stack_kernel, VTHREAD_STACK_SIZE);
+
+    void* user_stack_p = vmem_virtual_to_physical(process->stack_kernel);
+    void* base_address_p = vmem_virtual_to_physical(base_address_v);
+    void* current_pt_phys = (void*)(current_page_table_v[511] & ~0xFFF);
+
+    return true;
+}
 
 static heap_t process_heap {};
 
@@ -185,9 +252,7 @@ extern "C" uint64_t syscall_dispatch(uint64_t syscall_num, syscall_regs_t* regs)
     }
 
     switch (syscall_num) {
-        case 1: {
-            return (uint64_t)heap_alloc(&process_heap, regs->rdi);
-        }
+        case 1: return (uint64_t)heap_alloc(&process_heap, regs->rdi);
         default:
             break;
     }
@@ -195,8 +260,6 @@ extern "C" uint64_t syscall_dispatch(uint64_t syscall_num, syscall_regs_t* regs)
     kprintf("[ \033[91mSYSCALL\033[0m ] unhandled syscall = %ul\n", syscall_num);
     return 0;
 }
-
-extern "C" void x86_64_syscall_handler();
 
 void create_process_test() {
     // BUG @since 05/03/2026 -- 09:22
