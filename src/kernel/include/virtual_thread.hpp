@@ -137,4 +137,6 @@ bool leave_critical_section(critical_section_t* section);
 
 bool vthread_add(std::unique_ptr<vthread_t> p_vthread);
 
+vthread_handle_t vhtread_next_handle();
+
 #endif // __VIRTUAL_THREAD_HPP__

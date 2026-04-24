@@ -145,7 +145,7 @@ vthread_handle_t vthread_create(thread_entry_t p_thread_entry, void* pml4, const
     *(--stack_top) = (uint64_t)p_thread_entry;
     *(--stack_top) = 0;
 
-    const vthread_handle_t new_handle = g_vth_counter++;
+    const vthread_handle_t new_handle = vhtread_next_handle();
 
     p_vthread->stack_top = stack_top;
     p_vthread->handle = new_handle;
@@ -350,4 +350,8 @@ bool leave_critical_section(critical_section_t* section) {
 
     sti();
     return true;
+}
+
+vthread_handle_t vhtread_next_handle() {
+    return g_vth_counter++;
 }
