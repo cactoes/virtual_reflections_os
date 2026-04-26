@@ -30,6 +30,7 @@ section .text
     push r14
     push r15
     push rax
+    push rbx
     push rcx
     push rdx
     push rsi
@@ -47,6 +48,7 @@ section .text
     pop rsi
     pop rdx
     pop rcx
+    pop rbx
     pop rax
     pop r15
     pop r14
@@ -210,7 +212,7 @@ x86_64_syscall_handler:
 
     pop rsp
 
-    mov  rsp, [gs:8]
+    ; mov  rsp, [gs:8]
 
     swapgs
     o64 sysret
@@ -224,14 +226,14 @@ x86_64_syscall_handler:
 isr_stub_%+%1:
     cli
 
-    ; test byte [rsp + 8], 3
-    ; jz %%no_swapgs
-    ; swapgs
-    ; %%no_swapgs:
-
     %if %1 != 8 && %1 != 10 && %1 != 11 && %1 != 12 && %1 != 13 && %1 != 14 && %1 != 17 && %1 != 30
         push 0
     %endif
+
+    test qword [rsp + 16], 3
+    jz .no_swapgs_in_%1
+    swapgs
+    .no_swapgs_in_%1:
 
     push_all_regs
 
@@ -247,14 +249,15 @@ isr_stub_%+%1:
 
     pop_all_regs
 
+    test qword[rsp + 16], 3
+    jz .no_swapgs_out_%1
+    swapgs
+    .no_swapgs_out_%1:
+
     ; skip error code
     add rsp, 8
 
     ; return from interrupt
-    ; test byte [rsp + 8], 3
-    ; jz %%no_swapgs_exit
-    ; swapgs
-    ; %%no_swapgs_exit:
     iretq
 %endmacro
 

@@ -29,6 +29,10 @@ static inline void x86_64_msr_set_kernel_gs_base(void* addr) {
     x86_64_wrmsr(X86_64_MSR_KERNEL_GS_BASE, (uint64_t)addr);
 }
 
+static inline void x86_64_msr_set_gs_base(void* addr) {
+    x86_64_wrmsr(X86_64_MSR_GS_BASE, (uint64_t)addr);
+}
+
 static inline void x86_64_msr_enable_sce() {
     uint64_t efer = x86_64_rdmsr(X86_64_MSR_EFER);
     x86_64_wrmsr(X86_64_MSR_EFER, efer | X86_64_EFER_SCE);

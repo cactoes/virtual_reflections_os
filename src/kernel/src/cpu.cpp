@@ -16,7 +16,8 @@ bool initialize_cpus() {
     msr_set_star(star);
     msr_set_lstar((void*)x86_64_syscall_handler);
     msr_set_sf_mask(RFLAGS_TF | RFLAGS_IF | RFLAGS_DF);
-    msr_set_kernel_gs_base(&cpu0);
+    msr_set_gs_base(&cpu0);
+    msr_set_kernel_gs_base(0);
 
     // TODO @since 23/04/2026 -- 21:12
     // add the gdt etc here

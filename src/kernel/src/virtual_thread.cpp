@@ -10,6 +10,8 @@
 #include "cpu.hpp"
 #include "linker.hpp"
 #include "utils/debug.hpp"
+#include "memory/heap.hpp"
+#include "io.hpp"
 
 // TODO @since 23/10/2025 -- 19:06
 // change into 1 "bigger" thread handler
@@ -61,7 +63,7 @@ void vthread_handle_stopping(vthread_t* p_vthread) {
     if (p_vthread->stack_bottom_kernel)
         free_aligned(p_vthread->stack_bottom_kernel);
     else
-        free(p_vthread->stack_bottom);
+        free_aligned(p_vthread->stack_bottom);
 
     if (p_vthread->kstack)
         free_aligned(p_vthread->kstack);
@@ -117,7 +119,7 @@ vthread_handle_t vthread_start_and_setup_main() {
 }
 
 vthread_handle_t vthread_create(thread_entry_t p_thread_entry, void* pml4, const char name[VTHREAD_MAX_NAME_SIZE]) {
-    uint64_t* stack = (uint64_t*)malloc(VTHREAD_STACK_SIZE);
+    uint64_t* stack = (uint64_t*)malloc_aligned(VTHREAD_STACK_SIZE, 16);
     if (!stack)
         return VTHREAD_HANDLE_INVALID;
 
@@ -126,11 +128,8 @@ vthread_handle_t vthread_create(thread_entry_t p_thread_entry, void* pml4, const
     p_vthread->stack_bottom = stack;
     uint64_t* stack_top = (uint64_t*)(((uint64_t)stack + VTHREAD_STACK_SIZE - sizeof(interrupt_regs_t)) & ~0xF);
 
-    // padding since the next section is only 19 * 8
-    // which means its no longer 16-byte alignd
-    *(--stack_top);
-
     // itret frame
+    *(--stack_top) = gdt_get_kernel_data_selector();
     *(--stack_top) = (uint64_t)stack_top;
     *(--stack_top) = 0x202;
     *(--stack_top) = gdt_get_kernel_code_selector();
@@ -138,7 +137,7 @@ vthread_handle_t vthread_create(thread_entry_t p_thread_entry, void* pml4, const
     *(--stack_top) = 0;
 
     // general registers
-    for (int i = 0; i < 12; i++)
+    for (int i = 0; i < 13; i++)
         *(--stack_top) = 0;
 
     // startup arguments for the loader
@@ -193,11 +192,17 @@ interrupt_regs_t* vthread_schedule(interrupt_regs_t* p_cpu_state) {
     if (global_is_in_critical_section)
         return p_cpu_state;
 
+    if (((p_cpu_state->cs & ~3) >> 3) != USER_CODE_SELECTOR_INDEX && ((p_cpu_state->cs & ~3) >> 3) != KERNEL_CODE_SELECTOR_INDEX)
+        debug_trap("storing corrupted stack");
+
     g_current_thread->stack_top = (void*)p_cpu_state;
     fpu_store(g_current_thread->fpu_state);
 
     do {
         g_current_thread = vthread_get_next_thead(g_current_thread->handle);
+
+        if ((uint64_t)g_current_thread < PAGE_SIZE_LARGE)
+            debug_trap("invalid thread");
 
         switch (g_current_thread->vt_state) {
             case vthread_state_t::STARTING: vthread_handle_starting(g_current_thread); break;
@@ -223,11 +228,20 @@ interrupt_regs_t* vthread_schedule(interrupt_regs_t* p_cpu_state) {
     // this means that the thread is a userprocess
     // & needs a kernel stack when an interrupt happens
     if (g_current_thread->kstack) {
-        gdt_set_stack_pointer0(g_current_thread->kstack);
-        set_kernel_stack(get_current_cpu(), g_current_thread->kstack);
+        auto kstack_top = (void*)((uint64_t)g_current_thread->kstack + VTHREAD_STACK_SIZE);
+        gdt_set_stack_pointer0(kstack_top);
+        set_kernel_stack(get_current_cpu(), kstack_top);
+    } else {
+        // gdt_set_stack_pointer0(g_current_thread->stack_bottom);
+        // set_kernel_stack(get_current_cpu(), g_current_thread->stack_bottom);
     }
 
-    return (interrupt_regs_t*)g_current_thread->stack_top;
+    interrupt_regs_t* target_stack = (interrupt_regs_t*)g_current_thread->stack_top;
+
+    if (((target_stack->cs & ~3) >> 3) != USER_CODE_SELECTOR_INDEX && ((target_stack->cs & ~3) >> 3) != KERNEL_CODE_SELECTOR_INDEX)
+        debug_trap("loading corrupted stack");
+
+    return target_stack;
 }
 
 void vthread_yield() {

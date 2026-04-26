@@ -164,8 +164,8 @@ void init_pci_devices(const pci_device_t* device) {
 struct process_t {
     heap_t heap;
     void* page_table;
-    void* stack_kernel;
-    void* stack_user;
+    // void* stack_kernel;
+    // void* stack_user;
     vthread_handle_t main_thread;
 
     uint8_t* data;
@@ -217,10 +217,10 @@ bool create_process(process_t* process, const char* path) {
 
     process->page_table = malloc_aligned(PAGE_SIZE, PAGE_SIZE);
     memzero(process->page_table, PAGE_SIZE);
-    uint64_t new_page_table_p = (uint64_t)vmem_virtual_to_physical(process->page_table);
+    void* new_page_table_p = vmem_virtual_to_physical(process->page_table);
 
     // revursive map page table
-    vmem_recusive_map_page_table(process->page_table, (void*)new_page_table_p);
+    vmem_recusive_map_page_table(process->page_table, new_page_table_p);
 
     // copy the kernel entries so its always linked
     uint64_t* current_page_table_v = GET_PML4_VIRT();
@@ -229,18 +229,86 @@ bool create_process(process_t* process, const char* path) {
 
     // TODO @since 24/04/2026 -- 09:53
     // place at a non randomly chosen location
-    process->stack_user = (void*)(PAGE_SIZE_LARGE * 1ULL);
-    process->stack_kernel = malloc_aligned(VTHREAD_STACK_SIZE, PAGE_SIZE_LARGE);
-    memzero(process->stack_kernel, VTHREAD_STACK_SIZE);
+    void* stack_user_v = (void*)(PAGE_SIZE_LARGE * 1ULL);
+    void* stack_kernel_v = malloc_aligned(PAGE_SIZE_LARGE, PAGE_SIZE_LARGE);
+    memzero(stack_kernel_v, PAGE_SIZE_LARGE);
 
-    void* user_stack_p = vmem_virtual_to_physical(process->stack_kernel);
+    std::unique_ptr<vthread_t> p_vthread = std::make_unique<vthread_t>();
+    p_vthread->stack_bottom = stack_user_v;
+    p_vthread->stack_bottom_kernel = stack_kernel_v;
+
+    p_vthread->kstack = (void*)((uint64_t)malloc_aligned(PAGE_SIZE_LARGE, 16) + PAGE_SIZE_LARGE);
+
+    uint16_t user_ds = (uint16_t)((USER_DATA_SELECTOR_INDEX << 3) | 3);
+    uint16_t user_cs = (uint16_t)((USER_CODE_SELECTOR_INDEX << 3) | 3);
+
+    uint64_t* stack_top = (uint64_t*)(((uint64_t)stack_user_v + PAGE_SIZE_LARGE - sizeof(interrupt_regs_t)) & ~0xF);
+    uint64_t* mapped_stack_top = (uint64_t*)(((uint64_t)stack_kernel_v + PAGE_SIZE_LARGE - sizeof(interrupt_regs_t)) & ~0xF);
+
+    void* entry = (void*)((elf_header_t*)process->data)->entry_point;
+
+    // itret frame
+    *(--mapped_stack_top) = (uint64_t)user_ds;
+    *(--mapped_stack_top) = (uint64_t)stack_top;
+    *(--mapped_stack_top) = 0x202;
+    *(--mapped_stack_top) = (uint64_t)user_cs;
+    *(--mapped_stack_top) = (uint64_t)entry;
+    *(--mapped_stack_top) = 0;
+
+    // general registers
+    for (int i = 0; i < 13; i++)
+        *(--mapped_stack_top) = 0;
+
+    *(--mapped_stack_top) = 0;
+    *(--mapped_stack_top) = 0;
+
+    p_vthread->stack_top = (void*)mapped_stack_top;
+    p_vthread->vt_state = vthread_state_t::RUNNING;
+    p_vthread->handle = vhtread_next_handle();
+    p_vthread->fpu_state = (uint8_t*)malloc_aligned(sizeof(uint8_t) * 512, 16);
+    p_vthread->pml4 = new_page_table_p;
+    p_vthread->tls.handle = p_vthread->handle;
+
+    // do this before the page table switch
+    void* current_page_table_p = (void*)(current_page_table_v[511] & ~0xFFF);
     void* base_address_p = vmem_virtual_to_physical(base_address_v);
-    void* current_pt_phys = (void*)(current_page_table_v[511] & ~0xFFF);
+    void* user_stack_p = vmem_virtual_to_physical(stack_kernel_v);
+
+    cli();
+    set_pml4(new_page_table_p);
+
+    for (size_t i = 0; i < program_section_info.size; i += PAGE_SIZE_LARGE) {
+        if (!vmem_map_2mb(new_page_table_p, (void*)(program_section_info.min_address + i * PAGE_SIZE_LARGE), (void*)((uint64_t)base_address_p + i * PAGE_SIZE_LARGE), true))
+            return false;
+    }
+
+    set_pml4(current_page_table_p);
+    sti();
+
+    cli();
+    set_pml4(new_page_table_p);
+    if (!heap_init(&process->heap, new_page_table_p, (void*)PAGE_SIZE_HUGE, PAGE_SIZE_LARGE, true))
+        return false;
+
+    set_pml4(current_page_table_p);
+    sti();
+
+    cli();
+    set_pml4(new_page_table_p);
+    if (!vmem_map_2mb(new_page_table_p, stack_user_v, user_stack_p, true))
+        return false;
+
+    set_pml4(current_page_table_p);
+    sti();
+
+    // TODO @since 24/04/2026 -- 19:57
+    // move
+    set_current_process(process);
+
+    vthread_add(move(p_vthread));
 
     return true;
 }
-
-static heap_t process_heap {};
 
 extern "C" uint64_t syscall_dispatch(uint64_t syscall_num, syscall_regs_t* regs) {
     if (syscall_num == 0) {
@@ -252,7 +320,7 @@ extern "C" uint64_t syscall_dispatch(uint64_t syscall_num, syscall_regs_t* regs)
     }
 
     switch (syscall_num) {
-        case 1: return (uint64_t)heap_alloc(&process_heap, regs->rdi);
+        case 1: return (uint64_t)heap_alloc(&get_current_process()->heap, regs->rdi);
         default:
             break;
     }
@@ -321,7 +389,7 @@ void create_process_test() {
 
     cli();
     set_pml4((void*)new_pt_phys);
-    heap_init(&process_heap, (void*)new_pt_phys, (void*)PAGE_SIZE_HUGE, PAGE_SIZE_LARGE, true);
+    // heap_init(&process_heap, (void*)new_pt_phys, (void*)PAGE_SIZE_HUGE, PAGE_SIZE_LARGE, true);
     set_pml4(current_pt_phys);
     sti();
 
@@ -359,7 +427,7 @@ void create_process_test() {
 
     p_vthread->stack_bottom_kernel = (void*)(user_stack_kernel_virt);
 
-    p_vthread->kstack = (void*)((uint64_t)malloc_aligned(VTHREAD_STACK_SIZE, 16) + VTHREAD_STACK_SIZE);
+    p_vthread->kstack = (void*)((uint64_t)malloc_aligned(VTHREAD_STACK_SIZE, 16));
     // cpu0.kernel_rsp = (uint64_t)p_vthread->kstack;
 
     uint16_t user_ds = (uint16_t)((USER_DATA_SELECTOR_INDEX << 3) | 3);
@@ -617,7 +685,11 @@ NORETURN void virtual_kernel_entry(multiboot_t* multiboot_struct, void* kernel_p
 
     // after usermode switch it basically shouldnt go back
     // usermode_test();
-    create_process_test();
+    // create_process_test();
+    process_t p {};
+    p.data = nullptr;
+    if (!create_process(&p, "harddisk0/TestProgram.exe"))
+        kprintf("failed to start process\n");
 
     // we shoudn t reach this point since the kernel should never stop
     // incase we do just hang here so we dont break anything

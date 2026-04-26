@@ -21,6 +21,7 @@ struct interrupt_regs_t {
     uint64_t r15;
 
     uint64_t rax;
+    uint64_t rbx;
     uint64_t rcx;
     uint64_t rdx;
     uint64_t rsi;
