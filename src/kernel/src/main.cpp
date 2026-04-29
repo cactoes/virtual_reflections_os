@@ -321,139 +321,16 @@ extern "C" uint64_t syscall_dispatch(uint64_t syscall_num, syscall_regs_t* regs)
 
     switch (syscall_num) {
         case 1: return (uint64_t)heap_alloc(&get_current_process()->heap, regs->rdi);
+        case 2: {
+            heap_free(&get_current_process()->heap, (void*)regs->rdi);
+            return 0;
+        }
         default:
             break;
     }
 
     kprintf("[ \033[91mSYSCALL\033[0m ] unhandled syscall = %ul\n", syscall_num);
     return 0;
-}
-
-void create_process_test() {
-    // BUG @since 05/03/2026 -- 09:22
-    // page table never free'd
-
-    // create new page table
-    uint64_t* new_pt_virt = (uint64_t*)malloc_aligned(PAGE_SIZE, PAGE_SIZE);
-    memzero(new_pt_virt, PAGE_SIZE);
-    uint64_t new_pt_phys = (uint64_t)vmem_virtual_to_physical((void*)new_pt_virt);
-
-    // revursive map page table
-    vmem_recusive_map_page_table((void*)new_pt_virt, (void*)new_pt_phys);
-
-    // copy the kernel entries so its always linked
-    uint64_t* current_pml4 = GET_PML4_VIRT();
-    constexpr uint64_t pml4e = KPAGING_GET_PE(KERNEL_VIRTUAL_BASE, 39);
-    for (size_t i = pml4e; i < 511; i++)
-        new_pt_virt[i] = current_pml4[i];
-
-    // now load the elf file
-
-    file_descriptor_t fd = vfs_open_file(get_global_vfs(), "harddisk0/TestProgram.exe");
-    if (fd == FILE_DESCRIPTOR_INVALID) {
-        kprintf("failed to open TestProgram.exe\n");
-        return;
-    }
-
-    // FIXME @since 23/04/2026 -- 13:24
-    // leaking program file
-    uint8_t* program_file_data = nullptr;
-    size_t size;
-    if (!vfs_read_file(get_global_vfs(), fd, &program_file_data, &size)) {
-        kprintf("failed to load TestProgram.exe\n");
-        return;
-    }
-
-    if (elf_check_file(program_file_data, elf_type_t::EXECUTABLE) != 0) {
-        kprintf("not elf file\n");
-        return;
-    }
-
-    auto program_section_info = elf_parse_program_sections(program_file_data);
-    
-    // allocate it in kernel space for now aswell
-    void* base_address = malloc_aligned(align_up(program_section_info.size, PAGE_SIZE_LARGE), PAGE_SIZE_LARGE);
-    void* base_addr_phys = vmem_virtual_to_physical(base_address);
-    if (!base_address) {
-        kprintf("failed to allocate base_address");
-        return;
-    }
-
-    void* current_pt_phys = (void*)(current_pml4[511] & ~0xFFF);
-    cli();
-    set_pml4((void*)new_pt_phys);
-    if (!vmem_map_2mb((void*)new_pt_phys, (void*)program_section_info.min_address, base_addr_phys, true))
-        debug_trap("failed to vmem_map");
-    set_pml4(current_pt_phys);
-    sti();
-
-    cli();
-    set_pml4((void*)new_pt_phys);
-    // heap_init(&process_heap, (void*)new_pt_phys, (void*)PAGE_SIZE_HUGE, PAGE_SIZE_LARGE, true);
-    set_pml4(current_pt_phys);
-    sti();
-
-    elf_load_program_sections(program_file_data, (uint8_t*)base_address, &program_section_info);
-
-    auto tables = elf_get_tables(program_file_data);
-    if (!tables.string_table || !tables.symbol_table)
-        return;
-
-    // TODO @since 29/04/2026 -- 20:19
-    // for now skip relocate sections
-
-    void* entry = (void*)((elf_header_t*)program_file_data)->entry_point;
-
-    kprintf("[PROCESS] process loaded at: 0x%p\n", entry);
-
-    // create a new thread with the new page table
-
-    uint64_t* user_stack_kernel_virt = (uint64_t*)malloc_aligned(VTHREAD_STACK_SIZE, PAGE_SIZE_LARGE);
-    memzero(user_stack_kernel_virt, VTHREAD_STACK_SIZE);
-    void* user_stack_physical = vmem_virtual_to_physical(user_stack_kernel_virt);
-    void* user_stack_virtual = (void*)(PAGE_SIZE_LARGE * 1ULL);
-
-    cli();
-    set_pml4((void*)new_pt_phys);
-    if (!vmem_map_2mb((void*)new_pt_phys, user_stack_virtual, user_stack_physical, true))
-        debug_trap("failed to vmem_map");
-    set_pml4(current_pt_phys);
-    sti();
-
-    uint64_t* stack_top = (uint64_t*)(((uint64_t)user_stack_virtual + VTHREAD_STACK_SIZE - sizeof(interrupt_regs_t)) & ~0xF);
-    uint64_t* mapped_stack_top = (uint64_t*)(((uint64_t)user_stack_kernel_virt + VTHREAD_STACK_SIZE - sizeof(interrupt_regs_t)) & ~0xF);
-
-    std::unique_ptr<vthread_t> p_vthread = std::make_unique<vthread_t>();
-    p_vthread->stack_bottom = user_stack_virtual;
-    p_vthread->stack_bottom_kernel = (void*)(user_stack_kernel_virt);
-    p_vthread->kstack = (void*)((uint64_t)malloc_aligned(VTHREAD_STACK_SIZE, 16));
-
-    uint16_t user_ds = (uint16_t)((USER_DATA_SELECTOR_INDEX << 3) | 3);
-    uint16_t user_cs = (uint16_t)((USER_CODE_SELECTOR_INDEX << 3) | 3);
-
-    // itret frame
-    *(--mapped_stack_top) = (uint64_t)user_ds;
-    *(--mapped_stack_top) = (uint64_t)stack_top;
-    *(--mapped_stack_top) = 0x202;
-    *(--mapped_stack_top) = user_cs;
-    *(--mapped_stack_top) = (uint64_t)entry;
-    *(--mapped_stack_top) = 0;
-
-    // general registers
-    for (int i = 0; i < 13; i++)
-        *(--mapped_stack_top) = 0;
-
-    *(--mapped_stack_top) = 0;
-    *(--mapped_stack_top) = 0;
-
-    p_vthread->stack_top = (void*)mapped_stack_top;
-    p_vthread->vt_state = vthread_state_t::STARTING;
-    p_vthread->handle = vhtread_next_handle();
-    p_vthread->fpu_state = (uint8_t*)malloc_aligned(sizeof(uint8_t) * 512, 16);
-    p_vthread->pml4 = (void*)new_pt_phys;
-    p_vthread->tls.handle = p_vthread->handle;
-
-    vthread_add(move(p_vthread));
 }
 
 NORETURN void virtual_kernel_entry(multiboot_t* multiboot_struct, void* kernel_pt_vaddr) {
@@ -680,9 +557,6 @@ NORETURN void virtual_kernel_entry(multiboot_t* multiboot_struct, void* kernel_p
         printf("[ \033[91mERROR\033[0m ] failed to start terminal\n");
     }
 
-    // after usermode switch it basically shouldnt go back
-    // usermode_test();
-    // create_process_test();
     process_t p {};
     p.data = nullptr;
     if (!create_process(&p, "harddisk0/TestProgram.exe"))
