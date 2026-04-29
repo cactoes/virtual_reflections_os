@@ -70,9 +70,11 @@ void vthread_handle_stopping(vthread_t* p_vthread) {
 
     free_aligned(p_vthread->fpu_state);
 
-    critical_section_t section = enter_critical_section();
+    // BUG @since 29/04/2026 -- 19:58
+    // critical section here causes stack corruption?
+    // critical_section_t section = enter_critical_section();
     g_threads.remove(p_vthread->handle);
-    leave_critical_section(&section);
+    // leave_critical_section(&section);
 }
 
 void vthread_handle_starting(vthread_t* p_vthread) {

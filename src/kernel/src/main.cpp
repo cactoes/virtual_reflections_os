@@ -237,7 +237,7 @@ bool create_process(process_t* process, const char* path) {
     p_vthread->stack_bottom = stack_user_v;
     p_vthread->stack_bottom_kernel = stack_kernel_v;
 
-    p_vthread->kstack = (void*)((uint64_t)malloc_aligned(PAGE_SIZE_LARGE, 16) + PAGE_SIZE_LARGE);
+    p_vthread->kstack = (void*)((uint64_t)malloc_aligned(PAGE_SIZE_LARGE, 16));
 
     uint16_t user_ds = (uint16_t)((USER_DATA_SELECTOR_INDEX << 3) | 3);
     uint16_t user_cs = (uint16_t)((USER_CODE_SELECTOR_INDEX << 3) | 3);
