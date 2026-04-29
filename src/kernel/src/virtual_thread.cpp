@@ -22,6 +22,7 @@ static vthread_handle_t     g_vth_counter = 1;
 static vthread_t*           g_current_thread = nullptr;
 
 static volatile bool global_is_in_critical_section = false;
+static volatile spinlock_t global_thread_lock {};
 
 void vthread_entry_point(thread_entry_t p_thread_entry) {
     g_current_thread->vt_state = vthread_state_t::STARTING;
@@ -60,6 +61,10 @@ void vthread_handle_stopping(vthread_t* p_vthread) {
         kernel_fatal(KERNEL_FATAL_CRITICAL_THREAD_DIED, buffer);
     }
 
+    spinlock_lock((spinlock_t*)&global_thread_lock);
+
+    g_threads.remove(p_vthread->handle);
+
     if (p_vthread->stack_bottom_kernel)
         free_aligned(p_vthread->stack_bottom_kernel);
     else
@@ -70,11 +75,7 @@ void vthread_handle_stopping(vthread_t* p_vthread) {
 
     free_aligned(p_vthread->fpu_state);
 
-    // BUG @since 29/04/2026 -- 19:58
-    // critical section here causes stack corruption?
-    // critical_section_t section = enter_critical_section();
-    g_threads.remove(p_vthread->handle);
-    // leave_critical_section(&section);
+    spinlock_unlock((spinlock_t*)&global_thread_lock);
 }
 
 void vthread_handle_starting(vthread_t* p_vthread) {
@@ -88,14 +89,14 @@ bool vthread_add(std::unique_ptr<vthread_t> p_vthread) {
 
     p_vthread->vt_state = vthread_state_t::RUNNING;
 
-    critical_section_t section = enter_critical_section();
+    spinlock_lock((spinlock_t*)&global_thread_lock);
 
     if (!g_threads.insert(p_vthread->handle, move(p_vthread))) {
-        leave_critical_section(&section);
+        spinlock_unlock((spinlock_t*)&global_thread_lock);
         return false;
     }
 
-    leave_critical_section(&section);
+    spinlock_unlock((spinlock_t*)&global_thread_lock);
 
     return true;
 }
@@ -189,13 +190,6 @@ bool vthread_check_stack(vthread_t* thread) {
 interrupt_regs_t* vthread_schedule(interrupt_regs_t* p_cpu_state) {
     if (g_threads.size() <= 1)
         return p_cpu_state;
-
-    // we are in critical section so do NOT mess with it until its done
-    if (global_is_in_critical_section)
-        return p_cpu_state;
-
-    if (((p_cpu_state->cs & ~3) >> 3) != USER_CODE_SELECTOR_INDEX && ((p_cpu_state->cs & ~3) >> 3) != KERNEL_CODE_SELECTOR_INDEX)
-        debug_trap("storing corrupted stack");
 
     g_current_thread->stack_top = (void*)p_cpu_state;
     fpu_store(g_current_thread->fpu_state);
@@ -324,49 +318,49 @@ vthread_state_t vthread_get_state() {
     return g_current_thread->vt_state;
 }
 
-critical_section_t enter_critical_section(bool wait_for_lock, bool can_fail) {
-    cli();
+// critical_section_t enter_critical_section(bool wait_for_lock, bool can_fail) {
+//     cli();
 
-    critical_section_t critical_section {};
-    critical_section.is_locked = false;
+//     critical_section_t critical_section {};
+//     critical_section.is_locked = false;
 
-    if (global_is_in_critical_section) {
-        if (!wait_for_lock) {
-            if (can_fail) {
-                sti();
-                return critical_section;
-            }
+//     if (global_is_in_critical_section) {
+//         if (!wait_for_lock) {
+//             if (can_fail) {
+//                 sti();
+//                 return critical_section;
+//             }
     
-            sti();
-            kernel_fatal(KERNEL_FATAL_CRITICAL_SECTION_FAILED, "double critical section");
-        } else {
-            sti();
-            while (global_is_in_critical_section)
-                vthread_yield();
-            cli();            
-        }
-    }
+//             sti();
+//             kernel_fatal(KERNEL_FATAL_CRITICAL_SECTION_FAILED, "double critical section");
+//         } else {
+//             sti();
+//             while (global_is_in_critical_section)
+//                 vthread_yield();
+//             cli();            
+//         }
+//     }
 
-    global_is_in_critical_section = true;
-    critical_section.is_locked = true;
+//     global_is_in_critical_section = true;
+//     critical_section.is_locked = true;
 
-    sti();
-    return critical_section;
-}
+//     sti();
+//     return critical_section;
+// }
 
-bool leave_critical_section(critical_section_t* section) {
-    cli();
-    if (!global_is_in_critical_section) {
-        sti();
-        return false;
-    }
+// bool leave_critical_section(critical_section_t* section) {
+//     cli();
+//     if (!global_is_in_critical_section) {
+//         sti();
+//         return false;
+//     }
 
-    section->is_locked = false;
-    global_is_in_critical_section = false;
+//     section->is_locked = false;
+//     global_is_in_critical_section = false;
 
-    sti();
-    return true;
-}
+//     sti();
+//     return true;
+// }
 
 vthread_handle_t vhtread_next_handle() {
     return g_vth_counter++;
