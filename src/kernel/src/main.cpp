@@ -399,6 +399,7 @@ void create_process_test() {
     if (!tables.string_table || !tables.symbol_table)
         return;
 
+    // TODO @since 29/04/2026 -- 20:19
     // for now skip relocate sections
 
     void* entry = (void*)((elf_header_t*)program_file_data)->entry_point;
@@ -419,16 +420,13 @@ void create_process_test() {
     set_pml4(current_pt_phys);
     sti();
 
-    std::unique_ptr<vthread_t> p_vthread = std::make_unique<vthread_t>();
-    p_vthread->stack_bottom = user_stack_virtual;
-
     uint64_t* stack_top = (uint64_t*)(((uint64_t)user_stack_virtual + VTHREAD_STACK_SIZE - sizeof(interrupt_regs_t)) & ~0xF);
     uint64_t* mapped_stack_top = (uint64_t*)(((uint64_t)user_stack_kernel_virt + VTHREAD_STACK_SIZE - sizeof(interrupt_regs_t)) & ~0xF);
 
+    std::unique_ptr<vthread_t> p_vthread = std::make_unique<vthread_t>();
+    p_vthread->stack_bottom = user_stack_virtual;
     p_vthread->stack_bottom_kernel = (void*)(user_stack_kernel_virt);
-
     p_vthread->kstack = (void*)((uint64_t)malloc_aligned(VTHREAD_STACK_SIZE, 16));
-    // cpu0.kernel_rsp = (uint64_t)p_vthread->kstack;
 
     uint16_t user_ds = (uint16_t)((USER_DATA_SELECTOR_INDEX << 3) | 3);
     uint16_t user_cs = (uint16_t)((USER_CODE_SELECTOR_INDEX << 3) | 3);
@@ -442,16 +440,15 @@ void create_process_test() {
     *(--mapped_stack_top) = 0;
 
     // general registers
-    for (int i = 0; i < 12; i++) {
+    for (int i = 0; i < 13; i++)
         *(--mapped_stack_top) = 0;
-    }
 
     *(--mapped_stack_top) = 0;
     *(--mapped_stack_top) = 0;
 
     p_vthread->stack_top = (void*)mapped_stack_top;
-    p_vthread->vt_state = vthread_state_t::RUNNING;
-    p_vthread->handle = 12345;
+    p_vthread->vt_state = vthread_state_t::STARTING;
+    p_vthread->handle = vhtread_next_handle();
     p_vthread->fpu_state = (uint8_t*)malloc_aligned(sizeof(uint8_t) * 512, 16);
     p_vthread->pml4 = (void*)new_pt_phys;
     p_vthread->tls.handle = p_vthread->handle;

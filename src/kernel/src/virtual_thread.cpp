@@ -85,8 +85,6 @@ void vthread_handle_starting(vthread_t* p_vthread) {
 }
 
 bool vthread_add(std::unique_ptr<vthread_t> p_vthread) {
-    // mutex_lock_guard guard(&g_mutex);
-
     p_vthread->vt_state = vthread_state_t::RUNNING;
 
     spinlock_lock((spinlock_t*)&global_thread_lock);
@@ -110,8 +108,9 @@ vthread_handle_t vthread_start_and_setup_main() {
     p_vthread->handle = VTHREAD_MAIN_THREAD_HANDLE;
     p_vthread->pml4 = get_pml4();
     p_vthread->tls.handle = VTHREAD_MAIN_THREAD_HANDLE;
+    p_vthread->is_critical = true;
 
-    const char name[] = "main";
+    const char name[] = "kernel_thread_main";
     memcpy(p_vthread->name, name, sizeof(name));
     
     p_vthread->fpu_state = (uint8_t*)malloc_aligned(sizeof(uint8_t) * 512, 16);
