@@ -14,12 +14,11 @@
 #include "drivers/keyboard.hpp"
 #include "drivers/driver.hpp"
 #include "drivers/ps2/ps2.hpp"
-#include "drivers/network/nidm.hpp"
-#include "drivers/network/dns.hpp"
+#include "network/nidm.hpp"
 
 #include "subsystem_interface.hpp"
 #include "subsystems/dns/interface.hpp"
-#include "storage/vfs.hpp"
+#include "filesystems/vfs.hpp"
 #include "drivers/vga.hpp"
 
 static std::dynamic_array<char> terminal_current_input {};

@@ -9,7 +9,7 @@
 #define __SUBSYSTEM_DHCP_INTERFACE_HPP__
 
 #include "common.hpp"
-#include "drivers/network/nidm.hpp"
+#include "network/nidm.hpp"
 #include "subsystem_interface.hpp"
 
 class subsys_dhcp_client_t : public subsystem_interface_t {

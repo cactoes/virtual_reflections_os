@@ -1,6 +1,6 @@
-#include "storage/block_device.hpp"
-#include "storage/drivers/ide.hpp"
-#include "storage/drivers/ahci.hpp"
+#include "drivers/storage/block_device.hpp"
+#include "drivers/storage/ide.hpp"
+#include "drivers/storage/ahci.hpp"
 
 bool block_read_sized(block_device_t* device, uint64_t lba, uint8_t* buffer, size_t size) {
     if (!device || !buffer)

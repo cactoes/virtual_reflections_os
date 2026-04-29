@@ -1,8 +1,8 @@
 #include "kernel_include/virtual_reflections_exports.hpp"
 #include "memory/heap.hpp"
 #include "time/clock.hpp"
-#include "drivers/network/nidm.hpp"
-#include "drivers/network/udp.hpp"
+#include "network/nidm.hpp"
+#include "network/udp.hpp"
 #include "io.hpp"
 #include "virtual_thread.hpp"
 

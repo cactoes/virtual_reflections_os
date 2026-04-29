@@ -21,7 +21,7 @@
 #define TCP_SET_DATA_OFFSET(hdr, offset) ((hdr)->data_offset_reserved = ((offset) << 4) | ((hdr)->data_offset_reserved & 0x0F))
 
 #include "common.hpp"
-#include "drivers/network/nidm.hpp"
+#include "network/nidm.hpp"
 
 typedef void(*tcp_connect_callback_t)(const uint8_t* data, size_t size);
 

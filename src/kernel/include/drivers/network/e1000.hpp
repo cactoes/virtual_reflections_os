@@ -70,7 +70,7 @@
 #include "common.hpp"
 #include "cpu.hpp"
 #include "drivers/pcie.hpp"
-#include "drivers/network/nidm.hpp"
+#include "network/nidm.hpp"
 
 struct e1000_rdesc_t {
     uint64_t buffer_addr;

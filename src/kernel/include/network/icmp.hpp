@@ -9,7 +9,7 @@
 #define __DRIVERS_NETWORK_ICMP_HPP__
 
 #include "common.hpp"
-#include "drivers/network/nidm.hpp"
+#include "network/nidm.hpp"
 
 struct icmp_header_t {
     uint8_t type;

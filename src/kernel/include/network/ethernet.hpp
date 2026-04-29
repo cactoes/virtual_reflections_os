@@ -12,7 +12,7 @@
 #define ETHERNET_TYPE_ARP       0x0806
 
 #include "common.hpp"
-#include "drivers/network/nidm.hpp"
+#include "network/nidm.hpp"
 
 struct ethernet_header_t {
     uint8_t dst_mac[6];

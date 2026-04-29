@@ -3,7 +3,7 @@
 #include "memory/heap.hpp"
 #include "subsystem_interface.hpp"
 #include "subsystems/dns/interface.hpp"
-#include "drivers/network/tcp.hpp"
+#include "network/tcp.hpp"
 #include "io.hpp"
 #include "utils/debug.hpp"
 

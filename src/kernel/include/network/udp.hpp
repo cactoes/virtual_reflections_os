@@ -9,7 +9,7 @@
 #define __DRIVERS_NETWORK_UDP_HPP__
 
 #include "common.hpp"
-#include "drivers/network/nidm.hpp"
+#include "network/nidm.hpp"
 
 struct udp_header_t {
     uint16_t src_port;

@@ -10,7 +10,7 @@
 #include "gui/programs/minesweeper.hpp"
 #include "gui/programs/webbrowser.hpp"
 #include "gui/font8x8.hpp"
-#include "storage/vfs.hpp"
+#include "filesystems/vfs.hpp"
 
 static vga_buffer_t* g_desktop_back_buffer = nullptr;
 static bool g_desktop_ready = false;

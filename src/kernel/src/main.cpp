@@ -13,11 +13,10 @@
 #include "drivers/ps2/ps2.hpp"
 #include "drivers/driver.hpp"
 #include "drivers/network/e1000.hpp"
-#include "drivers/network/nidm.hpp"
-#include "drivers/network/tcp.hpp"
-#include "drivers/network/arp.hpp"
-#include "drivers/network/udp.hpp"
-#include "drivers/network/dns.hpp"
+#include "network/nidm.hpp"
+#include "network/tcp.hpp"
+#include "network/arp.hpp"
+#include "network/udp.hpp"
 
 #include "subsystem_interface.hpp"
 #include "subsystems/dhcp/interface.hpp"
@@ -27,13 +26,13 @@
 
 #include "interrupt_manager.hpp"
 
-#include "storage/drivers/ide.hpp"
-#include "storage/drivers/ahci.hpp"
-#include "storage/block_device.hpp"
-#include "storage/vfs.hpp"
-#include "storage/mbr.hpp"
-#include "storage/filesystems/iso9660.hpp"
-#include "storage/filesystems/fat32.hpp"
+#include "drivers/storage/ide.hpp"
+#include "drivers/storage/ahci.hpp"
+#include "drivers/storage/block_device.hpp"
+#include "filesystems/vfs.hpp"
+#include "drivers/storage/mbr.hpp"
+#include "filesystems/iso9660.hpp"
+#include "filesystems/fat32.hpp"
 #include "storage/storage_manager.hpp"
 
 #include "memory/vmem.hpp"
@@ -164,8 +163,6 @@ void init_pci_devices(const pci_device_t* device) {
 struct process_t {
     heap_t heap;
     void* page_table;
-    // void* stack_kernel;
-    // void* stack_user;
     vthread_handle_t main_thread;
 
     uint8_t* data;

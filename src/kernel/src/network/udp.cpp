@@ -1,5 +1,5 @@
-#include "drivers/network/udp.hpp"
-#include "drivers/network/ip.hpp"
+#include "network/udp.hpp"
+#include "network/ip.hpp"
 #include "memory/heap.hpp"
 #include "io.hpp"
 

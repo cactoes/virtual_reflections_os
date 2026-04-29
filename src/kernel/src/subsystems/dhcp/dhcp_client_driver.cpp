@@ -1,6 +1,6 @@
 #include "subsystems/dhcp/dhcp_client_driver.hpp"
 #include "drivers/driver.hpp"
-#include "drivers/network/udp.hpp"
+#include "network/udp.hpp"
 
 void dhcp_send_packet_wrapper(uint32_t dst_ip, uint16_t dst_port, uint16_t src_port, uint8_t* data, size_t size) {
     udp_send(dst_ip, src_port, dst_port, data, size);

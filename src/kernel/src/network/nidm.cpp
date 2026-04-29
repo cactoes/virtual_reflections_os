@@ -1,5 +1,5 @@
-#include "drivers/network/nidm.hpp"
-#include "drivers/network/ethernet.hpp"
+#include "network/nidm.hpp"
+#include "network/ethernet.hpp"
 #include "std/ring_buffer.hpp"
 
 static nidm_t* global_nidm = nullptr;

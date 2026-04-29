@@ -9,7 +9,7 @@
 #define __DRIVERS_NETWORK_ARP_HPP__
 
 #include "common.hpp"
-#include "drivers/network/nidm.hpp"
+#include "network/nidm.hpp"
 
 // TODO @since 27/08/2025 -- 01:53
 // cache clearing idk

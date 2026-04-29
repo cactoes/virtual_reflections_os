@@ -1,6 +1,6 @@
-#include "drivers/network/ethernet.hpp"
-#include "drivers/network/ip.hpp"
-#include "drivers/network/arp.hpp"
+#include "network/ethernet.hpp"
+#include "network/ip.hpp"
+#include "network/arp.hpp"
 #include "memory/heap.hpp"
 
 void ethernet_send(network_interface_device_t* p_device, uint8_t p_dst_mac[6], uint16_t type, const uint8_t* p_packet, size_t size) {

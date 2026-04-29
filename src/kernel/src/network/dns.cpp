@@ -1,9 +1,9 @@
-// #include "drivers/network/dns.hpp"
+// #include "network/dns.hpp"
 // #include "std/random.hpp"
 // #include "std/map.hpp"
 // #include "io.hpp"
-// #include "drivers/network/nidm.hpp"
-// #include "drivers/network/udp.hpp"
+// #include "network/nidm.hpp"
+// #include "network/udp.hpp"
 // #include "time/clock.hpp"
 // #include "virtual_thread.hpp"
 

@@ -9,8 +9,8 @@
 #define __STORAGE_MANAGER_HPP__
 
 #include "common.hpp"
-#include "storage/drivers/ide.hpp"
-#include "storage/drivers/ahci.hpp"
+#include "drivers/storage/ide.hpp"
+#include "drivers/storage/ahci.hpp"
 #include "std/array.hpp"
 
 struct storage_manager_t {

@@ -1,5 +1,5 @@
-#include "drivers/network/icmp.hpp"
-#include "drivers/network/ip.hpp"
+#include "network/icmp.hpp"
+#include "network/ip.hpp"
 #include "io.hpp"
 
 void icmp_receive(network_interface_device_t* p_device, uint8_t* p_payload, size_t len) {

@@ -1,9 +1,9 @@
-#include "drivers/network/ip.hpp"
-#include "drivers/network/ethernet.hpp"
-#include "drivers/network/icmp.hpp"
-#include "drivers/network/udp.hpp"
-#include "drivers/network/arp.hpp"
-#include "drivers/network/tcp.hpp"
+#include "network/ip.hpp"
+#include "network/ethernet.hpp"
+#include "network/icmp.hpp"
+#include "network/udp.hpp"
+#include "network/arp.hpp"
+#include "network/tcp.hpp"
 #include "io.hpp"
 
 void ip_receive(network_interface_device_t* p_device, uint8_t* p_packet, size_t size) {

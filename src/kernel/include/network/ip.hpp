@@ -13,7 +13,7 @@
 #define IP_PROTOCOL_UDP     17
 
 #include "common.hpp"
-#include "drivers/network/nidm.hpp"
+#include "network/nidm.hpp"
 
 struct ip_header_t {
     uint8_t version_ihl;

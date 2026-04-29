@@ -1,5 +1,5 @@
-#include "drivers/network/arp.hpp"
-#include "drivers/network/ethernet.hpp"
+#include "network/arp.hpp"
+#include "network/ethernet.hpp"
 #include "time/clock.hpp"
 #include "std/map.hpp"
 #include "io.hpp"

@@ -1,5 +1,5 @@
-#include "drivers/network/tcp.hpp"
-#include "drivers/network/ip.hpp"
+#include "network/tcp.hpp"
+#include "network/ip.hpp"
 #include "utils/vector.hpp"
 #include "std/random.hpp"
 #include "time/clock.hpp"

@@ -9,7 +9,7 @@
 #define __SUBSYSTEM_DNS_INTERFACE_HPP__
 
 #include "common.hpp"
-#include "drivers/network/nidm.hpp"
+#include "network/nidm.hpp"
 #include "subsystem_interface.hpp"
 
 class subsys_dns_client_t : public subsystem_interface_t {
