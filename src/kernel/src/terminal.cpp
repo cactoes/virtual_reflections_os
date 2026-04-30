@@ -59,13 +59,13 @@ void terminal_execute(const std::string& path, const std::dynamic_array<std::str
             break;
         }
         case hash_fnv1a_64("netstat"): {
-            for (auto& device : get_global_nidm()->devices) {
-                printf("%s:\n", device->name.c_str());
-                printf("    MAC:            %uh:%uh:%uh:%uh:%uh:%uh\n", device->mac[0], device->mac[1], device->mac[2], device->mac[3], device->mac[4], device->mac[5]);
-                printf("    IPv4:           %u.%u.%u.%u\n", device->ip.byte3, device->ip.byte2, device->ip.byte1, device->ip.byte0);
-                printf("    Gateway:        %u.%u.%u.%u\n", device->gateway.byte3, device->gateway.byte2, device->gateway.byte1, device->gateway.byte0);
-                printf("    Subnet mask:    %u.%u.%u.%u\n", device->subnet_mask.byte3, device->subnet_mask.byte2, device->subnet_mask.byte1, device->subnet_mask.byte0);
-            }
+            // for (auto& device : get_global_nidm()->devices) {
+            //     printf("%s:\n", device->name.c_str());
+            //     printf("    MAC:            %uh:%uh:%uh:%uh:%uh:%uh\n", device->mac[0], device->mac[1], device->mac[2], device->mac[3], device->mac[4], device->mac[5]);
+            //     printf("    IPv4:           %u.%u.%u.%u\n", device->ip.byte3, device->ip.byte2, device->ip.byte1, device->ip.byte0);
+            //     printf("    Gateway:        %u.%u.%u.%u\n", device->gateway.byte3, device->gateway.byte2, device->gateway.byte1, device->gateway.byte0);
+            //     printf("    Subnet mask:    %u.%u.%u.%u\n", device->subnet_mask.byte3, device->subnet_mask.byte2, device->subnet_mask.byte1, device->subnet_mask.byte0);
+            // }
             break;
         }
         case hash_fnv1a_64("pcistat"): {

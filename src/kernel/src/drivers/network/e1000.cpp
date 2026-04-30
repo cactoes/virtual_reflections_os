@@ -6,21 +6,7 @@
 #include "io.hpp"
 
 static heap_t* g_e1000_dma_heap = nullptr;
-static e1000_t* g_e1000 = nullptr;
-
-e1000_nid_t::e1000_nid_t(std::unique_ptr<e1000_t> e1000) {
-    e1000_data = move(e1000);
-    name = "Intel E1000";
-    memcpy(mac, e1000_data->mac, 6);
-
-    ip.raw = 0;
-    gateway.raw = 0;
-    subnet_mask.raw = 0;
-}
-
-int e1000_nid_t::send_packet(const void* data, size_t size) {
-    return e1000_send_packet(e1000_data.get(), data, size);
-}
+static network_interface_t* global_e1000_network_interface = nullptr;
 
 void e1000_write_reg(e1000_t* p_device, uint32_t offset, uint32_t value) {
     *((volatile uint32_t*)((uint8_t*)p_device->mmio_region + offset)) = value;
@@ -123,8 +109,13 @@ void e1000_recieve_packet(e1000_t* p_device) {
         uint8_t* packet = p_device->rdesc_buffer_array + (p_device->rx_tail * E1000_BUFFER_SIZE);
         size_t length = desc->length;
 
-        nidm_packet_recieve(get_global_nidm(), nidm_get_device(get_global_nidm(), "Intel E1000"), packet, length);
-        
+        network_packet_t network_packet{};
+        network_packet.interface = get_e1000_network_interface();
+        network_packet.data = (uint8_t*)malloc(length);
+        memcpy(network_packet.data, packet, length);
+        network_packet.size = length;
+        nic_receive_packet(get_global_nic(), network_packet);
+
         desc->status = 0;
         desc->length = 0;
         desc->checksum = 0;
@@ -148,9 +139,6 @@ void e1000_enable_interrupts(e1000_t* p_device) {
 }
 
 int e1000_init_device(const pci_device_t* p_pcie_device, e1000_t* p_network_device) {
-    // register as global e1000 driver
-    e1000_set_global_device(p_network_device);
-
     // enable dma
     auto cmd = pci_config_read(p_pcie_device, PCI_COMMAND);
     cmd |= PCI_CMD_MMIO | PCI_CMD_BUS_MASTERING;
@@ -213,7 +201,7 @@ int e1000_init_device(const pci_device_t* p_pcie_device, e1000_t* p_network_devi
 }
 
 interrupt_regs_t* e1000_handle_interrupt(interrupt_regs_t* p_rsp) {
-    auto p_device = e1000_get_global_device();
+    auto p_device = (e1000_t*)get_e1000_network_interface()->device;
 
     // get & clear the interrupt
     uint32_t icr = e1000_read_reg(p_device, E1000_ICR);
@@ -258,12 +246,12 @@ int e1000_send_packet(e1000_t* p_device, const void* data, size_t size) {
     return 0;
 }
 
-e1000_t* e1000_get_global_device() {
-    return g_e1000;
+network_interface_t* get_e1000_network_interface() {
+    return global_e1000_network_interface;
 }
 
-void e1000_set_global_device(e1000_t* p_device) {
-    g_e1000 = p_device;
+void set_e1000_network_interface(network_interface_t* interface) {
+    global_e1000_network_interface = interface;
 }
 
 bool is_e1000_device(const pci_device_t* device) {

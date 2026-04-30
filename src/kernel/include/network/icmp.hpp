@@ -19,6 +19,6 @@ struct icmp_header_t {
     uint16_t sequence;
 } PACKED;
 
-void icmp_receive(network_interface_device_t* p_device, uint8_t* p_payload, size_t len);
+void icmp_receive(network_interface_t* interface, uint8_t* payload, size_t len);
 
 #endif // __DRIVERS_NETWORK_ICMP_HPP__

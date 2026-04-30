@@ -34,16 +34,16 @@ void webbrowser_init() {
         return;
     }
 
-    auto connection = tcp_connect(ip, 80, data_handler);
+    // auto connection = tcp_connect(ip, 80, data_handler);
 
-    const char* http_request = 
-        "GET / HTTP/1.1\r\n"
-        "Host: cactoes.xyz\r\n"
-        "Connection: close\r\n"
-        "User-Agent: virtual reflections e0\r\n"
-        "\r\n";
+    // const char* http_request = 
+    //     "GET / HTTP/1.1\r\n"
+    //     "Host: cactoes.xyz\r\n"
+    //     "Connection: close\r\n"
+    //     "User-Agent: virtual reflections e0\r\n"
+    //     "\r\n";
 
-    tcp_send_packet((uint8_t*)http_request, strlen(http_request), TCP_FLAG_ACK | TCP_FLAG_PSH, connection);
+    // tcp_send_packet((uint8_t*)http_request, strlen(http_request), TCP_FLAG_ACK | TCP_FLAG_PSH, connection);
 }
 
 void webbrowser_render_target(uint64_t dt, uint64_t x, uint64_t y) {

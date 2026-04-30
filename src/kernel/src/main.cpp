@@ -63,53 +63,61 @@
 #include "memory/paging.hpp"
 #include "elf.hpp"
 
+#include "network/socket.hpp"
+
 #define HEAP_START_SIZE 0x100000 * 32 // 32 mb
 #define PIT_TIMER_INTERVAL 1000 // times per second
 #define DEVICE_HOST_NAME "VirtualReflections Machine"
 
-bool setup_network_functionality() {
-    const system_driver_handle_t inet_driver_handle = driver_manager_get_driver_handle(get_global_driver_manager(), "INetDrivers");
+// bool setup_network_functionality() {
+//     const system_driver_handle_t inet_driver_handle = driver_manager_get_driver_handle(get_global_driver_manager(), "INetDrivers");
 
-    if (inet_driver_handle == SYSTEM_DRIVER_HANDLE_INVALID)
-        return false;
+//     if (inet_driver_handle == SYSTEM_DRIVER_HANDLE_INVALID)
+//         return false;
 
-    // start our driver as the dhcp subsystem
-    if (driver_query_capability(get_global_driver_manager(), inet_driver_handle, "dhcp") >= 1)
-        subsys_init(SUBSYS_DHCP_CLIENT, std::make_unique<subsys_dhcp_client_driver_t>(DEVICE_HOST_NAME));
+//     // start our driver as the dhcp subsystem
+//     if (driver_query_capability(get_global_driver_manager(), inet_driver_handle, "dhcp") >= 1)
+//         subsys_init(SUBSYS_DHCP_CLIENT, std::make_unique<subsys_dhcp_client_driver_t>(DEVICE_HOST_NAME));
 
-    // start our driver as the dhcp subsystem
-    if (driver_query_capability(get_global_driver_manager(), inet_driver_handle, "dns") >= 1)
-        subsys_init(SUBSYS_DNS_CLIENT, std::make_unique<subsys_dns_client_driver_t>());
+//     // start our driver as the dhcp subsystem
+//     if (driver_query_capability(get_global_driver_manager(), inet_driver_handle, "dns") >= 1)
+//         subsys_init(SUBSYS_DNS_CLIENT, std::make_unique<subsys_dns_client_driver_t>());
 
-    // lets hope that eth0 was configured qq
-    auto subsystem_dhcp_client = subsys_get<subsys_dhcp_client_t>(SUBSYS_DHCP_CLIENT);
-    if (!subsystem_dhcp_client)
-        return false;
+//     // lets hope that eth0 was configured qq
+//     auto subsystem_dhcp_client = subsys_get<subsys_dhcp_client_t>(SUBSYS_DHCP_CLIENT);
+//     if (!subsystem_dhcp_client)
+//         return false;
 
-    auto network_interface = nidm_get_device_on_interface(get_global_nidm(), "eth0");
-    if (!network_interface)
-        return false;
+//     auto network_interface = nidm_get_device_on_interface(get_global_nidm(), "eth0");
+//     if (!network_interface)
+//         return false;
 
-    subsystem_dhcp_client->configure(network_interface);
+//     subsystem_dhcp_client->configure(network_interface);
 
-    return true;
-}
+//     return true;
+// }
 
 void init_pci_devices(const pci_device_t* device) {
     if (is_e1000_device(device)) {
-        // TODO @since 06/02/2026 -- 09:50
-        // add logging
-        auto e1000 = std::make_unique<e1000_t>();
-        if (e1000_init_device(device, e1000.get()) == 0) {
-            std::unique_ptr<e1000_nid_t> e1000_nid = std::make_unique<e1000_nid_t>(move(e1000));
-            e1000_nid->is_up = true;
-            e1000_nid->is_configured = false;
+        e1000_t* e1000 = (e1000_t*)malloc(sizeof(e1000_t));
+        memzero(e1000, sizeof(e1000_t));
+        if (e1000_init_device(device, e1000) == 0) {
+            std::unique_ptr<network_interface_t> e1000_network_interface = std::make_unique<network_interface_t>();
 
-            // TODO: move these into nidm since its responsible for managing network devices
-            e1000_nid->is_prefered = true;
-            e1000_nid->interface = "eth0";
-            
-            nidm_register_device(get_global_nidm(), move(e1000_nid));
+            e1000_network_interface->device = e1000;
+            e1000_network_interface->device_type = network_interface_device_type_t::E1000;
+
+            const char* device_name = "Intel E1000";
+            strncpy(e1000_network_interface->device_name, device_name, sizeof(e1000_network_interface->device_name));
+
+            e1000_network_interface->is_configured = true;
+            memcpy(e1000_network_interface->mac, e1000->mac, 6);
+
+            e1000_network_interface->ip.raw = TO_IP(10, 0, 2, 15);
+
+            set_e1000_network_interface(e1000_network_interface.get());
+
+            nic_register_interface(get_global_nic(), move(e1000_network_interface));
         }
 
         // valid device so we can continue to the next device
@@ -414,9 +422,9 @@ NORETURN void virtual_kernel_entry(multiboot_t* multiboot_struct, void* kernel_p
     // proper ps2 startup etc
     keyboard_initialize();
 
-    nidm_t nidm {};
-    nidm_init(&nidm);
-    set_global_nidm(&nidm);
+    network_interface_controller_t nic {};
+    nic_init(&nic);
+    set_global_nic(&nic);
 
     vfs_t vfs {};
     vfs_init(&vfs);
@@ -434,92 +442,92 @@ NORETURN void virtual_kernel_entry(multiboot_t* multiboot_struct, void* kernel_p
     driver_manager_t driver_manager {};
     set_global_driver_manager(&driver_manager);
 
-    std::dynamic_array<vfs_node_t> nodes {};
-    if (vfs_list_directory(&vfs, "/harddisk0", &nodes)) {
-        for (auto& node : nodes) {
-            if (str_ends_with(node.name.c_str(), ".sys")) {
-                std::string driver_name = node.name.substr(0, node.name.length() - 4);
+    // std::dynamic_array<vfs_node_t> nodes {};
+    // if (vfs_list_directory(&vfs, "/harddisk0", &nodes)) {
+    //     for (auto& node : nodes) {
+    //         if (str_ends_with(node.name.c_str(), ".sys")) {
+    //             std::string driver_name = node.name.substr(0, node.name.length() - 4);
 
-                const std::string driver_path = std::string("/harddisk0/") + driver_name + ".sys";
-                file_descriptor_t driver_file_handle = vfs_open_file(&vfs, driver_path.c_str());
-                if (driver_file_handle == FILE_DESCRIPTOR_INVALID) {
-                    kprintf("[ \033[91mERROR\033[0m ] failed open file handle to driver: '%s'\n", driver_name.c_str());
-                    printf("[ \033[91mERROR\033[0m ] failed open file handle to driver: '%s'\n", driver_name.c_str());
-                    continue;
-                }
+    //             const std::string driver_path = std::string("/harddisk0/") + driver_name + ".sys";
+    //             file_descriptor_t driver_file_handle = vfs_open_file(&vfs, driver_path.c_str());
+    //             if (driver_file_handle == FILE_DESCRIPTOR_INVALID) {
+    //                 kprintf("[ \033[91mERROR\033[0m ] failed open file handle to driver: '%s'\n", driver_name.c_str());
+    //                 printf("[ \033[91mERROR\033[0m ] failed open file handle to driver: '%s'\n", driver_name.c_str());
+    //                 continue;
+    //             }
 
-                // DONT FREE IT!
-                uint8_t* driver_file_data = nullptr;
-                size_t size;
-                if (!vfs_read_file(&vfs, driver_file_handle, &driver_file_data, &size)) {
-                    kprintf("[ \033[91mERROR\033[0m ] failed to parse driver file '%s'\n", driver_name.c_str());
-                    printf("[ \033[91mERROR\033[0m ] failed to parse driver file '%s'\n", driver_name.c_str());
-                    continue;
-                }
+    //             // DONT FREE IT!
+    //             uint8_t* driver_file_data = nullptr;
+    //             size_t size;
+    //             if (!vfs_read_file(&vfs, driver_file_handle, &driver_file_data, &size)) {
+    //                 kprintf("[ \033[91mERROR\033[0m ] failed to parse driver file '%s'\n", driver_name.c_str());
+    //                 printf("[ \033[91mERROR\033[0m ] failed to parse driver file '%s'\n", driver_name.c_str());
+    //                 continue;
+    //             }
 
-                system_driver_handle_t driver_handle = driver_load(get_global_driver_manager(), driver_name.c_str(), driver_file_data);
-                if (driver_handle == SYSTEM_DRIVER_HANDLE_INVALID) {
-                    kprintf("[ \033[91mERROR\033[0m ] failed to load driver '%s'\n", driver_name.c_str());
-                    printf("[ \033[91mERROR\033[0m ] failed to load driver '%s'\n", driver_name.c_str());
-                    free(driver_file_data);
-                    continue;
-                }
+    //             system_driver_handle_t driver_handle = driver_load(get_global_driver_manager(), driver_name.c_str(), driver_file_data);
+    //             if (driver_handle == SYSTEM_DRIVER_HANDLE_INVALID) {
+    //                 kprintf("[ \033[91mERROR\033[0m ] failed to load driver '%s'\n", driver_name.c_str());
+    //                 printf("[ \033[91mERROR\033[0m ] failed to load driver '%s'\n", driver_name.c_str());
+    //                 free(driver_file_data);
+    //                 continue;
+    //             }
 
-                int result = driver_start(get_global_driver_manager(), driver_handle);
-                if (result != 0) {
-                    kprintf("[ \033[91mERROR\033[0m ] failed to start driver '%s'. code: %i\n", driver_name.c_str(), result);
-                    printf("[ \033[91mERROR\033[0m ] failed to start driver '%s'. code: %i\n", driver_name.c_str(), result);
-                    free(driver_file_data);
-                    continue;
-                }
+    //             int result = driver_start(get_global_driver_manager(), driver_handle);
+    //             if (result != 0) {
+    //                 kprintf("[ \033[91mERROR\033[0m ] failed to start driver '%s'. code: %i\n", driver_name.c_str(), result);
+    //                 printf("[ \033[91mERROR\033[0m ] failed to start driver '%s'. code: %i\n", driver_name.c_str(), result);
+    //                 free(driver_file_data);
+    //                 continue;
+    //             }
 
-                kprintf("[ \033[92mOK\033[0m ] loaded driver '%s'. code: %i\n", driver_name.c_str(), result);
-                printf("[ \033[92mOK\033[0m ] loaded driver '%s'. code: %i\n", driver_name.c_str(), result);
-            }
-        }
-    }
+    //             kprintf("[ \033[92mOK\033[0m ] loaded driver '%s'. code: %i\n", driver_name.c_str(), result);
+    //             printf("[ \033[92mOK\033[0m ] loaded driver '%s'. code: %i\n", driver_name.c_str(), result);
+    //         }
+    //     }
+    // }
 
-    if (setup_network_functionality()) {
-        kprintf("[ \033[92mOK\033[0m ] initialized networking\n");
-        printf("[ \033[92mOK\033[0m ] initialized networking\n");
-    } else {
-        kprintf("[ \033[91mERROR\033[0m ] failed to setup networking\n");
-        printf("[ \033[91mERROR\033[0m ] failed to setup networking\n");
-    }
+    // if (setup_network_functionality()) {
+    //     kprintf("[ \033[92mOK\033[0m ] initialized networking\n");
+    //     printf("[ \033[92mOK\033[0m ] initialized networking\n");
+    // } else {
+    //     kprintf("[ \033[91mERROR\033[0m ] failed to setup networking\n");
+    //     printf("[ \033[91mERROR\033[0m ] failed to setup networking\n");
+    // }
 
-    auto net_test = []() {
-        auto tcp_callback = [](const uint8_t* data, size_t size) {
-            char* str = (char*)malloc(size + 1);
-            memzero(str, size + 1);
-            memcpy(str, data, size);
-            kprintf(str);
-            kprintf("\n");
-            free(str);
-        };
+    // auto net_test = []() {
+    //     auto tcp_callback = [](const uint8_t* data, size_t size) {
+    //         char* str = (char*)malloc(size + 1);
+    //         memzero(str, size + 1);
+    //         memcpy(str, data, size);
+    //         kprintf(str);
+    //         kprintf("\n");
+    //         free(str);
+    //     };
 
-        const auto subsys_dns_client = subsys_get<subsys_dns_client_t>(SUBSYS_DNS_CLIENT);
+    //     const auto subsys_dns_client = subsys_get<subsys_dns_client_t>(SUBSYS_DNS_CLIENT);
 
-        while (!nidm_get_prefered_device(get_global_nidm())->is_configured);
-        while (!subsys_dns_client->is_configured());
+    //     while (!nidm_get_prefered_device(get_global_nidm())->is_configured);
+    //     while (!subsys_dns_client->is_configured());
 
-        auto ip = subsys_dns_client->resolve("cactoes.xyz");
-        auto conn = tcp_connect(ip, 80, tcp_callback);
+    //     auto ip = subsys_dns_client->resolve("cactoes.xyz");
+    //     auto conn = tcp_connect(ip, 80, tcp_callback);
 
-        if (conn->state != tcp_state_t::ESTABLISHED) {
-            kprintf("failed to make tcp connection\n");
-            return 1;
-        }
+    //     if (conn->state != tcp_state_t::ESTABLISHED) {
+    //         kprintf("failed to make tcp connection\n");
+    //         return 1;
+    //     }
 
-        const char* http_request = 
-            "GET / HTTP/1.1\r\n"
-            "Host: cactoes.xyz\r\n"
-            "Connection: close\r\n"
-            "User-Agent: virtual reflections e0\r\n"
-            "\r\n";
-        kprintf("[HTTP] Sending request:\n%s", http_request);
-        tcp_send_packet((uint8_t*)http_request, strlen(http_request), TCP_FLAG_ACK | TCP_FLAG_PSH, conn);
-        return 0;
-    };
+    //     const char* http_request = 
+    //         "GET / HTTP/1.1\r\n"
+    //         "Host: cactoes.xyz\r\n"
+    //         "Connection: close\r\n"
+    //         "User-Agent: virtual reflections e0\r\n"
+    //         "\r\n";
+    //     kprintf("[HTTP] Sending request:\n%s", http_request);
+    //     tcp_send_packet((uint8_t*)http_request, strlen(http_request), TCP_FLAG_ACK | TCP_FLAG_PSH, conn);
+    //     return 0;
+    // };
 
     // vthread_create(net_test, p_kpml4);
 
@@ -534,10 +542,16 @@ NORETURN void virtual_kernel_entry(multiboot_t* multiboot_struct, void* kernel_p
 
     // desktop_init();
 
+    socket_t socket {};
+    socket.protocol = socket_protocol_t::UDP;
+    socket.port = 8080;
+    socket.listener = [](const uint8_t* data, size_t size) { kprintf((char*)data); };
+    socket_bind(&socket);
+
     void* kernel_pt_paddr = vmem_virtual_to_physical(kernel_pt_vaddr);
 
     const vthread_handle_t critical_threads[] = {
-        vthread_create([]() { while (true) nidm_process_packet(); return 1; }, kernel_pt_paddr, "NIDM"),
+        vthread_create(nic_thread, kernel_pt_paddr, "network interface controller"),
         vthread_create([]() { while (true) ps2_mouse_process_packet(); return 1; }, kernel_pt_paddr, "PS/2 Mouse"),
         vthread_create([]() { while (true) ps2_keyboard_process_packet(); return 1; }, kernel_pt_paddr, "PS/2 Keyboard")
     };
@@ -554,10 +568,10 @@ NORETURN void virtual_kernel_entry(multiboot_t* multiboot_struct, void* kernel_p
         printf("[ \033[91mERROR\033[0m ] failed to start terminal\n");
     }
 
-    process_t p {};
-    p.data = nullptr;
-    if (!create_process(&p, "harddisk0/TestProgram.exe"))
-        kprintf("failed to start process\n");
+    // process_t p {};
+    // p.data = nullptr;
+    // if (!create_process(&p, "harddisk0/TestProgram.exe"))
+    //     kprintf("failed to start process\n");
 
     // we shoudn t reach this point since the kernel should never stop
     // incase we do just hang here so we dont break anything

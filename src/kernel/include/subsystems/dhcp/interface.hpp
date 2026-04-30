@@ -16,7 +16,7 @@ class subsys_dhcp_client_t : public subsystem_interface_t {
 public:
     virtual ~subsys_dhcp_client_t() = default;
 
-    virtual void configure(network_interface_device_t* device) = 0;
+    virtual void configure(network_interface_t* device) = 0;
 };
 
 #endif // __SUBSYSTEM_DHCP_INTERFACE_HPP__

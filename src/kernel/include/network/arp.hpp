@@ -33,9 +33,9 @@ struct arp_packet_t {
     uint32_t target_ip;
 } PACKED;
 
-void arp_table_insert(uint32_t ipv4, uint8_t p_mac[6]);
-void arp_discover_request_ipv4(network_interface_device_t* p_device, uint32_t ipv4);
-void arp_receive(network_interface_device_t* p_device, uint8_t* p_packet, size_t size);
-bool arp_lookup(uint32_t ipv4_addr, uint8_t p_mac_out[6]);
+void arp_table_insert(uint32_t ipv4, uint8_t mac[6]);
+void arp_discover_request_ipv4(network_interface_t* interface, uint32_t ipv4);
+void arp_receive(network_interface_t* interface, uint8_t* packet, size_t size);
+bool arp_lookup(uint32_t ipv4_addr, uint8_t mac_out[6]);
 
 #endif // __DRIVERS_NETWORK_ARP_HPP__
