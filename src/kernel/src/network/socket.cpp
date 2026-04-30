@@ -1,12 +1,15 @@
 #include "network/socket.hpp"
+#include "network/udp.hpp"
 #include "std/array.hpp"
 
 static std::dynamic_array<socket_t*> global_sockets {};
 
-bool send_socket(socket_protocol_t protocol, uint16_t port, const uint8_t* data, size_t size) {
-    for (auto& s : global_sockets)
-        if (s->port == port && s->protocol == protocol)
-            s->listener(data, size);
+bool socket_receive(socket_protocol_t protocol, uint16_t dst_port, uint32_t src_ip, uint16_t src_port, const uint8_t* data, size_t size) {
+    for (auto& s : global_sockets) {
+        if (s->port == dst_port && s->protocol == protocol) {
+            s->listener(src_ip, src_port, data, size);
+        }
+    }
 
     return false;
 }
@@ -17,4 +20,18 @@ void socket_bind(socket_t* socket) {
             return;
 
     global_sockets.insert_back(socket);
+}
+
+bool socket_send(socket_t* socket, uint32_t ip, uint16_t port, const uint8_t* data, size_t size) {
+    if (!socket || !data)
+        return false;
+
+    switch (socket->protocol) {
+        case socket_protocol_t::UDP:
+            return udp_send(ip, socket->port, port, data, size);
+        default:
+            break;
+    }
+
+    return false;
 }

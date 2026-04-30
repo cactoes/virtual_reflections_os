@@ -19,6 +19,6 @@ struct udp_header_t {
 } PACKED;
 
 void udp_receive(network_interface_t* interface, uint32_t src_ip, uint8_t* payload, size_t payload_length);
-int udp_send(uint32_t dst_ip, uint16_t src_port, uint16_t dst_port, const uint8_t* payload, size_t size);
+bool udp_send(uint32_t dst_ip, uint16_t src_port, uint16_t dst_port, const uint8_t* payload, size_t size);
 
 #endif // __DRIVERS_NETWORK_UDP_HPP__

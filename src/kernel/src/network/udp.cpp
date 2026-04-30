@@ -17,9 +17,7 @@ void udp_receive(network_interface_t* interface, uint32_t src_ip, uint8_t* paylo
     uint8_t* udp_payload = payload + sizeof(udp_header_t);
     size_t udp_payload_length = payload_length - sizeof(udp_header_t);
 
-    kprintf("[INET - UDP: %s] recieved udp packet!\n", interface->device_name);
-
-    send_socket(socket_protocol_t::UDP, dst_port, udp_payload, udp_payload_length);
+    socket_receive(socket_protocol_t::UDP, dst_port, src_ip, src_port, udp_payload, udp_payload_length);
 }
 
 uint16_t udp_checksum(uint32_t src_ip, uint32_t dst_ip, const uint8_t* udp_packet, size_t udp_len) {
@@ -55,36 +53,36 @@ uint16_t udp_checksum(uint32_t src_ip, uint32_t dst_ip, const uint8_t* udp_packe
     return result;
 }
 
-int udp_send(uint32_t dst_ip, uint16_t src_port, uint16_t dst_port, const uint8_t* p_payload, size_t size) {
-    // if (size > 1500 - sizeof(ip_header_t) - sizeof(udp_header_t))
-    //     return 1;
+bool udp_send(uint32_t dst_ip, uint16_t src_port, uint16_t dst_port, const uint8_t* p_payload, size_t size) {
+    if (size > 1500 - sizeof(ip_header_t) - sizeof(udp_header_t))
+        return false;
 
-    // const size_t packet_size = sizeof(udp_header_t) + size;
-    // uint8_t* packet = (uint8_t*)malloc(packet_size);
+    const size_t packet_size = sizeof(udp_header_t) + size;
+    uint8_t* packet = (uint8_t*)malloc(packet_size);
 
-    // if (!packet)
-    //     return 2;
+    if (!packet)
+        return false;
 
-    // udp_header_t* header = (udp_header_t*)packet;
-    // header->src_port = bswap16(src_port);
-    // header->dst_port = bswap16(dst_port);
-    // header->length = bswap16(packet_size);
-    // header->checksum = 0;
+    udp_header_t* header = (udp_header_t*)packet;
+    header->src_port = bswap16(src_port);
+    header->dst_port = bswap16(dst_port);
+    header->length = bswap16(packet_size);
+    header->checksum = 0;
 
-    // memcpy(packet + sizeof(udp_header_t), p_payload, size);
+    memcpy(packet + sizeof(udp_header_t), p_payload, size);
 
-    // auto device = nidm_get_prefered_device(get_global_nidm());
+    network_interface_t* interface = route_lookup(get_global_nic(), dst_ip);
 
-    // header->checksum = bswap16(udp_checksum(
-    //     device->ip.raw,
-    //     dst_ip,
-    //     packet,
-    //     packet_size
-    // ));
-    
-    // ip_send(device, dst_ip, IP_PROTOCOL_UDP, packet, packet_size);
+    header->checksum = bswap16(udp_checksum(
+        interface->ip.raw,
+        dst_ip,
+        packet,
+        packet_size
+    ));
 
-    // free(packet);
+    ip_send(interface, dst_ip, IP_PROTOCOL_UDP, packet, packet_size);
+
+    free(packet);
 
     return 1;
 }

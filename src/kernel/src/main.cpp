@@ -544,8 +544,8 @@ NORETURN void virtual_kernel_entry(multiboot_t* multiboot_struct, void* kernel_p
 
     socket_t socket {};
     socket.protocol = socket_protocol_t::UDP;
+    socket.listener = [](uint32_t, uint16_t, const uint8_t* data, size_t size) { kprintf((char*)data); };
     socket.port = 8080;
-    socket.listener = [](const uint8_t* data, size_t size) { kprintf((char*)data); };
     socket_bind(&socket);
 
     void* kernel_pt_paddr = vmem_virtual_to_physical(kernel_pt_vaddr);

@@ -10,7 +10,7 @@
 
 #include  "common.hpp"
 
-typedef void(*socket_listener_t)(const uint8_t* data, size_t size);
+typedef void(*socket_listener_t)(uint32_t ip, uint16_t port, const uint8_t* data, size_t size);
 
 enum class socket_protocol_t {
     UNKNOWN = 0,
@@ -19,13 +19,14 @@ enum class socket_protocol_t {
 };
 
 struct socket_t {
-    uint16_t port;
     socket_protocol_t protocol;
-
     socket_listener_t listener;
+    uint32_t local_ip;
+    uint16_t port;
 };
 
-bool send_socket(socket_protocol_t protocol, uint16_t port, const uint8_t* data, size_t size);
+bool socket_receive(socket_protocol_t protocol, uint16_t dst_port, uint32_t src_ip, uint16_t src_port, const uint8_t* data, size_t size);
+bool socket_send(socket_t* socket, uint32_t ip, uint16_t port, const uint8_t* data, size_t size);
 void socket_bind(socket_t* socket);
 
 #endif // __SOCKET_HPP__

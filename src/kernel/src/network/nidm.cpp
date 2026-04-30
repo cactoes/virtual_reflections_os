@@ -79,6 +79,28 @@ bool nic_receive_packet(network_interface_controller_t* nic, const network_packe
     return nic->incoming_packets.insert(packet);
 }
 
+bool is_same_subnet(uint32_t target_ip, uint32_t our_ip, uint32_t subnet_mask) {
+    return (target_ip & subnet_mask) == (our_ip & subnet_mask);
+}
+
+network_interface_t* route_lookup(network_interface_controller_t* nic, uint32_t dst_ip) {
+    if (nic->interfaces.length() == 0)
+        return nullptr;
+
+    for (auto& interface : nic->interfaces) {
+        if (is_same_subnet(dst_ip, interface->ip.raw, interface->subnet_mask.raw)) {
+            return interface.get();
+        }
+    }
+
+    for (auto& interface : nic->interfaces) {
+        if (interface->is_prefered)
+            return interface.get();
+    }
+
+    return nic->interfaces.get_at(0)->get();
+}
+
 int nic_thread() {
     network_interface_controller_t* nic = get_global_nic();
     while (true)
