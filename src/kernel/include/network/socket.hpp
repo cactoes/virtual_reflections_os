@@ -10,7 +10,8 @@
 
 #include  "common.hpp"
 
-typedef void(*socket_listener_t)(uint32_t ip, uint16_t port, const uint8_t* data, size_t size);
+struct socket_t;
+typedef void(*socket_listener_t)(socket_t* socket, uint32_t ip, uint16_t port, const uint8_t* data, size_t size);
 
 enum class socket_protocol_t {
     UNKNOWN = 0,

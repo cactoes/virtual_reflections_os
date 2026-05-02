@@ -5,9 +5,9 @@
 static std::dynamic_array<socket_t*> global_sockets {};
 
 bool socket_receive(socket_protocol_t protocol, uint16_t dst_port, uint32_t src_ip, uint16_t src_port, const uint8_t* data, size_t size) {
-    for (auto& s : global_sockets) {
+    for (auto s : global_sockets) {
         if (s->port == dst_port && s->protocol == protocol) {
-            s->listener(src_ip, src_port, data, size);
+            s->listener(s, src_ip, src_port, data, size);
         }
     }
 
