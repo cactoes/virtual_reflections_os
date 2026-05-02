@@ -1,0 +1,120 @@
+//==========================================
+/// @file       dhcp.hpp
+/// @brief      
+//==========================================
+
+#pragma once
+
+#ifndef __DHCP_HPP__
+#define __DHCP_HPP__
+
+#define DHCP_PORT_CLIENT                        68
+#define DHCP_PORT_SERVER                        67
+
+#define DHCP_MAGIC                              (uint32_t)0x63825363
+
+#define DHCP_OP_BOOTREQUEST                     1
+#define DHCP_OP_BOOTREPLY                       2
+
+#define DHCP_HTYPE_ETHERNET                     1
+#define DHCP_HLEN_ETHERNET_ADDRESS              6
+
+#define DHCP_MESSAGE_TYPE_DHCPDISCOVER          1
+#define DHCP_MESSAGE_TYPE_DHCPOFFER             2
+#define DHCP_MESSAGE_TYPE_DHCPREQUEST           3
+#define DHCP_MESSAGE_TYPE_DHCPDECLINE           4
+#define DHCP_MESSAGE_TYPE_DHCPACK               5
+#define DHCP_MESSAGE_TYPE_DHCPNAK               6
+#define DHCP_MESSAGE_TYPE_DHCPRELEASE           7
+#define DHCP_MESSAGE_TYPE_DHCPINFORM            8
+#define DHCP_MESSAGE_TYPE_DHCPFORCERENEW        9
+#define DHCP_MESSAGE_TYPE_DHCPLEASEQUERY        10
+#define DHCP_MESSAGE_TYPE_DHCPLEASEUNASSIGNED   11
+#define DHCP_MESSAGE_TYPE_DHCPLEASEUNKNOWN      12
+#define DHCP_MESSAGE_TYPE_DHCPLEASEACTIVE       13
+
+#define DHCP_OPTION_SUBNET_MASK                 1
+#define DHCP_OPTION_ROUTER                      3
+#define DHCP_OPTION_DNS                         6
+#define DHCP_OPTION_HOSTNAME                    12
+#define DHCP_OPTION_REQUESTED_IP_ADDR           50
+#define DHCP_OPTION_IP_LEASE_TIME               51
+#define DHCP_OPTION_DHCP_MESSAGE_TYPE           53
+#define DHCP_OPTION_DHCP_SERVER_ID              54
+#define DHCP_OPTION_CLIENT_ID                   61
+#define DHCP_OPTION_END                         255
+
+#define DHCP_CLIENT_RECIEVE_ERR                 1
+#define DHCP_CLIENT_RECIEVE_ACK                 2
+#define DHCP_CLIENT_RECIEVE_OTH                 3
+#define DHCP_CLIENT_RECIEVE_REQ                 4
+
+#include "common.hpp"
+#include "utils/mutex.hpp"
+#include "std/ring_buffer.hpp"
+#include "network/nidm.hpp"
+
+struct dhcp_packet_t {
+    uint8_t op;
+    uint8_t htype;
+    uint8_t hlen;
+    uint8_t hops;
+    uint32_t xid;
+    uint16_t secs;
+    uint16_t flags;
+
+    uint32_t client_ip_addr;
+    uint32_t your_ip_addr;
+    uint32_t server_ip_addr;
+    uint32_t gateway_ip_addr;
+
+    uint8_t client_hw_addr[16];
+    uint8_t server_name[64];
+    uint8_t file[128];
+
+    uint32_t magic;
+
+    uint8_t options[308];
+} PACKED;
+
+struct dhcp_options_writer_t {
+    uint8_t* buffer;
+    size_t buffer_size;
+    size_t offset;
+};
+
+template <size_t size>
+struct dhcp_option_t {
+    uint8_t type;
+    uint8_t length;
+    uint8_t value[size];
+};
+
+struct dhcp_client_t {
+    mutex_t mutex;
+    std::ring_buffer<3, dhcp_packet_t> packets {};
+
+    struct session_t {
+        uint32_t xid;
+        ipv4_address_t ip;
+        ipv4_address_t dhcp_ip;
+        uint32_t lease_time;
+        network_interface_t* interface;
+    } session;
+};
+
+uint8_t* dhcp_option_get(dhcp_packet_t* packet, uint8_t type);
+uint32_t dhcp_field_to_number(uint8_t* field, size_t size);
+
+dhcp_packet_t dhcp_create_discover_packet(const char* hostname, dhcp_client_t::session_t* session);
+dhcp_packet_t dhcp_create_request_packet(const char* hostname, dhcp_client_t::session_t* session, uint32_t wanted_ip);
+dhcp_packet_t dhcp_create_lease_extend_packet(const char* hostname, dhcp_client_t::session_t* session, uint32_t ip_to_extend);
+
+dhcp_client_t* dhcp_client_create();
+dhcp_client_t::session_t dhcp_client_create_session(network_interface_t* target_interface);
+bool dhcp_client_destroy(dhcp_client_t* client);
+
+dhcp_client_t* get_global_dhcp_client();
+void set_global_dhcp_client(dhcp_client_t* client);
+
+#endif // __DHCP_HPP__

@@ -64,10 +64,88 @@
 #include "elf.hpp"
 
 #include "network/socket.hpp"
+#include "network/dhcp.hpp"
 
 #define HEAP_START_SIZE 0x100000 * 32 // 32 mb
 #define PIT_TIMER_INTERVAL 1000 // times per second
 #define DEVICE_HOST_NAME "VirtualReflections Machine"
+
+int test_new_dhcp() {
+    dhcp_client_t* client = dhcp_client_create();
+    set_global_dhcp_client(client);
+
+    client->session = dhcp_client_create_session(nic_get_default_interface(get_global_nic()));
+
+    // socket_t socket {};
+    socket_t* socket = new socket_t{};
+    socket->protocol = socket_protocol_t::UDP;
+    socket->listener = [](socket_t* socket, uint32_t ip, uint16_t port, const uint8_t* data, size_t size) {
+        if (size > sizeof(dhcp_packet_t))
+            return;
+
+        dhcp_packet_t p {};
+        memcpy(&p, data, size);
+        mutex_lock_guard guard(&get_global_dhcp_client()->mutex);
+        get_global_dhcp_client()->packets.insert(p);
+    };
+    socket->port = DHCP_PORT_CLIENT;
+    socket_bind(socket);
+
+    dhcp_packet_t packet = dhcp_create_discover_packet(DEVICE_HOST_NAME, &client->session);
+
+    socket_send(socket, TO_IP(255, 255, 255, 255), DHCP_PORT_SERVER, (const uint8_t*)&packet, sizeof(dhcp_packet_t));
+
+    while (true) {
+        mutex_lock(&client->mutex);
+        dhcp_packet_t packet {};
+        if (!client->packets.get(packet)) {
+            mutex_unlock(&client->mutex);
+            continue;
+        }
+
+        mutex_unlock(&client->mutex);
+
+        if (packet.xid != client->session.xid)
+            continue;
+
+        dhcp_option_t<1>* option_message_type = (dhcp_option_t<1>*)dhcp_option_get(&packet, DHCP_OPTION_DHCP_MESSAGE_TYPE);
+        if (!option_message_type)
+            continue;
+
+        dhcp_option_t<4>* option_dhcp_server_id = (dhcp_option_t<4>*)dhcp_option_get(&packet, DHCP_OPTION_DHCP_SERVER_ID);
+        dhcp_option_t<4>* option_router = (dhcp_option_t<4>*)dhcp_option_get(&packet, DHCP_OPTION_ROUTER);
+        dhcp_option_t<4>* option_lease_time_s = (dhcp_option_t<4>*)dhcp_option_get(&packet, DHCP_OPTION_IP_LEASE_TIME);
+        dhcp_option_t<4>* option_subnet_mask = (dhcp_option_t<4>*)dhcp_option_get(&packet, DHCP_OPTION_SUBNET_MASK);
+
+        if (option_message_type->value[0] == DHCP_MESSAGE_TYPE_DHCPOFFER) {
+            if (!option_dhcp_server_id || !option_lease_time_s)
+                continue;
+
+            client->session.ip = { .raw = bswap32(packet.your_ip_addr) };
+            client->session.dhcp_ip = { .raw = TO_IP(option_dhcp_server_id->value[0], option_dhcp_server_id->value[1], option_dhcp_server_id->value[2], option_dhcp_server_id->value[3]) };
+            client->session.lease_time = dhcp_field_to_number(&option_lease_time_s->value[0], 4);
+
+            dhcp_packet_t p = dhcp_create_request_packet(DEVICE_HOST_NAME, &client->session, client->session.ip.raw);
+            socket_send(socket, client->session.dhcp_ip.raw, DHCP_PORT_SERVER, (const uint8_t*)&p, sizeof(dhcp_packet_t));
+        }
+
+        if (option_message_type->value[0] == DHCP_MESSAGE_TYPE_DHCPACK) {
+            if (!option_subnet_mask || !option_router)
+                continue;
+
+            if (bswap32(packet.your_ip_addr) != client->session.ip.raw)
+                continue;
+
+            client->session.interface->subnet_mask = { .raw = TO_IP(option_subnet_mask->value[0], option_subnet_mask->value[1], option_subnet_mask->value[2], option_subnet_mask->value[3]) };
+            client->session.interface->gateway = { .raw = TO_IP(option_router->value[0], option_router->value[1], option_router->value[2], option_router->value[3]) };
+            client->session.interface->ip = client->session.ip;
+
+            kprintf("[DHCP] configured ip for '%s' - %u.%u.%u.%u\n", client->session.interface->device_name, (uint32_t)client->session.ip.byte3, (uint32_t)client->session.ip.byte2, (uint32_t)client->session.ip.byte1, (uint32_t)client->session.ip.byte0);
+        }
+    }
+
+    return 0;
+}
 
 // bool setup_network_functionality() {
 //     const system_driver_handle_t inet_driver_handle = driver_manager_get_driver_handle(get_global_driver_manager(), "INetDrivers");
@@ -112,8 +190,6 @@ void init_pci_devices(const pci_device_t* device) {
 
             e1000_network_interface->is_configured = true;
             memcpy(e1000_network_interface->mac, e1000->mac, 6);
-
-            e1000_network_interface->ip.raw = TO_IP(10, 0, 2, 15);
 
             set_e1000_network_interface(e1000_network_interface.get());
 
@@ -542,12 +618,6 @@ NORETURN void virtual_kernel_entry(multiboot_t* multiboot_struct, void* kernel_p
 
     // desktop_init();
 
-    socket_t socket {};
-    socket.protocol = socket_protocol_t::UDP;
-    socket.listener = [](uint32_t, uint16_t, const uint8_t* data, size_t size) { kprintf((char*)data); };
-    socket.port = 8080;
-    socket_bind(&socket);
-
     void* kernel_pt_paddr = vmem_virtual_to_physical(kernel_pt_vaddr);
 
     const vthread_handle_t critical_threads[] = {
@@ -567,6 +637,8 @@ NORETURN void virtual_kernel_entry(multiboot_t* multiboot_struct, void* kernel_p
         kprintf("[ \033[91mERROR\033[0m ] failed to start terminal\n");
         printf("[ \033[91mERROR\033[0m ] failed to start terminal\n");
     }
+
+    vthread_create(test_new_dhcp, kernel_pt_paddr);
 
     // process_t p {};
     // p.data = nullptr;
