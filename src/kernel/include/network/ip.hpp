@@ -12,6 +12,8 @@
 #define IP_PROTOCOL_TCP     6
 #define IP_PROTOCOL_UDP     17
 
+#define BROADCAST_IPV4      TO_IP(255, 255, 255, 255)
+
 #include "common.hpp"
 #include "network/nidm.hpp"
 
