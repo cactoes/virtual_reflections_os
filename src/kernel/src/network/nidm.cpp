@@ -101,6 +101,17 @@ network_interface_t* route_lookup(network_interface_controller_t* nic, uint32_t 
     return nic->interfaces.get_at(0)->get();
 }
 
+network_interface_t* nic_get_default_interface(network_interface_controller_t* nic) {
+    if (nic->interfaces.length() == 0)
+        return nullptr;
+
+    for (auto& interface : nic->interfaces)
+        if (interface->is_prefered)
+            return interface.get();
+
+    return nic->interfaces.get_at(0)->get();
+}
+
 int nic_thread() {
     network_interface_controller_t* nic = get_global_nic();
     while (true)
