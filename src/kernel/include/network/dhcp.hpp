@@ -114,7 +114,4 @@ dhcp_client_t* dhcp_client_create();
 dhcp_client_t::session_t dhcp_client_create_session(network_interface_t* target_interface);
 bool dhcp_client_destroy(dhcp_client_t* client);
 
-dhcp_client_t* get_global_dhcp_client();
-void set_global_dhcp_client(dhcp_client_t* client);
-
 #endif // __DHCP_HPP__

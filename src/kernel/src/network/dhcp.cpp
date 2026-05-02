@@ -2,8 +2,6 @@
 #include "std/random.hpp"
 #include "time/clock.hpp"
 
-static dhcp_client_t* global_dhcp_client = nullptr;
-
 bool dhcp_options_writer_init(dhcp_options_writer_t* writer, uint8_t* buffer, size_t size) {
     if (!writer || !buffer)
         return false;
@@ -221,12 +219,4 @@ bool dhcp_client_destroy(dhcp_client_t* client) {
     delete client;
 
     return true;
-}
-
-dhcp_client_t* get_global_dhcp_client() {
-    return global_dhcp_client;
-}
-
-void set_global_dhcp_client(dhcp_client_t* client) {
-    global_dhcp_client = client;
 }

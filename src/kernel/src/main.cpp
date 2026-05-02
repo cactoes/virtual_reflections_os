@@ -65,47 +65,102 @@
 
 #include "network/socket.hpp"
 #include "network/dhcp.hpp"
+#include "network/ip.hpp"
 
 #define HEAP_START_SIZE 0x100000 * 32 // 32 mb
 #define PIT_TIMER_INTERVAL 1000 // times per second
 #define DEVICE_HOST_NAME "VirtualReflections Machine"
 
-int test_new_dhcp() {
-    dhcp_client_t* client = dhcp_client_create();
-    set_global_dhcp_client(client);
+struct network_manager_t {
+    socket_t* dhcp_socket;
+    dhcp_client_t* dhcp_client;
+};
 
-    client->session = dhcp_client_create_session(nic_get_default_interface(get_global_nic()));
+static network_manager_t* global_network_manager = nullptr;
 
-    // socket_t socket {};
-    socket_t* socket = new socket_t{};
-    socket->protocol = socket_protocol_t::UDP;
-    socket->listener = [](socket_t* socket, uint32_t ip, uint16_t port, const uint8_t* data, size_t size) {
-        if (size > sizeof(dhcp_packet_t))
+network_manager_t* get_global_network_manager() {
+    return global_network_manager;
+}
+
+void set_global_network_manager(network_manager_t* network_manager) {
+    global_network_manager = network_manager;
+}
+
+bool network_manager_init(network_manager_t* network_manager) {
+    if (!network_manager)
+        return false;
+
+    network_manager->dhcp_client = nullptr;
+    network_manager->dhcp_socket = nullptr;
+
+    return true;
+}
+
+void network_manager_dhcp_callback(socket_t* socket, uint32_t ip, uint16_t port, const uint8_t* data, size_t size) {
+    if (size > sizeof(dhcp_packet_t))
+        return;
+
+    network_manager_t* network_manager = get_global_network_manager();
+    if (!network_manager)
+        return;
+
+    dhcp_packet_t packet {};
+    memcpy(&packet, data, size);
+
+    mutex_lock_guard guard(&network_manager->dhcp_client->mutex);
+    network_manager->dhcp_client->packets.insert(packet);
+}
+
+bool network_manager_dhcp_send_discover(network_manager_t* network_manager) {
+    if (!network_manager)
+        return false;
+
+    dhcp_packet_t packet = dhcp_create_discover_packet(DEVICE_HOST_NAME, &network_manager->dhcp_client->session);
+    return socket_send(network_manager->dhcp_socket, BROADCAST_IPV4, DHCP_PORT_SERVER, (uint8_t*)&packet, sizeof(dhcp_packet_t));
+}
+
+void network_manager_wait_for_dhcp_client_packet(network_manager_t* network_manager, dhcp_packet_t& packet) {
+    while (true) {
+        mutex_lock_guard guard(&network_manager->dhcp_client->mutex);
+        if (network_manager->dhcp_client->packets.get(packet))
             return;
 
-        dhcp_packet_t p {};
-        memcpy(&p, data, size);
-        mutex_lock_guard guard(&get_global_dhcp_client()->mutex);
-        get_global_dhcp_client()->packets.insert(p);
-    };
-    socket->port = DHCP_PORT_CLIENT;
-    socket_bind(socket);
+        // vthread_yield();
+    }
+}
 
-    dhcp_packet_t packet = dhcp_create_discover_packet(DEVICE_HOST_NAME, &client->session);
+bool network_manager_configre_interface(network_manager_t* network_manager, network_interface_t* interface) {
+    if (!network_manager || !interface)
+        return false;
 
-    socket_send(socket, TO_IP(255, 255, 255, 255), DHCP_PORT_SERVER, (const uint8_t*)&packet, sizeof(dhcp_packet_t));
+    // only support one session so we need to check if we already have a device asigned
+    if (network_manager->dhcp_client->session.interface)
+        return false;
+
+    network_manager->dhcp_client->session = dhcp_client_create_session(interface);
+
+    return network_manager_dhcp_send_discover(network_manager);
+}
+
+int network_manager_thread() {
+    network_manager_t network_manager {};
+    network_manager_init(&network_manager);
+    set_global_network_manager(&network_manager);
+
+    network_manager.dhcp_client = dhcp_client_create();
+
+    network_manager.dhcp_socket = new socket_t {};
+    network_manager.dhcp_socket->protocol = socket_protocol_t::UDP;
+    network_manager.dhcp_socket->listener = network_manager_dhcp_callback;
+    network_manager.dhcp_socket->port = DHCP_PORT_CLIENT;
+    socket_bind(network_manager.dhcp_socket);
 
     while (true) {
-        mutex_lock(&client->mutex);
         dhcp_packet_t packet {};
-        if (!client->packets.get(packet)) {
-            mutex_unlock(&client->mutex);
-            continue;
-        }
+        network_manager_wait_for_dhcp_client_packet(&network_manager, packet);
 
-        mutex_unlock(&client->mutex);
-
-        if (packet.xid != client->session.xid)
+        dhcp_client_t::session_t& session = network_manager.dhcp_client->session;
+        if (packet.xid != session.xid)
             continue;
 
         dhcp_option_t<1>* option_message_type = (dhcp_option_t<1>*)dhcp_option_get(&packet, DHCP_OPTION_DHCP_MESSAGE_TYPE);
@@ -121,26 +176,27 @@ int test_new_dhcp() {
             if (!option_dhcp_server_id || !option_lease_time_s)
                 continue;
 
-            client->session.ip = { .raw = bswap32(packet.your_ip_addr) };
-            client->session.dhcp_ip = { .raw = TO_IP(option_dhcp_server_id->value[0], option_dhcp_server_id->value[1], option_dhcp_server_id->value[2], option_dhcp_server_id->value[3]) };
-            client->session.lease_time = dhcp_field_to_number(&option_lease_time_s->value[0], 4);
+            session.ip = { .raw = bswap32(packet.your_ip_addr) };
+            session.dhcp_ip = { .raw = TO_IP(option_dhcp_server_id->value[0], option_dhcp_server_id->value[1], option_dhcp_server_id->value[2], option_dhcp_server_id->value[3]) };
+            session.lease_time = dhcp_field_to_number(&option_lease_time_s->value[0], 4);
 
-            dhcp_packet_t p = dhcp_create_request_packet(DEVICE_HOST_NAME, &client->session, client->session.ip.raw);
-            socket_send(socket, client->session.dhcp_ip.raw, DHCP_PORT_SERVER, (const uint8_t*)&p, sizeof(dhcp_packet_t));
+            dhcp_packet_t p = dhcp_create_request_packet(DEVICE_HOST_NAME, &session, session.ip.raw);
+            socket_send(network_manager.dhcp_socket, session.dhcp_ip.raw, DHCP_PORT_SERVER, (const uint8_t*)&p, sizeof(dhcp_packet_t));
         }
 
         if (option_message_type->value[0] == DHCP_MESSAGE_TYPE_DHCPACK) {
             if (!option_subnet_mask || !option_router)
                 continue;
 
-            if (bswap32(packet.your_ip_addr) != client->session.ip.raw)
+            if (bswap32(packet.your_ip_addr) != session.ip.raw)
                 continue;
 
-            client->session.interface->subnet_mask = { .raw = TO_IP(option_subnet_mask->value[0], option_subnet_mask->value[1], option_subnet_mask->value[2], option_subnet_mask->value[3]) };
-            client->session.interface->gateway = { .raw = TO_IP(option_router->value[0], option_router->value[1], option_router->value[2], option_router->value[3]) };
-            client->session.interface->ip = client->session.ip;
+            session.interface->subnet_mask = { .raw = TO_IP(option_subnet_mask->value[0], option_subnet_mask->value[1], option_subnet_mask->value[2], option_subnet_mask->value[3]) };
+            session.interface->gateway = { .raw = TO_IP(option_router->value[0], option_router->value[1], option_router->value[2], option_router->value[3]) };
+            session.interface->ip = session.ip;
+            session.interface->is_active = true;
 
-            kprintf("[DHCP] configured ip for '%s' - %u.%u.%u.%u\n", client->session.interface->device_name, (uint32_t)client->session.ip.byte3, (uint32_t)client->session.ip.byte2, (uint32_t)client->session.ip.byte1, (uint32_t)client->session.ip.byte0);
+            kprintf("[DHCP] configured ip for '%s' - %u.%u.%u.%u\n", session.interface->device_name, (uint32_t)session.ip.byte3, (uint32_t)session.ip.byte2, (uint32_t)session.ip.byte1, (uint32_t)session.ip.byte0);
         }
     }
 
@@ -181,9 +237,11 @@ void init_pci_devices(const pci_device_t* device) {
         memzero(e1000, sizeof(e1000_t));
         if (e1000_init_device(device, e1000) == 0) {
             std::unique_ptr<network_interface_t> e1000_network_interface = std::make_unique<network_interface_t>();
+            network_interface_t* e1000_network_interface_ptr = e1000_network_interface.get();
 
             e1000_network_interface->device = e1000;
             e1000_network_interface->device_type = network_interface_device_type_t::E1000;
+            e1000_network_interface->is_configured = true;
 
             const char* device_name = "Intel E1000";
             strncpy(e1000_network_interface->device_name, device_name, sizeof(e1000_network_interface->device_name));
@@ -193,7 +251,12 @@ void init_pci_devices(const pci_device_t* device) {
 
             set_e1000_network_interface(e1000_network_interface.get());
 
+            // for now force this device to be prefered
+            e1000_network_interface->is_prefered = true;
+
             nic_register_interface(get_global_nic(), move(e1000_network_interface));
+
+            network_manager_configre_interface(get_global_network_manager(), e1000_network_interface_ptr);
         }
 
         // valid device so we can continue to the next device
@@ -502,6 +565,9 @@ NORETURN void virtual_kernel_entry(multiboot_t* multiboot_struct, void* kernel_p
     nic_init(&nic);
     set_global_nic(&nic);
 
+    void* kernel_pt_paddr = vmem_virtual_to_physical(kernel_pt_vaddr);
+    vthread_create(network_manager_thread, kernel_pt_paddr);
+
     vfs_t vfs {};
     vfs_init(&vfs);
     set_global_vfs(&vfs);
@@ -618,8 +684,6 @@ NORETURN void virtual_kernel_entry(multiboot_t* multiboot_struct, void* kernel_p
 
     // desktop_init();
 
-    void* kernel_pt_paddr = vmem_virtual_to_physical(kernel_pt_vaddr);
-
     const vthread_handle_t critical_threads[] = {
         vthread_create(nic_thread, kernel_pt_paddr, "network interface controller"),
         vthread_create([]() { while (true) ps2_mouse_process_packet(); return 1; }, kernel_pt_paddr, "PS/2 Mouse"),
@@ -637,8 +701,6 @@ NORETURN void virtual_kernel_entry(multiboot_t* multiboot_struct, void* kernel_p
         kprintf("[ \033[91mERROR\033[0m ] failed to start terminal\n");
         printf("[ \033[91mERROR\033[0m ] failed to start terminal\n");
     }
-
-    vthread_create(test_new_dhcp, kernel_pt_paddr);
 
     // process_t p {};
     // p.data = nullptr;
