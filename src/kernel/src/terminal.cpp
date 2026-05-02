@@ -59,13 +59,16 @@ void terminal_execute(const std::string& path, const std::dynamic_array<std::str
             break;
         }
         case hash_fnv1a_64("netstat"): {
-            // for (auto& device : get_global_nidm()->devices) {
-            //     printf("%s:\n", device->name.c_str());
-            //     printf("    MAC:            %uh:%uh:%uh:%uh:%uh:%uh\n", device->mac[0], device->mac[1], device->mac[2], device->mac[3], device->mac[4], device->mac[5]);
-            //     printf("    IPv4:           %u.%u.%u.%u\n", device->ip.byte3, device->ip.byte2, device->ip.byte1, device->ip.byte0);
-            //     printf("    Gateway:        %u.%u.%u.%u\n", device->gateway.byte3, device->gateway.byte2, device->gateway.byte1, device->gateway.byte0);
-            //     printf("    Subnet mask:    %u.%u.%u.%u\n", device->subnet_mask.byte3, device->subnet_mask.byte2, device->subnet_mask.byte1, device->subnet_mask.byte0);
-            // }
+            for (auto& interface : get_global_nic()->interfaces) {
+                printf("%s:\n", interface->device_name);
+                printf("    MAC:            %uh:%uh:%uh:%uh:%uh:%uh\n", interface->mac[0], interface->mac[1], interface->mac[2], interface->mac[3], interface->mac[4], interface->mac[5]);
+                printf("    IPv4:           %u.%u.%u.%u\n", interface->ip.byte3, interface->ip.byte2, interface->ip.byte1, interface->ip.byte0);
+                printf("    Gateway:        %u.%u.%u.%u\n", interface->gateway.byte3, interface->gateway.byte2, interface->gateway.byte1, interface->gateway.byte0);
+                printf("    Subnet mask:    %u.%u.%u.%u\n", interface->subnet_mask.byte3, interface->subnet_mask.byte2, interface->subnet_mask.byte1, interface->subnet_mask.byte0);
+                printf("    Prefered:       %s\n", interface->is_prefered ? "yes" : "no");
+                printf("    Active:         %s\n", interface->is_active ? "yes" : "no");
+                printf("    Configured:     %s\n", interface->is_configured ? "yes" : "no");
+            }
             break;
         }
         case hash_fnv1a_64("pcistat"): {
