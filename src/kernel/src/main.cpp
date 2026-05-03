@@ -19,8 +19,6 @@
 #include "network/udp.hpp"
 
 #include "subsystem_interface.hpp"
-#include "subsystems/dhcp/interface.hpp"
-#include "subsystems/dhcp/dhcp_client_driver.hpp"
 #include "subsystems/dns/interface.hpp"
 #include "subsystems/dns/dns_client_driver.hpp"
 
@@ -119,16 +117,6 @@ bool network_manager_dhcp_send_discover(network_manager_t* network_manager) {
     return socket_send(network_manager->dhcp_socket, BROADCAST_IPV4, DHCP_PORT_SERVER, (uint8_t*)&packet, sizeof(dhcp_packet_t));
 }
 
-void network_manager_wait_for_dhcp_client_packet(network_manager_t* network_manager, dhcp_packet_t& packet) {
-    while (true) {
-        mutex_lock_guard guard(&network_manager->dhcp_client->mutex);
-        if (network_manager->dhcp_client->packets.get(packet))
-            return;
-
-        // vthread_yield();
-    }
-}
-
 bool network_manager_configre_interface(network_manager_t* network_manager, network_interface_t* interface) {
     if (!network_manager || !interface)
         return false;
@@ -157,7 +145,13 @@ int network_manager_thread() {
 
     while (true) {
         dhcp_packet_t packet {};
-        network_manager_wait_for_dhcp_client_packet(&network_manager, packet);
+        mutex_lock(&network_manager.dhcp_client->mutex);
+        if (!network_manager.dhcp_client->packets.get(packet)) {
+            mutex_unlock(&network_manager.dhcp_client->mutex);
+            continue;
+        }
+
+        mutex_unlock(&network_manager.dhcp_client->mutex);
 
         dhcp_client_t::session_t& session = network_manager.dhcp_client->session;
         if (packet.xid != session.xid)
