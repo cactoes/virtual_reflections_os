@@ -1,21 +1,40 @@
-// #include "network/dns.hpp"
-// #include "std/random.hpp"
-// #include "std/map.hpp"
-// #include "io.hpp"
-// #include "network/nidm.hpp"
-// #include "network/udp.hpp"
-// #include "time/clock.hpp"
-// #include "virtual_thread.hpp"
+#include "network/dns.hpp"
+#include "std/random.hpp"
+#include "time/clock.hpp"
 
-// static dns_client_t* global_dns_client = nullptr;
+uint16_t dns_generate_header_id() {
+    seed_random(clock_get_time_since_boot());
+    return (uint16_t)random_number(0, MAX_UINT16);
+}
 
-// void set_global_dns_client(dns_client_t* client) {
-//     global_dns_client = client;
-// }
+uint8_t* dns_encode_hostname(const char* hostname) {
+    
+}
 
-// dns_client_t* get_global_dns_client() {
-//     return global_dns_client;
-// }
+uint8_t* dns_build_query(const char* hostname, dns_query_type_t type, size_t* size) {
+    if (!hostname || !size)
+        return nullptr;
+
+    dns_header_t header {};
+    memzero(&header, sizeof(header));
+
+    header.id = dns_generate_header_id();
+    header.flags = bswap16(0x0100);
+    header.qdcount = bswap16(1);
+
+    size_t encoded_hostname_length = 0;
+    uint8_t* encoded_hostname = nullptr;
+    if (!encoded_hostname)
+        return nullptr;
+
+    
+
+    dns_query_t query {};
+    query.qtype = bswap16((uint16_t)type);
+    query.qclass = bswap16(1);
+
+    free(encoded_hostname);
+}
 
 // void dns_client_init(dns_client_t* client) {
 //     client->records = std::linear_map<std::string, dns_cache_record_t>{};
