@@ -73,6 +73,11 @@ bool udp_send(uint32_t dst_ip, uint16_t src_port, uint16_t dst_port, const uint8
 
     network_interface_t* interface = route_lookup(get_global_nic(), dst_ip);
 
+    if (!interface) {
+        free(packet);
+        return false;
+    }
+
     header->checksum = bswap16(udp_checksum(
         interface->ip.raw,
         dst_ip,
