@@ -1,5 +1,6 @@
 #include "network/dns.hpp"
 #include "std/random.hpp"
+#include "std/string.hpp"
 #include "time/clock.hpp"
 
 uint16_t dns_generate_header_id() {
@@ -7,11 +8,56 @@ uint16_t dns_generate_header_id() {
     return (uint16_t)random_number(0, MAX_UINT16);
 }
 
-uint8_t* dns_encode_hostname(const char* hostname) {
-    
+uint8_t* dns_encode_hostname(const char* hostname, size_t* size) {
+    if (!hostname || !size)
+        return nullptr;
+
+    size_t hostname_length = strlen(hostname);
+    uint8_t* encoded_string = (uint8_t*)malloc(hostname_length + 1);
+    if (!encoded_string)
+        return nullptr;
+
+    size_t write_ptr = 0;
+    size_t length = 0;
+    const char* start = hostname;
+
+    for (size_t i = 0; i <= hostname_length; i++) {
+        if (hostname[i] == '.' || hostname[i] == '\0') {
+            if (length == 0)
+                break;
+
+            if (length > 63) {
+                free(encoded_string);
+                return nullptr;
+            }
+
+            encoded_string[write_ptr++] = (uint8_t)length;
+            memcpy(&encoded_string[write_ptr], start, length);
+            write_ptr += length;
+
+            if (hostname[i] == '\0')
+                break;
+
+            start += length + 1;
+            length = 0;
+            continue;
+        }
+
+        length++;
+    }
+
+    encoded_string[write_ptr++] = 0;
+
+    if (write_ptr > 255) {
+        free(encoded_string);
+        return nullptr;
+    }
+
+    *size = write_ptr;
+    return encoded_string;
 }
 
-uint8_t* dns_build_query(const char* hostname, dns_query_type_t type, size_t* size) {
+uint8_t* dns_create_query_packet(const char* hostname, dns_query_type_t type, size_t* size) {
     if (!hostname || !size)
         return nullptr;
 
@@ -23,17 +69,29 @@ uint8_t* dns_build_query(const char* hostname, dns_query_type_t type, size_t* si
     header.qdcount = bswap16(1);
 
     size_t encoded_hostname_length = 0;
-    uint8_t* encoded_hostname = nullptr;
+    uint8_t* encoded_hostname = dns_encode_hostname(hostname, &encoded_hostname_length);
     if (!encoded_hostname)
         return nullptr;
-
-    
 
     dns_query_t query {};
     query.qtype = bswap16((uint16_t)type);
     query.qclass = bswap16(1);
 
+    size_t dns_query_packet_length = sizeof(dns_header_t) + encoded_hostname_length + sizeof(dns_query_t);
+    uint8_t* dns_query_packet = (uint8_t*)malloc(dns_query_packet_length);
+    if (!dns_query_packet) {
+        free(encoded_hostname);
+        return nullptr;
+    }
+
+    memcpy(dns_query_packet, (uint8_t*)&header, sizeof(dns_header_t));
+    memcpy(dns_query_packet + sizeof(dns_header_t), encoded_hostname, encoded_hostname_length);
+    memcpy(dns_query_packet + sizeof(dns_header_t) + encoded_hostname_length, (uint8_t*)&query, sizeof(dns_query_t));
+
     free(encoded_hostname);
+
+    *size = dns_query_packet_length;
+    return dns_query_packet;
 }
 
 // void dns_client_init(dns_client_t* client) {

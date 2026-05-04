@@ -18,7 +18,6 @@ struct dns_header_t {
     uint16_t flags;
     uint16_t qdcount;
     uint16_t ancount;
-    uint16_t ascount;
     uint16_t nscount;
     uint16_t arcount;
 } PACKED;
@@ -53,5 +52,7 @@ struct dns_client_t {
     uint32_t default_server;
     uint32_t default_port;
 };
+
+uint8_t* dns_create_query_packet(const char* hostname, dns_query_type_t type, size_t* size);
 
 #endif // __DNS_HPP__

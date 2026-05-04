@@ -193,30 +193,30 @@ void terminal_execute(const std::string& path, const std::dynamic_array<std::str
             break;
         }
         case hash_fnv1a_64("dns"): {
-            if (args.length() >= 1) {
-                auto arg0 = *args.get_at(0);
-                const auto subsys_dns_client = subsys_get<subsys_dns_client_t>(SUBSYS_DNS_CLIENT);
+            // if (args.length() >= 1) {
+            //     auto arg0 = *args.get_at(0);
+            //     const auto subsys_dns_client = subsys_get<subsys_dns_client_t>(SUBSYS_DNS_CLIENT);
 
-                if (arg0 == "resolve") {
-                    if (args.length() >= 2) {
-                        auto arg1 = *args.get_at(1);
-                        auto ip = subsys_dns_client->resolve(arg1.c_str());
-                        if (ip != MAX_UINT32 && ip != 0)
-                            printf("Hostname: %s\nIP:       %u.%u.%u.%u\n", arg1.c_str(), FROM_IP(ip));
-                        else
-                            printf("Unable to resolve hostname\n");
-                        break;
-                    }
+            //     if (arg0 == "resolve") {
+            //         if (args.length() >= 2) {
+            //             auto arg1 = *args.get_at(1);
+            //             auto ip = subsys_dns_client->resolve(arg1.c_str());
+            //             if (ip != MAX_UINT32 && ip != 0)
+            //                 printf("Hostname: %s\nIP:       %u.%u.%u.%u\n", arg1.c_str(), FROM_IP(ip));
+            //             else
+            //                 printf("Unable to resolve hostname\n");
+            //             break;
+            //         }
 
-                    printf("No host name given\n");
-                    break;
-                }
+            //         printf("No host name given\n");
+            //         break;
+            //     }
 
-                if (arg0 == "server") {
-                    printf("IP:       %u.%u.%u.%u\n", FROM_IP(subsys_dns_client->get_dns_server()));
-                    break;
-                }
-            }
+            //     if (arg0 == "server") {
+            //         printf("IP:       %u.%u.%u.%u\n", FROM_IP(subsys_dns_client->get_dns_server()));
+            //         break;
+            //     }
+            // }
 
             break;
         }

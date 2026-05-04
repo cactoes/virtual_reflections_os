@@ -26,13 +26,13 @@ void webbrowser_init() {
     target.name = "Browser";
     desktop_register_target(target);
 
-    const auto subsys_dns_client = subsys_get<subsys_dns_client_t>(SUBSYS_DNS_CLIENT);
-    uint32_t ip = subsys_dns_client->resolve("httpforever.com");
+    // const auto subsys_dns_client = subsys_get<subsys_dns_client_t>(SUBSYS_DNS_CLIENT);
+    // uint32_t ip = subsys_dns_client->resolve("httpforever.com");
 
-    if (ip == (uint32_t)-1) {
-        kprintf("failed to resolve ip");
-        return;
-    }
+    // if (ip == (uint32_t)-1) {
+    //     kprintf("failed to resolve ip");
+    //     return;
+    // }
 
     // auto connection = tcp_connect(ip, 80, data_handler);
 

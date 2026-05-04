@@ -63,6 +63,7 @@
 
 #include "network/socket.hpp"
 #include "network/dhcp.hpp"
+#include "network/dns.hpp"
 #include "network/ip.hpp"
 
 #define HEAP_START_SIZE 0x100000 * 32 // 32 mb
@@ -130,6 +131,24 @@ bool network_manager_configre_interface(network_manager_t* network_manager, netw
     return network_manager_dhcp_send_discover(network_manager);
 }
 
+void dns_socket(socket_t*, uint32_t ip, uint16_t port, const uint8_t* packet, size_t size) {
+    kprintf("got result\n");
+}
+
+void do_dns_query() {
+    size_t query_size = 0;
+    uint8_t* query = dns_create_query_packet("cactoes.xyz", dns_query_type_t::A, &query_size);
+
+    socket_t socket {};
+    socket.port = random_number(49152, 65535);
+    socket.protocol = socket_protocol_t::UDP;
+    socket.listener = dns_socket;
+    socket_bind(&socket);
+    socket_send(&socket, TO_IP(1, 1, 1, 1), DNS_PORT_SERVER, query, query_size);
+
+    while (true) {}
+}
+
 int network_manager_thread() {
     network_manager_t network_manager {};
     network_manager_init(&network_manager);
@@ -191,6 +210,10 @@ int network_manager_thread() {
             session.interface->is_active = true;
 
             kprintf("[DHCP] configured ip for '%s' - %u.%u.%u.%u\n", session.interface->device_name, (uint32_t)session.ip.byte3, (uint32_t)session.ip.byte2, (uint32_t)session.ip.byte1, (uint32_t)session.ip.byte0);
+
+
+
+            do_dns_query();
         }
     }
 
