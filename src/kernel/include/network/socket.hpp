@@ -24,6 +24,7 @@ struct socket_t {
     socket_listener_t listener;
     uint32_t local_ip;
     uint16_t port;
+    void* socket_data;
 };
 
 bool socket_receive(socket_protocol_t protocol, uint16_t dst_port, uint32_t src_ip, uint16_t src_port, const uint8_t* data, size_t size);

@@ -1,5 +1,6 @@
 #include "network/socket.hpp"
 #include "network/udp.hpp"
+#include "network/tcp.hpp"
 #include "std/array.hpp"
 
 static std::dynamic_array<socket_t*> global_sockets {};
@@ -29,6 +30,12 @@ bool socket_send(socket_t* socket, uint32_t ip, uint16_t port, const uint8_t* da
     switch (socket->protocol) {
         case socket_protocol_t::UDP:
             return udp_send(ip, socket->port, port, data, size);
+        case socket_protocol_t::TCP: {
+            tcb_t* tcb = (tcb_t*)socket->socket_data;
+            // TODO @since 04/05/2026 -- 20:05
+            // tcp state machine
+            return tcp_send(ip, socket->port, port, data, size);
+        }
         default:
             break;
     }

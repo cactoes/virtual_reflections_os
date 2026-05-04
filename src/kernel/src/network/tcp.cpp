@@ -1,9 +1,91 @@
-// #include "network/tcp.hpp"
-// #include "network/ip.hpp"
+#include "network/tcp.hpp"
+#include "network/ip.hpp"
 // #include "utils/vector.hpp"
-// #include "std/random.hpp"
+#include "std/random.hpp"
 // #include "time/clock.hpp"
 // #include "io.hpp"
+
+uint16_t tcp_checksum(uint32_t src_ip, uint32_t dst_ip, const tcp_header_t* tcp_header, size_t payload_len) {
+    uint32_t sum = 0;
+    size_t total_len = sizeof(tcp_header_t) + payload_len;
+
+    sum += (src_ip >> 16) & 0xFFFF;
+    sum += src_ip & 0xFFFF;
+    sum += (dst_ip >> 16) & 0xFFFF;
+    sum += dst_ip & 0xFFFF;
+    sum += 6;
+    sum += total_len;
+
+    const uint8_t* data = (const uint8_t*)tcp_header;
+    size_t len = sizeof(tcp_header_t) + payload_len;
+
+    for (size_t i = 0; i < len - 1; i += 2)
+        sum += ((data[i] << 8) + data[i + 1]);
+
+    if (len & 1)
+        sum += data[len - 1] << 8;
+
+    while (sum >> 16)
+        sum = (sum & 0xFFFF) + (sum >> 16);
+
+    return ~sum;
+}
+
+bool tcp_send(uint32_t dst_ip, uint16_t src_port, uint16_t dst_port, const uint8_t* payload, size_t size) {
+    if (size > 1500 - sizeof(ip_header_t) - sizeof(tcp_header_t))
+        return false;
+
+    const size_t packet_size = sizeof(tcp_header_t) + size;
+    uint8_t* packet = (uint8_t*)malloc(packet_size);
+
+    uint32_t snd_nxt = (uint32_t)random_number(0, MAX_UINT32 - 1);
+    uint32_t rcv_nxt = 0;
+    uint32_t flags = TCP_FLAG_SYN;
+
+    tcp_header_t* header = (tcp_header_t*)packet;
+    header->src_port = bswap16(src_port);
+    header->dst_port = bswap16(dst_port);
+    header->seq_num = bswap32(snd_nxt);
+
+    if (flags & TCP_FLAG_ACK)
+        header->ack_num = bswap32(rcv_nxt);
+    else
+        header->ack_num = 0;
+    
+    if (size > 0)
+        snd_nxt += size;
+    
+    if (flags & (TCP_FLAG_SYN | TCP_FLAG_FIN))
+        snd_nxt++;
+
+    TCP_SET_DATA_OFFSET(header, sizeof(tcp_header_t) / 4);
+    header->flags = flags;
+    header->window = bswap16(8192);
+    header->checksum = 0;
+    header->urgent_ptr = 0;
+    
+    uint8_t* tcp_payload = packet + sizeof(tcp_header_t);
+    if (payload && size > 0)
+        memcpy(tcp_payload, payload, size);
+
+    network_interface_t* interface = route_lookup(get_global_nic(), dst_ip);
+
+    if (!interface) {
+        free(packet);
+        return false;
+    }
+
+    header->checksum = bswap16(tcp_checksum(
+        interface->ip.raw,
+        dst_ip,
+        header,
+        size
+    ));
+
+    ip_send(interface, dst_ip, IP_PROTOCOL_TCP, packet, packet_size);
+
+    return true;
+}
 
 // linked_list<std::unique_ptr<tcp_connection_t>> connections {};
 
@@ -96,32 +178,6 @@
 //     connection_ptr->callback = callback;
 
 //     return connection_ptr;
-// }
-
-// uint16_t tcp_checksum(uint32_t src_ip, uint32_t dst_ip, const tcp_header_t* tcp_header, size_t payload_len) {
-//     uint32_t sum = 0;
-//     size_t total_len = sizeof(tcp_header_t) + payload_len;
-
-//     sum += (src_ip >> 16) & 0xFFFF;
-//     sum += src_ip & 0xFFFF;
-//     sum += (dst_ip >> 16) & 0xFFFF;
-//     sum += dst_ip & 0xFFFF;
-//     sum += 6;
-//     sum += total_len;
-
-//     const uint8_t* data = (const uint8_t*)tcp_header;
-//     size_t len = sizeof(tcp_header_t) + payload_len;
-
-//     for (size_t i = 0; i < len - 1; i += 2)
-//         sum += ((data[i] << 8) + data[i + 1]);
-
-//     if (len & 1)
-//         sum += data[len - 1] << 8;
-
-//     while (sum >> 16)
-//         sum = (sum & 0xFFFF) + (sum >> 16);
-
-//     return bswap16(~sum);
 // }
 
 // bool tcp_send_packet(uint8_t* p_payload, size_t payload_length, uint8_t flags, tcp_connection_t* connection) {

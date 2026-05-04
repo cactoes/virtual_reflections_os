@@ -149,6 +149,23 @@ void do_dns_query() {
     while (true) {}
 }
 
+void tcp_socket(socket_t*, uint32_t ip, uint16_t port, const uint8_t* packet, size_t size) {
+
+}
+
+void do_tcp() {
+    socket_t socket {};
+    socket.port = random_number(49152, 65535);
+    socket.protocol = socket_protocol_t::TCP;
+    socket.listener = tcp_socket;
+    socket_bind(&socket);
+
+    uint8_t data[] {};
+    socket_send(&socket, TO_IP(1,1,1,1), 443, data, 0);
+
+    while (true) {}
+}
+
 int network_manager_thread() {
     network_manager_t network_manager {};
     network_manager_init(&network_manager);
@@ -211,9 +228,8 @@ int network_manager_thread() {
 
             kprintf("[DHCP] configured ip for '%s' - %u.%u.%u.%u\n", session.interface->device_name, (uint32_t)session.ip.byte3, (uint32_t)session.ip.byte2, (uint32_t)session.ip.byte1, (uint32_t)session.ip.byte0);
 
-
-
-            do_dns_query();
+            // do_dns_query();
+            do_tcp();
         }
     }
 
