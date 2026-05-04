@@ -26,14 +26,14 @@ int ethernet_receive(network_interface_t* interface, uint8_t* frame, size_t size
     if (size < sizeof(ethernet_header_t))
         return 1;
 
-    const ethernet_header_t* header = (ethernet_header_t*)frame;
+    ethernet_header_t* header = (ethernet_header_t*)frame;
     uint8_t* payload = frame + sizeof(ethernet_header_t);
     const size_t payload_size = size - sizeof(ethernet_header_t);
 
     uint16_t ethertype = bswap16(header->ethernet_type);
     switch (ethertype) {
         case ETHERNET_TYPE_IPV4:
-            ip_receive(interface, payload, payload_size);
+            ip_receive(interface, payload, payload_size, header->src_mac);
             break;
         case ETHERNET_TYPE_ARP:
             arp_receive(interface, payload, payload_size);

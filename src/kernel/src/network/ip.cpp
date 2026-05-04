@@ -26,7 +26,7 @@ uint32_t get_next_hop_ip(network_interface_t* interface, uint32_t target_ip) {
     return is_local_network(target_ip, interface->ip.raw, interface->subnet_mask.raw) ? target_ip : interface->gateway.raw;
 }
 
-void ip_receive(network_interface_t* interface, uint8_t* packet, size_t size) {
+void ip_receive(network_interface_t* interface, uint8_t* packet, size_t size, uint8_t src_mac[6]) {
     ip_header_t* ip = (ip_header_t*)packet;
 
     if (bswap32(ip->dst_addr) != interface->ip.raw && bswap32(ip->dst_addr) != 0xFFFFFFFF)
@@ -40,7 +40,7 @@ void ip_receive(network_interface_t* interface, uint8_t* packet, size_t size) {
 
     uint8_t mac[6];
     if (!arp_lookup(bswap32(ip->src_addr), mac))
-        arp_table_insert(bswap32(ip->src_addr), mac);
+        arp_table_insert(bswap32(ip->src_addr), src_mac);
 
     switch (ip->protocol) {
         case IP_PROTOCOL_ICMP:

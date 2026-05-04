@@ -30,7 +30,7 @@ struct ip_header_t {
     uint32_t dst_addr;
 } PACKED;
 
-void ip_receive(network_interface_t* interface, uint8_t* packet, size_t size);
+void ip_receive(network_interface_t* interface, uint8_t* packet, size_t size, uint8_t src_mac[6]);
 bool ip_send(network_interface_t* interface, uint32_t dst_ip, uint8_t protocol, const uint8_t* payload, size_t payload_len);
 
 #endif // __DRIVERS_NETWORK_IP_HPP__
