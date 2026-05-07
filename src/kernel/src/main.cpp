@@ -140,11 +140,14 @@ void do_dns_query() {
     uint8_t* query = dns_create_query_packet("cactoes.xyz", dns_query_type_t::A, &query_size);
 
     socket_t socket {};
+    socket.local_ip = TO_IP(0, 0, 0, 0);
     socket.local_port = random_number(49152, 65535);
+    socket.remote_ip = TO_IP(1, 1, 1, 1);
+    socket.remote_port = DNS_PORT_SERVER;
     socket.protocol = socket_protocol_t::UDP;
     socket.listener = dns_socket;
     socket_bind(&socket);
-    // socket_send(&socket, TO_IP(1, 1, 1, 1), DNS_PORT_SERVER, query, query_size);
+    socket_send(&socket, query, query_size);
 
     while (true) {}
 }
@@ -155,12 +158,12 @@ void tcp_socket(socket_t*, uint32_t ip, uint16_t port, const uint8_t* packet, si
 
 void do_tcp() {
     socket_t socket {};
-    socket.local_port = random_number(49152, 65535);
     socket.local_ip = TO_IP(0, 0, 0, 0);
-    socket.protocol = socket_protocol_t::TCP;
-    socket.listener = tcp_socket;
+    socket.local_port = random_number(49152, 65535);
     socket.remote_ip = TO_IP(10, 0, 2, 2);
     socket.remote_port = 80;
+    socket.protocol = socket_protocol_t::TCP;
+    socket.listener = tcp_socket;
     socket_bind(&socket);
 
     const char http_request[] = 
