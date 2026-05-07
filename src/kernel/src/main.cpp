@@ -153,7 +153,12 @@ void do_dns_query() {
 }
 
 void tcp_socket(socket_t*, uint32_t ip, uint16_t port, const uint8_t* packet, size_t size) {
-    kprintf((char*)packet);
+    char* data = (char*)malloc(size + 1);
+    memzero(data, size + 1);
+    memcpy(data, packet, size);
+
+    kprintf(data);
+    kprintf("\n");
 }
 
 void do_tcp() {
