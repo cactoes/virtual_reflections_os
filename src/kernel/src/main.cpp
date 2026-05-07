@@ -115,7 +115,7 @@ bool network_manager_dhcp_send_discover(network_manager_t* network_manager) {
         return false;
 
     dhcp_packet_t packet = dhcp_create_discover_packet(DEVICE_HOST_NAME, &network_manager->dhcp_client->session);
-    return socket_send(network_manager->dhcp_socket, BROADCAST_IPV4, DHCP_PORT_SERVER, (uint8_t*)&packet, sizeof(dhcp_packet_t));
+    return socket_send(network_manager->dhcp_socket, (uint8_t*)&packet, sizeof(dhcp_packet_t));
 }
 
 bool network_manager_configre_interface(network_manager_t* network_manager, network_interface_t* interface) {
@@ -140,28 +140,37 @@ void do_dns_query() {
     uint8_t* query = dns_create_query_packet("cactoes.xyz", dns_query_type_t::A, &query_size);
 
     socket_t socket {};
-    socket.port = random_number(49152, 65535);
+    socket.local_port = random_number(49152, 65535);
     socket.protocol = socket_protocol_t::UDP;
     socket.listener = dns_socket;
     socket_bind(&socket);
-    socket_send(&socket, TO_IP(1, 1, 1, 1), DNS_PORT_SERVER, query, query_size);
+    // socket_send(&socket, TO_IP(1, 1, 1, 1), DNS_PORT_SERVER, query, query_size);
 
     while (true) {}
 }
 
 void tcp_socket(socket_t*, uint32_t ip, uint16_t port, const uint8_t* packet, size_t size) {
-
+    kprintf((char*)packet);
 }
 
 void do_tcp() {
     socket_t socket {};
-    socket.port = random_number(49152, 65535);
+    socket.local_port = random_number(49152, 65535);
+    socket.local_ip = TO_IP(0, 0, 0, 0);
     socket.protocol = socket_protocol_t::TCP;
     socket.listener = tcp_socket;
+    socket.remote_ip = TO_IP(10, 0, 2, 2);
+    socket.remote_port = 80;
     socket_bind(&socket);
 
-    uint8_t data[] {};
-    socket_send(&socket, TO_IP(1,1,1,1), 443, data, 0);
+    const char http_request[] = 
+        "GET / HTTP/1.1\r\n"
+        "Host: cactoes.xyz\r\n"
+        "Connection: close\r\n"
+        "User-Agent: virtual reflections e0\r\n"
+        "\r\n";
+
+    socket_send(&socket, (const uint8_t*)http_request, sizeof(http_request) - 1);
 
     while (true) {}
 }
@@ -176,7 +185,9 @@ int network_manager_thread() {
     network_manager.dhcp_socket = new socket_t {};
     network_manager.dhcp_socket->protocol = socket_protocol_t::UDP;
     network_manager.dhcp_socket->listener = network_manager_dhcp_callback;
-    network_manager.dhcp_socket->port = DHCP_PORT_CLIENT;
+    network_manager.dhcp_socket->local_port = DHCP_PORT_CLIENT;
+    network_manager.dhcp_socket->remote_ip = BROADCAST_IPV4;
+    network_manager.dhcp_socket->remote_port = DHCP_PORT_SERVER;
     socket_bind(network_manager.dhcp_socket);
 
     while (true) {
@@ -211,7 +222,8 @@ int network_manager_thread() {
             session.lease_time = dhcp_field_to_number(&option_lease_time_s->value[0], 4);
 
             dhcp_packet_t p = dhcp_create_request_packet(DEVICE_HOST_NAME, &session, session.ip.raw);
-            socket_send(network_manager.dhcp_socket, session.dhcp_ip.raw, DHCP_PORT_SERVER, (const uint8_t*)&p, sizeof(dhcp_packet_t));
+            network_manager.dhcp_socket->remote_ip = session.dhcp_ip.raw;
+            socket_send(network_manager.dhcp_socket, (const uint8_t*)&p, sizeof(dhcp_packet_t));
         }
 
         if (option_message_type->value[0] == DHCP_MESSAGE_TYPE_DHCPACK) {
