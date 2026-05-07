@@ -2,8 +2,9 @@
 #include "network/ip.hpp"
 // #include "utils/vector.hpp"
 #include "std/random.hpp"
+#include "network/socket.hpp"
 // #include "time/clock.hpp"
-// #include "io.hpp"
+#include "io.hpp"
 
 uint16_t tcp_checksum(uint32_t src_ip, uint32_t dst_ip, const tcp_header_t* tcp_header, size_t payload_len) {
     uint32_t sum = 0;
@@ -31,36 +32,32 @@ uint16_t tcp_checksum(uint32_t src_ip, uint32_t dst_ip, const tcp_header_t* tcp_
     return ~sum;
 }
 
-bool tcp_send(uint32_t dst_ip, uint16_t src_port, uint16_t dst_port, const uint8_t* payload, size_t size) {
-    if (size > 1500 - sizeof(ip_header_t) - sizeof(tcp_header_t))
-        return false;
+uint32_t tcp_generate_isn() {
+    return (uint32_t)random_number(0, MAX_UINT32);
+}
 
+bool tcp_send_with_flags(tcb_t* tcb, uint32_t flags, const uint8_t* payload, size_t size) {
     const size_t packet_size = sizeof(tcp_header_t) + size;
     uint8_t* packet = (uint8_t*)malloc(packet_size);
 
-    uint32_t snd_nxt = (uint32_t)random_number(0, MAX_UINT32 - 1);
-    uint32_t rcv_nxt = 0;
-    uint32_t flags = TCP_FLAG_SYN;
+    if ((flags & (TCP_FLAG_SYN | TCP_FLAG_FIN | TCP_FLAG_RST | TCP_FLAG_ACK)) == 0) {
+        if (!payload || size == 0)
+            return false;
+    }
 
     tcp_header_t* header = (tcp_header_t*)packet;
-    header->src_port = bswap16(src_port);
-    header->dst_port = bswap16(dst_port);
-    header->seq_num = bswap32(snd_nxt);
+    header->src_port = bswap16(tcb->local_port);
+    header->dst_port = bswap16(tcb->remote_port);
+    header->seq_num = bswap32(tcb->snd_nxt);
 
     if (flags & TCP_FLAG_ACK)
-        header->ack_num = bswap32(rcv_nxt);
+        header->ack_num = bswap32(tcb->rcv_nxt);
     else
         header->ack_num = 0;
-    
-    if (size > 0)
-        snd_nxt += size;
-    
-    if (flags & (TCP_FLAG_SYN | TCP_FLAG_FIN))
-        snd_nxt++;
 
     TCP_SET_DATA_OFFSET(header, sizeof(tcp_header_t) / 4);
     header->flags = flags;
-    header->window = bswap16(8192);
+    header->window = bswap16(4096);
     header->checksum = 0;
     header->urgent_ptr = 0;
     
@@ -68,7 +65,7 @@ bool tcp_send(uint32_t dst_ip, uint16_t src_port, uint16_t dst_port, const uint8
     if (payload && size > 0)
         memcpy(tcp_payload, payload, size);
 
-    network_interface_t* interface = route_lookup(get_global_nic(), dst_ip);
+    network_interface_t* interface = route_lookup(get_global_nic(), tcb->remote_ip);
 
     if (!interface) {
         free(packet);
@@ -77,14 +74,127 @@ bool tcp_send(uint32_t dst_ip, uint16_t src_port, uint16_t dst_port, const uint8
 
     header->checksum = bswap16(tcp_checksum(
         interface->ip.raw,
-        dst_ip,
+        tcb->remote_ip,
         header,
         size
     ));
 
-    ip_send(interface, dst_ip, IP_PROTOCOL_TCP, packet, packet_size);
+    bool result = ip_send(interface, tcb->remote_ip, IP_PROTOCOL_TCP, packet, packet_size);
+    if (result) {
+        if (size > 0)
+            tcb->snd_nxt += size;
+        
+        if (flags & (TCP_FLAG_SYN | TCP_FLAG_FIN))
+            tcb->snd_nxt++;
+    }
+    return result;
+    
+}
 
-    return true;
+bool tcp_send(tcb_t* tcb, const uint8_t* payload, size_t size) {
+    if (!tcb)
+        return false;
+
+    if (tcb->state == tcp_state_t::OPENED) {
+        tcb->state = tcp_state_t::SYN_SENT;
+        return tcp_send_with_flags(tcb, TCP_FLAG_SYN, nullptr, 0);
+    }
+
+    if (tcb->state == tcp_state_t::SYN_SENT)
+        return false;
+
+    if (tcb->state == tcp_state_t::ESTABLISHED)
+        return tcp_send_with_flags(tcb, TCP_FLAG_ACK | TCP_FLAG_PSH, payload, size);
+
+    return false;
+}
+
+tcb_t* tcp_create_tcb(uint32_t local_ip, uint16_t local_port, uint32_t remote_ip, uint16_t remote_port) {
+    tcb_t* tcb = new tcb_t {};
+    if (!tcb)
+        return nullptr;
+
+    tcb->local_ip = local_ip;
+    tcb->local_port = local_port;
+    tcb->remote_ip = remote_ip;
+    tcb->remote_port = remote_port;
+
+    tcb->snd_nxt = tcp_generate_isn();
+    tcb->snd_una = tcb->snd_nxt;
+    tcb->rcv_nxt = 0;
+
+    tcb->state = tcp_state_t::OPENED;
+
+    return tcb;
+}
+
+void tcp_receive(network_interface_t* interface, uint32_t src_ip, uint8_t* payload, size_t payload_length) {
+    tcp_header_t* header = (tcp_header_t*)payload;
+
+    uint16_t src_port = bswap16(header->src_port);
+    uint16_t dst_port = bswap16(header->dst_port);
+    uint32_t seq_num = bswap32(header->seq_num);
+    uint32_t ack_num = bswap32(header->ack_num);
+    uint8_t data_offset = TCP_DATA_OFFSET(header);
+    uint8_t flags = header->flags;
+    uint16_t window = bswap16(header->window);
+
+    socket_t* socket = socket_get(socket_protocol_t::TCP, dst_port);
+    if (!socket)
+        return;
+
+    tcb_t* tcb = (tcb_t*)socket->socket_data;
+    if (!tcb)
+        return;
+
+    if (flags & TCP_FLAG_FIN) {
+        tcb->state = tcp_state_t::CLOSED;
+        delete tcb;
+    }
+
+    if (tcb->state == tcp_state_t::SYN_SENT) {
+        if (!(flags & TCP_FLAG_SYN) || !(flags & TCP_FLAG_ACK))
+            return;
+        if (ack_num != tcb->snd_nxt)
+            return;
+
+        tcb->rcv_nxt = seq_num + 1;
+        tcb->snd_una = ack_num;
+        kprintf("[INET - TCP] accepted incoming connection\n");
+        tcp_send_with_flags(tcb, TCP_FLAG_ACK, nullptr, 0);
+        tcb->state = tcp_state_t::ESTABLISHED;
+        return;
+    }
+
+    if (tcb->state == tcp_state_t::ESTABLISHED) {
+        if (flags & TCP_FLAG_FIN) {
+            tcb->state = tcp_state_t::CLOSED;
+            tcb->rcv_nxt++;
+            tcp_send_with_flags(tcb, TCP_FLAG_FIN | TCP_FLAG_ACK, nullptr, 0);
+            return;
+        }
+
+        size_t header_len = data_offset * 4;
+        uint8_t* tcp_data = payload + header_len;
+        size_t tcp_data_len = payload_length - header_len;
+
+        if (tcp_data_len > 0) {
+            if (seq_num != tcb->rcv_nxt) {
+                // out of order — drop for now, send ACK of what we have
+                tcp_send_with_flags(tcb, TCP_FLAG_ACK, nullptr, 0);
+                return;
+            }
+
+            tcb->rcv_nxt += tcp_data_len;
+            socket_receive(socket_protocol_t::TCP, dst_port, src_ip, src_port, tcp_data, tcp_data_len);
+            tcp_send_with_flags(tcb, TCP_FLAG_ACK, nullptr, 0);
+            return;
+        }
+    }
+}
+
+bool tcp_is_connection_established(tcb_t* tcb) {
+    return tcb->state == tcp_state_t::ESTABLISHED;
 }
 
 // linked_list<std::unique_ptr<tcp_connection_t>> connections {};

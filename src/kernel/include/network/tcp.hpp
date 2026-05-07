@@ -39,6 +39,7 @@ enum class tcp_state_t {
     // TIME_WAIT
 
     CLOSED,
+    OPENED,
     SYN_SENT,
     FIN_WAIT,
     ESTABLISHED
@@ -64,12 +65,16 @@ struct tcb_t {
     uint16_t remote_port;
 
     uint32_t snd_nxt;
+    uint32_t snd_una;
     uint32_t rcv_nxt;
 
     tcp_state_t state;
 };
 
-bool tcp_send(uint32_t dst_ip, uint16_t src_port, uint16_t dst_port, const uint8_t* payload, size_t size);
+bool tcp_send(tcb_t* tcb, const uint8_t* payload, size_t size);
+tcb_t* tcp_create_tcb(uint32_t local_ip, uint16_t local_port, uint32_t remote_ip, uint16_t remote_port);
+void tcp_receive(network_interface_t* interface, uint32_t src_ip, uint8_t* payload, size_t payload_length);
+bool tcp_is_connection_established(tcb_t* tcb);
 
 // struct tcp_connection_t {
 
