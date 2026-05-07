@@ -46,9 +46,10 @@ void ip_receive(network_interface_t* interface, uint8_t* packet, size_t size, ui
         case IP_PROTOCOL_ICMP:
             icmp_receive(interface, payload, payload_len);
             break;
-        // case IP_PROTOCOL_TCP:
-        //     tcp_receive(interface, payload, payload_len, bswap32(ip->src_addr));
-        //     break;
+        case IP_PROTOCOL_TCP:
+            // tcp_receive(interface, payload, payload_len, bswap32(ip->src_addr));
+            tcp_receive(interface, bswap32(ip->src_addr), payload, payload_len);
+            break;
         case IP_PROTOCOL_UDP:
             udp_receive(interface, bswap32(ip->src_addr), payload, payload_len);
             break;
