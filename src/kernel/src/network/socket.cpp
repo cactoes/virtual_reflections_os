@@ -2,12 +2,13 @@
 #include "network/udp.hpp"
 #include "network/tcp.hpp"
 #include "std/array.hpp"
+#include "virtual_thread.hpp"
 
 static std::dynamic_array<socket_t*> global_sockets {};
 
 bool socket_receive(socket_protocol_t protocol, uint16_t dst_port, uint32_t src_ip, uint16_t src_port, const uint8_t* data, size_t size) {
     for (auto s : global_sockets) {
-        if (s->port == dst_port && s->protocol == protocol) {
+        if (s->local_port == dst_port && s->protocol == protocol) {
             s->listener(s, src_ip, src_port, data, size);
         }
     }
@@ -17,28 +18,44 @@ bool socket_receive(socket_protocol_t protocol, uint16_t dst_port, uint32_t src_
 
 void socket_bind(socket_t* socket) {
     for (auto& s : global_sockets)
-        if (socket->port == s->port && socket->protocol == s->protocol)
+        if (socket->local_port == s->local_port && socket->protocol == s->protocol)
             return;
 
     global_sockets.insert_back(socket);
 }
 
-bool socket_send(socket_t* socket, uint32_t ip, uint16_t port, const uint8_t* data, size_t size) {
+bool socket_send(socket_t* socket, const uint8_t* data, size_t size) {
     if (!socket || !data)
         return false;
 
     switch (socket->protocol) {
         case socket_protocol_t::UDP:
-            return udp_send(ip, socket->port, port, data, size);
+            return udp_send(socket->remote_ip, socket->local_port, socket->remote_port, data, size);
         case socket_protocol_t::TCP: {
-            tcb_t* tcb = (tcb_t*)socket->socket_data;
-            // TODO @since 04/05/2026 -- 20:05
-            // tcp state machine
-            return tcp_send(ip, socket->port, port, data, size);
+            if (!socket->socket_data) {
+                socket->socket_data = (tcb_t*)tcp_create_tcb(socket->local_ip, socket->local_port, socket->remote_ip, socket->remote_port);
+                if (!tcp_send((tcb_t*)socket->socket_data, nullptr, 0))
+                    return false;
+            }
+
+            while (!tcp_is_connection_established((tcb_t*)socket->socket_data))
+                vthread_sleep(1);
+
+            return tcp_send((tcb_t*)socket->socket_data, data, size);
         }
         default:
             break;
     }
 
     return false;
+}
+
+socket_t* socket_get(socket_protocol_t protocol, uint16_t dst_port) {
+    for (auto s : global_sockets) {
+        if (s->local_port == dst_port && s->protocol == protocol) {
+            return s;
+        }
+    }
+
+    return nullptr;
 }
