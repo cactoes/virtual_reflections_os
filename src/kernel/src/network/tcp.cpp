@@ -148,8 +148,21 @@ void tcp_receive(network_interface_t* interface, uint32_t src_ip, uint8_t* paylo
         return;
 
     if (flags & TCP_FLAG_FIN) {
+        tcb->rcv_nxt++;
+        tcp_send_with_flags(tcb, TCP_FLAG_ACK, nullptr, 0);
         tcb->state = tcp_state_t::CLOSED;
         delete tcb;
+        socket->socket_data = nullptr;
+        return;
+    }
+
+    if (flags & TCP_FLAG_RST) {
+        if (seq_num < tcb->rcv_nxt || seq_num >= tcb->rcv_nxt + window)
+            return;
+        tcb->state = tcp_state_t::CLOSED;
+        delete tcb;
+        socket->socket_data = nullptr;
+        return;
     }
 
     if (tcb->state == tcp_state_t::SYN_SENT) {
