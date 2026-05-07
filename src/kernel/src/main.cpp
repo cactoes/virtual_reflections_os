@@ -171,13 +171,7 @@ void do_tcp() {
     socket.listener = tcp_socket;
     socket_bind(&socket);
 
-    const char http_request[] = 
-        "GET / HTTP/1.1\r\n"
-        "Host: cactoes.xyz\r\n"
-        "Connection: close\r\n"
-        "User-Agent: virtual reflections e0\r\n"
-        "\r\n";
-
+    const char http_request[] = "GET / HTTP/1.0\r\n\r\n";
     socket_send(&socket, (const uint8_t*)http_request, sizeof(http_request) - 1);
 
     while (true) {}
