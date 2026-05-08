@@ -76,6 +76,7 @@ bool nic_receive_packet(network_interface_controller_t* nic, const network_packe
 
 network_interface_t* route_lookup(network_interface_controller_t* nic, uint32_t dst_ip);
 network_interface_t* nic_get_default_interface(network_interface_controller_t* nic);
+network_interface_t* nic_get_interface_from_device(network_interface_controller_t* nic, void* device);
 
 int nic_thread();
 

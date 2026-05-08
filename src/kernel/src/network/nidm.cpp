@@ -112,6 +112,14 @@ network_interface_t* nic_get_default_interface(network_interface_controller_t* n
     return nic->interfaces.get_at(0)->get();
 }
 
+network_interface_t* nic_get_interface_from_device(network_interface_controller_t* nic, void* device) {
+    for (auto& interface : nic->interfaces)
+        if (interface->device == device)
+            return interface.get();
+
+    return nullptr;
+}
+
 int nic_thread() {
     network_interface_controller_t* nic = get_global_nic();
     while (true)
