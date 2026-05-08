@@ -6,7 +6,6 @@
 #include "io.hpp"
 
 static heap_t* g_e1000_dma_heap = nullptr;
-static network_interface_t* global_e1000_network_interface = nullptr;
 
 void e1000_write_reg(e1000_t* p_device, uint32_t offset, uint32_t value) {
     *((volatile uint32_t*)((uint8_t*)p_device->mmio_region + offset)) = value;
@@ -110,7 +109,7 @@ void e1000_recieve_packet(e1000_t* p_device) {
         size_t length = desc->length;
 
         network_packet_t network_packet{};
-        network_packet.interface = get_e1000_network_interface();
+        network_packet.interface = nic_get_interface_from_device(get_global_nic(), p_device);
         network_packet.data = (uint8_t*)malloc(length);
         memcpy(network_packet.data, packet, length);
         network_packet.size = length;
@@ -193,15 +192,15 @@ int e1000_init_device(const pci_device_t* p_pcie_device, e1000_t* p_network_devi
     e1000_enable_interrupts(p_network_device);
 
     const uint32_t irq = pci_config_read(p_pcie_device, PCI_CONFIG_IRQ_LINE) & MAX_UINT8;
-    if (!set_interrupt_callback(convert_to_interrupt(interrupt_irq_to_int(irq)), e1000_handle_interrupt))
+    if (!set_interrupt_hook(convert_to_interrupt(interrupt_irq_to_int(irq)), e1000_handle_interrupt, (void*)p_network_device))
         return 9;
 
     // done
     return 0;
 }
 
-interrupt_regs_t* e1000_handle_interrupt(interrupt_regs_t* p_rsp) {
-    auto p_device = (e1000_t*)get_e1000_network_interface()->device;
+interrupt_regs_t* e1000_handle_interrupt(interrupt_regs_t* p_rsp, void* data) {
+    auto p_device = (e1000_t*)data;
 
     // get & clear the interrupt
     uint32_t icr = e1000_read_reg(p_device, E1000_ICR);
@@ -244,14 +243,6 @@ int e1000_send_packet(e1000_t* p_device, const void* data, size_t size) {
     e1000_write_reg(p_device, E1000_TDT, p_device->tx_tail);
 
     return 0;
-}
-
-network_interface_t* get_e1000_network_interface() {
-    return global_e1000_network_interface;
-}
-
-void set_e1000_network_interface(network_interface_t* interface) {
-    global_e1000_network_interface = interface;
 }
 
 bool is_e1000_device(const pci_device_t* device) {
