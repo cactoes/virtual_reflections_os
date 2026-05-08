@@ -296,8 +296,6 @@ void init_pci_devices(const pci_device_t* device) {
             e1000_network_interface->is_configured = true;
             memcpy(e1000_network_interface->mac, e1000->mac, 6);
 
-            set_e1000_network_interface(e1000_network_interface.get());
-
             // for now force this device to be prefered
             e1000_network_interface->is_prefered = true;
 
@@ -576,10 +574,10 @@ NORETURN void virtual_kernel_entry(multiboot_t* multiboot_struct, void* kernel_p
     printf("[ \033[92mOK\033[0m ] initialized memory\n");
 
     // initialze the interrupt line(s)
-    set_interrupt_callback(interrupt_t::HARDWARE_PIT, pit_handle_interrupt);
-    set_interrupt_callback(interrupt_t::HARDWARE_KEYBOARD, ps2_keyboard_handle_interrupt);
-    set_interrupt_callback(interrupt_t::HARDWARE_PS2_MOUSE, ps2_mouse_handle_interrupt);
-    set_interrupt_callback(interrupt_t::SOFTWARE_SCHEDULER, vthread_handle_interrupt);
+    set_interrupt_hook(interrupt_t::HARDWARE_PIT, pit_handle_interrupt, nullptr);
+    set_interrupt_hook(interrupt_t::HARDWARE_KEYBOARD, ps2_keyboard_handle_interrupt, nullptr);
+    set_interrupt_hook(interrupt_t::HARDWARE_PS2_MOUSE, ps2_mouse_handle_interrupt, nullptr);
+    set_interrupt_hook(interrupt_t::SOFTWARE_SCHEDULER, vthread_handle_interrupt, nullptr);
 
     interrupt_set_handler((void *(*)(uint64_t, void *))handle_interrupt);
     ps2_mouse_init();

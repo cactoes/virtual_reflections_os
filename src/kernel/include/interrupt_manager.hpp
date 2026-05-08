@@ -11,7 +11,12 @@
 #include "common.hpp"
 #include "cpu.hpp"
 
-typedef interrupt_regs_t*(*interrupt_callback_t)(interrupt_regs_t*);
+typedef interrupt_regs_t*(*interrupt_callback_t)(interrupt_regs_t*, void*);
+
+struct interrupt_hook_t {
+    interrupt_callback_t callback;
+    void* data;
+};
 
 enum class interrupt_t : uint64_t {
     EXCEPTION_DIVISION_BY_ZERO = 0,
@@ -89,11 +94,7 @@ bool is_interrupt_hardware(interrupt_t code);
 /// @return             interrupt_t
 interrupt_t convert_to_interrupt(uint64_t code);
 
-/// @brief                  set a callback for a specific interrupt code if not already set
-/// @param code             interrupt code to associate with the callback
-/// @param[in] callback     function to call when the interrupt occurs
-/// @return                 true if callback was set successfully, false if code is invalid or already set
-bool set_interrupt_callback(interrupt_t code, interrupt_callback_t callback);
+bool set_interrupt_hook(interrupt_t code, interrupt_callback_t callback, void* data);
 
 /// @brief          convert a hardware irq number to its corresponding interrupt vector
 /// @param irq      hardware irq number to convert

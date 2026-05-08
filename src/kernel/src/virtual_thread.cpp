@@ -169,7 +169,7 @@ vthread_handle_t vthread_create(thread_entry_t p_thread_entry, void* pml4, const
     return VTHREAD_HANDLE_INVALID;
 }
 
-interrupt_regs_t* vthread_handle_interrupt(interrupt_regs_t* p_cpu_state) {
+interrupt_regs_t* vthread_handle_interrupt(interrupt_regs_t* p_cpu_state, void*) {
     return vthread_schedule(p_cpu_state);
 }
 

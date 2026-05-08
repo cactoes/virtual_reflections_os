@@ -89,7 +89,7 @@ vthread_handle_t vthread_create(thread_entry_t p_thread_entry, void* pml4, const
 /// @brief                      handles a vthread interrupt & updates cpu state
 /// @param[in] p_cpu_state      pointer to the current cpu state
 /// @return                     pointer to the updated cpu state
-interrupt_regs_t* vthread_handle_interrupt(interrupt_regs_t* p_cpu_state);
+interrupt_regs_t* vthread_handle_interrupt(interrupt_regs_t* p_cpu_state, void*);
 
 /// @brief                      schedules the next virtual thread & switches context
 /// @param[in] p_cpu_state      pointer to the current cpu state

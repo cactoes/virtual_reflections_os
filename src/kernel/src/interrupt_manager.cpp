@@ -5,7 +5,7 @@
 #include "arch/interrupt.hpp"
 #include "io.hpp"
 
-static interrupt_callback_t global_interrupt_callback_array[(size_t)interrupt_t::SIZE] { nullptr };
+static interrupt_hook_t global_interrupt_hook_array[(size_t)interrupt_t::SIZE] { };
 static bool global_is_in_interupt = false;
 
 bool is_interrupt_exception(uint64_t code) {
@@ -46,14 +46,17 @@ interrupt_t convert_to_interrupt(uint64_t code) {
     return interrupt_t::UNKOWN;
 }
 
-bool set_interrupt_callback(interrupt_t code, interrupt_callback_t callback) {
-    if ((uint64_t)code > 255)
+bool set_interrupt_hook(interrupt_t code, interrupt_callback_t callback, void* data) {
+    if ((size_t)code > (size_t)interrupt_t::SIZE)
         return false;
 
-    if (global_interrupt_callback_array[(size_t)code])
+    if (global_interrupt_hook_array[(size_t)code].callback)
         return false;
 
-    global_interrupt_callback_array[(size_t)code] = callback;
+    global_interrupt_hook_array[(size_t)code] = {
+        .callback = callback,
+        .data = data
+    };
     return true;
 }
 
@@ -70,8 +73,9 @@ void* handle_interrupt(uint64_t code, interrupt_regs_t* p_rsp) {
         kernel_fatal_internal(code, "critical interrupt triggerd", p_rsp);
 
     if (is_interrupt_hardware(interrupt_type)) {
-        if (auto callback = global_interrupt_callback_array[(size_t)interrupt_type]) {
-            p_rsp = callback(p_rsp);
+        auto& hook = global_interrupt_hook_array[(size_t)interrupt_type];
+        if (hook.callback) {
+            p_rsp = hook.callback(p_rsp, hook.data);
             interrupt_send_eoi(code - 0x20);
             global_is_in_interupt = false;
             return p_rsp;
@@ -88,9 +92,10 @@ void* handle_interrupt(uint64_t code, interrupt_regs_t* p_rsp) {
             global_is_in_interupt = false;
         case interrupt_t::SOFTWARE_CRASH_HANDLER:
         case interrupt_t::SOFTWARE_SYSTEMCALL: {
-            if (auto callback = global_interrupt_callback_array[(size_t)interrupt_type]) {
+            auto& hook = global_interrupt_hook_array[(size_t)interrupt_type];
+            if (hook.callback) {
                 global_is_in_interupt = false;
-                return callback(p_rsp);
+                return hook.callback(p_rsp, hook.data);
             }
             break;
         }

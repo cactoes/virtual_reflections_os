@@ -4,11 +4,11 @@
 static uint64_t g_tick_count = 0;
 static std::dynamic_array<pit_interrupt_function_t> g_interrupt_functions {};
 
-interrupt_regs_t* pit_handle_interrupt(interrupt_regs_t* p_cpu_state) {
+interrupt_regs_t* pit_handle_interrupt(interrupt_regs_t* p_cpu_state, void* data) {
     g_tick_count++;
 
     for (auto& func : g_interrupt_functions)
-        p_cpu_state = func(p_cpu_state);
+        p_cpu_state = func(p_cpu_state, data);
 
     return p_cpu_state;
 }
