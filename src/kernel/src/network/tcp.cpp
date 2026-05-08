@@ -95,18 +95,17 @@ bool tcp_send(tcb_t* tcb, const uint8_t* payload, size_t size) {
     if (!tcb)
         return false;
 
-    if (tcb->state == tcp_state_t::OPENED) {
-        tcb->state = tcp_state_t::SYN_SENT;
-        return tcp_send_with_flags(tcb, TCP_FLAG_SYN, nullptr, 0);
+    switch (tcb->state) {
+        case tcp_state_t::OPENED:
+            tcb->state = tcp_state_t::SYN_SENT;
+            return tcp_send_with_flags(tcb, TCP_FLAG_SYN, nullptr, 0);
+        case tcp_state_t::SYN_SENT:
+            return false;
+        case tcp_state_t::ESTABLISHED:
+            return tcp_send_with_flags(tcb, TCP_FLAG_ACK | TCP_FLAG_PSH, payload, size);
+        default:
+            return false;
     }
-
-    if (tcb->state == tcp_state_t::SYN_SENT)
-        return false;
-
-    if (tcb->state == tcp_state_t::ESTABLISHED)
-        return tcp_send_with_flags(tcb, TCP_FLAG_ACK | TCP_FLAG_PSH, payload, size);
-
-    return false;
 }
 
 tcb_t* tcp_create_tcb(uint32_t local_ip, uint16_t local_port, uint32_t remote_ip, uint16_t remote_port) {
@@ -193,7 +192,7 @@ void tcp_receive(network_interface_t* interface, uint32_t src_ip, uint8_t* paylo
 
         if (tcp_data_len > 0) {
             if (seq_num != tcb->rcv_nxt) {
-                // out of order — drop for now, send ACK of what we have
+                // drop out of order packets
                 tcp_send_with_flags(tcb, TCP_FLAG_ACK, nullptr, 0);
                 return;
             }
