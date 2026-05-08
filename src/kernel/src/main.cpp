@@ -285,15 +285,15 @@ void init_pci_devices(const pci_device_t* device) {
         if (e1000_init_device(device, e1000) == 0) {
             network_interface_t* e1000_network_interface = (network_interface_t*)malloc(sizeof(network_interface_t));
             memzero(e1000_network_interface, sizeof(network_interface_t));
-
+            
             e1000_network_interface->device = e1000;
             e1000_network_interface->device_type = network_interface_device_type_t::E1000;
             e1000_network_interface->is_configured = true;
 
+            memcpy(e1000_network_interface->mac, e1000->mac, 6);
+
             const char* device_name = "Intel E1000";
             strncpy(e1000_network_interface->device_name, device_name, sizeof(e1000_network_interface->device_name));
-
-            memcpy(e1000_network_interface->mac, e1000->mac, 6);
 
             // for now force this device to be prefered
             e1000_network_interface->is_prefered = true;
