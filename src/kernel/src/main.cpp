@@ -283,8 +283,8 @@ void init_pci_devices(const pci_device_t* device) {
         e1000_t* e1000 = (e1000_t*)malloc(sizeof(e1000_t));
         memzero(e1000, sizeof(e1000_t));
         if (e1000_init_device(device, e1000) == 0) {
-            std::unique_ptr<network_interface_t> e1000_network_interface = std::make_unique<network_interface_t>();
-            network_interface_t* e1000_network_interface_ptr = e1000_network_interface.get();
+            network_interface_t* e1000_network_interface = (network_interface_t*)malloc(sizeof(network_interface_t));
+            memzero(e1000_network_interface, sizeof(network_interface_t));
 
             e1000_network_interface->device = e1000;
             e1000_network_interface->device_type = network_interface_device_type_t::E1000;
@@ -293,15 +293,14 @@ void init_pci_devices(const pci_device_t* device) {
             const char* device_name = "Intel E1000";
             strncpy(e1000_network_interface->device_name, device_name, sizeof(e1000_network_interface->device_name));
 
-            e1000_network_interface->is_configured = true;
             memcpy(e1000_network_interface->mac, e1000->mac, 6);
 
             // for now force this device to be prefered
             e1000_network_interface->is_prefered = true;
 
-            nic_register_interface(get_global_nic(), move(e1000_network_interface));
+            nic_register_interface(get_global_nic(), e1000_network_interface);
 
-            network_manager_configre_interface(get_global_network_manager(), e1000_network_interface_ptr);
+            network_manager_configre_interface(get_global_network_manager(), e1000_network_interface);
         }
 
         // valid device so we can continue to the next device

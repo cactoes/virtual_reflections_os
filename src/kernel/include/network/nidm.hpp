@@ -58,7 +58,7 @@ struct network_packet_t {
 };
 
 struct network_interface_controller_t {
-    std::dynamic_array<std::unique_ptr<network_interface_t>> interfaces;
+    std::dynamic_array<network_interface_t*> interfaces;
     std::ring_buffer<64, network_packet_t> incoming_packets;
     std::ring_buffer<64, network_packet_t> outgoing_packets;
 };
@@ -68,7 +68,7 @@ network_interface_controller_t* get_global_nic();
 
 void nic_init(network_interface_controller_t* nic);
 
-bool nic_register_interface(network_interface_controller_t* nic, std::unique_ptr<network_interface_t> interface);
+bool nic_register_interface(network_interface_controller_t* nic, network_interface_t* interface);
 
 bool nic_process_packet(network_interface_controller_t* nic);
 bool nic_dispatch_packet(network_interface_controller_t* nic, const network_packet_t& packet);

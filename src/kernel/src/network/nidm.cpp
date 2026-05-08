@@ -30,14 +30,15 @@ void nic_init(network_interface_controller_t* nic) {
     if (!nic)
         return;
 
-    nic->interfaces = std::dynamic_array<std::unique_ptr<network_interface_t>>();
+    nic->interfaces = std::dynamic_array<network_interface_t*>();
 }
 
-bool nic_register_interface(network_interface_controller_t* nic, std::unique_ptr<network_interface_t> interface) {
+bool nic_register_interface(network_interface_controller_t* nic, network_interface_t* interface) {
     if (!nic)
         return false;
 
-    nic->interfaces.insert_back(move(interface));
+    nic->interfaces.insert_back(interface);
+
     return true;
 }
 
@@ -89,16 +90,16 @@ network_interface_t* route_lookup(network_interface_controller_t* nic, uint32_t 
 
     for (auto& interface : nic->interfaces) {
         if (is_same_subnet(dst_ip, interface->ip.raw, interface->subnet_mask.raw)) {
-            return interface.get();
+            return interface;
         }
     }
 
     for (auto& interface : nic->interfaces) {
         if (interface->is_prefered)
-            return interface.get();
+            return interface;
     }
 
-    return nic->interfaces.get_at(0)->get();
+    return *nic->interfaces.get_at(0);
 }
 
 network_interface_t* nic_get_default_interface(network_interface_controller_t* nic) {
@@ -107,15 +108,15 @@ network_interface_t* nic_get_default_interface(network_interface_controller_t* n
 
     for (auto& interface : nic->interfaces)
         if (interface->is_prefered)
-            return interface.get();
+            return interface;
 
-    return nic->interfaces.get_at(0)->get();
+    return *nic->interfaces.get_at(0);
 }
 
 network_interface_t* nic_get_interface_from_device(network_interface_controller_t* nic, void* device) {
     for (auto& interface : nic->interfaces)
         if (interface->device == device)
-            return interface.get();
+            return interface;
 
     return nullptr;
 }
@@ -133,88 +134,4 @@ int nic_thread() {
 
 //     nidm->devices.clear();
 //     nidm->udp_callbacks.clear();
-// }
-
-// int nidm_register_device(nidm_t* nidm, std::unique_ptr<network_interface_device_t> device) {
-//     mutex_lock_guard guard(&nidm->mutex);
-
-//     nidm->devices.insert_back(move(device));
-//     return 0;
-// }
-
-// network_interface_device_t* nidm_get_device(nidm_t* nidm, const std::string& name) {
-//     for (auto& device : nidm->devices)
-//         if (device->name == name)
-//             return device.get();
-
-//     return nullptr;
-// }
-
-// network_interface_device_t* nidm_get_device_on_interface(nidm_t* nidm, const std::string& interface) {
-//     for (auto& device : nidm->devices)
-//         if (device->interface == interface)
-//             return device.get();
-
-//     return nullptr;
-// }
-
-// #include "utils/debug.hpp"
-
-// int nidm_packet_recieve(nidm_t* nidm, network_interface_device_t* p_device, const void* p_data, size_t size) {
-//     network_packet_t packet {};
-//     packet.data = std::unique_ptr<uint8_t>((uint8_t*)malloc(size));
-//     memcpy(packet.data.get(), p_data, size);
-//     packet.size = size;
-//     packet.device = p_device;
-
-//     if (!global_network_packet_array.insert(move(packet))) {
-//         debug_puts("dropped packet");
-//         return 1;
-//     }
-
-//     return 0;
-// }
-
-// int nidm_process_packet() {
-//     network_packet_t packet {};
-//     if (global_network_packet_array.get(packet))
-//         return ethernet_receive(packet.device, packet.data.get(), packet.size);
-
-//     return 1;
-// }
-
-// int nidm_packet_send(nidm_t* nidm, const void* p_data, size_t size) {
-//     if (auto device = nidm_get_prefered_device(nidm))
-//         return device->send_packet(p_data, size);
-    
-//     return 1;
-// }
-
-// int nidm_udp_bind(nidm_t* nidm, uint16_t port, network_callback_t p_callback) {
-//     mutex_lock_guard guard(&nidm->mutex);
-
-//     if (nidm->udp_callbacks.contains(port))
-//         return 1;
-
-//     nidm->udp_callbacks[port] = p_callback;
-//     return 0;
-// }
-
-// int nidm_udp_dispatch(nidm_t* nidm, uint16_t port, uint8_t* p_packet, size_t length) {
-//     // mutex_lock_guard guard(&nidm->mutex);
-
-//     auto it = nidm->udp_callbacks.get(port);
-//     if (it == nidm->udp_callbacks.end())
-//         return 1;
-
-//     it->value(p_packet, length);
-//     return 0;
-// }
-
-// network_interface_device_t* nidm_get_prefered_device(nidm_t* nidm) {
-//     for (auto& device : nidm->devices)
-//         if (device->is_up & device->is_prefered)
-//             return device.get();
-
-//     return nullptr;
 // }
