@@ -1,14 +1,3 @@
-/** syscall format
-    RAX = syscall number
-    RDI = arg1
-    RSI = arg2
-    RDX = arg3
-    R10 = arg4
-    R8 = arg5
-    R9 = arg6
-    RAX = return value
-*/
-
 #include "common.hpp"
 
 void* syscall_malloc(size_t size) {
