@@ -92,7 +92,6 @@ struct dhcp_option_t {
 
 struct dhcp_client_t {
     mutex_t mutex;
-    std::ring_buffer<3, dhcp_packet_t> packets {};
 
     struct session_t {
         uint32_t xid;
