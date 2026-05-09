@@ -1,7 +1,6 @@
 #include "gui/programs/webbrowser.hpp"
 #include "gui/desktop.hpp"
 #include "memory/heap.hpp"
-#include "subsystem_interface.hpp"
 #include "network/tcp.hpp"
 #include "io.hpp"
 #include "utils/debug.hpp"

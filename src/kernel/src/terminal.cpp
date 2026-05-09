@@ -16,7 +16,6 @@
 #include "drivers/ps2/ps2.hpp"
 #include "network/nidm.hpp"
 
-#include "subsystem_interface.hpp"
 #include "filesystems/vfs.hpp"
 #include "drivers/vga.hpp"
 #include "network/network_manager.hpp"
@@ -166,7 +165,7 @@ void terminal_execute(const std::string& path, const std::dynamic_array<std::str
                 //     printf("Disk or drive not found\n");
                 //     break;
                 // }
-    
+
                 // printf("%s:\n", storage_info.model.c_str());
                 // printf("    Serial: %s\n", storage_info.serial.c_str());
                 // printf("    Firmware: %s\n", storage_info.firmare.c_str());

@@ -19,8 +19,6 @@
 #include "network/udp.hpp"
 #include "network/network_manager.hpp"
 
-#include "subsystem_interface.hpp"
-
 #include "interrupt_manager.hpp"
 
 #include "drivers/storage/ide.hpp"
