@@ -17,10 +17,9 @@
 #include "network/tcp.hpp"
 #include "network/arp.hpp"
 #include "network/udp.hpp"
+#include "network/network_manager.hpp"
 
 #include "subsystem_interface.hpp"
-#include "subsystems/dns/interface.hpp"
-#include "subsystems/dns/dns_client_driver.hpp"
 
 #include "interrupt_manager.hpp"
 
@@ -68,214 +67,30 @@
 
 #define HEAP_START_SIZE 0x100000 * 32 // 32 mb
 #define PIT_TIMER_INTERVAL 1000 // times per second
-#define DEVICE_HOST_NAME "VirtualReflections Machine"
 
-struct network_manager_t {
-    socket_t* dhcp_socket;
-    dhcp_client_t* dhcp_client;
-};
+// void tcp_socket(socket_t*, uint32_t ip, uint16_t port, const uint8_t* packet, size_t size) {
+//     char* data = (char*)malloc(size + 1);
+//     memzero(data, size + 1);
+//     memcpy(data, packet, size);
 
-static network_manager_t* global_network_manager = nullptr;
+//     kprintf(data);
+//     kprintf("\n");
+// }
 
-network_manager_t* get_global_network_manager() {
-    return global_network_manager;
-}
+// void do_tcp() {
+//     socket_t socket {};
+//     socket.local_ip = TO_IP(0, 0, 0, 0);
+//     socket.local_port = random_number(49152, 65535);
+//     socket.remote_ip = TO_IP(10, 0, 2, 2);
+//     socket.remote_port = 80;
+//     socket.protocol = socket_protocol_t::TCP;
+//     socket.listener = tcp_socket;
+//     socket_bind(&socket);
 
-void set_global_network_manager(network_manager_t* network_manager) {
-    global_network_manager = network_manager;
-}
+//     const char http_request[] = "GET / HTTP/1.0\r\n\r\n";
+//     socket_send(&socket, (const uint8_t*)http_request, sizeof(http_request) - 1);
 
-bool network_manager_init(network_manager_t* network_manager) {
-    if (!network_manager)
-        return false;
-
-    network_manager->dhcp_client = nullptr;
-    network_manager->dhcp_socket = nullptr;
-
-    return true;
-}
-
-void network_manager_dhcp_callback(socket_t* socket, uint32_t ip, uint16_t port, const uint8_t* data, size_t size) {
-    if (size > sizeof(dhcp_packet_t))
-        return;
-
-    network_manager_t* network_manager = get_global_network_manager();
-    if (!network_manager)
-        return;
-
-    dhcp_packet_t packet {};
-    memcpy(&packet, data, size);
-
-    mutex_lock_guard guard(&network_manager->dhcp_client->mutex);
-    network_manager->dhcp_client->packets.insert(packet);
-}
-
-bool network_manager_dhcp_send_discover(network_manager_t* network_manager) {
-    if (!network_manager)
-        return false;
-
-    dhcp_packet_t packet = dhcp_create_discover_packet(DEVICE_HOST_NAME, &network_manager->dhcp_client->session);
-    return socket_send(network_manager->dhcp_socket, (uint8_t*)&packet, sizeof(dhcp_packet_t));
-}
-
-bool network_manager_configre_interface(network_manager_t* network_manager, network_interface_t* interface) {
-    if (!network_manager || !interface)
-        return false;
-
-    // only support one session so we need to check if we already have a device asigned
-    if (network_manager->dhcp_client->session.interface)
-        return false;
-
-    network_manager->dhcp_client->session = dhcp_client_create_session(interface);
-
-    return network_manager_dhcp_send_discover(network_manager);
-}
-
-void dns_socket(socket_t*, uint32_t ip, uint16_t port, const uint8_t* packet, size_t size) {
-    kprintf("got result\n");
-}
-
-void do_dns_query() {
-    size_t query_size = 0;
-    uint8_t* query = dns_create_query_packet("cactoes.xyz", dns_query_type_t::A, &query_size);
-
-    socket_t socket {};
-    socket.local_ip = TO_IP(0, 0, 0, 0);
-    socket.local_port = random_number(49152, 65535);
-    socket.remote_ip = TO_IP(1, 1, 1, 1);
-    socket.remote_port = DNS_PORT_SERVER;
-    socket.protocol = socket_protocol_t::UDP;
-    socket.listener = dns_socket;
-    socket_bind(&socket);
-    socket_send(&socket, query, query_size);
-
-    while (true) {}
-}
-
-void tcp_socket(socket_t*, uint32_t ip, uint16_t port, const uint8_t* packet, size_t size) {
-    char* data = (char*)malloc(size + 1);
-    memzero(data, size + 1);
-    memcpy(data, packet, size);
-
-    kprintf(data);
-    kprintf("\n");
-}
-
-void do_tcp() {
-    socket_t socket {};
-    socket.local_ip = TO_IP(0, 0, 0, 0);
-    socket.local_port = random_number(49152, 65535);
-    socket.remote_ip = TO_IP(10, 0, 2, 2);
-    socket.remote_port = 80;
-    socket.protocol = socket_protocol_t::TCP;
-    socket.listener = tcp_socket;
-    socket_bind(&socket);
-
-    const char http_request[] = "GET / HTTP/1.0\r\n\r\n";
-    socket_send(&socket, (const uint8_t*)http_request, sizeof(http_request) - 1);
-
-    while (true) {}
-}
-
-int network_manager_thread() {
-    network_manager_t network_manager {};
-    network_manager_init(&network_manager);
-    set_global_network_manager(&network_manager);
-
-    network_manager.dhcp_client = dhcp_client_create();
-
-    network_manager.dhcp_socket = new socket_t {};
-    network_manager.dhcp_socket->protocol = socket_protocol_t::UDP;
-    network_manager.dhcp_socket->listener = network_manager_dhcp_callback;
-    network_manager.dhcp_socket->local_port = DHCP_PORT_CLIENT;
-    network_manager.dhcp_socket->remote_ip = BROADCAST_IPV4;
-    network_manager.dhcp_socket->remote_port = DHCP_PORT_SERVER;
-    socket_bind(network_manager.dhcp_socket);
-
-    while (true) {
-        dhcp_packet_t packet {};
-        mutex_lock(&network_manager.dhcp_client->mutex);
-        if (!network_manager.dhcp_client->packets.get(packet)) {
-            mutex_unlock(&network_manager.dhcp_client->mutex);
-            continue;
-        }
-
-        mutex_unlock(&network_manager.dhcp_client->mutex);
-
-        dhcp_client_t::session_t& session = network_manager.dhcp_client->session;
-        if (packet.xid != session.xid)
-            continue;
-
-        dhcp_option_t<1>* option_message_type = (dhcp_option_t<1>*)dhcp_option_get(&packet, DHCP_OPTION_DHCP_MESSAGE_TYPE);
-        if (!option_message_type)
-            continue;
-
-        dhcp_option_t<4>* option_dhcp_server_id = (dhcp_option_t<4>*)dhcp_option_get(&packet, DHCP_OPTION_DHCP_SERVER_ID);
-        dhcp_option_t<4>* option_router = (dhcp_option_t<4>*)dhcp_option_get(&packet, DHCP_OPTION_ROUTER);
-        dhcp_option_t<4>* option_lease_time_s = (dhcp_option_t<4>*)dhcp_option_get(&packet, DHCP_OPTION_IP_LEASE_TIME);
-        dhcp_option_t<4>* option_subnet_mask = (dhcp_option_t<4>*)dhcp_option_get(&packet, DHCP_OPTION_SUBNET_MASK);
-
-        if (option_message_type->value[0] == DHCP_MESSAGE_TYPE_DHCPOFFER) {
-            if (!option_dhcp_server_id || !option_lease_time_s)
-                continue;
-
-            session.ip = { .raw = bswap32(packet.your_ip_addr) };
-            session.dhcp_ip = { .raw = TO_IP(option_dhcp_server_id->value[0], option_dhcp_server_id->value[1], option_dhcp_server_id->value[2], option_dhcp_server_id->value[3]) };
-            session.lease_time = dhcp_field_to_number(&option_lease_time_s->value[0], 4);
-
-            dhcp_packet_t p = dhcp_create_request_packet(DEVICE_HOST_NAME, &session, session.ip.raw);
-            network_manager.dhcp_socket->remote_ip = session.dhcp_ip.raw;
-            socket_send(network_manager.dhcp_socket, (const uint8_t*)&p, sizeof(dhcp_packet_t));
-        }
-
-        if (option_message_type->value[0] == DHCP_MESSAGE_TYPE_DHCPACK) {
-            if (!option_subnet_mask || !option_router)
-                continue;
-
-            if (bswap32(packet.your_ip_addr) != session.ip.raw)
-                continue;
-
-            session.interface->subnet_mask = { .raw = TO_IP(option_subnet_mask->value[0], option_subnet_mask->value[1], option_subnet_mask->value[2], option_subnet_mask->value[3]) };
-            session.interface->gateway = { .raw = TO_IP(option_router->value[0], option_router->value[1], option_router->value[2], option_router->value[3]) };
-            session.interface->ip = session.ip;
-            session.interface->is_active = true;
-
-            kprintf("[DHCP] configured ip for '%s' - %u.%u.%u.%u\n", session.interface->device_name, (uint32_t)session.ip.byte3, (uint32_t)session.ip.byte2, (uint32_t)session.ip.byte1, (uint32_t)session.ip.byte0);
-
-            // do_dns_query();
-            do_tcp();
-        }
-    }
-
-    return 0;
-}
-
-// bool setup_network_functionality() {
-//     const system_driver_handle_t inet_driver_handle = driver_manager_get_driver_handle(get_global_driver_manager(), "INetDrivers");
-
-//     if (inet_driver_handle == SYSTEM_DRIVER_HANDLE_INVALID)
-//         return false;
-
-//     // start our driver as the dhcp subsystem
-//     if (driver_query_capability(get_global_driver_manager(), inet_driver_handle, "dhcp") >= 1)
-//         subsys_init(SUBSYS_DHCP_CLIENT, std::make_unique<subsys_dhcp_client_driver_t>(DEVICE_HOST_NAME));
-
-//     // start our driver as the dhcp subsystem
-//     if (driver_query_capability(get_global_driver_manager(), inet_driver_handle, "dns") >= 1)
-//         subsys_init(SUBSYS_DNS_CLIENT, std::make_unique<subsys_dns_client_driver_t>());
-
-//     // lets hope that eth0 was configured qq
-//     auto subsystem_dhcp_client = subsys_get<subsys_dhcp_client_t>(SUBSYS_DHCP_CLIENT);
-//     if (!subsystem_dhcp_client)
-//         return false;
-
-//     auto network_interface = nidm_get_device_on_interface(get_global_nidm(), "eth0");
-//     if (!network_interface)
-//         return false;
-
-//     subsystem_dhcp_client->configure(network_interface);
-
-//     return true;
+//     while (true) {}
 // }
 
 void init_pci_devices(const pci_device_t* device) {
@@ -569,6 +384,8 @@ NORETURN void virtual_kernel_entry(multiboot_t* multiboot_struct, void* kernel_p
 
     set_global_heap(&heap);
 
+    void* kernel_pt_paddr = vmem_virtual_to_physical(kernel_pt_vaddr);
+
     kprintf("[ \033[92mOK\033[0m ] initialized memory\n");
     printf("[ \033[92mOK\033[0m ] initialized memory\n");
 
@@ -609,8 +426,16 @@ NORETURN void virtual_kernel_entry(multiboot_t* multiboot_struct, void* kernel_p
     nic_init(&nic);
     set_global_nic(&nic);
 
-    void* kernel_pt_paddr = vmem_virtual_to_physical(kernel_pt_vaddr);
-    vthread_create(network_manager_thread, kernel_pt_paddr);
+    network_manager_t network_manager {};
+    network_manager_init(&network_manager);
+    set_global_network_manager(&network_manager);
+    if (network_manager_configure(&network_manager)) {
+        kprintf("[ \033[92mOK\033[0m ] configured network manager\n");
+        printf("[ \033[92mOK\033[0m ] configured network manager\n");
+    } else {
+        kprintf("[ \033[91mERROR\033[0m ] failed to configure network manager\n");
+        printf("[ \033[91mERROR\033[0m ] failed to configure network manager\n");
+    }
 
     vfs_t vfs {};
     vfs_init(&vfs);
@@ -715,7 +540,7 @@ NORETURN void virtual_kernel_entry(multiboot_t* multiboot_struct, void* kernel_p
     //     return 0;
     // };
 
-    // vthread_create(net_test, p_kpml4);
+    // vthread_create(net_test, kernel_pt_paddr);
 
     // if (vthread_create(desktop_init, p_kpml4) == VTHREAD_HANDLE_INVALID)
     //     kprintf("failed to create desktop thread\n");
