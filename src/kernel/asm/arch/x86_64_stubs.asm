@@ -7,7 +7,7 @@ bits 64
 section .text
     ; c functions
     extern x86_64_int_handler
-    extern syscall_dispatch
+    extern x86_64_syscall_dispatch
 
     ; globals
     global x86_64_get_cpu_state
@@ -191,7 +191,7 @@ x86_64_syscall_handler:
     mov  rdi, rax
     mov  rsi, rsp
     sti
-    call syscall_dispatch
+    call x86_64_syscall_dispatch
     cli
 
     pop  r15

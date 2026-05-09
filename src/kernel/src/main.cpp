@@ -164,29 +164,6 @@ void init_pci_devices(const pci_device_t* device) {
     }
 };
 
-extern "C" uint64_t syscall_dispatch(uint64_t syscall_num, syscall_regs_t* regs) {
-    if (syscall_num == 0) {
-        kprintf("[ SYSCALL ] terminated process\n");
-        vthread_terminate();
-
-        // safetey catch
-        while (true);
-    }
-
-    switch (syscall_num) {
-        case 1: return (uint64_t)heap_alloc(&get_current_process()->heap, regs->rdi);
-        case 2: {
-            heap_free(&get_current_process()->heap, (void*)regs->rdi);
-            return 0;
-        }
-        default:
-            break;
-    }
-
-    kprintf("[ \033[91mSYSCALL\033[0m ] unhandled syscall = %ul\n", syscall_num);
-    return 0;
-}
-
 NORETURN void virtual_kernel_entry(multiboot_t* multiboot_struct, void* kernel_pt_vaddr) {
     // initialze vga text mode
     // TODO @since 10/10/2025 -- 01:24
