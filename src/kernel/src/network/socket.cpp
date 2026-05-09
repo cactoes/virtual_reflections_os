@@ -16,12 +16,13 @@ bool socket_receive(socket_protocol_t protocol, uint16_t dst_port, uint32_t src_
     return false;
 }
 
-void socket_bind(socket_t* socket) {
+bool socket_bind(socket_t* socket) {
     for (auto& s : global_sockets)
         if (socket->local_port == s->local_port && socket->protocol == s->protocol)
-            return;
+            return false;
 
     global_sockets.insert_back(socket);
+    return true;
 }
 
 bool socket_send(socket_t* socket, const uint8_t* data, size_t size) {

@@ -33,7 +33,7 @@ struct socket_t {
 
 bool socket_receive(socket_protocol_t protocol, uint16_t dst_port, uint32_t src_ip, uint16_t src_port, const uint8_t* data, size_t size);
 bool socket_send(socket_t* socket, const uint8_t* data, size_t size);
-void socket_bind(socket_t* socket);
+bool socket_bind(socket_t* socket);
 socket_t* socket_get(socket_protocol_t protocol, uint16_t dst_port);
 
 #endif // __SOCKET_HPP__
