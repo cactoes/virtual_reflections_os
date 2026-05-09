@@ -349,14 +349,6 @@ NORETURN void virtual_kernel_entry(multiboot_t* multiboot_struct, void* kernel_p
     //     }
     // }
 
-    // if (setup_network_functionality()) {
-    //     kprintf("[ \033[92mOK\033[0m ] initialized networking\n");
-    //     printf("[ \033[92mOK\033[0m ] initialized networking\n");
-    // } else {
-    //     kprintf("[ \033[91mERROR\033[0m ] failed to setup networking\n");
-    //     printf("[ \033[91mERROR\033[0m ] failed to setup networking\n");
-    // }
-
     // auto net_test = []() {
     //     auto tcp_callback = [](const uint8_t* data, size_t size) {
     //         char* str = (char*)malloc(size + 1);
