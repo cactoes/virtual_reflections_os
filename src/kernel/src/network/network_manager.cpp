@@ -196,7 +196,8 @@ bool network_manager_configure(network_manager_t* network_manager) {
     if (!network_manager->dhcp_client)
         return false;
 
-    network_manager->dhcp_socket = new socket_t {};
+    network_manager->dhcp_socket = (socket_t*)malloc(sizeof(socket_t));
+    memzero(network_manager->dhcp_socket, sizeof(socket_t));
     if (!network_manager->dhcp_socket)
         return false;
 
@@ -213,7 +214,8 @@ bool network_manager_configure(network_manager_t* network_manager) {
     if (!network_manager->dns_client)
         return false;
 
-    network_manager->dns_socket = new socket_t {};
+    network_manager->dns_socket = (socket_t*)malloc(sizeof(socket_t));
+    memzero(network_manager->dns_socket, sizeof(socket_t));
     if (!network_manager->dns_socket)
         return false;
 

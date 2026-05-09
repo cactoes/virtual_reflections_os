@@ -29,6 +29,8 @@ struct network_manager_t {
 network_manager_t* get_global_network_manager();
 void set_global_network_manager(network_manager_t* network_manager);
 
+// BUG @since 09/05/2026 -- 20:42
+// this function never has a cleanup version so sockets etc are leaked
 bool network_manager_init(network_manager_t* network_manager);
 
 bool network_manager_configre_interface(network_manager_t* network_manager, network_interface_t* interface);
