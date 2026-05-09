@@ -1,0 +1,36 @@
+@startuml network diagram
+title network diagram
+top to bottom direction
+
+component "Network Card" as nc
+
+node "Network Interface Controller" as nic
+
+database "Network Stack" as ns {
+    node ethernet
+    node arp
+    node ip
+    node icmp
+    node udp
+    node tcp
+    node socket
+}
+
+
+nc --> nic
+nic --> ethernet
+
+ethernet --> ip
+ethernet --> arp
+
+ip --> icmp
+ip --> udp
+ip --> tcp
+
+udp --> socket
+tcp --> socket
+
+socket --> dhcp
+socket --> dns
+
+@enduml
