@@ -24,6 +24,7 @@
 #include "filesystems/vfs.hpp"
 #include "std/pointer.hpp"
 #include "cpu.hpp"
+#include "process.hpp"
 
 typedef uint64_t vthread_handle_t;
 typedef int(*thread_entry_t)();
@@ -50,6 +51,9 @@ enum class vthread_state_t {
 struct vthread_t {
     // handle to thread
     vthread_handle_t handle;
+
+    // handle to parent process
+    process_t* parent;
     
     // state of thread
     vthread_state_t vt_state;
@@ -132,8 +136,8 @@ bool vthread_set_critical(vthread_handle_t handle, bool state = true);
 
 vthread_state_t vthread_get_state();
 
-critical_section_t enter_critical_section(bool wait_for_lock = true, bool can_fail = false);
-bool leave_critical_section(critical_section_t* section);
+// critical_section_t enter_critical_section(bool wait_for_lock = true, bool can_fail = false);
+// bool leave_critical_section(critical_section_t* section);
 
 bool vthread_add(std::unique_ptr<vthread_t> p_vthread);
 

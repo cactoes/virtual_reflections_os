@@ -217,6 +217,22 @@ void terminal_execute(const std::string& path, const std::dynamic_array<std::str
 
             break;
         }
+        case hash_fnv1a_64("start"): {
+            if (args.length() < 1) {
+                printf("No path given\n");
+                break;
+            }
+
+            auto arg0 = *args.get_at(0);
+
+            process_t* p = (process_t*)malloc(sizeof(process_t));
+            memzero(p, sizeof(process_t));
+            if (!create_process(p, arg0.c_str())) {
+                printf("Failed to start process\n");
+                free(p);
+            }
+            break;
+        }
         case hash_fnv1a_64("help"): {
             printf("help                           Displays this help message\n");
             printf("memstat                        Memory info\n");

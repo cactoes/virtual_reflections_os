@@ -63,8 +63,6 @@ void vthread_handle_stopping(vthread_t* p_vthread) {
 
     spinlock_lock((spinlock_t*)&global_thread_lock);
 
-    g_threads.remove(p_vthread->handle);
-
     if (p_vthread->stack_bottom_kernel)
         free_aligned(p_vthread->stack_bottom_kernel);
     else
@@ -74,6 +72,13 @@ void vthread_handle_stopping(vthread_t* p_vthread) {
         free_aligned(p_vthread->kstack);
 
     free_aligned(p_vthread->fpu_state);
+
+    // TODO @since 09/05/2026 -- 20:56
+    // properly free parent process
+    if (p_vthread->parent)
+        free(p_vthread->parent);
+
+    g_threads.remove(p_vthread->handle);
 
     spinlock_unlock((spinlock_t*)&global_thread_lock);
 }
@@ -216,6 +221,8 @@ interrupt_regs_t* vthread_schedule(interrupt_regs_t* p_cpu_state) {
             default: break;
         }
     } while (g_current_thread->vt_state != vthread_state_t::RUNNING);
+
+    set_current_process(g_current_thread->parent);
 
     set_pml4(g_current_thread->pml4);
     fpu_load(g_current_thread->fpu_state);
