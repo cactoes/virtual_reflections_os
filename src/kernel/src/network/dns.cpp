@@ -13,7 +13,7 @@ uint8_t* dns_encode_hostname(const char* hostname, size_t* size) {
         return nullptr;
 
     size_t hostname_length = strlen(hostname);
-    uint8_t* encoded_string = (uint8_t*)malloc(hostname_length + 1);
+    uint8_t* encoded_string = (uint8_t*)malloc(DNS_MAX_NAME_LENGTH + 1);
     if (!encoded_string)
         return nullptr;
 
@@ -94,6 +94,196 @@ uint8_t* dns_create_query_packet(const char* hostname, dns_query_type_t type, si
     return dns_query_packet;
 }
 
+char* dns_packet_decode_hostname(const uint8_t* src, size_t size, size_t& offset) {
+    if (!src || offset >= size)
+        return nullptr;
+
+    char* out = (char*)malloc(DNS_MAX_NAME_LENGTH + 1);
+    if (!out)
+        return nullptr;
+
+    size_t out_len = 0;
+
+    bool visited[DNS_MAX_NAME_LENGTH];
+    memzero(visited, sizeof(visited));
+
+    bool jumped = false;
+    size_t original_offset = offset;
+
+    size_t loops = DNS_MAX_NAME_LENGTH;
+
+    while (offset < size && loops-- > 0) {
+        uint8_t len = src[offset];
+
+        if (len == 0) {
+            offset++;
+            break;
+        }
+
+        uint8_t type = len & 0xC0;
+
+        if (type == 0xC0) {
+            if (offset + 1 >= size) {
+                free(out);
+                return nullptr;
+            }
+
+            uint16_t ptr =
+                ((uint16_t)(len & 0x3F) << 8) |
+                src[offset + 1];
+
+            if (ptr >= size) {
+                free(out);
+                return nullptr;
+            }
+
+            if (ptr < DNS_MAX_NAME_LENGTH) {
+                if (visited[ptr]) {
+                    free(out);
+                    return nullptr;
+                }
+                visited[ptr] = true;
+            }
+
+            if (!jumped) {
+                original_offset = offset + 2;
+                jumped = true;
+            }
+
+            offset = ptr;
+            continue;
+        }
+
+        if (type != 0x00) {
+            free(out);
+            return nullptr;
+        }
+
+        if (len > 63) {
+            free(out);
+            return nullptr;
+        }
+        offset++;
+
+        if (offset + len > size) {
+            free(out);
+            return nullptr;
+        }
+
+        if (out_len != 0) {
+            if (out_len + 1 >= DNS_MAX_NAME_LENGTH) {
+                free(out);
+                return nullptr;
+            }
+            out[out_len++] = '.';
+        }
+
+        if (out_len + len >= DNS_MAX_NAME_LENGTH) {
+            free(out);
+            return nullptr;
+        }
+        memcpy(out + out_len, src + offset, len);
+
+        out_len += len;
+        offset += len;
+    }
+
+    if (loops == 0) {
+        free(out);
+        return nullptr;
+    }
+    out[out_len] = '\0';
+
+    if (jumped)
+        offset = original_offset;
+
+    return out;
+}
+
+size_t dns_packet_hostname_encoded_length(const uint8_t* src, size_t size) {
+    if (!src || size == 0)
+        return 0;
+
+    size_t offset = 0;
+    size_t loops = DNS_MAX_NAME_LENGTH;
+
+    while (offset < size && loops-- > 0) {
+        uint8_t len = src[offset];
+
+        if (len == 0)
+            return offset + 1;
+
+        uint8_t type = len & 0xC0;
+
+        if (type == 0xC0) {
+            if (offset + 1 >= size)
+                return 0;
+
+            uint16_t ptr = ((uint16_t)(len & 0x3F) << 8) | src[offset + 1];
+
+            if (ptr >= size)
+                return 0;
+
+            return offset + 2;
+        }
+
+        if (type != 0x00)
+            return 0;
+
+        if (len > 63)
+            return 0;
+
+        offset++;
+
+        if (offset + len > size)
+            return 0;
+
+        offset += len;
+    }
+
+    return 0;
+}
+
+dns_client_t* dns_client_create() {
+    dns_client_t* client = new dns_client_t {};
+    mutex_init(&client->mutex);
+    client->cached_records = std::linear_map<uint64_t, dns_cache_record_t>{};
+    return client;
+}
+
+bool dns_client_destroy(dns_client_t* client) {
+    if (!client)
+        return false;
+
+    delete client;
+
+    return true;
+}
+
+bool dns_client_add_record(dns_client_t* client, char* hostname, uint32_t ip) {
+    if (!client || !hostname || ip == 0)
+        return false;
+
+    mutex_lock_guard guard(&client->mutex);
+    client->cached_records.insert(hash_fnv1a_64(hostname), dns_cache_record_t{
+        .ip = ip,
+        .hostname = hostname
+    });
+    return true;
+}
+
+const dns_cache_record_t* dns_client_get_record(dns_client_t* client, const char* hostname) {
+    if (!client || !hostname)
+        return nullptr;
+
+    mutex_lock_guard guard(&client->mutex);
+    auto it = client->cached_records.get(hash_fnv1a_64(hostname));
+    if (it == client->cached_records.end())
+        return nullptr;
+
+    return &it->value;
+}
+
 // void dns_client_init(dns_client_t* client) {
 //     client->records = std::linear_map<std::string, dns_cache_record_t>{};
 //     client->port = random_number(49152, 65535);
@@ -116,24 +306,6 @@ uint8_t* dns_create_query_packet(const char* hostname, dns_query_type_t type, si
 //         return &it->value;
 
 //     return nullptr;
-// }
-
-// std::dynamic_array<uint8_t> dns_encode_hostname(const std::string& hostname) {
-//     std::dynamic_array<uint8_t> output {};
-//     output.resize(hostname.length());
-
-//     std::dynamic_array<std::string> parts = str_split(hostname, '.');
-
-//     for (auto& part : parts) {
-//         output.insert_back((uint8_t)part.length());
-//         for (size_t i = 0; i < part.length(); i++) {
-//             output.insert_back((uint8_t)(part.c_str()[i]));
-//         }
-//     }
-
-//     output.insert_back(0);
-
-//     return output;
 // }
 
 // std::string dns_decode_hostname(const uint8_t* packet, size_t packet_size, size_t& offset) {
