@@ -8,6 +8,12 @@
 #ifndef __MULTIBOOT_HPP__
 #define __MULTIBOOT_HPP__
 
+#define MULTIBOOT2_FRAMEBUFFER_TYPE_INDEXED     0
+#define MULTIBOOT2_FRAMEBUFFER_TYPE_RGB         1
+#define MULTIBOOT2_FRAMEBUFFER_TYPE_EGA_TEXT    2
+
+#define MULTIBOOT2_FRAMEBUFFER_BPP_32BIT        32
+
 #define MULTIBOOT_MAGIC     0x2BADB002
 #define MULTIBOOT2_MAGIC    0x36D76289
 
@@ -54,14 +60,30 @@ struct multiboot1_info_t {
 struct multiboot2_tag_framebuffer_t {
     uint32_t type;
     uint32_t size;
+
     uint64_t framebuffer_addr;
     uint32_t framebuffer_pitch;
     uint32_t framebuffer_width;
     uint32_t framebuffer_height;
-    uint8_t  framebuffer_bpp;
-    uint8_t  framebuffer_type;
-    uint8_t  reserved;
-    // ... missing color info
+
+    uint8_t framebuffer_bpp;
+    uint8_t framebuffer_type;
+    uint16_t reserved;
+
+    union {      
+        struct {
+            uint32_t framebuffer_palette_num_colors;
+        } indexed;
+
+        struct {
+            uint8_t framebuffer_red_field_position;
+            uint8_t framebuffer_red_mask_size;
+            uint8_t framebuffer_green_field_position;
+            uint8_t framebuffer_green_mask_size;
+            uint8_t framebuffer_blue_field_position;
+            uint8_t framebuffer_blue_mask_size;
+        } rgb;
+    };
 } PACKED;
 
 struct multiboot2_mmap_entry_t {
@@ -142,5 +164,7 @@ multiboot1_mmap_entry_t* mb1_get_next_entry(multiboot_t* p_multiboot_struct, mul
 // NOT OPTIMIZED mb2 parsing
 const multiboot2_mmap_entry_t* mb2_get_first_entry(multiboot_t* multiboot_struct);
 const multiboot2_mmap_entry_t* mb2_get_next_entry(multiboot_t* multiboot_struct, const multiboot2_mmap_entry_t* prev);
+
+multiboot2_tag_framebuffer_t* mb2_get_framebuffer(multiboot_t* multiboot_struct);
 
 #endif // __MULTIBOOT_HPP__

@@ -76,3 +76,16 @@ const multiboot2_mmap_entry_t* mb2_get_next_entry(multiboot_t* multiboot_struct,
 
     return nullptr;
 }
+
+multiboot2_tag_framebuffer_t* mb2_get_framebuffer(multiboot_t* multiboot_struct) {
+    const multiboot2_info_t* mbi = (multiboot2_info_t*)multiboot_struct->info;
+
+    for (multiboot2_tag_t* tag = (multiboot2_tag_t*)mbi->tags; tag->type != 0; tag = (multiboot2_tag_t*)((uint64_t)tag + align_up(tag->size, 8))) {
+        if (tag->type != (uint32_t)multiboot_tag_type_t::FRAMEBUFFER)
+            continue;
+
+        return (multiboot2_tag_framebuffer_t*)tag;
+    }
+
+    return nullptr;
+}
