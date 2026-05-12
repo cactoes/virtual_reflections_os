@@ -178,6 +178,30 @@ NORETURN void virtual_kernel_entry(multiboot_t* multiboot_struct, void* kernel_p
     if (mb_has_valid_magic(multiboot_struct) != MULTIBOOT_VER2)
         kernel_fatal(KERNEL_FATAL_MULTIBOOT_MAGIC_VALIDATE, "multiboot was not the excpected version");
 
+    {
+        const multiboot2_info_t* mbi = (multiboot2_info_t*)multiboot_struct->info;
+    
+        for (multiboot2_tag_t* tag = (multiboot2_tag_t*)mbi->tags; tag->type != 0; tag = (multiboot2_tag_t*)((uint64_t)tag + align_up(tag->size, 8))) {
+            if (tag->type != (uint32_t)multiboot_tag_type_t::FRAMEBUFFER)
+                continue;
+
+            auto framebuffer_tag = (multiboot2_tag_framebuffer_t*)tag;
+            const size_t size_b = (framebuffer_tag->framebuffer_pitch * framebuffer_tag->framebuffer_height);
+            kprintf("buffer_size = %ul B\n", size_b);
+            kprintf("type = %ul\n", (uint64_t)framebuffer_tag->framebuffer_type);
+
+            void* mapped_framebuffer = (void*)malloc(align_up(size_b, PAGE_SIZE_LARGE));
+            for (size_t i = 0; i < align_up(size_b, PAGE_SIZE_LARGE); i += PAGE_SIZE_LARGE)
+                vmem_map_2mb(nullptr, (void*)((uint64_t)mapped_framebuffer + i), (void*)(framebuffer_tag->framebuffer_addr + i));
+
+            size_t x = 0;
+            size_t y = 0;
+
+            uint32_t* addr = (uint32_t*)mapped_framebuffer;
+            addr[y * (framebuffer_tag->framebuffer_pitch / 4) + x] = 0x00FF00FF;
+        }
+    }
+
     kprintf("[ \033[92mOK\033[0m ] multiboot validated\n");
     printf("[ \033[92mOK\033[0m ] multiboot validated\n");
 

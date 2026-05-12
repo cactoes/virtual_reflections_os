@@ -16,6 +16,17 @@ multiboot2_start:
     dd multiboot2_end - multiboot2_start
     dd -(0xE85250D6 + 0x0 + (multiboot2_end - multiboot2_start))
 
+align 8
+multiboot2_framebuffer_tag_start:
+    dw 5                         ; type = framebuffer
+    dw 0                         ; flags
+    dd multiboot2_framebuffer_tag_end - multiboot2_framebuffer_tag_start ; size
+    dd 0                      ; width (0 = no preference)
+    dd 0                      ; height (0 = no preference)
+    dd 32                        ; depth (bits per pixel, 0 = no preference)
+multiboot2_framebuffer_tag_end:
+
+align 8
     dw 0
     dw 0
     dd 8

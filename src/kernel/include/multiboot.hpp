@@ -51,6 +51,19 @@ struct multiboot1_info_t {
     uint32_t vbe_interface_len;
 } PACKED;
 
+struct multiboot2_tag_framebuffer_t {
+    uint32_t type;
+    uint32_t size;
+    uint64_t framebuffer_addr;
+    uint32_t framebuffer_pitch;
+    uint32_t framebuffer_width;
+    uint32_t framebuffer_height;
+    uint8_t  framebuffer_bpp;
+    uint8_t  framebuffer_type;
+    uint8_t  reserved;
+    // ... missing color info
+} PACKED;
+
 struct multiboot2_mmap_entry_t {
     uint64_t addr;
     uint64_t len;
@@ -107,6 +120,7 @@ enum class multiboot_flags_t : uint32_t {
 
 enum class multiboot_tag_type_t : uint32_t {
     MMAP = 6,
+    FRAMEBUFFER = 8,
 };
 
 /// @brief                          checks if the multiboot magic was valid
