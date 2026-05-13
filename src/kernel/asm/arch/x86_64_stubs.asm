@@ -152,11 +152,21 @@ x86_64_memcpy:
 ;==========================================
 align 32
 x86_64_memset:
-    push    rdi
+    mov     r8, rdi            ; preserve original ptr for return
+    movzx   eax, sil
+
+    ; expand byte to 64-bit pattern
+    imul    rax, 0x0101010101010101
+
     mov     rcx, rdx
-    movzx   rax, sil
-    rep     stosb
-    pop     rax
+    shr     rcx, 3             ; qword count
+    rep stosq
+
+    mov     rcx, rdx
+    and     rcx, 7             ; remaining bytes
+    rep stosb
+
+    mov     rax, r8
     ret
 
 ;==========================================
