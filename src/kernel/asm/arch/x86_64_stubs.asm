@@ -116,57 +116,245 @@ x86_64_get_cpu_state:
 ; @param rdx, in            length
 ; @remarks                  destroyed registers: ?
 ;==========================================
-align 32
-x86_64_memcpy:
-    mov     rax, rdi
+; Optimized memset with SSE2
+align 16
+x86_64_memset:
+    mov     rax, rdi                    ; Save destination for return
+    test    rdx, rdx                    ; Check if size is 0
+    jz      .done
+
+    ; Broadcast byte value to 64-bit
+    movzx   r8, sil
+    imul    r8, 0x0101010101010101      ; Broadcast to all 8 bytes
+    
+    cmp     rdx, 16
+    jb      .small_set
+
+    ; Broadcast to XMM register
+    movq    xmm0, r8
+    punpcklqdq xmm0, xmm0               ; Copy low 64 bits to high 64 bits
+
+    cmp     rdx, 128
+    jb      .sse_unaligned
+
+    ; Align to 16-byte boundary
+    mov     rcx, rdi
+    and     rcx, 15                     ; Get misalignment
+    jz      .sse_aligned                ; Already aligned
+    
+    mov     r9, 16
+    sub     r9, rcx                     ; Bytes needed to align
+    sub     rdx, r9                     ; Reduce total count
+    
+    ; Copy unaligned prefix byte by byte
+    mov     rax, r8
+.align_loop:
+    mov     [rdi], al
+    inc     rdi
+    dec     r9
+    jnz     .align_loop
+    
+    mov     rax, rdi                    ; Restore return value
+
+.sse_aligned:
+    ; Copy 128-byte blocks (8 x 16 bytes)
+    mov     rcx, rdx
+    shr     rcx, 7                      ; Number of 128-byte blocks
+    jz      .sse_remainder
+
+.sse_large_loop:
+    movdqa  [rdi], xmm0
+    movdqa  [rdi + 16], xmm0
+    movdqa  [rdi + 32], xmm0
+    movdqa  [rdi + 48], xmm0
+    movdqa  [rdi + 64], xmm0
+    movdqa  [rdi + 80], xmm0
+    movdqa  [rdi + 96], xmm0
+    movdqa  [rdi + 112], xmm0
+    
+    add     rdi, 128
+    dec     rcx
+    jnz     .sse_large_loop
+    
+    and     rdx, 127                    ; Remaining bytes
+
+.sse_remainder:
+.sse_unaligned:
+    ; Copy 16-byte blocks
+    mov     rcx, rdx
+    shr     rcx, 4                      ; Number of 16-byte blocks
+    jz      .tail
+
+.sse_loop:
+    movdqu  [rdi], xmm0
+    add     rdi, 16
+    dec     rcx
+    jnz     .sse_loop
+    
+    and     rdx, 15                     ; Remaining bytes
+
+.tail:
     test    rdx, rdx
     jz      .done
-
+    
+    ; Copy remaining 8-byte chunks
     cmp     rdx, 8
-    jb      .tiny_copy
+    jb      .tail_small
+    
+    mov     [rdi], r8
+    add     rdi, 8
+    sub     rdx, 8
 
-    mov     rcx, rdx
-    shr     rcx, 3 
-    rep movsq
-    mov     rcx, rdx
-    and     rcx, 7
+.tail_small:
+    ; Copy remaining 1-7 bytes
+    test    rdx, rdx
     jz      .done
-    rep movsb
-    jmp     .done
-
-.tiny_copy:
     mov     rcx, rdx
-    rep movsb
+    mov     rax, r8
+    rep     stosb
+    jmp     .done_restore
 
+.small_set:
+    ; For small sizes (< 16 bytes)
+    cmp     rdx, 8
+    jb      .tiny_set
+    
+    mov     [rdi], r8
+    add     rdi, 8
+    sub     rdx, 8
+    
+.tiny_set:
+    test    rdx, rdx
+    jz      .done
+    mov     rcx, rdx
+    mov     rax, r8
+    rep     stosb
+    jmp     .done_restore
+
+.done_restore:
+    mov     rax, rdi
+    sub     rax, rdx                    ; Restore original destination
 .done:
     ret
 
-;==========================================
-; @function                 x86_64_memset
-; @brief                    set memory region
-; @param rdi, in            dst
-; @param rsi, in            value
-; @param rdx, in            length
-; @return rax               ?
-; @remarks                  destroyed registers: ?
-;==========================================
-align 32
-x86_64_memset:
-    mov     r8, rdi            ; preserve original ptr for return
-    movzx   eax, sil
+; Optimized memcpy with SSE2
+align 16
+x86_64_memcpy:
+    mov     rax, rdi                    ; Save destination for return
+    test    rdx, rdx
+    jz      .done
+    
+    cmp     rdx, 16
+    jb      .small_copy
 
-    ; expand byte to 64-bit pattern
-    imul    rax, 0x0101010101010101
+    cmp     rdx, 128
+    jb      .sse_unaligned
 
+    ; Align destination to 16-byte boundary
+    mov     rcx, rdi
+    and     rcx, 15
+    jz      .sse_aligned
+    
+    mov     r8, 16
+    sub     r8, rcx
+    sub     rdx, r8
+    
+    ; Copy unaligned prefix
+.align_loop:
+    mov     cl, [rsi]
+    mov     [rdi], cl
+    inc     rsi
+    inc     rdi
+    dec     r8
+    jnz     .align_loop
+
+.sse_aligned:
+    ; Copy 128-byte blocks with aligned stores
     mov     rcx, rdx
-    shr     rcx, 3             ; qword count
-    rep stosq
+    shr     rcx, 7
+    jz      .sse_remainder
 
+.sse_large_loop:
+    movdqu  xmm0, [rsi]
+    movdqu  xmm1, [rsi + 16]
+    movdqu  xmm2, [rsi + 32]
+    movdqu  xmm3, [rsi + 48]
+    movdqu  xmm4, [rsi + 64]
+    movdqu  xmm5, [rsi + 80]
+    movdqu  xmm6, [rsi + 96]
+    movdqu  xmm7, [rsi + 112]
+    
+    movdqa  [rdi], xmm0                 ; Aligned stores
+    movdqa  [rdi + 16], xmm1
+    movdqa  [rdi + 32], xmm2
+    movdqa  [rdi + 48], xmm3
+    movdqa  [rdi + 64], xmm4
+    movdqa  [rdi + 80], xmm5
+    movdqa  [rdi + 96], xmm6
+    movdqa  [rdi + 112], xmm7
+    
+    add     rsi, 128
+    add     rdi, 128
+    dec     rcx
+    jnz     .sse_large_loop
+    
+    and     rdx, 127
+
+.sse_remainder:
+.sse_unaligned:
+    ; Copy 16-byte blocks
     mov     rcx, rdx
-    and     rcx, 7             ; remaining bytes
-    rep stosb
+    shr     rcx, 4
+    jz      .tail
 
-    mov     rax, r8
+.sse_loop:
+    movdqu  xmm0, [rsi]
+    movdqu  [rdi], xmm0
+    add     rsi, 16
+    add     rdi, 16
+    dec     rcx
+    jnz     .sse_loop
+    
+    and     rdx, 15
+
+.tail:
+    test    rdx, rdx
+    jz      .done
+    
+    ; Copy remaining 8-byte chunks
+    cmp     rdx, 8
+    jb      .tail_small
+    
+    mov     rcx, [rsi]
+    mov     [rdi], rcx
+    add     rsi, 8
+    add     rdi, 8
+    sub     rdx, 8
+
+.tail_small:
+    test    rdx, rdx
+    jz      .done
+    mov     rcx, rdx
+    rep     movsb
+    jmp     .done
+
+.small_copy:
+    ; For small copies (< 16 bytes)
+    cmp     rdx, 8
+    jb      .tiny_copy
+    
+    mov     rcx, rdx
+    shr     rcx, 3
+    rep     movsq
+    
+    and     rdx, 7
+    jz      .done
+
+.tiny_copy:
+    mov     rcx, rdx
+    rep     movsb
+
+.done:
     ret
 
 ;==========================================
