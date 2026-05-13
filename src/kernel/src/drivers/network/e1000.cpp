@@ -99,7 +99,9 @@ int e1000_transmit_init(e1000_t* p_device) {
     return 0;
 }
 
-void e1000_recieve_packet(e1000_t* p_device) {
+// BUG @since 13/05/2026 -- 20:14
+// DISABLE_SSE is a temp fix for some sse2 bug
+DISABLE_SSE void e1000_recieve_packet(e1000_t* p_device) {
     // get current desc
     e1000_rdesc_t* desc = &p_device->rdesc_array[p_device->rx_tail];
 
@@ -108,7 +110,8 @@ void e1000_recieve_packet(e1000_t* p_device) {
         uint8_t* packet = p_device->rdesc_buffer_array + (p_device->rx_tail * E1000_BUFFER_SIZE);
         size_t length = desc->length;
 
-        network_packet_t network_packet{};
+        
+        network_packet_t network_packet {};
         network_packet.interface = nic_get_interface_from_device(get_global_nic(), p_device);
         network_packet.data = (uint8_t*)malloc(length);
         memcpy(network_packet.data, packet, length);
