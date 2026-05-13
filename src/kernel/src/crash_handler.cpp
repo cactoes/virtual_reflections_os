@@ -118,29 +118,29 @@ void kernel_fatal_internal(uint64_t code, const char* message, interrupt_regs_t*
     }
 
     // assume we are still in vga text mode
-    vga_tm_color_map_t color_default {};
-    color_default.foreground = vga_tm_color_t::WHITE;
-    color_default.background = vga_tm_color_t::BLACK;
+    // vga_tm_color_map_t color_default {};
+    // color_default.foreground = vga_tm_color_t::WHITE;
+    // color_default.background = vga_tm_color_t::BLACK;
 
-    vga_tm_color_map_t color_highlight {};
-    color_highlight.foreground = vga_tm_color_t::BLACK;
-    color_highlight.background = vga_tm_color_t::WHITE;
+    // vga_tm_color_map_t color_highlight {};
+    // color_highlight.foreground = vga_tm_color_t::BLACK;
+    // color_highlight.background = vga_tm_color_t::WHITE;
 
-    vga_tm_set_color(&g_vga_tm_buffer, &color_default);
-    vga_tm_clear_buffer(&g_vga_tm_buffer);
+    // vga_tm_set_color(&g_vga_tm_buffer, &color_default);
+    // vga_tm_clear_buffer(&g_vga_tm_buffer);
 
-    vga_tm_set_cursor(&g_vga_tm_buffer, 27, 2);
-    vga_tm_puts_color(&g_vga_tm_buffer, &color_highlight, " Corrupted Beyond Repair ");
+    // vga_tm_set_cursor(&g_vga_tm_buffer, 27, 2);
+    // vga_tm_puts_color(&g_vga_tm_buffer, &color_highlight, " Corrupted Beyond Repair ");
 
-    vga_tm_set_cursor(&g_vga_tm_buffer, 0, 5);
-    vga_tm_puts(&g_vga_tm_buffer, "        The system encounterd a critical error.\n");
-    vga_tm_puts(&g_vga_tm_buffer, "        Immediate recovery is not possible.\n\n");
-    vga_tm_puts(&g_vga_tm_buffer, "        Additional diagnostic information generated (if available).\n");
-    vga_tm_puts(&g_vga_tm_buffer, "        A system reboot is required.\n\n");
+    // vga_tm_set_cursor(&g_vga_tm_buffer, 0, 5);
+    // vga_tm_puts(&g_vga_tm_buffer, "        The system encounterd a critical error.\n");
+    // vga_tm_puts(&g_vga_tm_buffer, "        Immediate recovery is not possible.\n\n");
+    // vga_tm_puts(&g_vga_tm_buffer, "        Additional diagnostic information generated (if available).\n");
+    // vga_tm_puts(&g_vga_tm_buffer, "        A system reboot is required.\n\n");
     
-    char buffer[256] {};
-    sprintf(buffer, 256, "        Stop code: 0x%uh. ", code);
-    vga_tm_puts(&g_vga_tm_buffer, buffer);
+    // char buffer[256] {};
+    // sprintf(buffer, 256, "        Stop code: 0x%uh. ", code);
+    // vga_tm_puts(&g_vga_tm_buffer, buffer);
 
     // reboot?
 
