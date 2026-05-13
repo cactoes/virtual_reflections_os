@@ -111,3 +111,45 @@ bool framebuffer_write_square(framebuffer_t* framebuffer, size_t x, size_t y, si
 
     return true;
 }
+
+bool framebuffer_move_square(framebuffer_t* framebuffer, size_t x, size_t y, size_t w, size_t h, size_t nx, size_t ny) {
+    if (!framebuffer || !framebuffer->address)
+        return false;
+
+    if (x + w > framebuffer->width ||
+        y + h > framebuffer->height ||
+        nx + w > framebuffer->width ||
+        ny + h > framebuffer->height)
+        return false;
+
+    uint32_t* temp = (uint32_t*)malloc(w * h * sizeof(uint32_t));
+    if (!temp)
+        return false;
+
+    for (size_t row = 0; row < h; row++) {
+        memcpy(
+            &temp[row * w],
+            &framebuffer->address[(y + row) * framebuffer->caluclated_pitch + x],
+            w * sizeof(uint32_t)
+        );
+    }
+
+    for (size_t row = 0; row < h; row++) {
+        memset(
+            &framebuffer->address[(y + row) * framebuffer->caluclated_pitch + x],
+            0,
+            w * sizeof(uint32_t)
+        );
+    }
+
+    for (size_t row = 0; row < h; row++) {
+        memcpy(
+            &framebuffer->address[(ny + row) * framebuffer->caluclated_pitch + nx],
+            &temp[row * w],
+            w * sizeof(uint32_t)
+        );
+    }
+
+    free(temp);
+    return true;
+}

@@ -46,4 +46,6 @@ bool framebuffer_write_linev(framebuffer_t* framebuffer, size_t x, size_t y, siz
 bool framebuffer_write_square(framebuffer_t* framebuffer, size_t x, size_t y, size_t w, size_t h, uint8_t r, uint8_t g, uint8_t b, uint8_t a = 255);
 bool framebuffer_write_square(framebuffer_t* framebuffer, size_t x, size_t y, size_t w, size_t h, uint32_t color);
 
+bool framebuffer_move_square(framebuffer_t* framebuffer, size_t x, size_t y, size_t w, size_t h, size_t nx, size_t ny);
+
 #endif // __FRAMEBUFFER_HPP__
