@@ -34,6 +34,7 @@
 #define NAKED               __attribute__((naked))
 #define ALIGNED(x)          __attribute__((aligned(x)))
 #define USED                __attribute__((used))
+#define DISABLE_SSE         __attribute__((target("no-sse,no-sse2")))
 #define NODISCARD           [[nodiscard]]
 #define NORETURN            [[noreturn]]
 #define UNUSED_PARAM        [[maybe_unused]]
