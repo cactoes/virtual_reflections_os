@@ -122,6 +122,7 @@ namespace vga_gm_draw {
     bool lineh(vga_buffer_t* p_back_buffer, uint64_t x, uint64_t y, size_t len, vga_gm_color_index_t color_index);
     bool linev(vga_buffer_t* p_back_buffer, uint64_t x, uint64_t y, size_t len, vga_gm_color_index_t color_index);
     bool square(vga_buffer_t* p_back_buffer, uint64_t x, uint64_t y, size_t w, size_t h, vga_gm_color_index_t color_index);
+    bool move_square(vga_buffer_t* p_back_buffer, uint64_t x, uint64_t y, size_t w, size_t h, size_t nx, size_t ny);
     bool clear(vga_buffer_t* p_back_buffer, vga_gm_color_index_t color_index);
 } // namespace 
 

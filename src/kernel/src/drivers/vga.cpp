@@ -323,6 +323,27 @@ bool vga_gm_draw::square(vga_buffer_t* p_back_buffer, uint64_t x, uint64_t y, si
     return true;
 }
 
+bool vga_gm_draw::move_square(vga_buffer_t* p_back_buffer, uint64_t x, uint64_t y, size_t w, size_t h, size_t nx, size_t ny) {
+    if (!IS_VALID_BUFFER(p_back_buffer))
+        return false;
+
+    if (x + w > VGA_GM_BUFFER_WIDTH ||
+        y + h > VGA_GM_BUFFER_HEIGHT ||
+        nx + w > VGA_GM_BUFFER_WIDTH ||
+        ny + h > VGA_GM_BUFFER_HEIGHT)
+        return false;
+
+    uint8_t* temp = (uint8_t*)malloc(w * h);
+    if (!temp)
+        return false;
+
+    memcpy(temp, &p_back_buffer->buffer[y * VGA_GM_BUFFER_WIDTH + x], w * h);
+    memset(&p_back_buffer->buffer[y * VGA_GM_BUFFER_WIDTH + x], (uint8_t)vga_gm_color_index_t::BLACK, w * h);
+    memcpy(&p_back_buffer->buffer[ny * VGA_GM_BUFFER_WIDTH + nx], temp, w * h);
+
+    return true;
+}
+
 bool vga_gm_draw::clear(vga_buffer_t* p_back_buffer, vga_gm_color_index_t color_index) {
     if (!IS_VALID_BUFFER(p_back_buffer))
         return false;
