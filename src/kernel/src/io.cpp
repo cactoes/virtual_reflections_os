@@ -10,7 +10,9 @@
 
 static uint64_t global_io_bitmap[1];
 
-#define TERM_FONT_SIZE 8
+#define TERM_SCALE              1.4f
+#define TERM_FONT_SIZE          8
+#define TERM_FONT_PX_SIZE       ((size_t)(TERM_FONT_SIZE * TERM_SCALE))
 
 struct test_terminal_t {
     color_t color;
@@ -29,17 +31,17 @@ struct test_terminal_t {
 void test_terminal_newline(test_terminal_t* term) {
     graphics_driver_t* gd = get_global_graphics_driver();
 
-    graphics_driver_draw_square(gd, term->cursor.x, term->cursor.y, TERM_FONT_SIZE, TERM_FONT_SIZE, { 0, 0, 0 });
+    graphics_driver_draw_square(gd, term->cursor.x, term->cursor.y, TERM_FONT_PX_SIZE, TERM_FONT_PX_SIZE, { 0, 0, 0 });
 
     term->cursor.x = 0;
 
-    if (term->cursor.y + TERM_FONT_SIZE < term->size.height - TERM_FONT_SIZE) {
-        term->cursor.y += TERM_FONT_SIZE;
+    if (term->cursor.y + TERM_FONT_PX_SIZE < term->size.height - TERM_FONT_PX_SIZE) {
+        term->cursor.y += TERM_FONT_PX_SIZE;
         return;
     }
 
-    graphics_driver_move_square(gd, 0, TERM_FONT_SIZE, term->size.width, (term->size.height / TERM_FONT_SIZE - 1) * TERM_FONT_SIZE, 0, 0);
-    graphics_driver_draw_square(gd, 0, (term->size.height / TERM_FONT_SIZE - 1) * TERM_FONT_SIZE, term->size.width, TERM_FONT_SIZE, { 0, 0, 0 });
+    graphics_driver_move_square(gd, 0, TERM_FONT_PX_SIZE, term->size.width, (term->size.height / TERM_FONT_PX_SIZE - 1) * TERM_FONT_PX_SIZE, 0, 0);
+    graphics_driver_draw_square(gd, 0, (term->size.height / TERM_FONT_PX_SIZE - 1) * TERM_FONT_PX_SIZE, term->size.width, TERM_FONT_PX_SIZE, { 0, 0, 0 });
 }
 
 bool test_terminal_putc(test_terminal_t* term, char ch) {
@@ -47,7 +49,7 @@ bool test_terminal_putc(test_terminal_t* term, char ch) {
     if (!term || !gd)
         return false;
 
-    if (term->cursor.x + TERM_FONT_SIZE >= term->size.width)
+    if (term->cursor.x + TERM_FONT_PX_SIZE >= term->size.width)
         test_terminal_newline(term);
 
     switch (ch) {
@@ -58,21 +60,23 @@ bool test_terminal_putc(test_terminal_t* term, char ch) {
             term->cursor.x = 0;
             break;
         case '\b':
-            if (term->cursor.x >= TERM_FONT_SIZE)
-                term->cursor.x -= TERM_FONT_SIZE;
-            graphics_driver_draw_character(gd, term->cursor.x, term->cursor.y, ' ', term->color, 1.f);
+            graphics_driver_draw_character(gd, term->cursor.x, term->cursor.y, ' ', term->color, TERM_SCALE);
+
+            if (term->cursor.x >= TERM_FONT_PX_SIZE)
+                term->cursor.x -= TERM_FONT_PX_SIZE;
+
             break;
         case '\t':
             for (size_t i = 0; i < 4; i++)
                 test_terminal_putc(term, ' ');
             break;
         default:
-            graphics_driver_draw_character(gd, term->cursor.x, term->cursor.y, ch, term->color, 1.f);
-            term->cursor.x += TERM_FONT_SIZE;
+            graphics_driver_draw_character(gd, term->cursor.x, term->cursor.y, ch, term->color, TERM_SCALE);
+            term->cursor.x += TERM_FONT_PX_SIZE;
             break;
     }
 
-    graphics_driver_draw_character(gd, term->cursor.x, term->cursor.y, '_', { 255, 255, 255 }, 1.f);
+    graphics_driver_draw_character(gd, term->cursor.x, term->cursor.y, '_', { 255, 255, 255 }, TERM_SCALE);
     return true;
 }
 
@@ -119,7 +123,7 @@ bool write_stream(io_stream_t stream, const char* str) {
         case io_stream_t::STD_OUT:
         case io_stream_t::STD_WRN: {
             if (!strff(str, '\033'))
-                return term_puts(&global_test_terminal, str) == 0;
+                return term_puts(&global_test_terminal, str);
 
             bool is_ansi_sequence = false;
             bool is_ansi_color_sequence = false;
