@@ -42,6 +42,8 @@ constexpr auto game_config = game_configs[current_config];
 static tile_t game_board[game_configs[current_config].size.width][game_configs[current_config].size.height] {};
 static bool is_game_running = false;
 
+extern color_t vga_to_rgb(vga_tm_color_t color);
+
 const uint8_t tile_empty[tile_size][tile_size] {
     8u, 8u, 8u, 8u, 8u, 8u, 8u, 8u, 8u, 8u,
     8u, 7u, 7u, 7u, 7u, 7u, 7u, 7u, 7u, 7u,
@@ -419,7 +421,7 @@ void tile_render(tile_t* tile, uint64_t offset_x, uint64_t offset_y, const uint8
         for (size_t y = 0; y < tile_size; y++)
             desktop_render_pixel(tile_size * tile->grid_x + offset_x + x,
                 tile_size * tile->grid_y + offset_y + y,
-                sprite[y][x]);
+                vga_to_rgb((vga_tm_color_t)sprite[y][x]));
 }
 
 void minesweeper_render_tile(tile_t* tile, uint64_t offset_x, uint64_t offset_y) {

@@ -20,6 +20,7 @@ enum class framebuffer_color_format_t {
 
 struct framebuffer_t {
     uint32_t* address;
+    uint32_t* back_buffer;
     size_t size;
 
     size_t width;
@@ -36,6 +37,7 @@ uint32_t framebuffer_format_color(framebuffer_t* framebuffer, uint8_t r, uint8_t
 bool framebuffer_init(framebuffer_t* framebuffer, framebuffer_color_format_t format, uint32_t* address, size_t size, size_t width, size_t height, size_t pitch);
 bool framebuffer_write_pixel(framebuffer_t* framebuffer, size_t x, size_t y, uint8_t r, uint8_t g, uint8_t b, uint8_t a = 255);
 bool framebuffer_write_pixel(framebuffer_t* framebuffer, size_t x, size_t y, uint32_t color);
+void framebuffer_write_pixel_raw(framebuffer_t* framebuffer, size_t x, size_t y, uint32_t color);
 
 bool framebuffer_write_lineh(framebuffer_t* framebuffer, size_t x, size_t y, size_t len, uint8_t r, uint8_t g, uint8_t b, uint8_t a = 255);
 bool framebuffer_write_lineh(framebuffer_t* framebuffer, size_t x, size_t y, size_t len, uint32_t color);
@@ -47,5 +49,7 @@ bool framebuffer_write_square(framebuffer_t* framebuffer, size_t x, size_t y, si
 bool framebuffer_write_square(framebuffer_t* framebuffer, size_t x, size_t y, size_t w, size_t h, uint32_t color);
 
 bool framebuffer_move_square(framebuffer_t* framebuffer, size_t x, size_t y, size_t w, size_t h, size_t nx, size_t ny);
+
+bool framebuffer_render(framebuffer_t* framebuffer);
 
 #endif // __FRAMEBUFFER_HPP__

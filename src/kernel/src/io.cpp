@@ -15,6 +15,7 @@ static uint64_t global_io_bitmap[1];
 #define TERM_FONT_PX_SIZE       ((size_t)(TERM_FONT_SIZE * TERM_SCALE))
 
 struct test_terminal_t {
+    bool enabled;
     color_t color;
 
     struct {
@@ -83,6 +84,7 @@ bool test_terminal_putc(test_terminal_t* term, char ch) {
 bool term_puts(test_terminal_t* term, const char* str) {
     while (*str)
         test_terminal_putc(term, *str++);
+    graphics_driver_render(get_global_graphics_driver());
     return true;
 }
 
@@ -91,7 +93,12 @@ bool io_term_init(size_t w, size_t h) {
     global_test_terminal.size.width = w;
     global_test_terminal.size.height = h;
     global_test_terminal.color = { 255, 255, 255 };
+    global_test_terminal.enabled = true;
     return true;
+}
+
+void io_term_disable() {
+    global_test_terminal.enabled = false;
 }
 
 constexpr color_t vga_to_rgb(vga_tm_color_t color) {
@@ -122,6 +129,9 @@ bool write_stream(io_stream_t stream, const char* str) {
         case io_stream_t::STD_ERR:
         case io_stream_t::STD_OUT:
         case io_stream_t::STD_WRN: {
+            if (!global_test_terminal.enabled)
+                return false;
+
             if (!strff(str, '\033'))
                 return term_puts(&global_test_terminal, str);
 
@@ -180,6 +190,7 @@ bool write_stream(io_stream_t stream, const char* str) {
 
                 test_terminal_putc(&global_test_terminal, ch);
             }
+            graphics_driver_render(get_global_graphics_driver());
             return true;
         }
         case io_stream_t::STD_DBG:

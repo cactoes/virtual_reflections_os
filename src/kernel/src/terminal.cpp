@@ -23,6 +23,8 @@
 static std::dynamic_array<char> terminal_current_input {};
 bool keep_terminal_alive = true;
 
+extern void io_term_disable();
+
 void terminal_execute(const std::string& path, const std::dynamic_array<std::string>& args) {
     switch (hash_fnv1a_64(path.c_str())) {
         case hash_fnv1a_64("memdump"): {
@@ -183,6 +185,7 @@ void terminal_execute(const std::string& path, const std::dynamic_array<std::str
         }
         case hash_fnv1a_64("gui"): {
             printf("Starting graphical environment ...\n");
+            io_term_disable();
             if (vthread_create(desktop_init, get_pml4()) == VTHREAD_HANDLE_INVALID)
                 printf("Failed start graphical environment\n");
 

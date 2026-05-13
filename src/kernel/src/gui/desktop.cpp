@@ -114,77 +114,44 @@ void desktop_init_hardware_handlers() {
     ps2_mouse_event_subscribe(desktop_handle_ps2_mouse_input);
 }
 
-vga_gm_color_index_t rgb_to_vga(const desktop_render_color_t& c) {
-    // *taken from the internet
-
-    static constexpr uint8_t s_palette[16][3] = {
-        {0x00, 0x00, 0x00}, {0x00, 0x00, 0xAA}, {0x00, 0xAA, 0x00}, {0x00, 0xAA, 0xAA},
-        {0xAA, 0x00, 0x00}, {0xAA, 0x00, 0xAA}, {0xAA, 0x55, 0x00}, {0xAA, 0xAA, 0xAA},
-        {0x55, 0x55, 0x55}, {0x55, 0x55, 0xFF}, {0x55, 0xFF, 0x55}, {0x55, 0xFF, 0xFF},
-        {0xFF, 0x55, 0x55}, {0xFF, 0x55, 0xFF}, {0xFF, 0xFF, 0x55}, {0xFF, 0xFF, 0xFF}
-    };
-
-    int best_dist = MAX_INT32;
-    vga_gm_color_index_t best = vga_gm_color_index_t::BLACK;
-
-    for (int i = 0; i < 16; i++) {
-        int dr = int(c.r) - int(s_palette[i][0]);
-        int dg = int(c.g) - int(s_palette[i][1]);
-        int db = int(c.b) - int(s_palette[i][2]);
-        int dist = dr*dr + dg*dg + db*db;
-
-        if (dist < best_dist) {
-            best_dist = dist;
-            best = (vga_gm_color_index_t)i;
-            if (dist == 0)
-                break;
-        }
+void desktop_render_clear_buffer() {
+    if (get_global_graphics_driver()->type == graphics_driver_type_t::FRAMEBUFFER) {
+        auto fb = get_global_graphics_driver()->framebuffer;
+    
+        memset(fb->back_buffer, 0, fb->size);
+    } else {
+        auto fb = get_global_graphics_driver()->vgabuffer;
+    
+        memset(fb->buffer, 0, fb->size.width * fb->size.height);
     }
-    return best;
 }
 
 void desktop_render_init() {
-    // initialize render buffer
-    g_desktop_back_buffer = (vga_buffer_t*)malloc(sizeof(vga_buffer_t));
-    vga_gm_buffer_create(desktop_render_get_buffer());
-
-    // initialize vga -> our render target
-    vga_gm_startup(desktop_render_get_buffer());
-
-    // start with someting clean
-    vga_gm_draw::clear(desktop_render_get_buffer(), vga_gm_color_index_t::BLACK);
-    vga_gm_render();
-}
-
-void desktop_render_clear_buffer() {
-    vga_gm_draw::clear(desktop_render_get_buffer(), vga_gm_color_index_t::BLACK);
+    desktop_render_clear_buffer();
 }
 
 void desktop_render_end() {
-    vga_gm_render();
+    graphics_driver_render(get_global_graphics_driver());
 }
 
-bool desktop_render_pixel(int x, int y, uint8_t vga_color_index) {
-    return vga_gm_draw::pixel(desktop_render_get_buffer(), x, y, (vga_gm_color_index_t)vga_color_index);
+bool desktop_render_pixel(int x, int y, const color_t& color) {
+    graphics_driver_draw_pixel_raw(get_global_graphics_driver(), x, y, color);
+    return true;
 }
 
-bool desktop_render_pixel(int x, int y, const desktop_render_color_t& color) {
-    return desktop_render_pixel(x, y, (uint8_t)rgb_to_vga(color));
+bool desktop_render_linev(int x, int y, size_t l, const color_t& color) {
+    return graphics_driver_draw_linev(get_global_graphics_driver(), x, y, l, color);
 }
 
-bool desktop_render_linev(int x, int y, size_t l, const desktop_render_color_t& color) {
-    return vga_gm_draw::linev(desktop_render_get_buffer(), x, y, l, rgb_to_vga(color));
+bool desktop_render_lineh(int x, int y, size_t l,const color_t& color) {
+    return graphics_driver_draw_lineh(get_global_graphics_driver(), x, y, l, color);
 }
 
-bool desktop_render_lineh(int x, int y, size_t l,const desktop_render_color_t& color) {
-    return vga_gm_draw::lineh(desktop_render_get_buffer(), x, y, l, rgb_to_vga(color));
+bool desktop_render_square(int x, int y, size_t w, size_t h, const color_t& color) {
+    return graphics_driver_draw_square(get_global_graphics_driver(), x, y, w, h, color);
 }
 
-bool desktop_render_square(int x, int y, size_t w, size_t h, const desktop_render_color_t& color) {
-    return vga_gm_draw::square(desktop_render_get_buffer(), x, y, w, h, rgb_to_vga(color));
-}
-
-bool desktop_render_char(int x, int y, char ch, const desktop_render_color_t& color) {
+bool desktop_render_char(int x, int y, char ch, const color_t& color) {
     if (ch < 0 || ch >= 128)
         ch = 128;
     
@@ -199,7 +166,7 @@ bool desktop_render_char(int x, int y, char ch, const desktop_render_color_t& co
     return true;
 }
 
-bool desktop_render_text(int x, int y, const char* str, const desktop_render_color_t& color) {
+bool desktop_render_text(int x, int y, const char* str, const color_t& color) {
     if (str == nullptr || !*str)
         return false;
 
@@ -239,7 +206,9 @@ void desktop_render_draw_cursor() {
 }
 
 void desktop_render_task_bar() {
-    desktop_render_square(0, VGA_GM_BUFFER_HEIGHT - 20, VGA_GM_BUFFER_WIDTH, 20, { 50, 50, 50 });
+    size_t w, h;
+    graphics_driver_get_size(get_global_graphics_driver(), &w, &h);
+    desktop_render_square(0, h - 20, w, 20, { 50, 50, 50 });
 }
 
 bool desktop_register_target(desktop_render_target_t p_target) {
@@ -392,7 +361,7 @@ void load_background() {
             desktop_render_pixel(
                 x,
                 y,
-                desktop_render_color_t{ .r = c.r, .g = c.g, .b = c.b }
+                { .r = c.r, .g = c.g, .b = c.b }
             );
         }
     }
@@ -412,17 +381,16 @@ int desktop_init() {
     desktop_event_subscribe(DESKTOP_EVENT_MOUSE_PRESSED, desktop_on_mouse_pressed);
     desktop_event_subscribe(DESKTOP_EVENT_MOUSE_MOVE, desktop_on_mouse_move);
 
-    // minesweeper_init();
+    minesweeper_init();
     // webbrowser_init();
 
-    load_background();
+    // load_background();
 
-    desktop_render_end();
+    // desktop_render_end();
 
-    while (1)
-    {
-    }
-    
+    // while (1)
+    // {
+    // }
 
     g_desktop_ready = true;
 
@@ -438,7 +406,11 @@ int desktop_init() {
             continue;
         }
 
+        uint64_t start = clock_get_time_since_boot();
+
         desktop_render_clear_buffer();
+
+        uint64_t after_clear = clock_get_time_since_boot();
 
         // render targets
         for (size_t i = 0; i < g_render_targets.length(); i++) {
@@ -447,11 +419,25 @@ int desktop_init() {
             desktop_render_window(&target);
         }
 
+        uint64_t after_targets = clock_get_time_since_boot();
+
         // render ui
         desktop_render_task_bar();
         desktop_render_draw_cursor();
 
+        uint64_t after_ui = clock_get_time_since_boot();
+
         desktop_render_end();
+
+        uint64_t end = clock_get_time_since_boot();
+
+        kprintf("Clear: %ulms, Targets: %ulms, UI: %ulms, End: %ulms, Total: %ulms\n",
+            after_clear - start,
+            after_targets - after_clear,
+            after_ui - after_targets,
+            end - after_ui,
+            end - start);
+
         g_last_tick = now;
     }
 

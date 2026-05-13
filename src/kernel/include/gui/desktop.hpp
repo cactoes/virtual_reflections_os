@@ -15,6 +15,7 @@
 
 #include "common.hpp"
 #include "std/string.hpp"
+#include "drivers/graphics/graphics_driver.hpp"
 
 struct desktop_render_target_t {
     typedef void(*callback_t)(uint64_t dt, uint64_t x, uint64_t y);
@@ -44,19 +45,14 @@ struct desktop_event_on_mouse_button_t {
     desktop_event_mouse_button_type_t key;
 };
 
-struct desktop_render_color_t {
-    uint8_t r, g, b;
-};
-
 int desktop_init();
 bool desktop_register_target(desktop_render_target_t p_target);
 
-bool desktop_render_pixel(int x, int y, const desktop_render_color_t& color);
-bool desktop_render_pixel(int x, int y, uint8_t vga_color_index);
-bool desktop_render_linev(int x, int y, size_t l, const desktop_render_color_t& color);
-bool desktop_render_lineh(int x, int y, size_t l,const desktop_render_color_t& color);
-bool desktop_render_square(int x, int y, size_t w, size_t h, const desktop_render_color_t& color);
-bool desktop_render_text(int x, int y, const char* str, const desktop_render_color_t& color);
+bool desktop_render_pixel(int x, int y, const color_t& color);
+bool desktop_render_linev(int x, int y, size_t l, const color_t& color);
+bool desktop_render_lineh(int x, int y, size_t l,const color_t& color);
+bool desktop_render_square(int x, int y, size_t w, size_t h, const color_t& color);
+bool desktop_render_text(int x, int y, const char* str, const color_t& color);
 
 bool desktop_event_subscribe(const char* p_name, void(*p_callback)(void*));
 

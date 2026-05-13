@@ -242,9 +242,7 @@ bool graphics_driver_draw_pixel(graphics_driver_t* graphics_driver, size_t x, si
         case graphics_driver_type_t::FRAMEBUFFER:
             return framebuffer_write_pixel(graphics_driver->framebuffer, x, y, color.r, color.g, color.b, color.a);
         case graphics_driver_type_t::VGA: 
-            if (!vga_gm_draw::pixel(graphics_driver->vgabuffer, x, y, rgb_to_vga(color)))
-                return false;
-            return vga_gm_render();
+            return vga_gm_draw::pixel(graphics_driver->vgabuffer, x, y, rgb_to_vga(color));
         default:
             return false;
     }
@@ -252,14 +250,19 @@ bool graphics_driver_draw_pixel(graphics_driver_t* graphics_driver, size_t x, si
     return false;
 }
 
+void graphics_driver_draw_pixel_raw(graphics_driver_t* graphics_driver, size_t x, size_t y, const color_t& color) {
+    if (graphics_driver->type == graphics_driver_type_t::FRAMEBUFFER)
+        framebuffer_write_pixel_raw(graphics_driver->framebuffer, x, y, framebuffer_format_color(graphics_driver->framebuffer, color.r, color.g, color.b, color.a));
+    else
+        vga_gm_draw::pixel(graphics_driver->vgabuffer, x, y, rgb_to_vga(color));
+}
+
 bool graphics_driver_draw_lineh(graphics_driver_t* graphics_driver, size_t x, size_t y, size_t len, const color_t& color) {
         switch (graphics_driver->type) {
         case graphics_driver_type_t::FRAMEBUFFER:
             return framebuffer_write_lineh(graphics_driver->framebuffer, x, y, len, color.r, color.g, color.b, color.a);
         case graphics_driver_type_t::VGA: 
-            if (!vga_gm_draw::lineh(graphics_driver->vgabuffer, x, y, len, rgb_to_vga(color)))
-                return false;
-            return vga_gm_render();
+            return vga_gm_draw::lineh(graphics_driver->vgabuffer, x, y, len, rgb_to_vga(color));
         default:
             return false;
     }
@@ -272,9 +275,7 @@ bool graphics_driver_draw_linev(graphics_driver_t* graphics_driver, size_t x, si
         case graphics_driver_type_t::FRAMEBUFFER:
             return framebuffer_write_linev(graphics_driver->framebuffer, x, y, len, color.r, color.g, color.b, color.a);
         case graphics_driver_type_t::VGA: 
-            if (!vga_gm_draw::linev(graphics_driver->vgabuffer, x, y, len, rgb_to_vga(color)))
-                return false;
-            return vga_gm_render();
+            return vga_gm_draw::linev(graphics_driver->vgabuffer, x, y, len, rgb_to_vga(color));
         default:
             return false;
     }
@@ -287,9 +288,7 @@ bool graphics_driver_draw_square(graphics_driver_t* graphics_driver, size_t x, s
         case graphics_driver_type_t::FRAMEBUFFER:
             return framebuffer_write_square(graphics_driver->framebuffer, x, y, w, h, color.r, color.g, color.b, color.a);
         case graphics_driver_type_t::VGA: 
-            if (!vga_gm_draw::square(graphics_driver->vgabuffer, x, y, w, h, rgb_to_vga(color)))
-                return false;
-            return vga_gm_render();
+            return vga_gm_draw::square(graphics_driver->vgabuffer, x, y, w, h, rgb_to_vga(color));
         default:
             return false;
     }
@@ -349,8 +348,36 @@ bool graphics_driver_move_square(graphics_driver_t* graphics_driver, size_t x, s
         case graphics_driver_type_t::FRAMEBUFFER:
             return framebuffer_move_square(graphics_driver->framebuffer, x, y, w, h, nx, ny);
         case graphics_driver_type_t::VGA: 
-            if (!vga_gm_draw::move_square(graphics_driver->vgabuffer, x, y, w, h, nx, ny))
-                return false;
+            return vga_gm_draw::move_square(graphics_driver->vgabuffer, x, y, w, h, nx, ny);
+        default:
+            return false;
+    }
+
+    return false;
+}
+
+bool graphics_driver_get_size(graphics_driver_t* graphics_driver, size_t* w, size_t* h) {
+    switch (graphics_driver->type) {
+        case graphics_driver_type_t::FRAMEBUFFER:
+            *w = graphics_driver->framebuffer->width;
+            *h = graphics_driver->framebuffer->height;
+            return true;
+        case graphics_driver_type_t::VGA: 
+            *w = graphics_driver->vgabuffer->size.width;
+            *h = graphics_driver->vgabuffer->size.height;
+            return true;
+        default:
+            return false;
+    }
+
+    return false;
+}
+
+bool graphics_driver_render(graphics_driver_t* graphics_driver) {
+    switch (graphics_driver->type) {
+        case graphics_driver_type_t::FRAMEBUFFER:
+            return framebuffer_render(graphics_driver->framebuffer);
+        case graphics_driver_type_t::VGA:
             return vga_gm_render();
         default:
             return false;

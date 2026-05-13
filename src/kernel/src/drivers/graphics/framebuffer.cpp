@@ -25,6 +25,7 @@ bool framebuffer_init(framebuffer_t* framebuffer, framebuffer_color_format_t for
         return false;
 
     framebuffer->address = address;
+    framebuffer->back_buffer = (uint32_t*)malloc(size);
     framebuffer->size = size;
     framebuffer->width = width;
     framebuffer->height = height;
@@ -40,15 +41,19 @@ bool framebuffer_write_pixel(framebuffer_t* framebuffer, size_t x, size_t y, uin
 }
 
 bool framebuffer_write_pixel(framebuffer_t* framebuffer, size_t x, size_t y, uint32_t color) {
-    if (!framebuffer || !framebuffer->address)
+    if (!framebuffer || !framebuffer->back_buffer)
         return false;
 
     if (x >= framebuffer->width || y >= framebuffer->height)
         return false;
 
-    framebuffer->address[y * framebuffer->caluclated_pitch + x] = color;
+    framebuffer->back_buffer[y * framebuffer->caluclated_pitch + x] = color;
 
     return true;
+}
+
+void framebuffer_write_pixel_raw(framebuffer_t* framebuffer, size_t x, size_t y, uint32_t color) {
+    framebuffer->back_buffer[y * framebuffer->caluclated_pitch + x] = color;
 }
 
 bool framebuffer_write_lineh(framebuffer_t* framebuffer, size_t x, size_t y, size_t len, uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
@@ -56,14 +61,14 @@ bool framebuffer_write_lineh(framebuffer_t* framebuffer, size_t x, size_t y, siz
 }
 
 bool framebuffer_write_lineh(framebuffer_t* framebuffer, size_t x, size_t y, size_t len, uint32_t color) {
-    if (!framebuffer || !framebuffer->address)
+    if (!framebuffer || !framebuffer->back_buffer)
         return false;
 
     if (x >= framebuffer->width || y >= framebuffer->height)
         return false;
 
     for (size_t i = x; i < x + len && i < framebuffer->width; i++)
-        framebuffer->address[y * framebuffer->caluclated_pitch + i] = color;
+        framebuffer->back_buffer[y * framebuffer->caluclated_pitch + i] = color;
 
     return true;
 }
@@ -73,14 +78,14 @@ bool framebuffer_write_linev(framebuffer_t* framebuffer, size_t x, size_t y, siz
 }
 
 bool framebuffer_write_linev(framebuffer_t* framebuffer, size_t x, size_t y, size_t len, uint32_t color) {
-    if (!framebuffer || !framebuffer->address)
+    if (!framebuffer || !framebuffer->back_buffer)
         return false;
 
     if (x >= framebuffer->width || y >= framebuffer->height)
         return false;
 
     for (size_t i = y; i < y + len && i < framebuffer->width; i++)
-        framebuffer->address[i * framebuffer->caluclated_pitch + x] = color;
+        framebuffer->back_buffer[i * framebuffer->caluclated_pitch + x] = color;
 
     return true;
 }
@@ -90,7 +95,7 @@ bool framebuffer_write_square(framebuffer_t* framebuffer, size_t x, size_t y, si
 }
 
 bool framebuffer_write_square(framebuffer_t* framebuffer, size_t x, size_t y, size_t w, size_t h, uint32_t color) {
-    if (!framebuffer || !framebuffer->address)
+    if (!framebuffer || !framebuffer->back_buffer)
         return false;
 
     if (x >= framebuffer->width || y >= framebuffer->height)
@@ -107,13 +112,13 @@ bool framebuffer_write_square(framebuffer_t* framebuffer, size_t x, size_t y, si
 
     for (size_t j = y; j < max_y; j++)
         for (size_t i = x; i < max_x; i++)
-            framebuffer->address[j * framebuffer->caluclated_pitch + i] = color;
+            framebuffer->back_buffer[j * framebuffer->caluclated_pitch + i] = color;
 
     return true;
 }
 
 bool framebuffer_move_square(framebuffer_t* framebuffer, size_t x, size_t y, size_t w, size_t h, size_t nx, size_t ny) {
-    if (!framebuffer || !framebuffer->address)
+    if (!framebuffer || !framebuffer->back_buffer)
         return false;
 
     if (x + w > framebuffer->width ||
@@ -129,14 +134,14 @@ bool framebuffer_move_square(framebuffer_t* framebuffer, size_t x, size_t y, siz
     for (size_t row = 0; row < h; row++) {
         memcpy(
             &temp[row * w],
-            &framebuffer->address[(y + row) * framebuffer->caluclated_pitch + x],
+            &framebuffer->back_buffer[(y + row) * framebuffer->caluclated_pitch + x],
             w * sizeof(uint32_t)
         );
     }
 
     for (size_t row = 0; row < h; row++) {
         memset(
-            &framebuffer->address[(y + row) * framebuffer->caluclated_pitch + x],
+            &framebuffer->back_buffer[(y + row) * framebuffer->caluclated_pitch + x],
             0,
             w * sizeof(uint32_t)
         );
@@ -144,12 +149,21 @@ bool framebuffer_move_square(framebuffer_t* framebuffer, size_t x, size_t y, siz
 
     for (size_t row = 0; row < h; row++) {
         memcpy(
-            &framebuffer->address[(ny + row) * framebuffer->caluclated_pitch + nx],
+            &framebuffer->back_buffer[(ny + row) * framebuffer->caluclated_pitch + nx],
             &temp[row * w],
             w * sizeof(uint32_t)
         );
     }
 
     free(temp);
+    return true;
+}
+
+bool framebuffer_render(framebuffer_t* framebuffer) {
+    if (!framebuffer)
+        return false;
+
+    memcpy(framebuffer->address, framebuffer->back_buffer, framebuffer->size);
+
     return true;
 }

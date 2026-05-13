@@ -169,12 +169,6 @@ void init_pci_devices(const pci_device_t* device) {
 extern bool io_term_init(size_t w, size_t h);
 
 NORETURN void virtual_kernel_entry(multiboot_t* multiboot_struct, void* kernel_pt_vaddr) {
-    // initialze vga text mode
-    // TODO @since 10/10/2025 -- 01:24
-    // vga (device) manager
-    // vga_tm_init_buffer(&g_vga_tm_buffer, (void*)VGA_TM_BUFFER_ADDR, VGA_TM_NUM_COLS, VGA_TM_NUM_ROWS);
-    // vga_tm_clear_buffer(&g_vga_tm_buffer);
-
     // initialze the debug out stream
     debug_init();
 
@@ -224,8 +218,8 @@ NORETURN void virtual_kernel_entry(multiboot_t* multiboot_struct, void* kernel_p
     set_global_graphics_driver(&gd);
     io_term_init(gd.framebuffer->width, gd.framebuffer->height);
 
-    kprintf("[ \033[92mOK\033[0m ] initialzed graphics driver\n");
-    printf("[ \033[92mOK\033[0m ] initialzed graphics driver\n");
+    kprintf("[ \033[92mOK\033[0m ] initialized graphics driver\n");
+    printf("[ \033[92mOK\033[0m ] initialized graphics driver\n");
 
     void* kernel_pt_paddr = vmem_virtual_to_physical(kernel_pt_vaddr);
 
