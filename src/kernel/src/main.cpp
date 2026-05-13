@@ -222,7 +222,7 @@ NORETURN void virtual_kernel_entry(multiboot_t* multiboot_struct, void* kernel_p
     graphics_driver_t gd {};
     graphics_driver_init(&gd, multiboot_struct);
     set_global_graphics_driver(&gd);
-    io_term_init(gd.framebuffer.width, gd.framebuffer.height);
+    io_term_init(gd.framebuffer->width, gd.framebuffer->height);
 
     kprintf("[ \033[92mOK\033[0m ] initialzed graphics driver\n");
     printf("[ \033[92mOK\033[0m ] initialzed graphics driver\n");
