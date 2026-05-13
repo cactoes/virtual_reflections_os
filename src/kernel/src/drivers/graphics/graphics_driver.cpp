@@ -142,13 +142,9 @@ framebuffer_color_format_t get_framebuffer_format(multiboot2_tag_framebuffer_t* 
     return framebuffer_color_format_t::UNKNOWN;
 }
 
-bool graphics_driver_init(graphics_driver_t* graphics_driver, multiboot_t* multiboot_struct) {
-    if (!graphics_driver || !multiboot_struct)
-        return false;
-
-    // TODO @since 13/05/2026 -- 01:03
-    // check if we also need to check multiboot struct here for correct version
-
+bool graphics_driver_init_framebuffer(graphics_driver_t* graphics_driver, multiboot_t* multiboot_struct) {
+    graphics_driver->type = graphics_driver_type_t::FRAMEBUFFER;
+    
     multiboot2_tag_framebuffer_t* framebuffer_tag = mb2_get_framebuffer(multiboot_struct);
     if (!framebuffer_tag)
         return false;
@@ -163,7 +159,9 @@ bool graphics_driver_init(graphics_driver_t* graphics_driver, multiboot_t* multi
     for (size_t i = 0; i < align_up(framebuffer_size, PAGE_SIZE_LARGE); i += PAGE_SIZE_LARGE)
         vmem_map_2mb(nullptr, (void*)((uint64_t)mapped_framebuffer + i), (void*)(framebuffer_tag->framebuffer_addr + i));
 
-    if (!framebuffer_init(&graphics_driver->framebuffer,
+    graphics_driver->framebuffer = (framebuffer_t*)malloc(sizeof(framebuffer_t));
+
+    if (!framebuffer_init(graphics_driver->framebuffer,
         format,
         (uint32_t*)mapped_framebuffer,
         framebuffer_size,
@@ -175,23 +173,128 @@ bool graphics_driver_init(graphics_driver_t* graphics_driver, multiboot_t* multi
     return true;
 }
 
+bool graphics_driver_init_vga(graphics_driver_t* graphics_driver, multiboot_t* multiboot_struct) {
+    graphics_driver->vgabuffer = (vga_buffer_t*)malloc(sizeof(vga_buffer_t));
+
+    graphics_driver->type = graphics_driver_type_t::VGA;
+
+    if (!vga_gm_buffer_create(graphics_driver->vgabuffer))
+        return false;
+
+    vga_gm_startup(graphics_driver->vgabuffer);
+
+    if (!vga_gm_draw::clear(graphics_driver->vgabuffer, vga_gm_color_index_t::BLACK))
+        return false;
+
+    return vga_gm_render();
+}
+
+bool graphics_driver_init(graphics_driver_t* graphics_driver, multiboot_t* multiboot_struct) {
+    if (!graphics_driver || !multiboot_struct)
+        return false;
+
+    if (graphics_driver_init_framebuffer(graphics_driver, multiboot_struct))
+        return true;
+
+    if (graphics_driver->framebuffer)
+        free(graphics_driver->framebuffer);
+
+    if (graphics_driver_init_vga(graphics_driver, multiboot_struct))
+        return true;
+
+    if (graphics_driver->vgabuffer)
+        free(graphics_driver->vgabuffer);
+
+    return false;
+}
+
+vga_gm_color_index_t rgb_to_vga(const color_t& c) {
+    // *taken from the internet
+
+    static constexpr uint8_t s_palette[16][3] = {
+        {0x00, 0x00, 0x00}, {0x00, 0x00, 0xAA}, {0x00, 0xAA, 0x00}, {0x00, 0xAA, 0xAA},
+        {0xAA, 0x00, 0x00}, {0xAA, 0x00, 0xAA}, {0xAA, 0x55, 0x00}, {0xAA, 0xAA, 0xAA},
+        {0x55, 0x55, 0x55}, {0x55, 0x55, 0xFF}, {0x55, 0xFF, 0x55}, {0x55, 0xFF, 0xFF},
+        {0xFF, 0x55, 0x55}, {0xFF, 0x55, 0xFF}, {0xFF, 0xFF, 0x55}, {0xFF, 0xFF, 0xFF}
+    };
+
+    int best_dist = MAX_INT32;
+    vga_gm_color_index_t best = vga_gm_color_index_t::BLACK;
+
+    for (int i = 0; i < 16; i++) {
+        int dr = int(c.r) - int(s_palette[i][0]);
+        int dg = int(c.g) - int(s_palette[i][1]);
+        int db = int(c.b) - int(s_palette[i][2]);
+        int dist = dr*dr + dg*dg + db*db;
+
+        if (dist < best_dist) {
+            best_dist = dist;
+            best = (vga_gm_color_index_t)i;
+            if (dist == 0)
+                break;
+        }
+    }
+    return best;
+}
+
 bool graphics_driver_draw_pixel(graphics_driver_t* graphics_driver, size_t x, size_t y, const color_t& color) {
-    return framebuffer_write_pixel(&graphics_driver->framebuffer, x, y, color.r, color.g, color.b, color.a);
+    switch (graphics_driver->type) {
+        case graphics_driver_type_t::FRAMEBUFFER:
+            return framebuffer_write_pixel(graphics_driver->framebuffer, x, y, color.r, color.g, color.b, color.a);
+        case graphics_driver_type_t::VGA: 
+            if (!vga_gm_draw::pixel(graphics_driver->vgabuffer, x, y, rgb_to_vga(color)))
+                return false;
+            return vga_gm_render();
+        default:
+            return false;
+    }
+
+    return false;
 }
 
 bool graphics_driver_draw_lineh(graphics_driver_t* graphics_driver, size_t x, size_t y, size_t len, const color_t& color) {
-    return framebuffer_write_lineh(&graphics_driver->framebuffer, x, y, len, color.r, color.g, color.b, color.a);
+        switch (graphics_driver->type) {
+        case graphics_driver_type_t::FRAMEBUFFER:
+            return framebuffer_write_lineh(graphics_driver->framebuffer, x, y, len, color.r, color.g, color.b, color.a);
+        case graphics_driver_type_t::VGA: 
+            if (!vga_gm_draw::lineh(graphics_driver->vgabuffer, x, y, len, rgb_to_vga(color)))
+                return false;
+            return vga_gm_render();
+        default:
+            return false;
+    }
+
+    return false;
 }
 
 bool graphics_driver_draw_linev(graphics_driver_t* graphics_driver, size_t x, size_t y, size_t len, const color_t& color) {
-    return framebuffer_write_linev(&graphics_driver->framebuffer, x, y, len, color.r, color.g, color.b, color.a);
+    switch (graphics_driver->type) {
+        case graphics_driver_type_t::FRAMEBUFFER:
+            return framebuffer_write_linev(graphics_driver->framebuffer, x, y, len, color.r, color.g, color.b, color.a);
+        case graphics_driver_type_t::VGA: 
+            if (!vga_gm_draw::linev(graphics_driver->vgabuffer, x, y, len, rgb_to_vga(color)))
+                return false;
+            return vga_gm_render();
+        default:
+            return false;
+    }
+
+    return false;
 }
 
 bool graphics_driver_draw_square(graphics_driver_t* graphics_driver, size_t x, size_t y, size_t w, size_t h, const color_t& color) {
-    if (!graphics_driver)
-        return false;
+    switch (graphics_driver->type) {
+        case graphics_driver_type_t::FRAMEBUFFER:
+            return framebuffer_write_square(graphics_driver->framebuffer, x, y, w, h, color.r, color.g, color.b, color.a);
+        case graphics_driver_type_t::VGA: 
+            if (!vga_gm_draw::square(graphics_driver->vgabuffer, x, y, w, h, rgb_to_vga(color)))
+                return false;
+            return vga_gm_render();
+        default:
+            return false;
+    }
 
-    return framebuffer_write_square(&graphics_driver->framebuffer, x, y, w, h, color.r, color.g, color.b, color.a);
+    return false;
 }
 
 bool graphics_driver_draw_character(graphics_driver_t* graphics_driver, size_t x, size_t y, char c, const color_t& color, float scale) {
@@ -216,9 +319,9 @@ bool graphics_driver_draw_character(graphics_driver_t* graphics_driver, size_t x
 
             if (row < 8 && col < 8) {
                 if (glyph[row] & (1 << col)) {
-                    framebuffer_write_pixel(&graphics_driver->framebuffer, x + px, y + py, color.r, color.g, color.b, color.a);
+                    graphics_driver_draw_pixel(graphics_driver, x + px, y + py, color);
                 } else {
-                    framebuffer_write_pixel(&graphics_driver->framebuffer, x + px, y + py, 0);
+                    graphics_driver_draw_pixel(graphics_driver, x + px, y + py, { 0, 0, 0 });
                 }
             }
         }
@@ -242,5 +345,16 @@ bool graphics_driver_draw_text(graphics_driver_t* graphics_driver, size_t x, siz
 }
 
 bool graphics_driver_move_square(graphics_driver_t* graphics_driver, size_t x, size_t y, size_t w, size_t h, size_t nx, size_t ny) {
-    return framebuffer_move_square(&graphics_driver->framebuffer, x, y, w, h, nx, ny);
+    switch (graphics_driver->type) {
+        case graphics_driver_type_t::FRAMEBUFFER:
+            return framebuffer_move_square(graphics_driver->framebuffer, x, y, w, h, nx, ny);
+        case graphics_driver_type_t::VGA: 
+            if (!vga_gm_draw::move_square(graphics_driver->vgabuffer, x, y, w, h, nx, ny))
+                return false;
+            return vga_gm_render();
+        default:
+            return false;
+    }
+
+    return false;
 }

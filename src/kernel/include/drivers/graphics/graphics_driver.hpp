@@ -10,7 +10,14 @@
 
 #include "common.hpp"
 #include "drivers/graphics/framebuffer.hpp"
+#include "drivers/vga.hpp"
 #include "multiboot.hpp"
+
+enum class graphics_driver_type_t {
+    UNKNOWN = 0,
+    VGA,
+    FRAMEBUFFER
+};
 
 struct color_t {
     uint8_t r, g, b;
@@ -18,7 +25,12 @@ struct color_t {
 };
 
 struct graphics_driver_t {
-    framebuffer_t framebuffer;
+    graphics_driver_type_t type;
+
+    union {
+        framebuffer_t* framebuffer;
+        vga_buffer_t* vgabuffer;
+    };
 };
 
 graphics_driver_t* get_global_graphics_driver();
