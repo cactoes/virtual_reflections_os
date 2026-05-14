@@ -399,7 +399,7 @@ NORETURN void virtual_kernel_entry(multiboot_t* multiboot_struct, void* kernel_p
 
     // we shoudn t reach this point since the kernel should never stop
     // incase we do just hang here so we dont break anything
-    while (true) vthread_sleep(1);
+    while (true) vthread_yield();
 }
 
 extern "C" void kernel_entry(void* multiboot_struct, void* kernel_page_table) {
