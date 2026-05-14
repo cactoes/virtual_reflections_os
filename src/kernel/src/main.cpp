@@ -133,6 +133,7 @@ void init_pci_devices(const pci_device_t* device) {
                     kprintf("[IDE] failed to mount drive: %s\n", name);
                 } else {
                     kprintf("[IDE] mounted: %s\n", name);
+                    printf("[IDE] mounted: %s\n", name);
                 }
             }
         } else {
@@ -155,6 +156,7 @@ void init_pci_devices(const pci_device_t* device) {
                     kprintf("failed to mount drive: %s\n", name);
                 } else {
                     kprintf("[AHCI] mounted: %s\n", name);
+                    printf("[AHCI] mounted: %s\n", name);
                 }
             }
         } else {
