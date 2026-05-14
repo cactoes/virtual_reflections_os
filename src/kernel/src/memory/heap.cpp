@@ -87,7 +87,7 @@ bool heap_expand(heap_t* p_heap, size_t size) {
         heap_block_filters::unused_block_filter
     };
     heap_block_t* blocks[HEAP_FILTERS_SIZE(filters)] = {};
-    
+
     int result = heap_filter_blocks(p_heap, HEAP_MAKE_FILTER_PARAM(size), filters, HEAP_FILTERS_SIZE(filters), blocks, HEAP_FILTERS_SIZE(filters));
 
     if (result != HEAP_FILTERS_SIZE(filters))
@@ -143,7 +143,7 @@ void* heap_alloc(heap_t* p_heap, size_t size) {
     // TODO @since 30/04/2025 -- 01:25
     // check this logic
     if (result != HEAP_FILTERS_SIZE(filters)) {
-        if (!heap_expand(p_heap, PAGE_SIZE_LARGE))
+        if (!heap_expand(p_heap, size))
             return nullptr;
 
         return heap_alloc(p_heap, size);
