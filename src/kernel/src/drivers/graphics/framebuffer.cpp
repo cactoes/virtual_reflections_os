@@ -163,7 +163,32 @@ bool framebuffer_render(framebuffer_t* framebuffer) {
     if (!framebuffer)
         return false;
 
-    memcpy(framebuffer->address, framebuffer->back_buffer, framebuffer->size);
+    void* dst = framebuffer->address;
+    void* src = framebuffer->back_buffer;
+
+    // memcpy(framebuffer->address, framebuffer->back_buffer, framebuffer->size);
+
+    asm volatile (
+        "movq %[size], %%rcx\n"
+        "shrq $6, %%rcx\n"
+        "1:\n"
+        "movdqa (%[src]), %%xmm0\n"
+        "movdqa 16(%[src]), %%xmm1\n"
+        "movdqa 32(%[src]), %%xmm2\n"
+        "movdqa 48(%[src]), %%xmm3\n"
+        "movntdq %%xmm0, (%[dst])\n"
+        "movntdq %%xmm1, 16(%[dst])\n"
+        "movntdq %%xmm2, 32(%[dst])\n"
+        "movntdq %%xmm3, 48(%[dst])\n"
+        "addq $64, %[src]\n"
+        "addq $64, %[dst]\n"
+        "decq %%rcx\n"
+        "jnz 1b\n"
+        "sfence\n"
+        : [src] "+r" (src), [dst] "+r" (dst)
+        : [size] "r" (framebuffer->size)
+        : "rcx", "xmm0", "xmm1", "xmm2", "xmm3", "memory"
+    );
 
     return true;
 }
