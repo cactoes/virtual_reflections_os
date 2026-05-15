@@ -109,7 +109,6 @@ DISABLE_SSE void e1000_recieve_packet(e1000_t* p_device) {
     while (desc->status & E1000_RDESC_STATUS_DONE) {
         uint8_t* packet = p_device->rdesc_buffer_array + (p_device->rx_tail * E1000_BUFFER_SIZE);
         size_t length = desc->length;
-
         
         network_packet_t network_packet {};
         network_packet.interface = nic_get_interface_from_device(get_global_nic(), p_device);
@@ -137,7 +136,7 @@ void e1000_enable_interrupts(e1000_t* p_device) {
 
     // enable interrupts
     uint32_t interrupt_mask = E1000_IMS_RXT0 | E1000_IMS_RXDMT0 | E1000_IMS_RXSEQ | E1000_IMS_LSC;
-    e1000_write_reg(p_device, E1000_IMS, interrupt_mask);;
+    e1000_write_reg(p_device, E1000_IMS, interrupt_mask);
 }
 
 int e1000_init_device(const pci_device_t* p_pcie_device, e1000_t* p_network_device) {
