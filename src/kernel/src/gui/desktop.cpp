@@ -272,6 +272,7 @@ void desktop_render_window(const desktop_render_target_t* target) {
 }
 
 #include "io.hpp"
+#include "arch/generic.hpp"
 
 struct bmp_file_header_t {
     uint8_t signature[2];
@@ -406,11 +407,9 @@ int desktop_init() {
             continue;
         }
 
-        uint64_t start = clock_get_time_since_boot();
+        cli();
 
         desktop_render_clear_buffer();
-
-        uint64_t after_clear = clock_get_time_since_boot();
 
         // render targets
         for (size_t i = 0; i < g_render_targets.length(); i++) {
@@ -419,24 +418,13 @@ int desktop_init() {
             desktop_render_window(&target);
         }
 
-        uint64_t after_targets = clock_get_time_since_boot();
-
         // render ui
         desktop_render_task_bar();
         desktop_render_draw_cursor();
 
-        uint64_t after_ui = clock_get_time_since_boot();
-
         desktop_render_end();
 
-        uint64_t end = clock_get_time_since_boot();
-
-        kprintf("Clear: %ulms, Targets: %ulms, UI: %ulms, End: %ulms, Total: %ulms\n",
-            after_clear - start,
-            after_targets - after_clear,
-            after_ui - after_targets,
-            end - after_ui,
-            end - start);
+        sti();
 
         g_last_tick = now;
     }
