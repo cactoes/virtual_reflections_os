@@ -13,13 +13,13 @@
 // NOLINTBEGIN
 namespace linker_variables {
 
-extern "C" uint64_t __lnk_end_kernel_phys;
+extern "C" uint64_t __lnk_kernel_end_physical;
 
 } // namespace __
 // NOLINTEND
 
 /// @brief variable placed at the end of the kernels physical address
-#define LINKER_END_KERNEL_PHYS ((uint64_t)&linker_variables::__lnk_end_kernel_phys)
+#define LINKER_END_KERNEL_PHYS ((uint64_t)&linker_variables::__lnk_kernel_end_physical)
 
 // not exported by linker, but it is defined there
 #define KERNEL_VIRTUAL_BASE 0xFFFFF80000000000ull

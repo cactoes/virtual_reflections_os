@@ -112,10 +112,10 @@ struct multiboot2_info_t {
     multiboot2_tag_t tags[];
 } PACKED;
 
-struct multiboot_t {
-    uint64_t magic;
-    void* info;
-};
+// struct multiboot_t {
+//     // uint64_t magic;
+//     void* info;
+// };
 
 enum class memory_map_type_t : uint32_t {
     UNKOWN           = 0,
@@ -148,23 +148,23 @@ enum class multiboot_tag_type_t : uint32_t {
 /// @brief                          checks if the multiboot magic was valid
 /// @param[in] multiboot_struct     pointer to mb struct
 /// @return                         1 for version 1, 2 for version 2, 0 for invalid
-int mb_has_valid_magic(multiboot_t* p_multiboot_struct);
+// int mb_has_valid_magic(multiboot_t* p_multiboot_struct);
 
 /// @brief                          helper for looping over mb entries
 /// @param[in] multiboot_struct     pointer to mb struct
 /// @return                         pointer to first entry
-multiboot1_mmap_entry_t* mb1_get_first_entry(multiboot_t* p_multiboot_struct);
+multiboot1_mmap_entry_t* mb1_get_first_entry(multiboot2_info_t* p_multiboot_struct);
 
 /// @brief                          helper for looping over mb entries
 /// @param[in] multiboot_struct     pointer to the mb struct
 /// @param[in] prev                 pointer to last mme
 /// @return                         pointer to next entry or nullptr if there are no more blocks
-multiboot1_mmap_entry_t* mb1_get_next_entry(multiboot_t* p_multiboot_struct, multiboot1_mmap_entry_t* p_prev);
+multiboot1_mmap_entry_t* mb1_get_next_entry(multiboot2_info_t* p_multiboot_struct, multiboot1_mmap_entry_t* p_prev);
 
 // NOT OPTIMIZED mb2 parsing
-const multiboot2_mmap_entry_t* mb2_get_first_entry(multiboot_t* multiboot_struct);
-const multiboot2_mmap_entry_t* mb2_get_next_entry(multiboot_t* multiboot_struct, const multiboot2_mmap_entry_t* prev);
+const multiboot2_mmap_entry_t* mb2_get_first_entry(multiboot2_info_t* multiboot_struct);
+const multiboot2_mmap_entry_t* mb2_get_next_entry(multiboot2_info_t* multiboot_struct, const multiboot2_mmap_entry_t* prev);
 
-multiboot2_tag_framebuffer_t* mb2_get_framebuffer(multiboot_t* multiboot_struct);
+multiboot2_tag_framebuffer_t* mb2_get_framebuffer(multiboot2_info_t* multiboot_struct);
 
 #endif // __MULTIBOOT_HPP__

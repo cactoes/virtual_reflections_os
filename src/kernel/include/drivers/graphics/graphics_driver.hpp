@@ -38,7 +38,7 @@ void set_global_graphics_driver(graphics_driver_t* graphics_driver);
 
 framebuffer_color_format_t get_framebuffer_format(multiboot2_tag_framebuffer_t* tag);
 
-bool graphics_driver_init(graphics_driver_t* graphics_driver, multiboot_t* multiboot_struct);
+bool graphics_driver_init(graphics_driver_t* graphics_driver, multiboot2_info_t* multiboot_struct);
 
 bool graphics_driver_draw_pixel(graphics_driver_t* graphics_driver, size_t x, size_t y, const color_t& color);
 void graphics_driver_draw_pixel_raw(graphics_driver_t* graphics_driver, size_t x, size_t y, const color_t& color);

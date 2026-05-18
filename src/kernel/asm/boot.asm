@@ -12,8 +12,8 @@ section .boot.text
     ; loader variables
     extern __lnk_bss_size
     extern __lnk_bss_start
-    extern __lnk_start_ctors
-    extern __lnk_end_ctors
+    extern __lnk_init_array_start
+    extern __lnk_init_array_end
     extern __end_bss_keep
 
     ; globals
@@ -39,9 +39,9 @@ memzero:
 ; @brief
 call_constructors:
     push    rbx
-    mov     rsi, qword __lnk_start_ctors
+    mov     rsi, qword __lnk_init_array_start
     .loop:
-        mov     rax, qword __lnk_end_ctors
+        mov     rax, qword __lnk_init_array_end
         cmp     rsi, rax
         jge     .done
         mov     rdi, [rsi]

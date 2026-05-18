@@ -1,15 +1,16 @@
-ENTRY(boot)
+ENTRY(entry)
 
 KERNEL_VIRTUAL_BASE = 0xFFFFF80000000000;
 
 SECTIONS {
     . = 0x100000;
 
-    .boot.multiboot : ALIGN(8) {
-        KEEP(*(.boot.multiboot))
+    .multiboot2 : ALIGN(8) {
+        KEEP(*(.multiboot2))
     }
 
     .boot : ALIGN(4K) {
+        KEEP(*(.multiboot1))
         *(.boot.text)
         *(.boot.rodata)
         *(.boot.data)
@@ -33,10 +34,10 @@ SECTIONS {
 
     .data : AT(ADDR(.data) - KERNEL_VIRTUAL_BASE) ALIGN(4K) {
         _data_start = .;
-        __lnk_init_array_start = .;
+        __lnk_start_ctors = .;
         KEEP(*(.init_array))
         KEEP(*(SORT_BY_INIT_PRIORITY(.init_array.*)))
-        __lnk_init_array_end = .;
+        __lnk_end_ctors = .;
         *(.data)
         *(.data.*)
         _data_end = .;
@@ -52,7 +53,7 @@ SECTIONS {
 
     __lnk_bss_size = __lnk_bss_end - __lnk_bss_start;
     __lnk_end_kernel = .;
-    __lnk_kernel_end_physical = __lnk_end_kernel - KERNEL_VIRTUAL_BASE;
+    __lnk_end_kernel_phys = __lnk_end_kernel - KERNEL_VIRTUAL_BASE;
 
     /DISCARD/ : {
         *(.fini_array*)

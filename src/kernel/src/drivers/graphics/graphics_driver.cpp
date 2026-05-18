@@ -142,7 +142,7 @@ framebuffer_color_format_t get_framebuffer_format(multiboot2_tag_framebuffer_t* 
     return framebuffer_color_format_t::UNKNOWN;
 }
 
-bool graphics_driver_init_framebuffer(graphics_driver_t* graphics_driver, multiboot_t* multiboot_struct) {
+bool graphics_driver_init_framebuffer(graphics_driver_t* graphics_driver, multiboot2_info_t* multiboot_struct) {
     graphics_driver->type = graphics_driver_type_t::FRAMEBUFFER;
     
     multiboot2_tag_framebuffer_t* framebuffer_tag = mb2_get_framebuffer(multiboot_struct);
@@ -173,7 +173,7 @@ bool graphics_driver_init_framebuffer(graphics_driver_t* graphics_driver, multib
     return true;
 }
 
-bool graphics_driver_init_vga(graphics_driver_t* graphics_driver, multiboot_t* multiboot_struct) {
+bool graphics_driver_init_vga(graphics_driver_t* graphics_driver, multiboot2_info_t* multiboot_struct) {
     graphics_driver->vgabuffer = (vga_buffer_t*)malloc(sizeof(vga_buffer_t));
 
     graphics_driver->type = graphics_driver_type_t::VGA;
@@ -189,7 +189,7 @@ bool graphics_driver_init_vga(graphics_driver_t* graphics_driver, multiboot_t* m
     return vga_gm_render();
 }
 
-bool graphics_driver_init(graphics_driver_t* graphics_driver, multiboot_t* multiboot_struct) {
+bool graphics_driver_init(graphics_driver_t* graphics_driver, multiboot2_info_t* multiboot_struct) {
     if (!graphics_driver || !multiboot_struct)
         return false;
 

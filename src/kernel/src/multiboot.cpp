@@ -1,17 +1,17 @@
 #include "multiboot.hpp"
 
-int mb_has_valid_magic(multiboot_t* p_multiboot_struct) {
-    if (p_multiboot_struct->magic == MULTIBOOT_MAGIC)
-        return MULTIBOOT_VER1;
+// int mb_has_valid_magic(multiboot2_info_t* p_multiboot_struct) {
+//     if (p_multiboot_struct->magic == MULTIBOOT_MAGIC)
+//         return MULTIBOOT_VER1;
 
-    if (p_multiboot_struct->magic == MULTIBOOT2_MAGIC)
-        return MULTIBOOT_VER2;
+//     if (p_multiboot_struct->magic == MULTIBOOT2_MAGIC)
+//         return MULTIBOOT_VER2;
 
-    return MULTIBOOT_VER_UNKOWN;
-}
+//     return MULTIBOOT_VER_UNKOWN;
+// }
 
-multiboot1_mmap_entry_t* mb1_get_first_entry(multiboot_t* p_multiboot_struct) {
-    const auto& mbi = (multiboot1_info_t*)p_multiboot_struct->info;
+multiboot1_mmap_entry_t* mb1_get_first_entry(multiboot2_info_t* p_multiboot_struct) {
+    const auto& mbi = (multiboot1_info_t*)p_multiboot_struct;
 
     if (!(mbi->flags & (uint32_t)multiboot_flags_t::MMAP))
         return nullptr;
@@ -24,8 +24,8 @@ multiboot1_mmap_entry_t* mb1_get_first_entry(multiboot_t* p_multiboot_struct) {
     return nullptr;
 }
 
-multiboot1_mmap_entry_t* mb1_get_next_entry(multiboot_t* p_multiboot_struct, multiboot1_mmap_entry_t* p_prev) {
-    const auto& mbi = (multiboot1_info_t*)p_multiboot_struct->info;
+multiboot1_mmap_entry_t* mb1_get_next_entry(multiboot2_info_t* p_multiboot_struct, multiboot1_mmap_entry_t* p_prev) {
+    const auto& mbi = (multiboot1_info_t*)p_multiboot_struct;
 
     const auto p_memory_map_entry = (multiboot1_mmap_entry_t*)((uint64_t)p_prev + p_prev->size + sizeof(p_prev->size));
 
@@ -35,8 +35,8 @@ multiboot1_mmap_entry_t* mb1_get_next_entry(multiboot_t* p_multiboot_struct, mul
     return nullptr;
 }
 
-const multiboot2_mmap_entry_t* mb2_get_first_entry(multiboot_t* multiboot_struct) {
-    const multiboot2_info_t* mbi = (multiboot2_info_t*)multiboot_struct->info;
+const multiboot2_mmap_entry_t* mb2_get_first_entry(multiboot2_info_t* multiboot_struct) {
+    const multiboot2_info_t* mbi = (multiboot2_info_t*)multiboot_struct;
     
     for (multiboot2_tag_t* tag = (multiboot2_tag_t*)mbi->tags; tag->type != 0 && tag->size != 8; tag = (multiboot2_tag_t*)((uint64_t)tag + align_up(tag->size, 8))) {
         if (tag->type != (uint32_t)multiboot_tag_type_t::MMAP)
@@ -49,8 +49,8 @@ const multiboot2_mmap_entry_t* mb2_get_first_entry(multiboot_t* multiboot_struct
     return nullptr;
 }
 
-const multiboot2_mmap_entry_t* mb2_get_next_entry(multiboot_t* multiboot_struct, const multiboot2_mmap_entry_t* prev) {
-    const multiboot2_info_t* mbi = (multiboot2_info_t*)multiboot_struct->info;
+const multiboot2_mmap_entry_t* mb2_get_next_entry(multiboot2_info_t* multiboot_struct, const multiboot2_mmap_entry_t* prev) {
+    const multiboot2_info_t* mbi = (multiboot2_info_t*)multiboot_struct;
     
     for (multiboot2_tag_t* tag = (multiboot2_tag_t*)mbi->tags; tag->type != 0 && tag->size != 8; tag = (multiboot2_tag_t*)((uint64_t)tag + align_up(tag->size, 8))) {
         if (tag->type != (uint32_t)multiboot_tag_type_t::MMAP)
@@ -77,8 +77,8 @@ const multiboot2_mmap_entry_t* mb2_get_next_entry(multiboot_t* multiboot_struct,
     return nullptr;
 }
 
-multiboot2_tag_framebuffer_t* mb2_get_framebuffer(multiboot_t* multiboot_struct) {
-    const multiboot2_info_t* mbi = (multiboot2_info_t*)multiboot_struct->info;
+multiboot2_tag_framebuffer_t* mb2_get_framebuffer(multiboot2_info_t* multiboot_struct) {
+    const multiboot2_info_t* mbi = (multiboot2_info_t*)multiboot_struct;
 
     for (multiboot2_tag_t* tag = (multiboot2_tag_t*)mbi->tags; tag->type != 0; tag = (multiboot2_tag_t*)((uint64_t)tag + align_up(tag->size, 8))) {
         if (tag->type != (uint32_t)multiboot_tag_type_t::FRAMEBUFFER)

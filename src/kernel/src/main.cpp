@@ -170,13 +170,9 @@ void init_pci_devices(const pci_device_t* device) {
 
 extern bool io_term_init(size_t w, size_t h);
 
-NORETURN void virtual_kernel_entry(multiboot_t* multiboot_struct, void* kernel_pt_vaddr) {
+extern "C" NORETURN void virtual_kernel_entry(multiboot2_info_t* multiboot_struct, void* kernel_pt_vaddr) {
     // initialze the debug out stream
     debug_init();
-
-    // validate multiboot
-    if (mb_has_valid_magic(multiboot_struct) != MULTIBOOT_VER2)
-        kernel_fatal(KERNEL_FATAL_MULTIBOOT_MAGIC_VALIDATE, "multiboot was not the excpected version");
 
     kprintf("[ \033[92mOK\033[0m ] multiboot validated\n");
     // printf("[ \033[92mOK\033[0m ] multiboot validated\n");
@@ -405,19 +401,19 @@ NORETURN void virtual_kernel_entry(multiboot_t* multiboot_struct, void* kernel_p
 }
 
 extern "C" void kernel_entry(void* multiboot_struct, void* kernel_page_table) {
-    vmem_recusive_map_page_table(kernel_page_table, kernel_page_table);
-    reload_page_table();
+    // vmem_recusive_map_page_table(kernel_page_table, kernel_page_table);
+    // reload_page_table();
 
-    uint64_t new_stack;
-    asm volatile (
-        "mov %%rsp, %0\n\t"
-        "add %1, %0\n\t"
-        "mov %0, %%rsp"
-        : "=&r"(new_stack)
-        : "r"(KERNEL_VIRTUAL_BASE)
-        : "memory"
-    );
+    // uint64_t new_stack;
+    // asm volatile (
+    //     "mov %%rsp, %0\n\t"
+    //     "add %1, %0\n\t"
+    //     "mov %0, %%rsp"
+    //     : "=&r"(new_stack)
+    //     : "r"(KERNEL_VIRTUAL_BASE)
+    //     : "memory"
+    // );
 
-    ((multiboot_t*)multiboot_struct)->info = (void*)PTOV_I(((multiboot_t*)multiboot_struct)->info);
-    virtual_kernel_entry((multiboot_t*)PTOV_I(multiboot_struct), (void*)PTOV_I(kernel_page_table));
+    // ((multiboot_t*)multiboot_struct)->info = (void*)PTOV_I(((multiboot_t*)multiboot_struct)->info);
+    // virtual_kernel_entry((multiboot_t*)PTOV_I(multiboot_struct), (void*)PTOV_I(kernel_page_table));
 }

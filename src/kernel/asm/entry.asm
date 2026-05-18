@@ -37,7 +37,7 @@ section .boot.text
     extern boot_kernel
 
     ; linker variables
-    extern __lnk_end_kernel_phys
+    extern __lnk_kernel_end_physical
 
     ; globals
     global entry
@@ -83,7 +83,7 @@ setup_page_tables:
     or      eax,            0b011
     mov     [ebx],          eax
 
-    mov     eax,            __lnk_end_kernel_phys
+    mov     eax,            __lnk_kernel_end_physical
     add     eax,            0x1FFFFF
     shr     eax,            21
     mov     ecx,            eax

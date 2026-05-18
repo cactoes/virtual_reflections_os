@@ -33,7 +33,7 @@ system_info_manager_t* get_global_system_info_manager();
 /// @brief                              parse memory size from the multiboot memory map
 /// @param[inout] system_info_manager   system info manager to store memory info
 /// @param[in] multiboot_struct         pointer to the multiboot structure
-void system_info_parse_memory_size(system_info_manager_t* system_info_manager, multiboot_t* multiboot_struct);
+void system_info_parse_memory_size(system_info_manager_t* system_info_manager, multiboot2_info_t* multiboot_struct);
 
 /// @brief                              parse system information from smbios tables
 /// @param[inout] system_info_manager   system info manager to store manufacturer, product, version & serial
