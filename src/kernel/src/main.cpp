@@ -1,5 +1,4 @@
 #include "arch/generic.hpp"
-#include "arch/pit.hpp"
 
 #include "drivers/vga.hpp"
 #include "drivers/pcie.hpp"
@@ -259,6 +258,8 @@ extern "C" NORETURN void virtual_kernel_entry(multiboot2_info_t* multiboot_struc
     kprintf("[ \033[92mOK\033[0m ] enabled virtual threading\n");
     printf("[ \033[92mOK\033[0m ] enabled virtual threading\n");
 
+    // TODO @since 19/05/2026 -- 16:28
+    // move this shit
     pit_add_interrupt_function(vthread_handle_interrupt);
 
     system_info_parse_system_information(get_global_system_info_manager());

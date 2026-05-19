@@ -37,4 +37,14 @@ struct interrupt_regs_t {
     u64 ss;
 } __attribute__((aligned(16), packed));
 
+struct syscall_regs_t {
+    u64 r15, r14, r13, r12, rbp, rbx, r10, r9, r8, rdx, rsi, rdi;
+    u64 r11, rcx;
+} __attribute__((aligned(16), packed));
+
+struct cpu_t {
+    u64 kernel_rsp;
+    u64 user_rsp;
+} __attribute__((packed));
+
 #endif // __AMD64_CPU_HPP__

@@ -71,7 +71,6 @@
 #define PI 3.14159265358979323846
 #define TWO_PI (2.0 * PI)
 
-
 // ? this needs to move to amd64 header
 #define RFLAGS_CF       (1 << 0)
 #define RFLAGS_PF       (1 << 2)

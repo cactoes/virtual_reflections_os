@@ -234,7 +234,7 @@ interrupt_regs_t* vthread_schedule(interrupt_regs_t* p_cpu_state) {
     if (g_current_thread->kstack) {
         auto kstack_top = (void*)((u64)g_current_thread->kstack + VTHREAD_STACK_SIZE);
         amd64_tss_set_stack_pointer0(amd64_get_tss(), kstack_top);
-        set_kernel_stack(get_current_cpu(), kstack_top);
+        cpu_set_kernel_stack(get_current_cpu(), kstack_top);
     } else {
         // gdt_set_stack_pointer0(g_current_thread->stack_bottom);
         // set_kernel_stack(get_current_cpu(), g_current_thread->stack_bottom);
@@ -249,6 +249,8 @@ interrupt_regs_t* vthread_schedule(interrupt_regs_t* p_cpu_state) {
 }
 
 void vthread_yield() {
+    // TODO @since 19/05/2026 -- 16:19
+    // add a platform based selector
     amd64_call_scheduler_interrupt();
 }
 
