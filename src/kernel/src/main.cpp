@@ -178,7 +178,7 @@ extern "C" NORETURN void virtual_kernel_entry(multiboot2_info_t* multiboot_struc
     // printf("[ \033[92mOK\033[0m ] multiboot validated\n");
 
     // initialize the gdt / tss
-    gdt_init();
+    // gdt_init();
 
     kprintf("[ \033[92mOK\033[0m ] installed gdt / tss\n");
     // printf("[ \033[92mOK\033[0m ] installed gdt / tss\n");
@@ -230,9 +230,9 @@ extern "C" NORETURN void virtual_kernel_entry(multiboot2_info_t* multiboot_struc
     interrupt_set_handler((void *(*)(uint64_t, void *))handle_interrupt);
     ps2_mouse_init();
     pit_init(PIT_TIMER_INTERVAL);
-    interrupt_init(gdt_get_kernel_code_selector());
+    interrupt_init(0x8); // gdt_get_kernel_code_selector
 
-    initialize_cpus();
+    // initialize_cpus();
 
     dma_heap_manager_t allocator {};
     set_global_dma_heap_manager(&allocator);

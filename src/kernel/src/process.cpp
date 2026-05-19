@@ -73,8 +73,8 @@ bool create_process(process_t* process, const char* path) {
 
     p_vthread->kstack = (void*)((uint64_t)malloc_aligned(PAGE_SIZE_LARGE, 16));
 
-    uint16_t user_ds = (uint16_t)((USER_DATA_SELECTOR_INDEX << 3) | 3);
-    uint16_t user_cs = (uint16_t)((USER_CODE_SELECTOR_INDEX << 3) | 3);
+    uint16_t user_ds = (uint16_t)((4 << 3) | 3); // USER_DATA_SELECTOR_INDEX
+    uint16_t user_cs = (uint16_t)((5 << 3) | 3); // USER_CODE_SELECTOR_INDEX
 
     uint64_t* stack_top = (uint64_t*)(((uint64_t)stack_user_v + PAGE_SIZE_LARGE - sizeof(interrupt_regs_t)) & ~0xF);
     uint64_t* mapped_stack_top = (uint64_t*)(((uint64_t)stack_kernel_v + PAGE_SIZE_LARGE - sizeof(interrupt_regs_t)) & ~0xF);

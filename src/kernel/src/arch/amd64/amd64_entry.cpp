@@ -4,6 +4,10 @@
 ///             duplicate defines are possible sinze we try to avoid imports
 //==========================================
 
+#include "arch/amd64/msr.hpp"
+#include "arch/amd64/gdt.hpp"
+#include "common2.hpp"
+
 /// @brief  generic defines
 #define PAGE_SIZE_LARGE             0x200000
 
@@ -14,8 +18,10 @@
 #define KERNEL_VIRTUAL_BASE_ADDRESS 0xFFFFF80000000000
 
 /// @brief  generic types
-typedef unsigned char       u8;
-typedef unsigned long long  u64;
+//
+
+extern "C" void virtual_kernel_entry(struct multiboot_t*, void*);
+extern "C" void amd64_syscall_stub();
 
 /// @brief  linker variables get placed here and the linter is disabled for them
 // NOLINTBEGIN
@@ -41,6 +47,15 @@ u8 page_table_l3_jmp[0x1000];
 /// @brief  page table level 2 for jumping to high memory, pd
 __attribute__((section(".boot.bss"), aligned(4096)))
 u8 page_table_l2_jmp[0x1000];
+
+__attribute__((section(".bss")))
+amd64_gdt_t gdt;
+
+__attribute__((section(".bss")))
+amd64_gdtr_t gdtr;
+
+__attribute__((section(".bss")))
+amd64_tss_t tss;
 
 /// @brief              local memzero define defined in boot text section
 /// @param[in] address  pointer to address to clear
@@ -75,7 +90,49 @@ void amd64_reload_page_table() {
     asm volatile("mov %%cr3, %%rax; mov %%rax, %%cr3" ::: "rax", "memory");
 }
 
-extern "C" void virtual_kernel_entry(struct multiboot_t*, void*);
+// TODO @since 19/05/2026 -- 01:41
+// move
+extern struct cpu_t* get_current_cpu();
+
+// TODO @since 19/05/2026 -- 01:57
+// move
+amd64_tss_t* amd64_get_tss() {
+    return &tss;
+}
+
+static
+__attribute__((section(".text")))
+void amd64_init_msr() {
+    u64 star = ((u64)(USER_CODE_32_SELECTOR_INDEX << 3) << 48)
+              | ((u64)(KERNEL_CODE_SELECTOR_INDEX << 3) << 32);
+
+    amd64_msr_enable_sce();
+    amd64_msr_set_star(star);
+    amd64_msr_set_lstar((void*)amd64_syscall_stub);
+    amd64_msr_set_sf_mask(RFLAGS_TF | RFLAGS_IF | RFLAGS_DF);
+    amd64_msr_set_gs_base(get_current_cpu());
+    amd64_msr_set_kernel_gs_base(nullptr);
+}
+
+static
+__attribute__((section(".text")))
+void amd64_init_gdt() {
+    amd64_gdt_init(&gdt);
+    amd64_gdt_set_entry(&gdt, &g_amd64_zero_entry, GDT_ZERO_ENTRY);
+    amd64_gdt_set_entry(&gdt, &g_amd64_kernel_64_code_entry, KERNEL_CODE_SELECTOR_INDEX);
+    amd64_gdt_set_entry(&gdt, &g_amd64_kernel_64_data_entry, KERNEL_DATA_SELECTOR_INDEX);
+    amd64_gdt_set_entry(&gdt, &g_amd64_user_32_code_entry, USER_CODE_32_SELECTOR_INDEX);
+    amd64_gdt_set_entry(&gdt, &g_amd64_user_64_data_entry, USER_DATA_SELECTOR_INDEX);
+    amd64_gdt_set_entry(&gdt, &g_amd64_user_64_code_entry, USER_CODE_SELECTOR_INDEX);
+    amd64_gdt_set_tss(&gdt, &tss);
+    amd64_gdtr_update(&gdtr, &gdt);
+
+    memzero(&tss, sizeof(amd64_tss_t));
+    tss.iomap_offset = sizeof(amd64_tss_t);
+
+    amd64_set_gdt(&gdtr);
+    amd64_load_tss(AMD64_GDT_INDEX_TO_ENTRY(AMD64_GDT_INDEX_TSS(GDT_ENTRY_COUNT)));
+}
 
 /// @brief                          amd64 boot entry, the assembly jumps to here to continue the setup
 /// @param[in] multiboot2_struct    pointer to the multiboot 2 structure
@@ -83,6 +140,15 @@ extern "C"
 __attribute__((section(".boot.text")))
 [[noreturn]]
 void amd64_entry(void* multiboot2_struct) {
+    // asm volatile (
+    //     "mov   $0,    %%ax\n"
+    //     "mov   %%ax,  %%ss\n"
+    //     "mov   %%ax,  %%ds\n"
+    //     "mov   %%ax,  %%es\n"
+    //     "mov   %%ax,  %%fs\n"
+    //     "mov   %%ax,  %%gs\n"
+    //     ::: "ax", "memory"
+    // );
 
     // recursively map the page table
     ((u64*)&linker_variables::page_table_l4)[511] = ((u64)&linker_variables::page_table_l4 & ~0xFFF) | PF_PRESENT | PF_READ_WRITE;
@@ -118,6 +184,14 @@ void amd64_entry(void* multiboot2_struct) {
     );
 
     // 4. initialze cpu0 (idt, gdt, msr)
+
+    // gdt
+    amd64_init_gdt();
+
+    // idt
+
+    // msr
+    amd64_init_msr();
 
     // call all c++ global constructors
     amd64_call_constructors();

@@ -35,6 +35,10 @@ extern "C" void* x86_64_int_handler(uint64_t code, void* p_rsp) {
     return p_rsp;
 }
 
+extern "C" void* amd64_interrupt_dispatch(uint64_t code, void* rsp) {
+    return x86_64_int_handler(code, rsp);
+}
+
 void x86_64_set_handler(void*(p_handler)(uint64_t, void*)) {
     g_handler = p_handler;
 }

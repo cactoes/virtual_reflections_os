@@ -104,7 +104,8 @@ boot:
     pop edi ; multiboot structure (first argument)
 
     ; far jump to 64 bit code
-    jmp boot_64_code_entry:amd64_entry
+    ; jmp boot_64_code_entry:amd64_entry
+    jmp boot_64_code_entry:amdd64_long_mode_jmp
 
 .stop:
     cli
@@ -151,7 +152,7 @@ check_paging:
 
     test    edx, CPUID_PSE
     jz      .fail
-    
+
     xor     eax, eax
     inc     eax
     ret
@@ -346,3 +347,12 @@ boot_64_code_entry: equ $ - zero_entry
 boot_gdtr:
 .limit:             dw $ - zero_entry - 1
 .address:           dq zero_entry
+
+bits 64
+amdd64_long_mode_jmp:
+    ; we need to reset the stack in 64 bit mode
+    ; so we have a small stub here
+    mov     rsp, stack.top
+    and     rsp, -16
+
+    call    amd64_entry

@@ -12,6 +12,10 @@ uint64_t x86_64_syscall_dispatch(uint64_t syscall_num, syscall_regs_t* regs) {
         (void*)regs->r9);
 }
 
+extern "C" uint64_t amd64_syscall_dispatch(uint64_t syscall_num, syscall_regs_t* regs) {
+    return x86_64_syscall_dispatch(syscall_num, regs);
+}
+
 uint64_t syscall_dispatch(uint64_t syscall_num, void* a1, void* a2, void* a3, void* a4, void* a5, void* a6) {
     switch (syscall_num) {
         case SYSCALL_TERMINATE_PROCESS:

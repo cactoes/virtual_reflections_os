@@ -136,10 +136,10 @@ vthread_handle_t vthread_create(thread_entry_t p_thread_entry, void* pml4, const
     uint64_t* stack_top = (uint64_t*)(((uint64_t)stack + VTHREAD_STACK_SIZE - sizeof(interrupt_regs_t)) & ~0xF);
 
     // itret frame
-    *(--stack_top) = gdt_get_kernel_data_selector();
+    *(--stack_top) = 0x10; // gdt_get_kernel_data_selector()
     *(--stack_top) = (uint64_t)stack_top;
     *(--stack_top) = 0x202;
-    *(--stack_top) = gdt_get_kernel_code_selector();
+    *(--stack_top) = 0x8; // gdt_get_kernel_code_selector()
     *(--stack_top) = (uint64_t)vthread_entry_point;
     *(--stack_top) = 0;
 
@@ -191,6 +191,9 @@ bool vthread_check_stack(vthread_t* thread) {
     return true;
 }
 
+extern struct amd64_tss_t* amd64_get_tss();
+extern void amd64_tss_set_stack_pointer0(struct amd64_tss_t* tss, void* stack_pointer);
+
 interrupt_regs_t* vthread_schedule(interrupt_regs_t* p_cpu_state) {
     if (g_threads.size() <= 1)
         return p_cpu_state;
@@ -231,7 +234,7 @@ interrupt_regs_t* vthread_schedule(interrupt_regs_t* p_cpu_state) {
     // & needs a kernel stack when an interrupt happens
     if (g_current_thread->kstack) {
         auto kstack_top = (void*)((uint64_t)g_current_thread->kstack + VTHREAD_STACK_SIZE);
-        gdt_set_stack_pointer0(kstack_top);
+        amd64_tss_set_stack_pointer0(amd64_get_tss(), kstack_top);
         set_kernel_stack(get_current_cpu(), kstack_top);
     } else {
         // gdt_set_stack_pointer0(g_current_thread->stack_bottom);
@@ -240,8 +243,8 @@ interrupt_regs_t* vthread_schedule(interrupt_regs_t* p_cpu_state) {
 
     interrupt_regs_t* target_stack = (interrupt_regs_t*)g_current_thread->stack_top;
 
-    if (((target_stack->cs & ~3) >> 3) != USER_CODE_SELECTOR_INDEX && ((target_stack->cs & ~3) >> 3) != KERNEL_CODE_SELECTOR_INDEX)
-        debug_trap("loading corrupted stack");
+    // if (((target_stack->cs & ~3) >> 3) != USER_CODE_SELECTOR_INDEX && ((target_stack->cs & ~3) >> 3) != KERNEL_CODE_SELECTOR_INDEX)
+    //     debug_trap("loading corrupted stack");
 
     return target_stack;
 }
