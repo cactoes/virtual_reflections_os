@@ -5,6 +5,7 @@
 #include "arch/generic.hpp"
 #include "linker.hpp"
 #include "virtual_thread.hpp"
+#include "interrupt_manager.hpp"
 
 static process_t* g_process = nullptr;
 
@@ -108,7 +109,7 @@ bool create_process(process_t* process, const char* path) {
     void* base_address_p = vmem_virtual_to_physical(base_address_v);
     void* user_stack_p = vmem_virtual_to_physical(stack_kernel_v);
 
-    cli();
+    disable_interrupts();
     set_pml4(new_page_table_p);
 
     for (size_t i = 0; i < program_section_info.size; i += PAGE_SIZE_LARGE) {
@@ -117,23 +118,23 @@ bool create_process(process_t* process, const char* path) {
     }
 
     set_pml4(current_page_table_p);
-    sti();
+    enable_interrupts();
 
-    cli();
+    disable_interrupts();
     set_pml4(new_page_table_p);
     if (!heap_init(&process->heap, new_page_table_p, (void*)PAGE_SIZE_HUGE, PAGE_SIZE_LARGE, true))
         return false;
 
     set_pml4(current_page_table_p);
-    sti();
+    enable_interrupts();
 
-    cli();
+    disable_interrupts();
     set_pml4(new_page_table_p);
     if (!vmem_map_2mb(new_page_table_p, stack_user_v, user_stack_p, true))
         return false;
 
     set_pml4(current_page_table_p);
-    sti();
+    enable_interrupts();
 
     vthread_add(move(p_vthread));
 

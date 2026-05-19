@@ -73,4 +73,7 @@ bool hook_interrupt(interrupt_t code, interrupt_callback_t callback, void* data)
 /// @return         is in interrupt state
 bool is_in_interrupt();
 
+void disable_interrupts();
+void enable_interrupts();
+
 #endif // __INTERRUPT_MANAGER_HPP__

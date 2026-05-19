@@ -34,14 +34,6 @@ static inline void load_tss(u16 entry) {
     x86_64_load_tss(entry);
 }
 
-static inline void cli() {
-    x86_64_cli();
-}
-
-static inline void sti() {
-    x86_64_sti();
-}
-
 static inline void hlt() {
     x86_64_hlt();
 }

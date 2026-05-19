@@ -60,4 +60,9 @@ void amd64_interrupts_enable() {
     asm volatile ("sti");
 }
 
+static inline
+void amd64_interrupts_disable() {
+    asm volatile ("cli");
+}
+
 #endif // __AMD64_IDT_HPP__

@@ -6,6 +6,7 @@
 #include "virtual_thread.hpp"
 #include "io.hpp"
 #include "utils/mutex.hpp"
+#include "interrupt_manager.hpp"
 
 NORETURN void kernel_fatal_end() {
     while (true)
@@ -13,7 +14,7 @@ NORETURN void kernel_fatal_end() {
 }
 
 void kernel_fatal_internal(u64 code, const char* message, interrupt_regs_t* cpu_state) {
-    cli();
+    disable_interrupts();
 
     kprintf("kernel fatal triggerd!\n");
     kprintf("code: 0x%uh (%s).\n", code, message);

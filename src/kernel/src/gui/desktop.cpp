@@ -11,6 +11,7 @@
 #include "gui/programs/webbrowser.hpp"
 #include "gui/font8x8.hpp"
 #include "filesystems/vfs.hpp"
+#include "interrupt_manager.hpp"
 
 static vga_buffer_t* g_desktop_back_buffer = nullptr;
 static bool g_desktop_ready = false;
@@ -407,7 +408,7 @@ int desktop_init() {
             continue;
         }
 
-        cli();
+        disable_interrupts();
 
         desktop_render_clear_buffer();
 
@@ -424,7 +425,7 @@ int desktop_init() {
 
         desktop_render_end();
 
-        sti();
+        enable_interrupts();
 
         g_last_tick = now;
     }

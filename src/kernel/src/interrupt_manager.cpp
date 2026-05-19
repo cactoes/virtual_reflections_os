@@ -1,4 +1,5 @@
 #include "interrupt_manager.hpp"
+#include "arch/amd64/idt.hpp"
 
 static interrupt_hook_t global_interrupt_hook_array[(u64)interrupt_t::SIZE] {};
 volatile bool global_is_in_interupt = false;
@@ -29,4 +30,12 @@ bool hook_interrupt(interrupt_t code, interrupt_callback_t callback, void* data)
 
 bool is_in_interrupt() {
     return global_is_in_interupt;
+}
+
+void disable_interrupts() {
+    amd64_interrupts_disable();
+}
+
+void enable_interrupts() {
+    amd64_interrupts_enable();
 }

@@ -38,14 +38,6 @@ static inline void x86_64_load_tss(u16 entry) {
     );
 }
 
-static inline void x86_64_cli() {
-    asm volatile ("cli");
-}
-
-static inline void x86_64_sti() {
-    asm volatile ("sti");
-}
-
 static inline void x86_64_hlt() {
     asm volatile ("hlt");
 }
@@ -94,8 +86,10 @@ inline u32 x86_64_in_port<u32>(u16 port) {
 
 NORETURN static inline void x86_64_halt() {
     for (;;) {
-        x86_64_cli();
-        x86_64_hlt();
+        asm volatile (
+            "cli\n"
+            "hlt\n"
+        );
     }
 }
 
