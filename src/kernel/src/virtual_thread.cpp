@@ -124,7 +124,7 @@ vthread_handle_t vthread_start_and_setup_main() {
     return vthread_add(move(p_vthread)) ? 0 : VTHREAD_HANDLE_INVALID;
 }
 
-vthread_handle_t vthread_create(thread_entry_t p_thread_entry, void* pml4, const char name[VTHREAD_MAX_NAME_SIZE]) {
+vthread_handle_t vthread_create_local(thread_entry_t p_thread_entry, const char name[VTHREAD_MAX_NAME_SIZE]) {
     u64* stack = (u64*)malloc_aligned(VTHREAD_STACK_SIZE, 16);
     if (!stack)
         return VTHREAD_HANDLE_INVALID;
@@ -156,7 +156,7 @@ vthread_handle_t vthread_create(thread_entry_t p_thread_entry, void* pml4, const
     p_vthread->handle = new_handle;
     p_vthread->vt_state = vthread_state_t::RUNNING;
     p_vthread->fpu_state = (u8*)malloc_aligned(sizeof(u8) * 512, 16);
-    p_vthread->pml4 = pml4;
+    p_vthread->pml4 = get_pml4();
     p_vthread->tls.handle = new_handle;
 
     if (name) {

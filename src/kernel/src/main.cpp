@@ -346,9 +346,9 @@ extern "C" NORETURN void virtual_kernel_entry(multiboot2_info_t* multiboot_struc
     // }
 
     const vthread_handle_t critical_threads[] = {
-        vthread_create(nic_thread, kernel_pt_paddr, "network interface controller"),
-        vthread_create([]() { while (true) ps2_mouse_process_packet(); return 1; }, kernel_pt_paddr, "PS/2 Mouse"),
-        vthread_create([]() { while (true) ps2_keyboard_process_packet(); return 1; }, kernel_pt_paddr, "PS/2 Keyboard")
+        vthread_create_local(nic_thread, "network interface controller"),
+        vthread_create_local([]() { while (true) ps2_mouse_process_packet(); return 1; }, "PS/2 Mouse"),
+        vthread_create_local([]() { while (true) ps2_keyboard_process_packet(); return 1; }, "PS/2 Keyboard")
     };
 
     for (const auto& thread : critical_threads)
@@ -358,7 +358,7 @@ extern "C" NORETURN void virtual_kernel_entry(multiboot2_info_t* multiboot_struc
     kprintf("[ KERNEL SETUP FINISHED ]\n");
     printf("[ KERNEL SETUP FINISHED ]\n");
 
-    if (vthread_create(terminal_thread_main, kernel_pt_paddr) == VTHREAD_HANDLE_INVALID) {
+    if (vthread_create_local(terminal_thread_main) == VTHREAD_HANDLE_INVALID) {
         kprintf("[ \033[91mERROR\033[0m ] failed to start terminal\n");
         printf("[ \033[91mERROR\033[0m ] failed to start terminal\n");
     }

@@ -105,11 +105,14 @@ bool create_process(process_t* process, const char* path) {
     p_vthread->parent = process;
 
     // do this before the page table switch
-    void* current_page_table_p = (void*)(current_page_table_v[511] & ~0xFFF);
+    void* current_page_table_p = get_pml4();
     void* base_address_p = vmem_virtual_to_physical(base_address_v);
     void* user_stack_p = vmem_virtual_to_physical(stack_kernel_v);
 
+    // we dont want to accidentaly map into wrong address space
+    // maybe find out how we can allways map into a remote page table safely?
     disable_interrupts();
+
     set_pml4(new_page_table_p);
 
     for (size_t i = 0; i < program_section_info.size; i += PAGE_SIZE_LARGE) {
@@ -117,19 +120,9 @@ bool create_process(process_t* process, const char* path) {
             return false;
     }
 
-    set_pml4(current_page_table_p);
-    enable_interrupts();
-
-    disable_interrupts();
-    set_pml4(new_page_table_p);
     if (!heap_init(&process->heap, new_page_table_p, (void*)PAGE_SIZE_HUGE, PAGE_SIZE_LARGE, true))
         return false;
 
-    set_pml4(current_page_table_p);
-    enable_interrupts();
-
-    disable_interrupts();
-    set_pml4(new_page_table_p);
     if (!vmem_map_2mb(new_page_table_p, stack_user_v, user_stack_p, true))
         return false;
 
