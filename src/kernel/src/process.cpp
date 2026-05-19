@@ -54,7 +54,7 @@ bool create_process(process_t* process, const char* path) {
     void* new_page_table_p = vmem_virtual_to_physical(process->page_table);
 
     // revursive map page table
-    vmem_recusive_map_page_table(process->page_table, new_page_table_p);
+    ((u64*)process->page_table)[511] = ((u64)new_page_table_p & ~0xFFF) | PF_PRESENT | PF_READ_WRITE;
 
     // copy the kernel entries so its always linked
     u64* current_page_table_v = GET_PML4_VIRT();
@@ -112,18 +112,17 @@ bool create_process(process_t* process, const char* path) {
     // we dont want to accidentaly map into wrong address space
     // maybe find out how we can allways map into a remote page table safely?
     disable_interrupts();
-
     set_pml4(new_page_table_p);
 
     for (size_t i = 0; i < program_section_info.size; i += PAGE_SIZE_LARGE) {
-        if (!vmem_map_2mb(new_page_table_p, (void*)(program_section_info.min_address + i * PAGE_SIZE_LARGE), (void*)((u64)base_address_p + i * PAGE_SIZE_LARGE), true))
+        if (!vmem_map_2mb((void*)(program_section_info.min_address + i * PAGE_SIZE_LARGE), (void*)((u64)base_address_p + i * PAGE_SIZE_LARGE), VMEM_EXECUTE | VMEM_USER | VMEM_READWRITE))
             return false;
     }
 
-    if (!heap_init(&process->heap, new_page_table_p, (void*)PAGE_SIZE_HUGE, PAGE_SIZE_LARGE, true))
+    if (!heap_init(&process->heap, (void*)PAGE_SIZE_HUGE, PAGE_SIZE_LARGE, true))
         return false;
 
-    if (!vmem_map_2mb(new_page_table_p, stack_user_v, user_stack_p, true))
+    if (!vmem_map_2mb(stack_user_v, user_stack_p, VMEM_EXECUTE | VMEM_USER | VMEM_READWRITE))
         return false;
 
     set_pml4(current_page_table_p);

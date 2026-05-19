@@ -155,8 +155,8 @@ int e1000_init_device(const pci_device_t* p_pcie_device, e1000_t* p_network_devi
         return 2;
 
     u64 bar_addr_physical = pci_read_bar(p_pcie_device, 0) & ~0xF;
-    p_network_device->mmio_region = vmem_map_mmio_region(get_global_dma_heap_manager()->pml4, (void*)bar_addr_physical);
-    
+    p_network_device->mmio_region = vmem_map_mmio_region((void*)bar_addr_physical);
+
     // TODO @since 28/10/2025 -- 01:02
     // free the dma heap
     if (!p_network_device->mmio_region)

@@ -174,7 +174,7 @@ interrupt_regs_t* crash_handler_callback(interrupt_regs_t* stack, void* data) {
 
 extern bool io_term_init(size_t w, size_t h);
 
-extern "C" NORETURN void virtual_kernel_entry(multiboot2_info_t* multiboot_struct, void* kernel_pt_paddr) {
+extern "C" NORETURN void virtual_kernel_entry(multiboot2_info_t* multiboot_struct) {
     // initialze the debug out stream
     debug_init();
 
@@ -189,15 +189,15 @@ extern "C" NORETURN void virtual_kernel_entry(multiboot2_info_t* multiboot_struc
     // same as the assembly
     const u64 kernel_page_count = (LINKER_END_KERNEL_PHYS + (PAGE_SIZE_LARGE - 1)) >> 21;
     for (u64 i = 0; i < kernel_page_count; i++)
-        vmem_unmap_2mb(kernel_pt_paddr, (void*)(i * PAGE_SIZE_LARGE));
+        vmem_unmap_2mb((void*)(i * PAGE_SIZE_LARGE));
 
     // initialze virtual memory
-    if (!vmem_init(kernel_pt_paddr, multiboot_struct))
+    if (!vmem_init(multiboot_struct))
         kernel_fatal(KERNEL_FATAL_VMEM_INIT, "vmem failed to initialize");
 
     // initialze the global heap
     heap_t heap {};
-    if (!heap_init(&heap, kernel_pt_paddr, (void*)VMEM_KERNEL_HEAP_START, HEAP_START_SIZE))
+    if (!heap_init(&heap, (void*)VMEM_KERNEL_HEAP_START, HEAP_START_SIZE))
         kernel_fatal(KERNEL_FATAL_HEAP_INIT, "kernel heap fail to initialze");
 
     set_global_heap(&heap);
@@ -249,7 +249,7 @@ extern "C" NORETURN void virtual_kernel_entry(multiboot2_info_t* multiboot_struc
 
     dma_heap_manager_t allocator {};
     set_global_dma_heap_manager(&allocator);
-    dma_heap_manager_init(get_global_dma_heap_manager(), kernel_pt_paddr, (void*)VMEM_DMA_ALLOCATOR_START, PAGE_SIZE_LARGE * 128);
+    dma_heap_manager_init(get_global_dma_heap_manager(), (void*)VMEM_DMA_ALLOCATOR_START, PAGE_SIZE_LARGE * 128);
 
     // initialize threading
     if (vthread_start_and_setup_main() == VTHREAD_HANDLE_INVALID)

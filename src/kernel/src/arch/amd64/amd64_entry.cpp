@@ -23,7 +23,7 @@
 /// @brief  generic types
 //
 
-extern "C" void virtual_kernel_entry(struct multiboot_t*, void*);
+extern "C" void virtual_kernel_entry(struct multiboot_t*);
 extern "C" void amd64_syscall_stub();
 
 /// @brief  linker variables get placed here and the linter is disabled for them
@@ -318,7 +318,7 @@ void amd64_entry(void* multiboot2_struct) {
     amd64_call_constructors();
 
     // jump to virtual kernel entrypoint
-    virtual_kernel_entry((struct multiboot_t*)((u64)multiboot2_struct + KERNEL_VIRTUAL_BASE_ADDRESS), (void*)&linker_variables::page_table_l4);
+    virtual_kernel_entry((struct multiboot_t*)((u64)multiboot2_struct + KERNEL_VIRTUAL_BASE_ADDRESS));
 
     // backup catch
     while (true);

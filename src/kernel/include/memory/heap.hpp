@@ -12,11 +12,6 @@
 #define HEAP_MAKE_FILTER_PARAM(param) ((void*)&param)
 #define HEAP_FILTERS_SIZE(array) ARRAY_LENGTH(array)
 
-// heap helper functions / macros
-// #define GALLOC(size) malloc(size)
-// #define GFREE(ptr) free(ptr)
-// #define GLOBAL_HEAP get_global_heap()
-
 #include "common.hpp"
 #include "std/array.hpp"
 
@@ -47,13 +42,11 @@ struct heap_t {
     size_t heap_block_count;
     void* start_virtual_addr;
     size_t size;
-    void* pml4;
 };
 
 struct dma_heap_manager_t {
     void* start_virtual_addr;
     size_t size;
-    void* pml4;
     std::dynamic_array<heap_t> heaps;
 };
 
@@ -84,16 +77,14 @@ int heap_filter_blocks(heap_t* p_heap, void* p_param, heap_block_filter_callback
 
 /// @brief                      initiates a heap
 /// @param[inout] heap          heap to initiate
-/// @param[inout] pml4          page table to use
 /// @param[in] vaddr            virtual address to start the heap from
 /// @param size                 starting size of the heap
 /// @return                     success status
-bool heap_init(heap_t* heap, void* pml4, void* vaddr, size_t size, bool is_user = false);
+bool heap_init(heap_t* heap, void* vaddr, size_t size, bool is_user = false);
 
 /// @brief              expands the heap ontop of current heap
 ///                     make sure the virtual address above is not yet reserved
 /// @param[inout] heap  heap to expand
-/// @param[inout] pml4  page table to use
 /// @param size         size to expand the heap by
 /// @return             success status
 NODISCARD bool heap_expand(heap_t* p_heap, size_t size);
@@ -140,22 +131,20 @@ u32 dma_get_physical_lower(heap_t* p_dma_heap, void* p_block);
 u32 dma_get_physical_upper(heap_t* p_dma_heap, void* p_block);
 
 /// @brief                          initializes a dma heap
-/// @param[inout] pml4              ptr to the page table to use
 /// @param[inout] dma_heap          ptr to the dma_heap_t
 /// @param[in] virtual_address      
 /// @param size                     
 /// @return                         0 success, 1 incorrect alignment, 2 heap size failed, 3 heap init failed
 /// @remarks                        technically memory leaks since it never frees
 ///                                 the memory used for the entire dma heap
-NODISCARD int dma_heap_init(void* p_pml4, heap_t* p_dma_heap, void* p_virtual_address, size_t size);
+NODISCARD int dma_heap_init(heap_t* p_dma_heap, void* p_virtual_address, size_t size);
 
 /// @brief                      initialzes a dma heap manager
 /// @param[inout] manager       pointer to the dma heap manager struct
-/// @param[inout] pml4          corresponding page table
 /// @param[in] virtual_address  virtual address to assign dma heaps to
 /// @param size                 total size for dma heaps
 /// @return                     success status
-bool dma_heap_manager_init(dma_heap_manager_t* manager, void* pml4, void* virtual_address, size_t size);
+bool dma_heap_manager_init(dma_heap_manager_t* manager, void* virtual_address, size_t size);
 
 /// @brief              sets the global dma heap manager to the given one
 /// @param[in] manager  pointer to the dma heap manager struct that should be global

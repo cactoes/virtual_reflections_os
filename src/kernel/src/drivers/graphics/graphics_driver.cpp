@@ -157,7 +157,7 @@ bool graphics_driver_init_framebuffer(graphics_driver_t* graphics_driver, multib
     const size_t framebuffer_size = (framebuffer_tag->framebuffer_pitch * framebuffer_tag->framebuffer_height);
     void* mapped_framebuffer = (void*)malloc(align_up(framebuffer_size, PAGE_SIZE_LARGE));
     for (size_t i = 0; i < align_up(framebuffer_size, PAGE_SIZE_LARGE); i += PAGE_SIZE_LARGE)
-        vmem_map_2mb(nullptr, (void*)((u64)mapped_framebuffer + i), (void*)(framebuffer_tag->framebuffer_addr + i));
+        vmem_map_2mb((void*)((u64)mapped_framebuffer + i), (void*)(framebuffer_tag->framebuffer_addr + i), VMEM_EXECUTE | VMEM_KERNEL | VMEM_READWRITE);
 
     graphics_driver->framebuffer = (framebuffer_t*)malloc(sizeof(framebuffer_t));
 

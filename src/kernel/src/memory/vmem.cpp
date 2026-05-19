@@ -5,33 +5,22 @@
 #include "utils/bitmap.hpp"
 #include "linker.hpp"
 
+#include "interrupt_manager.hpp"
+#include "process.hpp"
+#include "arch/amd64/vmem.hpp"
+
 // 2 * 64 = 128
 // 128 2mb regions
 // same size as defined in header
 static u64 global_mapped_mmio_bitmap[2] {};
 
 void* vmem_virtual_to_physical(void* vaddr) {
-    const u64 pml4e =  KPAGING_GET_PE(vaddr, 39);
-    const u64 pdpe =   KPAGING_GET_PE(vaddr, 30);
-    const u64 pde =    KPAGING_GET_PE(vaddr, 21);
-
-    const u64* pml4_virt = GET_PML4_VIRT();
-    if (!KPAGING_CHECK_ENTRY(pml4_virt, pml4e))
-        return nullptr;
-    
-    const u64* pdpt_virt = GET_PDPT_VIRT(pml4e);
-    if (!KPAGING_CHECK_ENTRY(pdpt_virt, pdpe))
-        return nullptr;
-
-    const u64* pdt_virt = GET_PDT_VIRT(pml4e, pdpe);
-    if (!KPAGING_CHECK_ENTRY(pdt_virt, pde))
-        return nullptr;
-
-    const u64 page_offset = (u64)vaddr & (PAGE_SIZE_LARGE - 1);
-    return (void*)((pdt_virt[pde] & ~(PAGE_SIZE_LARGE - 1)) + page_offset);
+    // TODO @since 20/05/2026 -- 01:05
+    // amd check ...
+    return amd64_vmem_virtual_to_physical(vaddr);
 }
 
-void* vmem_map_mmio_region(void* pml4, void* paddr) {
+void* vmem_map_mmio_region(void* paddr) {
     const u64 page_paddr = align_down((u64)paddr, PAGE_SIZE_LARGE);
     const u64 offset = (u64)paddr - page_paddr;
 
@@ -48,55 +37,13 @@ void* vmem_map_mmio_region(void* pml4, void* paddr) {
     if (vaddr == 0)
         return nullptr;
 
-    if (!vmem_map_2mb(pml4, vaddr, (void*)page_paddr))
+    if (!vmem_map_2mb(vaddr, (void*)page_paddr, VMEM_EXECUTE | VMEM_READWRITE | VMEM_KERNEL))
         return nullptr;
 
     return (void*)((u64)vaddr + offset);
 }
 
-
-bool vmem_map_2mb(const void* pml4, const void* vaddr, const void* paddr, bool is_user) {
-    if (!is_aligned((u64)vaddr, PAGE_SIZE_LARGE) ||
-        !is_aligned((u64)paddr, PAGE_SIZE_LARGE)) {
-        return false;
-    }
-
-    const u64 pml4e =  KPAGING_GET_PE(vaddr, 39);
-    const u64 pdpe =   KPAGING_GET_PE(vaddr, 30);
-    const u64 pde =    KPAGING_GET_PE(vaddr, 21);
-
-    u64* pml4_virt = GET_PML4_VIRT();
-    if (!KPAGING_CHECK_ENTRY(pml4_virt, pml4e)) {
-        const void* page = pmem_get_page();
-        pml4_virt[pml4e] = ((u64)page & ~0xFFF) | PF_PRESENT | PF_READ_WRITE;
-        memzero(GET_PDPT_VIRT(pml4e), PAGE_SIZE);
-    }
-
-    u64* pdpt_virt = GET_PDPT_VIRT(pml4e);
-    if (!KPAGING_CHECK_ENTRY(pdpt_virt, pdpe)) {
-        const void* page = pmem_get_page();
-        pdpt_virt[pdpe] = ((u64)page & ~0xFFF) | PF_PRESENT | PF_READ_WRITE;
-        memzero(GET_PDT_VIRT(pml4e, pdpe), PAGE_SIZE);
-    }
-
-    // FIXME @since 05/03/2026 -- 12:21
-    // MAKE SURE THE PARENT PAGE TABLES DONT CONTAIN KERNEL PAGE ENTRIES
-    if (is_user) {
-        pdpt_virt[pdpe] |= PF_USER_SUPERVISOR;
-        pml4_virt[pml4e] |= PF_USER_SUPERVISOR;
-    }
-
-    const u64 basic_page_flags = is_user
-        ? PF_PRESENT | PF_READ_WRITE | PF_USER_SUPERVISOR
-        : PF_PRESENT | PF_READ_WRITE;
-
-    u64* pdt_virt = GET_PDT_VIRT(pml4e, pdpe);
-    pdt_virt[pde] = ((u64)paddr & ~0x1FFFFF) | PF_PAGE_SIZE | basic_page_flags;
-    flush_tlb((void*)vaddr);
-    return true;
-}
-
-size_t vmem_smart_alloc_pages(const void* pml4, const void* vaddr, size_t size, bool is_user) {
+size_t vmem_smart_alloc_pages(const void* vaddr, size_t size, u64 flags) {
     size_t allocated = 0;
     u64 current_virtual_address = (u64)vaddr;
 
@@ -115,7 +62,7 @@ size_t vmem_smart_alloc_pages(const void* pml4, const void* vaddr, size_t size, 
             return allocated;
 
         // map the address
-        if (!vmem_map_2mb(pml4, (void*)current_virtual_address, target_physical_address, is_user))
+        if (!vmem_map_2mb((void*)current_virtual_address, target_physical_address, flags))
             return allocated;
 
         // update counters
@@ -126,7 +73,7 @@ size_t vmem_smart_alloc_pages(const void* pml4, const void* vaddr, size_t size, 
     return allocated;
 }
 
-bool vmem_init(const void* pml4, const void* mbstruct) {
+bool vmem_init(const void* mbstruct) {
     const u64 aligned_kernel_end_addr = align_up(LINKER_END_KERNEL_PHYS, PAGE_SIZE_LARGE);
     u64 kernel_page_count = aligned_kernel_end_addr / PAGE_SIZE;
 
@@ -150,37 +97,39 @@ bool vmem_init(const void* pml4, const void* mbstruct) {
     return true;
 }
 
-bool vmem_unmap_2mb(void* pml4, void* vaddr) {
-    // BUG @since 26/02/2026 -- 11:55
-    // empty enties get removed but are still alocated by the page allocator
-
-    if (!is_aligned((u64)vaddr, PAGE_SIZE_LARGE))
-        return false;
-
-    const u64 pml4e =  KPAGING_GET_PE(vaddr, 39);
-    const u64 pdpe =   KPAGING_GET_PE(vaddr, 30);
-    const u64 pde =    KPAGING_GET_PE(vaddr, 21);
-
-    u64* pml4_virt = GET_PML4_VIRT();
-    if (!KPAGING_CHECK_ENTRY(pml4_virt, pml4e))
-        return false;
-
-    u64* pdpt_virt = GET_PDPT_VIRT(pml4e);
-    if (!KPAGING_CHECK_ENTRY(pdpt_virt, pdpe))
-        return false;
-
-    u64* pdt_virt = GET_PDT_VIRT(pml4e, pdpe);
-    pdt_virt[pde] = 0;
-    flush_tlb((void*)vaddr);
-    return true;
+bool vmem_unmap_2mb(void* vaddr) {
+    // TODO @since 20/05/2026 -- 01:01
+    // amd64 check bla bla bla
+    return amd64_vmem_unmap_2mb(vaddr);
 }
 
-bool vmem_recusive_map_page_table(void* page_table_vaddr, void* page_table_paddr) {
-    if (!is_aligned((u64)page_table_vaddr, PAGE_SIZE) ||
-        !is_aligned((u64)page_table_paddr, PAGE_SIZE)) {
-        return false;
-    }
+bool vmem_map_2mb(const void* vaddr, const void* paddr, u64 flags) {
+    // if amd64 ->
 
-    ((u64*)page_table_vaddr)[511] = ((u64)page_table_paddr & ~0xFFF) | PF_PRESENT | PF_READ_WRITE;
-    return true;
+    bool is_kernel = BIT_CHECK(flags, VMEM_BIT_USER_KERNEL);
+    bool is_readwrite = BIT_CHECK(flags, VMEM_BIT_READWRITE);
+    bool is_executable = BIT_CHECK(flags, VMEM_BIT_EXECUTE);
+
+    return amd64_vmem_map_2mb(vaddr, paddr, is_kernel, is_readwrite, is_executable);
+
+    // else ->
+    // error
+}
+
+bool v2_vmem_map_2mb_remote(struct process_t* process, const void* vaddr, const void* paddr, u64 flags) {
+    // if amd64 ->
+
+    disable_interrupts();
+    void* prev_page_table = get_pml4();
+    set_pml4(process->page_table);
+
+    bool result = vmem_map_2mb(vaddr, paddr, flags);
+
+    set_pml4(prev_page_table);
+    enable_interrupts();
+
+    return result;
+
+    // else ->
+    // error
 }

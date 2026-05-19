@@ -214,7 +214,7 @@ bool ahci_init(const pci_device_t* device, ahci_driver_ctx_t* ahci_driver_ctx, s
         return false;
 
     const u64 mmio_addr_physical = (u64)pci_read_bar(device, 5);
-    volatile hba_mem_t* hba = (volatile hba_mem_t*)vmem_map_mmio_region(get_global_dma_heap_manager()->pml4, (void*)mmio_addr_physical);
+    volatile hba_mem_t* hba = (volatile hba_mem_t*)vmem_map_mmio_region((void*)mmio_addr_physical);
     if (!hba)
         return false;
 
