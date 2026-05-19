@@ -172,4 +172,23 @@ static inline void amd64_load_tss(u16 entry) {
     );
 }
 
+static inline void amd64_reload_segments(u16 code_selector, u16 data_selector) {
+    asm volatile (
+        "mov %w0, %%ds\n"
+        "mov %w0, %%es\n"
+        "mov %w0, %%ss\n"
+        "mov %w0, %%fs\n"
+        "mov %w0, %%gs\n"
+        
+        "pushq %q1\n"
+        "leaq 1f(%%rip), %%rax\n"
+        "pushq %%rax\n"
+        "lretq\n"
+        "1:\n"
+        : 
+        : "r" (data_selector), "r" ((u64)code_selector)
+        : "rax", "memory"
+    );
+}
+
 #endif // __AMD64_GDT_HPP__

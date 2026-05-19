@@ -132,6 +132,7 @@ void amd64_init_gdt() {
 
     amd64_set_gdt(&gdtr);
     amd64_load_tss(AMD64_GDT_INDEX_TO_ENTRY(AMD64_GDT_INDEX_TSS(GDT_ENTRY_COUNT)));
+    amd64_reload_segments(AMD64_GDT_INDEX_TO_ENTRY(KERNEL_CODE_SELECTOR_INDEX), AMD64_GDT_INDEX_TO_ENTRY(KERNEL_DATA_SELECTOR_INDEX));
 }
 
 /// @brief                          amd64 boot entry, the assembly jumps to here to continue the setup
@@ -140,15 +141,15 @@ extern "C"
 __attribute__((section(".boot.text")))
 [[noreturn]]
 void amd64_entry(void* multiboot2_struct) {
-    // asm volatile (
-    //     "mov   $0,    %%ax\n"
-    //     "mov   %%ax,  %%ss\n"
-    //     "mov   %%ax,  %%ds\n"
-    //     "mov   %%ax,  %%es\n"
-    //     "mov   %%ax,  %%fs\n"
-    //     "mov   %%ax,  %%gs\n"
-    //     ::: "ax", "memory"
-    // );
+    asm volatile (
+        "mov   $0,    %%ax\n"
+        "mov   %%ax,  %%ss\n"
+        "mov   %%ax,  %%ds\n"
+        "mov   %%ax,  %%es\n"
+        "mov   %%ax,  %%fs\n"
+        "mov   %%ax,  %%gs\n"
+        ::: "ax", "memory"
+    );
 
     // recursively map the page table
     ((u64*)&linker_variables::page_table_l4)[511] = ((u64)&linker_variables::page_table_l4 & ~0xFFF) | PF_PRESENT | PF_READ_WRITE;

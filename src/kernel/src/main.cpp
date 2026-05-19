@@ -170,7 +170,7 @@ void init_pci_devices(const pci_device_t* device) {
 
 extern bool io_term_init(size_t w, size_t h);
 
-extern "C" NORETURN void virtual_kernel_entry(multiboot2_info_t* multiboot_struct, void* kernel_pt_vaddr) {
+extern "C" NORETURN void virtual_kernel_entry(multiboot2_info_t* multiboot_struct, void* kernel_pt_paddr) {
     // initialze the debug out stream
     debug_init();
 
@@ -195,15 +195,15 @@ extern "C" NORETURN void virtual_kernel_entry(multiboot2_info_t* multiboot_struc
     // same as the assembly
     const uint64_t kernel_page_count = (LINKER_END_KERNEL_PHYS + (PAGE_SIZE_LARGE - 1)) >> 21;
     for (uint64_t i = 0; i < kernel_page_count; i++)
-        vmem_unmap_2mb(kernel_pt_vaddr, (void*)(i * PAGE_SIZE_LARGE));
+        vmem_unmap_2mb(kernel_pt_paddr, (void*)(i * PAGE_SIZE_LARGE));
 
     // initialze virtual memory
-    if (!vmem_init(kernel_pt_vaddr, multiboot_struct))
+    if (!vmem_init(kernel_pt_paddr, multiboot_struct))
         kernel_fatal(KERNEL_FATAL_VMEM_INIT, "vmem failed to initialize");
 
     // initialze the global heap
     heap_t heap {};
-    if (!heap_init(&heap, kernel_pt_vaddr, (void*)VMEM_KERNEL_HEAP_START, HEAP_START_SIZE))
+    if (!heap_init(&heap, kernel_pt_paddr, (void*)VMEM_KERNEL_HEAP_START, HEAP_START_SIZE))
         kernel_fatal(KERNEL_FATAL_HEAP_INIT, "kernel heap fail to initialze");
 
     set_global_heap(&heap);
@@ -219,7 +219,7 @@ extern "C" NORETURN void virtual_kernel_entry(multiboot2_info_t* multiboot_struc
     kprintf("[ \033[92mOK\033[0m ] initialized graphics driver\n");
     printf("[ \033[92mOK\033[0m ] initialized graphics driver\n");
 
-    void* kernel_pt_paddr = vmem_virtual_to_physical(kernel_pt_vaddr);
+    // void* kernel_pt_paddr = vmem_virtual_to_physical(kernel_pt_vaddr);
 
     // initialze the interrupt line(s)
     set_interrupt_hook(interrupt_t::HARDWARE_PIT, pit_handle_interrupt, nullptr);
@@ -236,7 +236,7 @@ extern "C" NORETURN void virtual_kernel_entry(multiboot2_info_t* multiboot_struc
 
     dma_heap_manager_t allocator {};
     set_global_dma_heap_manager(&allocator);
-    dma_heap_manager_init(get_global_dma_heap_manager(), kernel_pt_vaddr, (void*)VMEM_DMA_ALLOCATOR_START, PAGE_SIZE_LARGE * 128);
+    dma_heap_manager_init(get_global_dma_heap_manager(), kernel_pt_paddr, (void*)VMEM_DMA_ALLOCATOR_START, PAGE_SIZE_LARGE * 128);
 
     // initialize threading
     if (vthread_start_and_setup_main() == VTHREAD_HANDLE_INVALID)
