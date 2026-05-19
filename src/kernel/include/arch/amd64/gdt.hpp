@@ -28,7 +28,7 @@
 #define AMD64_GDT_INDEX_TSS(c)              sizeof(amd64_gdt_t::entries) / sizeof(amd64_gdt_entry_t)
 #define AMD64_GDT_INDEX_TO_ENTRY(index)     (index) * sizeof(amd64_gdt_entry_t)
 
-#include "common2.hpp"
+#include "common.hpp"
 
 enum {
     GDT_ZERO_ENTRY = 0,
@@ -157,6 +157,8 @@ void amd64_gdt_set_entry(amd64_gdt_t* gdt, amd64_gdt_entry_t* entry, u64 index);
 void amd64_gdt_set_tss(amd64_gdt_t* gdt, amd64_tss_t* tss);
 void amd64_tss_set_stack_pointer0(amd64_tss_t* tss, void* stack_pointer);
 void amd64_gdtr_update(amd64_gdtr_t* gdtr, amd64_gdt_t* gdt);
+
+u16 amd64_get_selector_for(u16 index);
 
 static inline void amd64_set_gdt(void* gdtr) {
     asm volatile("lgdt (%0)" : : "r"(gdtr) : "memory");

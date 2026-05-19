@@ -3,7 +3,7 @@
 #include "utils/bitmap.hpp"
 #include "system_info.hpp"
 
-static uint64_t global_page_bitmap[PAGING_BITMAP_SIZE] {};
+static u64 global_page_bitmap[PAGING_BITMAP_SIZE] {};
 static mutex_t global_pmem_mutex { .locked = 0 };
 
 void* pmem_get_page() {
@@ -25,13 +25,13 @@ void* pmem_get_page() {
 bool pmem_try_reserve_address(const void* paddr, size_t count) {
     // THIS FUNCTION LEAKS PAGES
 
-    if (!is_aligned((uint64_t)paddr, PAGE_SIZE))
+    if (!is_aligned((u64)paddr, PAGE_SIZE))
         return false;
 
-    constexpr uint64_t end_of_memory = bitmap_get_size(global_page_bitmap) * PAGE_SIZE;
+    constexpr u64 end_of_memory = bitmap_get_size(global_page_bitmap) * PAGE_SIZE;
 
     for (size_t pages_reserved = 0; pages_reserved < count; pages_reserved++) {
-        const uint64_t address_current = (uint64_t)paddr + (pages_reserved * PAGE_SIZE);
+        const u64 address_current = (u64)paddr + (pages_reserved * PAGE_SIZE);
 
         if (address_current >= end_of_memory)
             // here
@@ -49,5 +49,5 @@ bool pmem_try_reserve_address(const void* paddr, size_t count) {
 }
 
 bool pmem_is_in_memory_range(const void* address) {
-    return (uint64_t)address <= bitmap_get_size(global_page_bitmap) * PAGE_SIZE;
+    return (u64)address <= bitmap_get_size(global_page_bitmap) * PAGE_SIZE;
 }

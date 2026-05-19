@@ -100,7 +100,7 @@ bool vfs_close_file(vfs_t* vfs, file_descriptor_t fd) {
     return vfs->file_handles.remove(fd);
 }
 
-bool vfs_read_file(vfs_t* vfs, file_descriptor_t fd, uint8_t** data, size_t* size) {
+bool vfs_read_file(vfs_t* vfs, file_descriptor_t fd, u8** data, size_t* size) {
     auto fd_iterator = vfs->file_handles.get(fd);
     if (fd_iterator == vfs->file_handles.end())
         return false;
@@ -178,7 +178,7 @@ fs_type_t get_filesystem(block_device_t* device) {
     if (!device)
         return fs_type_t::UNKNOWN;
 
-    uint8_t* buffer = (uint8_t*)malloc(device->block_size);
+    u8* buffer = (u8*)malloc(device->block_size);
     if (!block_read(device, 16, buffer))
         return fs_type_t::UNKNOWN;
 
@@ -241,14 +241,14 @@ bool vfs_mount_device(vfs_t* vfs, void* device, block_device_type_t type, const 
     if (type == block_device_type_t::UNKOWN)
         return false;
 
-    uint8_t* buffer = nullptr;
-    uint64_t logical_sector_size = 0;
-    uint64_t lba_count = 0;
+    u8* buffer = nullptr;
+    u64 logical_sector_size = 0;
+    u64 lba_count = 0;
     switch (type) {
         case block_device_type_t::IDE:
             logical_sector_size = ((ide_device_t*)device)->logical_sector_size;
             lba_count = ((ide_device_t*)device)->lba_count;
-            buffer = (uint8_t*)malloc(logical_sector_size);
+            buffer = (u8*)malloc(logical_sector_size);
             if (!buffer) return false;
             if (!ide_read((ide_device_t*)device, 0, buffer, ((ide_device_t*)device)->logical_sector_size)) {
                 free(buffer);
@@ -258,7 +258,7 @@ bool vfs_mount_device(vfs_t* vfs, void* device, block_device_type_t type, const 
         case block_device_type_t::AHCI:
             logical_sector_size = ((ahci_device_t*)device)->logical_sector_size;
             lba_count = ((ahci_device_t*)device)->lba_count;
-            buffer = (uint8_t*)malloc(logical_sector_size);
+            buffer = (u8*)malloc(logical_sector_size);
             if (!buffer) return false;
             if (!ahci_read((ahci_device_t*)device, 0, buffer, ((ahci_device_t*)device)->logical_sector_size)) {
                 free(buffer);

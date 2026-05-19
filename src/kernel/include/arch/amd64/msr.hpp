@@ -21,7 +21,7 @@
 #define AMD64_EFER_LMA            (1 << 10)
 #define AMD64_EFER_NXE            (1 << 11)
 
-#include "common2.hpp"
+#include "common.hpp"
 
 static inline
 void amd64_wrmsr(u32 addr, u64 value) {

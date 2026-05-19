@@ -28,7 +28,7 @@ static inline void x86_64_set_gdt(void* p_gdtr) {
     asm volatile("lgdt (%0)" : : "r"(p_gdtr) : "memory");
 }
 
-static inline void x86_64_load_tss(uint16_t entry) {
+static inline void x86_64_load_tss(u16 entry) {
     asm volatile(
         "mov %0, %%ax\n"
         "ltr %%ax\n"
@@ -51,43 +51,43 @@ static inline void x86_64_hlt() {
 }
 
 template <typename T>
-static inline void x86_64_out_port(uint16_t port, T value);
+static inline void x86_64_out_port(u16 port, T value);
 
 template <>
-inline void x86_64_out_port<uint8_t>(uint16_t port, uint8_t value) {
+inline void x86_64_out_port<u8>(u16 port, u8 value) {
     asm volatile ("outb %1, %0" : : "dN"(port), "a"(value));
 }
 
 template <>
-inline void x86_64_out_port<uint16_t>(uint16_t port, uint16_t value) {
+inline void x86_64_out_port<u16>(u16 port, u16 value) {
     asm volatile ("outw %1, %0" : : "dN"(port), "a"(value));
 }
 
 template <>
-inline void x86_64_out_port<uint32_t>(uint16_t port, uint32_t value) {
+inline void x86_64_out_port<u32>(u16 port, u32 value) {
     asm volatile ("outl %1, %0" : : "dN"(port), "a"(value));
 }
 
 template <typename T>
-static inline T x86_64_in_port(uint16_t port);
+static inline T x86_64_in_port(u16 port);
 
 template <>
-inline uint8_t x86_64_in_port<uint8_t>(uint16_t port) {
-    uint8_t value;
+inline u8 x86_64_in_port<u8>(u16 port) {
+    u8 value;
     asm volatile ("inb %1, %0" : "=a"(value) : "Nd"(port));
     return value;
 }
 
 template <>
-inline uint16_t x86_64_in_port<uint16_t>(uint16_t port) {
-    uint16_t value;
+inline u16 x86_64_in_port<u16>(u16 port) {
+    u16 value;
     asm volatile ("inw %1, %0" : "=a"(value) : "Nd"(port));
     return value;
 }
 
 template <>
-inline uint32_t x86_64_in_port<uint32_t>(uint16_t port) {
-    uint32_t value;
+inline u32 x86_64_in_port<u32>(u16 port) {
+    u32 value;
     asm volatile ("inl %1, %0" : "=a"(value) : "Nd"(port));
     return value;
 }
@@ -145,20 +145,20 @@ static inline void x86_64_memory() {
     asm volatile("" ::: "memory");
 }
 
-static inline uint64_t x86_64_read_cr2() {
-    uint64_t res;
+static inline u64 x86_64_read_cr2() {
+    u64 res;
     asm volatile("mov %%cr2, %0" : "=r"(res));
     return res;
 }
 
-static inline void x86_64_cpuid(uint32_t eax_in, uint32_t ecx_in, uint32_t* eax_out, uint32_t* ebx_out, uint32_t* ecx_out, uint32_t* edx_out) {
+static inline void x86_64_cpuid(u32 eax_in, u32 ecx_in, u32* eax_out, u32* ebx_out, u32* ecx_out, u32* edx_out) {
     __asm__ volatile ("cpuid"
                 : "=a"(*eax_out), "=b"(*ebx_out), "=c"(*ecx_out), "=d"(*edx_out)
                 : "a"(eax_in), "c"(ecx_in));
 }
 
-static inline uint64_t x86_64_save_flags_and_cli() {
-    uint64_t flags;
+static inline u64 x86_64_save_flags_and_cli() {
+    u64 flags;
     asm volatile(
         "pushfq\n"
         "pop %0\n"
@@ -170,7 +170,7 @@ static inline uint64_t x86_64_save_flags_and_cli() {
     return flags;
 }
 
-static inline void x86_64_restore_flags(uint64_t flags) {
+static inline void x86_64_restore_flags(u64 flags) {
     asm volatile(
         "push %0\n"
         "popfq"
@@ -188,8 +188,8 @@ static inline void x86_64_fpu_load(void* store) {
     asm volatile("fxrstor (%0)" :: "r"(store));
 }
 
-static inline uint64_t x86_64_rdmsr(uint32_t addr) {
-    uint32_t low, high;
+static inline u64 x86_64_rdmsr(u32 addr) {
+    u32 low, high;
 
     __asm__ volatile (
         "rdmsr"
@@ -197,12 +197,12 @@ static inline uint64_t x86_64_rdmsr(uint32_t addr) {
         : "c"(addr)
     );
 
-    return ((uint64_t)high << 32) | low;
+    return ((u64)high << 32) | low;
 }
 
-static inline void x86_64_wrmsr(uint32_t addr, uint64_t value) {
-    uint32_t low  = (uint32_t)(value & 0xFFFFFFFF);
-    uint32_t high = (uint32_t)(value >> 32);
+static inline void x86_64_wrmsr(u32 addr, u64 value) {
+    u32 low  = (u32)(value & 0xFFFFFFFF);
+    u32 high = (u32)(value >> 32);
 
     __asm__ volatile (
         "wrmsr"

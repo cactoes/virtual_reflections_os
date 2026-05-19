@@ -28,13 +28,13 @@ extern "C" {
 #endif
 
 void kprint(const char* str);
-uint64_t ktime_since_boot();
-void knet_udp_send(uint32_t dst_ip, uint16_t src_port, uint16_t dst_port, uint8_t* packet, size_t size);
-void ksleep(uint64_t ms);
+u64 ktime_since_boot();
+void knet_udp_send(u32 dst_ip, u16 src_port, u16 dst_port, u8* packet, size_t size);
+void ksleep(u64 ms);
 
 int driver_init();
 int driver_exit();
-uint64_t query_capability(const char* feature);
+u64 query_capability(const char* feature);
 
 #ifdef __cplusplus
 }

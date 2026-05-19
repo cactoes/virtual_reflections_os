@@ -9,8 +9,8 @@ static cpu_t cpu0 {};
 bool initialize_cpus() {
     // for now we only have a single core
     
-    // uint64_t star = ((uint64_t)(USER_CODE_32_SELECTOR_INDEX << 3) << 48)
-    //               | ((uint64_t)(KERNEL_CODE_SELECTOR_INDEX << 3) << 32);
+    // u64 star = ((u64)(USER_CODE_32_SELECTOR_INDEX << 3) << 48)
+    //               | ((u64)(KERNEL_CODE_SELECTOR_INDEX << 3) << 32);
 
     // msr_enable_sce();
     // msr_set_star(star);
@@ -33,7 +33,7 @@ bool set_kernel_stack(cpu_t* cpu, void* stack) {
     if (!cpu || !stack)
         return false;
 
-    cpu->kernel_rsp = (uint64_t)stack;
+    cpu->kernel_rsp = (u64)stack;
 
     return true;
 }

@@ -12,11 +12,11 @@
 
 #include "common.hpp"
 
-typedef uint64_t vthread_handle_t;
+typedef u64 vthread_handle_t;
 
 struct mutex_t {
     volatile int locked;
-    uint64_t saved_flags;
+    u64 saved_flags;
 
     // for crash handler cleanup
     vthread_handle_t handle;
@@ -24,7 +24,7 @@ struct mutex_t {
 
 struct spinlock_t {
     volatile int locked;
-    uint64_t prev_interrupt_state;
+    u64 prev_interrupt_state;
 };
 
 void mutex_init(mutex_t* p_mutex);

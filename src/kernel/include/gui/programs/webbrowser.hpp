@@ -11,6 +11,6 @@
 #include "common.hpp"
 
 void webbrowser_init();
-void webbrowser_render_target(uint64_t dt, uint64_t x, uint64_t y);
+void webbrowser_render_target(u64 dt, u64 x, u64 y);
 
 #endif // __WEBBROWSER_HPP__

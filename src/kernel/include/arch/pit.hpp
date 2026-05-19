@@ -13,7 +13,7 @@
 
 #include "common.hpp"
 
-void pit_init(uint64_t times_per_s);
+void pit_init(u64 times_per_s);
 
 #endif // ARCH_X86_64
 

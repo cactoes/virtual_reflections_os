@@ -8,32 +8,32 @@
 // 2 * 64 = 128
 // 128 2mb regions
 // same size as defined in header
-static uint64_t global_mapped_mmio_bitmap[2] {};
+static u64 global_mapped_mmio_bitmap[2] {};
 
 void* vmem_virtual_to_physical(void* vaddr) {
-    const uint64_t pml4e =  KPAGING_GET_PE(vaddr, 39);
-    const uint64_t pdpe =   KPAGING_GET_PE(vaddr, 30);
-    const uint64_t pde =    KPAGING_GET_PE(vaddr, 21);
+    const u64 pml4e =  KPAGING_GET_PE(vaddr, 39);
+    const u64 pdpe =   KPAGING_GET_PE(vaddr, 30);
+    const u64 pde =    KPAGING_GET_PE(vaddr, 21);
 
-    const uint64_t* pml4_virt = GET_PML4_VIRT();
+    const u64* pml4_virt = GET_PML4_VIRT();
     if (!KPAGING_CHECK_ENTRY(pml4_virt, pml4e))
         return nullptr;
     
-    const uint64_t* pdpt_virt = GET_PDPT_VIRT(pml4e);
+    const u64* pdpt_virt = GET_PDPT_VIRT(pml4e);
     if (!KPAGING_CHECK_ENTRY(pdpt_virt, pdpe))
         return nullptr;
 
-    const uint64_t* pdt_virt = GET_PDT_VIRT(pml4e, pdpe);
+    const u64* pdt_virt = GET_PDT_VIRT(pml4e, pdpe);
     if (!KPAGING_CHECK_ENTRY(pdt_virt, pde))
         return nullptr;
 
-    const uint64_t page_offset = (uint64_t)vaddr & (PAGE_SIZE_LARGE - 1);
+    const u64 page_offset = (u64)vaddr & (PAGE_SIZE_LARGE - 1);
     return (void*)((pdt_virt[pde] & ~(PAGE_SIZE_LARGE - 1)) + page_offset);
 }
 
 void* vmem_map_mmio_region(void* pml4, void* paddr) {
-    const uint64_t page_paddr = align_down((uint64_t)paddr, PAGE_SIZE_LARGE);
-    const uint64_t offset = (uint64_t)paddr - page_paddr;
+    const u64 page_paddr = align_down((u64)paddr, PAGE_SIZE_LARGE);
+    const u64 offset = (u64)paddr - page_paddr;
 
     void* vaddr = 0;
 
@@ -51,31 +51,31 @@ void* vmem_map_mmio_region(void* pml4, void* paddr) {
     if (!vmem_map_2mb(pml4, vaddr, (void*)page_paddr))
         return nullptr;
 
-    return (void*)((uint64_t)vaddr + offset);
+    return (void*)((u64)vaddr + offset);
 }
 
 
 bool vmem_map_2mb(const void* pml4, const void* vaddr, const void* paddr, bool is_user) {
-    if (!is_aligned((uint64_t)vaddr, PAGE_SIZE_LARGE) ||
-        !is_aligned((uint64_t)paddr, PAGE_SIZE_LARGE)) {
+    if (!is_aligned((u64)vaddr, PAGE_SIZE_LARGE) ||
+        !is_aligned((u64)paddr, PAGE_SIZE_LARGE)) {
         return false;
     }
 
-    const uint64_t pml4e =  KPAGING_GET_PE(vaddr, 39);
-    const uint64_t pdpe =   KPAGING_GET_PE(vaddr, 30);
-    const uint64_t pde =    KPAGING_GET_PE(vaddr, 21);
+    const u64 pml4e =  KPAGING_GET_PE(vaddr, 39);
+    const u64 pdpe =   KPAGING_GET_PE(vaddr, 30);
+    const u64 pde =    KPAGING_GET_PE(vaddr, 21);
 
-    uint64_t* pml4_virt = GET_PML4_VIRT();
+    u64* pml4_virt = GET_PML4_VIRT();
     if (!KPAGING_CHECK_ENTRY(pml4_virt, pml4e)) {
         const void* page = pmem_get_page();
-        pml4_virt[pml4e] = ((uint64_t)page & ~0xFFF) | PF_PRESENT | PF_READ_WRITE;
+        pml4_virt[pml4e] = ((u64)page & ~0xFFF) | PF_PRESENT | PF_READ_WRITE;
         memzero(GET_PDPT_VIRT(pml4e), PAGE_SIZE);
     }
 
-    uint64_t* pdpt_virt = GET_PDPT_VIRT(pml4e);
+    u64* pdpt_virt = GET_PDPT_VIRT(pml4e);
     if (!KPAGING_CHECK_ENTRY(pdpt_virt, pdpe)) {
         const void* page = pmem_get_page();
-        pdpt_virt[pdpe] = ((uint64_t)page & ~0xFFF) | PF_PRESENT | PF_READ_WRITE;
+        pdpt_virt[pdpe] = ((u64)page & ~0xFFF) | PF_PRESENT | PF_READ_WRITE;
         memzero(GET_PDT_VIRT(pml4e, pdpe), PAGE_SIZE);
     }
 
@@ -86,19 +86,19 @@ bool vmem_map_2mb(const void* pml4, const void* vaddr, const void* paddr, bool i
         pml4_virt[pml4e] |= PF_USER_SUPERVISOR;
     }
 
-    const uint64_t basic_page_flags = is_user
+    const u64 basic_page_flags = is_user
         ? PF_PRESENT | PF_READ_WRITE | PF_USER_SUPERVISOR
         : PF_PRESENT | PF_READ_WRITE;
 
-    uint64_t* pdt_virt = GET_PDT_VIRT(pml4e, pdpe);
-    pdt_virt[pde] = ((uint64_t)paddr & ~0x1FFFFF) | PF_PAGE_SIZE | basic_page_flags;
+    u64* pdt_virt = GET_PDT_VIRT(pml4e, pdpe);
+    pdt_virt[pde] = ((u64)paddr & ~0x1FFFFF) | PF_PAGE_SIZE | basic_page_flags;
     flush_tlb((void*)vaddr);
     return true;
 }
 
 size_t vmem_smart_alloc_pages(const void* pml4, const void* vaddr, size_t size, bool is_user) {
     size_t allocated = 0;
-    uint64_t current_virtual_address = (uint64_t)vaddr;
+    u64 current_virtual_address = (u64)vaddr;
 
     while (allocated < size) {
         void* target_physical_address = pmem_get_page();
@@ -107,11 +107,11 @@ size_t vmem_smart_alloc_pages(const void* pml4, const void* vaddr, size_t size, 
             return allocated;
 
         // force 2mb memory alignment
-        if (!is_aligned((uint64_t)target_physical_address, PAGE_SIZE_LARGE))
+        if (!is_aligned((u64)target_physical_address, PAGE_SIZE_LARGE))
             continue;
 
         // reserve the remaining pages to complete 2MB
-        if (!pmem_try_reserve_address((void*)((uint64_t)target_physical_address + PAGE_SIZE), (PAGE_SIZE_LARGE / PAGE_SIZE - 1)))
+        if (!pmem_try_reserve_address((void*)((u64)target_physical_address + PAGE_SIZE), (PAGE_SIZE_LARGE / PAGE_SIZE - 1)))
             return allocated;
 
         // map the address
@@ -127,15 +127,15 @@ size_t vmem_smart_alloc_pages(const void* pml4, const void* vaddr, size_t size, 
 }
 
 bool vmem_init(const void* pml4, const void* mbstruct) {
-    const uint64_t aligned_kernel_end_addr = align_up(LINKER_END_KERNEL_PHYS, PAGE_SIZE_LARGE);
-    uint64_t kernel_page_count = aligned_kernel_end_addr / PAGE_SIZE;
+    const u64 aligned_kernel_end_addr = align_up(LINKER_END_KERNEL_PHYS, PAGE_SIZE_LARGE);
+    u64 kernel_page_count = aligned_kernel_end_addr / PAGE_SIZE;
 
     if (!pmem_try_reserve_address(0, kernel_page_count))
         return false;
 
     for (auto mm_entry = mb2_get_first_entry((multiboot2_info_t*)mbstruct); mm_entry; mm_entry = mb2_get_next_entry((multiboot2_info_t*)mbstruct, mm_entry)) {
         // reserve physical pages for reserved memory
-        if (mm_entry->type != (uint32_t)memory_map_type_t::USABLE) {
+        if (mm_entry->type != (u32)memory_map_type_t::USABLE) {
             if (!pmem_is_in_memory_range((void*)(mm_entry->addr + mm_entry->len)))
                 continue;
 
@@ -154,33 +154,33 @@ bool vmem_unmap_2mb(void* pml4, void* vaddr) {
     // BUG @since 26/02/2026 -- 11:55
     // empty enties get removed but are still alocated by the page allocator
 
-    if (!is_aligned((uint64_t)vaddr, PAGE_SIZE_LARGE))
+    if (!is_aligned((u64)vaddr, PAGE_SIZE_LARGE))
         return false;
 
-    const uint64_t pml4e =  KPAGING_GET_PE(vaddr, 39);
-    const uint64_t pdpe =   KPAGING_GET_PE(vaddr, 30);
-    const uint64_t pde =    KPAGING_GET_PE(vaddr, 21);
+    const u64 pml4e =  KPAGING_GET_PE(vaddr, 39);
+    const u64 pdpe =   KPAGING_GET_PE(vaddr, 30);
+    const u64 pde =    KPAGING_GET_PE(vaddr, 21);
 
-    uint64_t* pml4_virt = GET_PML4_VIRT();
+    u64* pml4_virt = GET_PML4_VIRT();
     if (!KPAGING_CHECK_ENTRY(pml4_virt, pml4e))
         return false;
 
-    uint64_t* pdpt_virt = GET_PDPT_VIRT(pml4e);
+    u64* pdpt_virt = GET_PDPT_VIRT(pml4e);
     if (!KPAGING_CHECK_ENTRY(pdpt_virt, pdpe))
         return false;
 
-    uint64_t* pdt_virt = GET_PDT_VIRT(pml4e, pdpe);
+    u64* pdt_virt = GET_PDT_VIRT(pml4e, pdpe);
     pdt_virt[pde] = 0;
     flush_tlb((void*)vaddr);
     return true;
 }
 
 bool vmem_recusive_map_page_table(void* page_table_vaddr, void* page_table_paddr) {
-    if (!is_aligned((uint64_t)page_table_vaddr, PAGE_SIZE) ||
-        !is_aligned((uint64_t)page_table_paddr, PAGE_SIZE)) {
+    if (!is_aligned((u64)page_table_vaddr, PAGE_SIZE) ||
+        !is_aligned((u64)page_table_paddr, PAGE_SIZE)) {
         return false;
     }
 
-    ((uint64_t*)page_table_vaddr)[511] = ((uint64_t)page_table_paddr & ~0xFFF) | PF_PRESENT | PF_READ_WRITE;
+    ((u64*)page_table_vaddr)[511] = ((u64)page_table_paddr & ~0xFFF) | PF_PRESENT | PF_READ_WRITE;
     return true;
 }

@@ -62,9 +62,9 @@ enum class ide_type_t {
 };
 
 struct ide_channel_t {
-    uint16_t io_base;
-    uint16_t ctrl_base;
-    uint16_t master;
+    u16 io_base;
+    u16 ctrl_base;
+    u16 master;
     ide_channel_type_t channel_type;
 };
 
@@ -73,10 +73,10 @@ struct ide_device_t {
     ide_type_t type;
     ide_channel_t channel;
 
-    uint64_t lba_count;
-    uint64_t capacity;
-    uint64_t logical_sector_size;
-    uint64_t physical_sector_size;
+    u64 lba_count;
+    u64 capacity;
+    u64 logical_sector_size;
+    u64 physical_sector_size;
 
     spinlock_t spinlock;
 
@@ -89,7 +89,7 @@ struct ide_device_t {
 
 bool ide_init(const pci_device_t* device, std::dynamic_array<ide_device_t>* device_list);
 bool ide_device_init(ide_device_t* device);
-bool ide_read(ide_device_t* device, uint64_t lba, uint8_t* buffer, size_t size);
+bool ide_read(ide_device_t* device, u64 lba, u8* buffer, size_t size);
 bool ide_write(ide_device_t* device);
 bool is_ide_device(const pci_device_t* device);
 

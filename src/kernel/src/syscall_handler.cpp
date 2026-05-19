@@ -2,7 +2,7 @@
 #include "io.hpp"
 #include "virtual_thread.hpp"
 
-uint64_t x86_64_syscall_dispatch(uint64_t syscall_num, syscall_regs_t* regs) {
+u64 x86_64_syscall_dispatch(u64 syscall_num, syscall_regs_t* regs) {
     return syscall_dispatch(syscall_num,
         (void*)regs->rdi,
         (void*)regs->rsi,
@@ -12,11 +12,11 @@ uint64_t x86_64_syscall_dispatch(uint64_t syscall_num, syscall_regs_t* regs) {
         (void*)regs->r9);
 }
 
-extern "C" uint64_t amd64_syscall_dispatch(uint64_t syscall_num, syscall_regs_t* regs) {
+extern "C" u64 amd64_syscall_dispatch(u64 syscall_num, syscall_regs_t* regs) {
     return x86_64_syscall_dispatch(syscall_num, regs);
 }
 
-uint64_t syscall_dispatch(uint64_t syscall_num, void* a1, void* a2, void* a3, void* a4, void* a5, void* a6) {
+u64 syscall_dispatch(u64 syscall_num, void* a1, void* a2, void* a3, void* a4, void* a5, void* a6) {
     switch (syscall_num) {
         case SYSCALL_TERMINATE_PROCESS:
             return syscall_terminate_current_process();
@@ -32,7 +32,7 @@ uint64_t syscall_dispatch(uint64_t syscall_num, void* a1, void* a2, void* a3, vo
     return SYSCALL_RESULT_OK;
 }
 
-uint64_t syscall_terminate_current_process() {
+u64 syscall_terminate_current_process() {
     kprintf("[ SYSCALL ] terminated process\n");
     vthread_terminate();
 
@@ -42,15 +42,15 @@ uint64_t syscall_terminate_current_process() {
     return SYSCALL_RESULT_OK;
 }
 
-uint64_t syscall_heap_alloc(size_t size) {
+u64 syscall_heap_alloc(size_t size) {
     process_t* current_process = get_current_process();
     if (!current_process)
         return SYSCALL_RESULT_OK;
 
-    return (uint64_t)heap_alloc(&current_process->heap, size);
+    return (u64)heap_alloc(&current_process->heap, size);
 }
 
-uint64_t syscall_heap_free(void* ptr) {
+u64 syscall_heap_free(void* ptr) {
     process_t* current_process = get_current_process();
     if (!current_process)
         return SYSCALL_RESULT_OK;

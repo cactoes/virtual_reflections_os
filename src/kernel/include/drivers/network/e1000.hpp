@@ -73,34 +73,34 @@
 #include "network/nidm.hpp"
 
 struct e1000_rdesc_t {
-    uint64_t buffer_addr;
-    uint16_t length;
-    uint16_t checksum;
-    uint8_t status;
-    uint8_t errors;
-    uint16_t special;
+    u64 buffer_addr;
+    u16 length;
+    u16 checksum;
+    u8 status;
+    u8 errors;
+    u16 special;
 } PACKED;
 
 struct e1000_tdesc_t {
-    uint64_t buffer_addr;
-    uint16_t length;
-    uint8_t cso;
-    uint8_t cmd;
-    uint8_t status;
-    uint8_t css;
-    uint16_t special;
+    u64 buffer_addr;
+    u16 length;
+    u8 cso;
+    u8 cmd;
+    u8 status;
+    u8 css;
+    u16 special;
 } PACKED;
 
 struct e1000_t {
     void* mmio_region;
-    uint8_t mac[6];
+    u8 mac[6];
 
     e1000_rdesc_t* rdesc_array;
-    uint8_t* rdesc_buffer_array;
+    u8* rdesc_buffer_array;
     size_t rx_tail;
 
     e1000_tdesc_t* tdesc_array;
-    uint8_t* tdesc_buffer_array;
+    u8* tdesc_buffer_array;
     size_t tx_tail;
 };
 

@@ -14,16 +14,16 @@
 #define PAGING_BITMAP_SIZE                  0x4000 // 4096mb    0x4000 * 64 = page count
 
 // helper functions for page tables
-#define KPAGING_GET_PE(virtual_addr, offset)    ((((uint64_t)(virtual_addr)) >> (offset)) & 0x1FF)
-#define KPAGING_GET_ENTRY(table, entry)         ((uint64_t*)(((uint64_t*)(table))[((uint64_t)(entry))] & ~0xFFF))
-#define KPAGING_CHECK_ENTRY(table, entry)       ((((uint64_t*)(table))[((uint64_t)(entry))]) & 1)
+#define KPAGING_GET_PE(virtual_addr, offset)    ((((u64)(virtual_addr)) >> (offset)) & 0x1FF)
+#define KPAGING_GET_ENTRY(table, entry)         ((u64*)(((u64*)(table))[((u64)(entry))] & ~0xFFF))
+#define KPAGING_CHECK_ENTRY(table, entry)       ((((u64*)(table))[((u64)(entry))]) & 1)
 
 #define RECURSIVE_SLOT 511ULL
 #define SIGN_EXT 0xFFFF000000000000ULL
-#define GET_PML4_VIRT()                                     ((uint64_t*)(SIGN_EXT | (RECURSIVE_SLOT << 39) | (RECURSIVE_SLOT << 30)         | (RECURSIVE_SLOT << 21)            | (RECURSIVE_SLOT << 12)))
-#define GET_PDPT_VIRT(pml4_index)                           ((uint64_t*)(SIGN_EXT | (RECURSIVE_SLOT << 39) | (RECURSIVE_SLOT << 30)         | (RECURSIVE_SLOT << 21)            | ((uint64_t)(pml4_index) << 12)))
-#define GET_PDT_VIRT(pml4_index, pdpt_index)                ((uint64_t*)(SIGN_EXT | (RECURSIVE_SLOT << 39) | (RECURSIVE_SLOT << 30)         | ((uint64_t)(pml4_index) << 21)    | ((uint64_t)(pdpt_index) << 12)))
-#define GET_PT_VIRT(pml4_index, pdpt_index, pdt_index)      ((uint64_t*)(SIGN_EXT | (RECURSIVE_SLOT << 39) | ((uint64_t)(pml4_index) << 30) | ((uint64_t)(pdpt_index) << 21)    | ((uint64_t)(pdt_index) << 12)))
+#define GET_PML4_VIRT()                                     ((u64*)(SIGN_EXT | (RECURSIVE_SLOT << 39) | (RECURSIVE_SLOT << 30)         | (RECURSIVE_SLOT << 21)            | (RECURSIVE_SLOT << 12)))
+#define GET_PDPT_VIRT(pml4_index)                           ((u64*)(SIGN_EXT | (RECURSIVE_SLOT << 39) | (RECURSIVE_SLOT << 30)         | (RECURSIVE_SLOT << 21)            | ((u64)(pml4_index) << 12)))
+#define GET_PDT_VIRT(pml4_index, pdpt_index)                ((u64*)(SIGN_EXT | (RECURSIVE_SLOT << 39) | (RECURSIVE_SLOT << 30)         | ((u64)(pml4_index) << 21)    | ((u64)(pdpt_index) << 12)))
+#define GET_PT_VIRT(pml4_index, pdpt_index, pdt_index)      ((u64*)(SIGN_EXT | (RECURSIVE_SLOT << 39) | ((u64)(pml4_index) << 30) | ((u64)(pdpt_index) << 21)    | ((u64)(pdt_index) << 12)))
 
 // page flags
 #define PF_PRESENT              (1 << 0)

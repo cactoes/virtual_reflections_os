@@ -28,8 +28,8 @@
 
 // void gdt_init();
 // void gdt_set_stack_pointer0(void* p_stack_pointer);
-// uint64_t gdt_get_kernel_code_selector();
-// uint64_t gdt_get_kernel_data_selector();
+// u64 gdt_get_kernel_code_selector();
+// u64 gdt_get_kernel_data_selector();
 
 #endif // ARCH_X86_64
 

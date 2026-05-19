@@ -27,7 +27,7 @@ bool network_manager_init(network_manager_t* network_manager) {
     return true;
 }
 
-void network_manager_dhcp_callback(socket_t* socket, uint32_t ip, uint16_t port, const uint8_t* data, size_t size) {
+void network_manager_dhcp_callback(socket_t* socket, u32 ip, u16 port, const u8* data, size_t size) {
     if (size > sizeof(dhcp_packet_t))
         return;
 
@@ -60,7 +60,7 @@ void network_manager_dhcp_callback(socket_t* socket, uint32_t ip, uint16_t port,
 
         dhcp_packet_t p = dhcp_create_request_packet(DEVICE_HOST_NAME, &session, session.ip.raw);
         network_manager->dhcp_socket->remote_ip = session.dhcp_ip.raw;
-        socket_send(network_manager->dhcp_socket, (const uint8_t*)&p, sizeof(dhcp_packet_t));
+        socket_send(network_manager->dhcp_socket, (const u8*)&p, sizeof(dhcp_packet_t));
     }
 
     if (option_message_type->value[0] == DHCP_MESSAGE_TYPE_DHCPACK) {
@@ -75,7 +75,7 @@ void network_manager_dhcp_callback(socket_t* socket, uint32_t ip, uint16_t port,
         session.interface->ip = session.ip;
         session.interface->is_active = true;
 
-        kprintf("[DHCP] configured ip for '%s' - %u.%u.%u.%u\n", session.interface->device_name, (uint32_t)session.ip.byte3, (uint32_t)session.ip.byte2, (uint32_t)session.ip.byte1, (uint32_t)session.ip.byte0);
+        kprintf("[DHCP] configured ip for '%s' - %u.%u.%u.%u\n", session.interface->device_name, (u32)session.ip.byte3, (u32)session.ip.byte2, (u32)session.ip.byte1, (u32)session.ip.byte0);
     }
 }
 
@@ -84,7 +84,7 @@ bool network_manager_dhcp_send_discover(network_manager_t* network_manager) {
         return false;
 
     dhcp_packet_t packet = dhcp_create_discover_packet(DEVICE_HOST_NAME, &network_manager->dhcp_client->session);
-    return socket_send(network_manager->dhcp_socket, (uint8_t*)&packet, sizeof(dhcp_packet_t));
+    return socket_send(network_manager->dhcp_socket, (u8*)&packet, sizeof(dhcp_packet_t));
 }
 
 bool network_manager_configre_interface(network_manager_t* network_manager, network_interface_t* interface) {
@@ -105,14 +105,14 @@ bool network_manager_dns_send_query(network_manager_t* network_manager, const ch
         return false;
 
     size_t query_size = 0;
-    uint8_t* query = dns_create_query_packet(hostname, dns_query_type_t::A, &query_size);
+    u8* query = dns_create_query_packet(hostname, dns_query_type_t::A, &query_size);
     if (!query)
         return false;
 
     return socket_send(network_manager->dns_socket, query, query_size);
 }
 
-uint32_t network_manager_dns_query(network_manager_t* network_manager, const char* hostname) {
+u32 network_manager_dns_query(network_manager_t* network_manager, const char* hostname) {
     if (!network_manager || !hostname)
         return 0;
 
@@ -122,7 +122,7 @@ uint32_t network_manager_dns_query(network_manager_t* network_manager, const cha
     if (!network_manager_dns_send_query(network_manager, hostname))
         return 0;
 
-    const uint64_t timeout_time = clock_get_time_since_boot() + DNS_MAX_WAIT;
+    const u64 timeout_time = clock_get_time_since_boot() + DNS_MAX_WAIT;
     while (clock_get_time_since_boot() < timeout_time) {
         if (auto record = dns_client_get_record(network_manager->dns_client, hostname))
             return record->ip;
@@ -133,7 +133,7 @@ uint32_t network_manager_dns_query(network_manager_t* network_manager, const cha
     return 0;
 }
 
-void network_manager_dns_callback(socket_t*, uint32_t ip, uint16_t port, const uint8_t* packet, size_t size) {
+void network_manager_dns_callback(socket_t*, u32 ip, u16 port, const u8* packet, size_t size) {
     if (size < sizeof(dns_header_t))
         return;
 
@@ -142,8 +142,8 @@ void network_manager_dns_callback(socket_t*, uint32_t ip, uint16_t port, const u
         return;
 
     const dns_header_t* header = (const dns_header_t*)packet;
-    uint16_t ancount = bswap16(header->ancount);
-    uint16_t qdcount = bswap16(header->qdcount);
+    u16 ancount = bswap16(header->ancount);
+    u16 qdcount = bswap16(header->qdcount);
 
     size_t offset = sizeof(dns_header_t);
 
@@ -166,25 +166,25 @@ void network_manager_dns_callback(socket_t*, uint32_t ip, uint16_t port, const u
             return;
         }
 
-        uint16_t qtype = bswap16(*(uint16_t*)&packet[offset]);
-        offset += sizeof(uint16_t);
+        u16 qtype = bswap16(*(u16*)&packet[offset]);
+        offset += sizeof(u16);
 
-        uint16_t qclass = bswap16(*(uint16_t*)&packet[offset]);
-        offset += sizeof(uint16_t);
+        u16 qclass = bswap16(*(u16*)&packet[offset]);
+        offset += sizeof(u16);
 
-        uint32_t ttl = bswap32(*(uint32_t*)&packet[offset]);
-        offset += sizeof(uint32_t);
+        u32 ttl = bswap32(*(u32*)&packet[offset]);
+        offset += sizeof(u32);
         
-        uint16_t rdlength = bswap16(*(uint16_t*)&packet[offset]);
-        offset += sizeof(uint16_t);
+        u16 rdlength = bswap16(*(u16*)&packet[offset]);
+        offset += sizeof(u16);
 
         if (offset + rdlength > size)
             break;
 
         if (qtype == 1 && rdlength == 4) {
-            ipv4_address_t ip = { .raw = bswap32(*(uint32_t*)&packet[offset]) };
+            ipv4_address_t ip = { .raw = bswap32(*(u32*)&packet[offset]) };
             dns_client_add_record(network_manager->dns_client, hostname, ip.raw);
-            kprintf("[DNS] stored new record: %s - %u.%u.%u.%u\n", hostname, (uint32_t)ip.byte3, (uint32_t)ip.byte2, (uint32_t)ip.byte1, (uint32_t)ip.byte0);
+            kprintf("[DNS] stored new record: %s - %u.%u.%u.%u\n", hostname, (u32)ip.byte3, (u32)ip.byte2, (u32)ip.byte1, (u32)ip.byte0);
         }
 
         offset += rdlength;

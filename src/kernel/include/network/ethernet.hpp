@@ -15,12 +15,12 @@
 #include "network/nidm.hpp"
 
 struct ethernet_header_t {
-    uint8_t dst_mac[6];
-    uint8_t src_mac[6];
-    uint16_t ethernet_type;
+    u8 dst_mac[6];
+    u8 src_mac[6];
+    u16 ethernet_type;
 } PACKED;
 
-int ethernet_receive(network_interface_t* interface, uint8_t* frame, size_t size);
-void ethernet_send(network_interface_t* interface, uint8_t dst_mac[6], uint16_t type, const uint8_t* packet, size_t size);
+int ethernet_receive(network_interface_t* interface, u8* frame, size_t size);
+void ethernet_send(network_interface_t* interface, u8 dst_mac[6], u16 type, const u8* packet, size_t size);
 
 #endif // __DRIVERS_NETWORK_ETHERNET_HPP__

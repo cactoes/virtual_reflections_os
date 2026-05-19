@@ -14,12 +14,12 @@ enum class block_device_type_t {
 struct block_device_t {
     void* disk_device;
     block_device_type_t type;
-    uint64_t start_lba;
-    uint64_t end_lba;
+    u64 start_lba;
+    u64 end_lba;
     size_t block_size;
 };
 
-bool block_read_sized(block_device_t* device, uint64_t lba, uint8_t* buffer, size_t size);
-bool block_read(block_device_t* device, uint64_t lba, uint8_t* buffer);
+bool block_read_sized(block_device_t* device, u64 lba, u8* buffer, size_t size);
+bool block_read(block_device_t* device, u64 lba, u8* buffer);
 
 #endif // __BLOCK_DEVICE_HPP__

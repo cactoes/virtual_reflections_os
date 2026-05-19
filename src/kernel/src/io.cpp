@@ -8,7 +8,7 @@
 #include "std/string.hpp"
 #include "drivers/graphics/graphics_driver.hpp"
 
-static uint64_t global_io_bitmap[1];
+static u64 global_io_bitmap[1];
 
 #define TERM_SCALE              1.4f
 #define TERM_FONT_SIZE          8

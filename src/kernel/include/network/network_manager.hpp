@@ -34,7 +34,7 @@ void set_global_network_manager(network_manager_t* network_manager);
 bool network_manager_init(network_manager_t* network_manager);
 
 bool network_manager_configre_interface(network_manager_t* network_manager, network_interface_t* interface);
-uint32_t network_manager_dns_query(network_manager_t* network_manager, const char* hostname);
+u32 network_manager_dns_query(network_manager_t* network_manager, const char* hostname);
 
 bool network_manager_configure(network_manager_t* network_manager);
 

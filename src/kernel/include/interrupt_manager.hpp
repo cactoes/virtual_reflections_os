@@ -11,14 +11,7 @@
 #include "common.hpp"
 #include "cpu.hpp"
 
-typedef interrupt_regs_t*(*interrupt_callback_t)(interrupt_regs_t*, void*);
-
-struct interrupt_hook_t {
-    interrupt_callback_t callback;
-    void* data;
-};
-
-enum class interrupt_t : uint64_t {
+enum class interrupt_t : u64 {
     EXCEPTION_DIVISION_BY_ZERO = 0,
     EXCEPTION_SINGLE_STEP_INTERRUPT = 1,
     EXCEPTION_NMI = 2,
@@ -41,7 +34,7 @@ enum class interrupt_t : uint64_t {
     EXCEPTION_SIMD_FP_EXCEPTION = 19,
     EXCEPTION_VIRTUALIZATION_EXCEPTION = 20,
     EXCEPTION_CONTROL_PROTECTION_EXCEPTION = 21,
-    
+
     HARDWARE_PIT = 22,
     HARDWARE_KEYBOARD = 23,
     HARDWARE_CASCADE = 24,
@@ -61,51 +54,59 @@ enum class interrupt_t : uint64_t {
 
     SOFTWARE_SYSTEMCALL,
     SOFTWARE_SCHEDULER,
-    // TODO @since 20/08/2025 -- 02:15
-    SOFTWARE_CRASH_HANDLER,
 
     SIZE,
 
-    UNKOWN = (uint64_t)-1,
+    UNKOWN = (u64)-1,
 };
 
-/// @brief              checks if the given interrupt code is an exception
-/// @param code         interrupt code to check
-/// @return             true if code is in the exception range (0-21), false otherwise
-bool is_interrupt_exception(uint64_t code);
+typedef interrupt_regs_t*(*interrupt_callback_t)(interrupt_regs_t*, void*);
 
-/// @brief              checks if the given interrupt code is an exception
-/// @param code         interrupt code to check
-/// @return             true if code is in the exception range (0-21), false otherwise
-bool is_interrupt_exception(interrupt_t code);
+struct interrupt_hook_t {
+    interrupt_callback_t callback;
+    void* data;
+};
 
-/// @brief              checks if the given interrupt code is a hardware interrupt
-/// @param code         interrupt code to check
-/// @return             true if code is a hardware interrupt, false otherwise
-bool is_interrupt_hardware(uint64_t code);
+interrupt_regs_t* interrupt_manager_dispatch(interrupt_t interrupt, interrupt_regs_t* stack);
+bool hook_interrupt(interrupt_t code, interrupt_callback_t callback, void* data);
 
-/// @brief              checks if the given interrupt code is a hardware interrupt
-/// @param code         interrupt code to check
-/// @return             true if code is a hardware interrupt, false otherwise
-bool is_interrupt_hardware(interrupt_t code);
+// /// @brief              checks if the given interrupt code is an exception
+// /// @param code         interrupt code to check
+// /// @return             true if code is in the exception range (0-21), false otherwise
+// bool is_interrupt_exception(u64 code);
 
-/// @brief              converts a raw interrupt code to an interrupt_t enum value
-/// @param code         raw interrupt code to convert
-/// @return             interrupt_t
-interrupt_t convert_to_interrupt(uint64_t code);
+// /// @brief              checks if the given interrupt code is an exception
+// /// @param code         interrupt code to check
+// /// @return             true if code is in the exception range (0-21), false otherwise
+// bool is_interrupt_exception(interrupt_t code);
 
-bool set_interrupt_hook(interrupt_t code, interrupt_callback_t callback, void* data);
+// /// @brief              checks if the given interrupt code is a hardware interrupt
+// /// @param code         interrupt code to check
+// /// @return             true if code is a hardware interrupt, false otherwise
+// bool is_interrupt_hardware(u64 code);
 
-/// @brief          convert a hardware irq number to its corresponding interrupt vector
-/// @param irq      hardware irq number to convert
-/// @return         interrupt vector number corresponding to the given irq
-uint64_t interrupt_irq_to_int(uint64_t irq);
+// /// @brief              checks if the given interrupt code is a hardware interrupt
+// /// @param code         interrupt code to check
+// /// @return             true if code is a hardware interrupt, false otherwise
+// bool is_interrupt_hardware(interrupt_t code);
 
-/// @brief          handles an interrupt by dispatching to the correct callback or handler
-/// @param code     interrupt code to handle
-/// @param[in]      p_rsp   pointer to cpu state at time of interrupt
-/// @return         updated cpu state pointer after handling the interrupt
-void* handle_interrupt(uint64_t code, interrupt_regs_t* p_rsp);
+// /// @brief              converts a raw interrupt code to an interrupt_t enum value
+// /// @param code         raw interrupt code to convert
+// /// @return             interrupt_t
+// interrupt_t convert_to_interrupt(u64 code);
+
+// bool set_interrupt_hook(interrupt_t code, interrupt_callback_t callback, void* data);
+
+// /// @brief          convert a hardware irq number to its corresponding interrupt vector
+// /// @param irq      hardware irq number to convert
+// /// @return         interrupt vector number corresponding to the given irq
+// u64 interrupt_irq_to_int(u64 irq);
+
+// /// @brief          handles an interrupt by dispatching to the correct callback or handler
+// /// @param code     interrupt code to handle
+// /// @param[in]      p_rsp   pointer to cpu state at time of interrupt
+// /// @return         updated cpu state pointer after handling the interrupt
+// void* handle_interrupt(u64 code, interrupt_regs_t* p_rsp);
 
 /// @brief          checks if current section is in side an interrupt
 /// @return         is in interrupt state

@@ -2,7 +2,7 @@
 #include "std/random.hpp"
 #include "time/clock.hpp"
 
-bool dhcp_options_writer_init(dhcp_options_writer_t* writer, uint8_t* buffer, size_t size) {
+bool dhcp_options_writer_init(dhcp_options_writer_t* writer, u8* buffer, size_t size) {
     if (!writer || !buffer)
         return false;
 
@@ -13,7 +13,7 @@ bool dhcp_options_writer_init(dhcp_options_writer_t* writer, uint8_t* buffer, si
     return true;
 }
 
-bool dhcp_options_writer_add_option(dhcp_options_writer_t* writer, uint8_t type, uint8_t* data, size_t size) {
+bool dhcp_options_writer_add_option(dhcp_options_writer_t* writer, u8 type, u8* data, size_t size) {
     if (writer->offset + size + 2 > writer->buffer_size)
         return false;
 
@@ -33,8 +33,8 @@ bool dhcp_options_writer_shutdown(dhcp_options_writer_t* writer) {
     return true;
 }
 
-uint8_t* dhcp_option_get(dhcp_packet_t* packet, uint8_t type) {
-    uint8_t* options = &packet->options[0];
+u8* dhcp_option_get(dhcp_packet_t* packet, u8 type) {
+    u8* options = &packet->options[0];
     size_t max_size = sizeof(packet->options);
 
     size_t ptr = 0;
@@ -52,13 +52,13 @@ uint8_t* dhcp_option_get(dhcp_packet_t* packet, uint8_t type) {
     return nullptr;
 }
 
-uint32_t dhcp_generate_xid() {
+u32 dhcp_generate_xid() {
     seed_random(clock_get_time_since_boot());
-    return (uint32_t)random_number(0, MAX_UINT32);
+    return (u32)random_number(0, MAX_UINT32);
 }
 
-uint32_t dhcp_field_to_number(uint8_t* field, size_t size) {
-    uint32_t number = 0;
+u32 dhcp_field_to_number(u8* field, size_t size) {
+    u32 number = 0;
     for (size_t i = 0; i < size; i++) {
         number <<= 8;
         number += field[i];
@@ -96,20 +96,20 @@ dhcp_packet_t dhcp_create_discover_packet(const char* hostname, dhcp_client_t::s
     dhcp_options_writer_t writer {};
     dhcp_options_writer_init(&writer, &packet.options[0], sizeof(dhcp_packet_t::options));
 
-    uint8_t dhcp_message_type[] { DHCP_MESSAGE_TYPE_DHCPDISCOVER };
+    u8 dhcp_message_type[] { DHCP_MESSAGE_TYPE_DHCPDISCOVER };
     dhcp_options_writer_add_option(&writer, DHCP_OPTION_DHCP_MESSAGE_TYPE, &dhcp_message_type[0], sizeof(dhcp_message_type));
 
-    uint8_t client_id[] { DHCP_HTYPE_ETHERNET, session->interface->mac[0], session->interface->mac[1], session->interface->mac[2],session->interface-> mac[3], session->interface->mac[4], session->interface->mac[5] };
+    u8 client_id[] { DHCP_HTYPE_ETHERNET, session->interface->mac[0], session->interface->mac[1], session->interface->mac[2],session->interface-> mac[3], session->interface->mac[4], session->interface->mac[5] };
     dhcp_options_writer_add_option(&writer, DHCP_OPTION_CLIENT_ID, &client_id[0], sizeof(client_id));
 
-    dhcp_options_writer_add_option(&writer, DHCP_OPTION_HOSTNAME, (uint8_t*)hostname, strlen(hostname));
+    dhcp_options_writer_add_option(&writer, DHCP_OPTION_HOSTNAME, (u8*)hostname, strlen(hostname));
 
     dhcp_options_writer_shutdown(&writer);
 
     return packet;
 }
 
-dhcp_packet_t dhcp_create_request_packet(const char* hostname, dhcp_client_t::session_t* session, uint32_t wanted_ip) {
+dhcp_packet_t dhcp_create_request_packet(const char* hostname, dhcp_client_t::session_t* session, u32 wanted_ip) {
     dhcp_packet_t packet {};
     memzero(&packet, sizeof(dhcp_packet_t));
 
@@ -138,20 +138,20 @@ dhcp_packet_t dhcp_create_request_packet(const char* hostname, dhcp_client_t::se
     dhcp_options_writer_t writer {};
     dhcp_options_writer_init(&writer, &packet.options[0], sizeof(dhcp_packet_t::options));
 
-    uint8_t dhcp_message_type[] { DHCP_MESSAGE_TYPE_DHCPREQUEST };
+    u8 dhcp_message_type[] { DHCP_MESSAGE_TYPE_DHCPREQUEST };
     dhcp_options_writer_add_option(&writer, DHCP_OPTION_DHCP_MESSAGE_TYPE, &dhcp_message_type[0], sizeof(dhcp_message_type));
 
-    uint32_t wanted_ip_swapped = bswap32(wanted_ip);
-    dhcp_options_writer_add_option(&writer, DHCP_OPTION_REQUESTED_IP_ADDR, (uint8_t*)&wanted_ip_swapped, sizeof(uint32_t));
+    u32 wanted_ip_swapped = bswap32(wanted_ip);
+    dhcp_options_writer_add_option(&writer, DHCP_OPTION_REQUESTED_IP_ADDR, (u8*)&wanted_ip_swapped, sizeof(u32));
 
-    dhcp_options_writer_add_option(&writer, DHCP_OPTION_HOSTNAME, (uint8_t*)hostname, strlen(hostname));
+    dhcp_options_writer_add_option(&writer, DHCP_OPTION_HOSTNAME, (u8*)hostname, strlen(hostname));
 
     dhcp_options_writer_shutdown(&writer);
 
     return packet;
 }
 
-dhcp_packet_t dhcp_create_lease_extend_packet(const char* hostname, dhcp_client_t::session_t* session, uint32_t ip_to_extend) {
+dhcp_packet_t dhcp_create_lease_extend_packet(const char* hostname, dhcp_client_t::session_t* session, u32 ip_to_extend) {
     dhcp_packet_t packet {};
     memzero(&packet, sizeof(dhcp_packet_t));
 
@@ -180,16 +180,16 @@ dhcp_packet_t dhcp_create_lease_extend_packet(const char* hostname, dhcp_client_
     dhcp_options_writer_t writer {};
     dhcp_options_writer_init(&writer, &packet.options[0], sizeof(dhcp_packet_t::options));
 
-    uint8_t dhcp_message_type[] { DHCP_MESSAGE_TYPE_DHCPREQUEST };
+    u8 dhcp_message_type[] { DHCP_MESSAGE_TYPE_DHCPREQUEST };
     dhcp_options_writer_add_option(&writer, DHCP_OPTION_DHCP_MESSAGE_TYPE, &dhcp_message_type[0], sizeof(dhcp_message_type));
 
-    uint32_t ip_to_extend_swapped = bswap32(ip_to_extend);
-    dhcp_options_writer_add_option(&writer, DHCP_OPTION_REQUESTED_IP_ADDR, (uint8_t*)&ip_to_extend_swapped, sizeof(uint32_t));
+    u32 ip_to_extend_swapped = bswap32(ip_to_extend);
+    dhcp_options_writer_add_option(&writer, DHCP_OPTION_REQUESTED_IP_ADDR, (u8*)&ip_to_extend_swapped, sizeof(u32));
 
-    uint32_t dhcp_server_id_swapped = bswap32(session->dhcp_ip.raw);
-    dhcp_options_writer_add_option(&writer, DHCP_OPTION_REQUESTED_IP_ADDR, (uint8_t*)&dhcp_server_id_swapped, sizeof(uint32_t));
+    u32 dhcp_server_id_swapped = bswap32(session->dhcp_ip.raw);
+    dhcp_options_writer_add_option(&writer, DHCP_OPTION_REQUESTED_IP_ADDR, (u8*)&dhcp_server_id_swapped, sizeof(u32));
 
-    dhcp_options_writer_add_option(&writer, DHCP_OPTION_HOSTNAME, (uint8_t*)hostname, strlen(hostname));
+    dhcp_options_writer_add_option(&writer, DHCP_OPTION_HOSTNAME, (u8*)hostname, strlen(hostname));
 
     dhcp_options_writer_shutdown(&writer);
 

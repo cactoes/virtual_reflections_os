@@ -11,6 +11,6 @@
 #include "common.hpp"
 
 void minesweeper_init();
-void minesweeper_render_target(uint64_t dt, uint64_t x, uint64_t y);
+void minesweeper_render_target(u64 dt, u64 x, u64 y);
 
 #endif // __MINESWEEPER_HPP__

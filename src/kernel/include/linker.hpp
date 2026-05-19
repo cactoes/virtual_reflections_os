@@ -13,18 +13,18 @@
 // NOLINTBEGIN
 namespace linker_variables {
 
-extern "C" uint64_t __lnk_kernel_end_physical;
+extern "C" u64 __lnk_kernel_end_physical;
 
 } // namespace __
 // NOLINTEND
 
 /// @brief variable placed at the end of the kernels physical address
-#define LINKER_END_KERNEL_PHYS ((uint64_t)&linker_variables::__lnk_kernel_end_physical)
+#define LINKER_END_KERNEL_PHYS ((u64)&linker_variables::__lnk_kernel_end_physical)
 
 // not exported by linker, but it is defined there
 #define KERNEL_VIRTUAL_BASE 0xFFFFF80000000000ull
 
 // translate physical address, to kernel identity mapped address
-#define PTOV_I(paddr) (((uint64_t)paddr) + KERNEL_VIRTUAL_BASE)
+#define PTOV_I(paddr) (((u64)paddr) + KERNEL_VIRTUAL_BASE)
 
 #endif // __LINKER_HPP__

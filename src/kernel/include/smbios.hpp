@@ -13,7 +13,7 @@
 
 #include "common.hpp"
 
-enum class smbios_type_t : uint8_t {
+enum class smbios_type_t : u8 {
     BIOS_INFORMATION = 0,
     SYSTEM_INFORMATION = 1,
     MAINBOARD_INFORMATION = 2,
@@ -30,53 +30,53 @@ enum class smbios_type_t : uint8_t {
 };
 
 struct smbios_t {
-    uint8_t anchor[4];
-    uint8_t checksum;
-    uint8_t length;
-    uint8_t major_version;
-    uint8_t minor_version;
-    uint16_t max_structure_size;
-    uint8_t entry_point_revision;
-    uint8_t formatted_area[5];
-    uint8_t intermediate_anchor[5];
-    uint8_t intermediate_checksum;
-    uint16_t table_length;
-    uint32_t table_address;
-    uint16_t structure_count;
-    uint8_t bcd_revision;
+    u8 anchor[4];
+    u8 checksum;
+    u8 length;
+    u8 major_version;
+    u8 minor_version;
+    u16 max_structure_size;
+    u8 entry_point_revision;
+    u8 formatted_area[5];
+    u8 intermediate_anchor[5];
+    u8 intermediate_checksum;
+    u16 table_length;
+    u32 table_address;
+    u16 structure_count;
+    u8 bcd_revision;
 } PACKED;
 
 struct smbios64_t {
-    uint8_t anchor[5];
-    uint8_t checksum;
-    uint8_t length;
-    uint8_t major_version;
-    uint8_t minor_version;
-    uint8_t docrev;
-    uint8_t entry_point_revision;
-    uint8_t reserved;
-    uint32_t table_max_size;
-    uint64_t table_address;
+    u8 anchor[5];
+    u8 checksum;
+    u8 length;
+    u8 major_version;
+    u8 minor_version;
+    u8 docrev;
+    u8 entry_point_revision;
+    u8 reserved;
+    u32 table_max_size;
+    u64 table_address;
 } PACKED;
 
 struct smbios_entry_header_t {
     smbios_type_t type;
-    uint8_t length;
-    uint16_t handle;
+    u8 length;
+    u16 handle;
 };
 
 struct smbios_entry_system_information_t {
     smbios_type_t type;
-    uint8_t length;
-    uint16_t handle;
+    u8 length;
+    u16 handle;
     
-    uint8_t manufacturer_str_index;
-    uint8_t product_name_str_index;
-    uint8_t version_str_index;
-    uint8_t serial_number_str_index;
+    u8 manufacturer_str_index;
+    u8 product_name_str_index;
+    u8 version_str_index;
+    u8 serial_number_str_index;
 
-    uint8_t uuid[16];
-    uint8_t wakeup_type;
+    u8 uuid[16];
+    u8 wakeup_type;
 };
 
 /// @brief              get the length of a smbios entry
@@ -94,7 +94,7 @@ const char* smbios_get_string_at_index(const smbios_entry_header_t* entry, size_
 /// @param[in] table_address    address of the smbios table
 /// @param[inout] extra         user data passed to callback
 /// @param[in] callback         function called for each entry, return true to continue
-void smbios_iterate(uint64_t table_address, void* extra, bool(*callback)(smbios_entry_header_t* entry, void* extra));
+void smbios_iterate(u64 table_address, void* extra, bool(*callback)(smbios_entry_header_t* entry, void* extra));
 
 /// @brief                      find a struct entry in memory by signature
 /// @param[in] signature        pointer to the signature bytes

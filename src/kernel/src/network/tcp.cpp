@@ -6,8 +6,8 @@
 // #include "time/clock.hpp"
 #include "io.hpp"
 
-uint16_t tcp_checksum(uint32_t src_ip, uint32_t dst_ip, const tcp_header_t* tcp_header, size_t payload_len) {
-    uint32_t sum = 0;
+u16 tcp_checksum(u32 src_ip, u32 dst_ip, const tcp_header_t* tcp_header, size_t payload_len) {
+    u32 sum = 0;
     size_t total_len = sizeof(tcp_header_t) + payload_len;
 
     sum += (src_ip >> 16) & 0xFFFF;
@@ -17,7 +17,7 @@ uint16_t tcp_checksum(uint32_t src_ip, uint32_t dst_ip, const tcp_header_t* tcp_
     sum += 6;
     sum += total_len;
 
-    const uint8_t* data = (const uint8_t*)tcp_header;
+    const u8* data = (const u8*)tcp_header;
     size_t len = sizeof(tcp_header_t) + payload_len;
 
     for (size_t i = 0; i < len - 1; i += 2)
@@ -32,13 +32,13 @@ uint16_t tcp_checksum(uint32_t src_ip, uint32_t dst_ip, const tcp_header_t* tcp_
     return ~sum;
 }
 
-uint32_t tcp_generate_isn() {
-    return (uint32_t)random_number(0, MAX_UINT32);
+u32 tcp_generate_isn() {
+    return (u32)random_number(0, MAX_UINT32);
 }
 
-bool tcp_send_with_flags(tcb_t* tcb, uint32_t flags, const uint8_t* payload, size_t size) {
+bool tcp_send_with_flags(tcb_t* tcb, u32 flags, const u8* payload, size_t size) {
     const size_t packet_size = sizeof(tcp_header_t) + size;
-    uint8_t* packet = (uint8_t*)malloc(packet_size);
+    u8* packet = (u8*)malloc(packet_size);
 
     if ((flags & (TCP_FLAG_SYN | TCP_FLAG_FIN | TCP_FLAG_RST | TCP_FLAG_ACK)) == 0) {
         if (!payload || size == 0)
@@ -61,7 +61,7 @@ bool tcp_send_with_flags(tcb_t* tcb, uint32_t flags, const uint8_t* payload, siz
     header->checksum = 0;
     header->urgent_ptr = 0;
     
-    uint8_t* tcp_payload = packet + sizeof(tcp_header_t);
+    u8* tcp_payload = packet + sizeof(tcp_header_t);
     if (payload && size > 0)
         memcpy(tcp_payload, payload, size);
 
@@ -91,7 +91,7 @@ bool tcp_send_with_flags(tcb_t* tcb, uint32_t flags, const uint8_t* payload, siz
     
 }
 
-bool tcp_send(tcb_t* tcb, const uint8_t* payload, size_t size) {
+bool tcp_send(tcb_t* tcb, const u8* payload, size_t size) {
     if (!tcb)
         return false;
 
@@ -108,7 +108,7 @@ bool tcp_send(tcb_t* tcb, const uint8_t* payload, size_t size) {
     }
 }
 
-tcb_t* tcp_create_tcb(uint32_t local_ip, uint16_t local_port, uint32_t remote_ip, uint16_t remote_port) {
+tcb_t* tcp_create_tcb(u32 local_ip, u16 local_port, u32 remote_ip, u16 remote_port) {
     tcb_t* tcb = new tcb_t {};
     if (!tcb)
         return nullptr;
@@ -127,16 +127,16 @@ tcb_t* tcp_create_tcb(uint32_t local_ip, uint16_t local_port, uint32_t remote_ip
     return tcb;
 }
 
-void tcp_receive(network_interface_t* interface, uint32_t src_ip, uint8_t* payload, size_t payload_length) {
+void tcp_receive(network_interface_t* interface, u32 src_ip, u8* payload, size_t payload_length) {
     tcp_header_t* header = (tcp_header_t*)payload;
 
-    uint16_t src_port = bswap16(header->src_port);
-    uint16_t dst_port = bswap16(header->dst_port);
-    uint32_t seq_num = bswap32(header->seq_num);
-    uint32_t ack_num = bswap32(header->ack_num);
-    uint8_t data_offset = TCP_DATA_OFFSET(header);
-    uint8_t flags = header->flags;
-    uint16_t window = bswap16(header->window);
+    u16 src_port = bswap16(header->src_port);
+    u16 dst_port = bswap16(header->dst_port);
+    u32 seq_num = bswap32(header->seq_num);
+    u32 ack_num = bswap32(header->ack_num);
+    u8 data_offset = TCP_DATA_OFFSET(header);
+    u8 flags = header->flags;
+    u16 window = bswap16(header->window);
 
     socket_t* socket = socket_get(socket_protocol_t::TCP, dst_port);
     if (!socket)
@@ -187,7 +187,7 @@ void tcp_receive(network_interface_t* interface, uint32_t src_ip, uint8_t* paylo
         }
 
         size_t header_len = data_offset * 4;
-        uint8_t* tcp_data = payload + header_len;
+        u8* tcp_data = payload + header_len;
         size_t tcp_data_len = payload_length - header_len;
 
         if (tcp_data_len > 0) {
@@ -211,19 +211,19 @@ bool tcp_is_connection_established(tcb_t* tcb) {
 
 // linked_list<std::unique_ptr<tcp_connection_t>> connections {};
 
-// void tcp_init_connection(tcp_connection_t* connection, uint32_t ip, uint32_t port, tcp_connect_callback_t callback) {
+// void tcp_init_connection(tcp_connection_t* connection, u32 ip, u32 port, tcp_connect_callback_t callback) {
 //     connection->local_ip = nidm_get_prefered_device(get_global_nidm())->ip.raw;
 //     connection->local_port = random_number(49152, 65535);
 //     connection->remote_ip = ip;
 //     connection->remote_port = port;
 //     connection->state = tcp_state_t::SYN_SENT;
-//     connection->iss = (uint32_t)random_number(0, MAX_UINT32 - 1);
+//     connection->iss = (u32)random_number(0, MAX_UINT32 - 1);
 //     connection->snd_nxt = connection->iss;
 //     connection->snd_una = connection->iss;
 //     connection->callback = callback;
 // }
 
-// tcp_connection_t* tcp_connect(uint32_t ip, uint32_t port, tcp_connect_callback_t callback) {
+// tcp_connection_t* tcp_connect(u32 ip, u32 port, tcp_connect_callback_t callback) {
 //     tcp_connection_t* connection_ptr = nullptr;
 //     for (auto& c : connections) {
 //         if (c->state == tcp_state_t::CLOSED) {
@@ -242,7 +242,7 @@ bool tcp_is_connection_established(tcb_t* tcb) {
 //     connection_ptr->state = tcp_state_t::SYN_SENT;
 //     tcp_send_packet(nullptr, 0, TCP_FLAG_SYN, connection_ptr);
     
-//     uint64_t time = clock_get_time_since_boot() + 400;
+//     u64 time = clock_get_time_since_boot() + 400;
 //     bool keep_alive = true;
 //     int retry_count_max = 0;
 //     while (keep_alive) {
@@ -277,7 +277,7 @@ bool tcp_is_connection_established(tcb_t* tcb) {
 //     return connection_ptr;
 // }
 
-// tcp_connection_t* tcp_listen(uint32_t port, tcp_connect_callback_t callback) {
+// tcp_connection_t* tcp_listen(u32 port, tcp_connect_callback_t callback) {
 //     tcp_connection_t* connection_ptr = nullptr;
 //     for (auto& c : connections) {
 //         if (c->state == tcp_state_t::CLOSED) {
@@ -302,7 +302,7 @@ bool tcp_is_connection_established(tcb_t* tcb) {
 //     return connection_ptr;
 // }
 
-// bool tcp_send_packet(uint8_t* p_payload, size_t payload_length, uint8_t flags, tcp_connection_t* connection) {
+// bool tcp_send_packet(u8* p_payload, size_t payload_length, u8 flags, tcp_connection_t* connection) {
 //     // TODO @since 18/09/2025 -- 16:12
 //     // handle no connection stuff better
 //     if (!connection)
@@ -315,7 +315,7 @@ bool tcp_is_connection_established(tcb_t* tcb) {
 
 //     const size_t tcp_header_len = sizeof(tcp_header_t);
 //     const size_t total_tcp_len = tcp_header_len + payload_length;
-//     uint8_t tcp_packet[1480];
+//     u8 tcp_packet[1480];
 
 //     tcp_header_t* tcp_hdr = (tcp_header_t*)tcp_packet;
 //     memzero(tcp_hdr, sizeof(tcp_header_t));
@@ -341,7 +341,7 @@ bool tcp_is_connection_established(tcb_t* tcb) {
 //     tcp_hdr->checksum = 0;
 //     tcp_hdr->urgent_ptr = 0;
     
-//     uint8_t* tcp_payload = tcp_packet + tcp_header_len;
+//     u8* tcp_payload = tcp_packet + tcp_header_len;
 //     if (p_payload && payload_length > 0)
 //         memcpy(tcp_payload, p_payload, payload_length);
 
@@ -352,7 +352,7 @@ bool tcp_is_connection_established(tcb_t* tcb) {
 //     return ip_send(device, connection->remote_ip, IP_PROTOCOL_TCP, tcp_packet, total_tcp_len);
 // }
 
-// void tcp_receive(network_interface_device_t* device, uint8_t* payload, size_t payload_length, uint32_t src_ip) {
+// void tcp_receive(network_interface_device_t* device, u8* payload, size_t payload_length, u32 src_ip) {
 //     if (payload_length < sizeof(tcp_header_t)) {
 //         kprintf("[INET - TCP: %s] packet too small\n", device->name.c_str());
 //         return;
@@ -360,13 +360,13 @@ bool tcp_is_connection_established(tcb_t* tcb) {
 
 //     tcp_header_t* header = (tcp_header_t*)payload;
 
-//     uint16_t src_port = bswap16(header->src_port);
-//     uint16_t dst_port = bswap16(header->dst_port);
-//     uint32_t seq_num = bswap32(header->seq_num);
-//     uint32_t ack_num = bswap32(header->ack_num);
-//     uint8_t data_offset = TCP_DATA_OFFSET(header);
-//     uint8_t flags = header->flags;
-//     uint16_t window = bswap16(header->window);
+//     u16 src_port = bswap16(header->src_port);
+//     u16 dst_port = bswap16(header->dst_port);
+//     u32 seq_num = bswap32(header->seq_num);
+//     u32 ack_num = bswap32(header->ack_num);
+//     u8 data_offset = TCP_DATA_OFFSET(header);
+//     u8 flags = header->flags;
+//     u16 window = bswap16(header->window);
 
 //     // kprintf("[INET - TCP: %s] got tcp packet for from: %u.%u.%u.%u:%u\n", device->name.c_str(), (src_ip >> 24) & 0xff, (src_ip >> 16) & 0xff, (src_ip >> 8) & 0xff, src_ip & 0xff, src_port);
 
@@ -376,7 +376,7 @@ bool tcp_is_connection_established(tcb_t* tcb) {
 //         return;
 //     }
 
-//     uint8_t* tcp_data = payload + header_len;
+//     u8* tcp_data = payload + header_len;
 //     size_t tcp_data_len = payload_length - header_len;
 
 //     tcp_connection_t* connection = nullptr;
@@ -421,7 +421,7 @@ bool tcp_is_connection_established(tcb_t* tcb) {
 
 //             connection->irs = seq_num;
 //             connection->rcv_nxt = seq_num + 1;
-//             connection->iss = (uint32_t)random_number(0, MAX_UINT32 - 1);
+//             connection->iss = (u32)random_number(0, MAX_UINT32 - 1);
 //             connection->snd_nxt = connection->iss;
 //             connection->state = tcp_state_t::SYN_RECEIVED;
 //             kprintf("[INET - TCP: %s] incoming connection attempt\n", device->name.c_str());

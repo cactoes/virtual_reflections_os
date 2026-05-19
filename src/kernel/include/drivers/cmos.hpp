@@ -31,7 +31,7 @@
 
 #include "common.hpp"
 
-uint8_t cmos_read(uint8_t reg);
-uint64_t cmos_read_time();
+u8 cmos_read(u8 reg);
+u64 cmos_read_time();
 
 #endif // __DRIVERS_CMOS_HPP__

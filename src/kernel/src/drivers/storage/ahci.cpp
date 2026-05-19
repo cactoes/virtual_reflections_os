@@ -36,7 +36,7 @@ void* ahci_init_clb(ahci_device_t* device) {
 }
 
 int ahci_port_find_command_slot(volatile hba_port_t* port) {
-    uint32_t slots = port->sact | port->ci;
+    u32 slots = port->sact | port->ci;
 
     for (int i = 0; i < 32; i++) {
         if ((slots & (1 << i)) == 0)
@@ -46,13 +46,13 @@ int ahci_port_find_command_slot(volatile hba_port_t* port) {
     return -1;
 }
 
-bool ahci_sata_prepare_command(ahci_cmd_context_t* ctx, ahci_device_t* device, uint64_t lba, uint64_t sector_count, uint8_t ata_command, bool write, uint8_t fis_device, uint8_t slot) {
+bool ahci_sata_prepare_command(ahci_cmd_context_t* ctx, ahci_device_t* device, u64 lba, u64 sector_count, u8 ata_command, bool write, u8 fis_device, u8 slot) {
     ctx->slot = slot;
 
     ctx->cmdheader = (hba_cmd_header_t*)device->clb;
     memzero(&ctx->cmdheader[slot], sizeof(hba_cmd_header_t));
 
-    ctx->cmdheader[slot].cfl = sizeof(fis_reg_h2d_t) / sizeof(uint32_t);
+    ctx->cmdheader[slot].cfl = sizeof(fis_reg_h2d_t) / sizeof(u32);
     ctx->cmdheader[slot].w = write ? 1 : 0;
     ctx->cmdheader[slot].prdtl = 1;
     ctx->cmdheader[slot].prdbc = 0;
@@ -87,20 +87,20 @@ bool ahci_sata_prepare_command(ahci_cmd_context_t* ctx, ahci_device_t* device, u
     ctx->fis->command = ata_command;
     ctx->fis->device = fis_device;
 
-    ctx->fis->lba0 = (uint8_t)(lba);
-    ctx->fis->lba1 = (uint8_t)(lba >> 8);
-    ctx->fis->lba2 = (uint8_t)(lba >> 16);
-    ctx->fis->lba3 = (uint8_t)(lba >> 24);
-    ctx->fis->lba4 = (uint8_t)(lba >> 32);
-    ctx->fis->lba5 = (uint8_t)(lba >> 40);
-    ctx->fis->countl = (uint8_t)(sector_count);
-    ctx->fis->counth = (uint8_t)(sector_count >> 8);
+    ctx->fis->lba0 = (u8)(lba);
+    ctx->fis->lba1 = (u8)(lba >> 8);
+    ctx->fis->lba2 = (u8)(lba >> 16);
+    ctx->fis->lba3 = (u8)(lba >> 24);
+    ctx->fis->lba4 = (u8)(lba >> 32);
+    ctx->fis->lba5 = (u8)(lba >> 40);
+    ctx->fis->countl = (u8)(sector_count);
+    ctx->fis->counth = (u8)(sector_count >> 8);
 
     return true;
 }
 
 bool ahci_sata_identify_device(ahci_device_t* device) {
-    constexpr uint64_t sector_count = 1;
+    constexpr u64 sector_count = 1;
 
     if (!device)
         return false;
@@ -113,39 +113,39 @@ bool ahci_sata_identify_device(ahci_device_t* device) {
     if (!ahci_sata_prepare_command(&ctx, device, 0, sector_count, ATA_CMD_IDENTIFY_DEVICE, false, ATA_DEV_DEFAULT, slot) != 0)
         return false;
 
-    device->port->is = (uint32_t)-1;
+    device->port->is = (u32)-1;
     device->port->ci |= (1 << slot);
 
     while (device->port->ci & (1 << slot)) {}
 
-    const uint16_t* data = (const uint16_t*)ctx.data_buffer;
+    const u16* data = (const u16*)ctx.data_buffer;
 
     str_unpack_be16(&data[27], 20, device->meta.model, sizeof(device->meta.model));
     str_unpack_be16(&data[10], 10, device->meta.serial, sizeof(device->meta.serial));
     str_unpack_be16(&data[23], 4, device->meta.firmware, sizeof(device->meta.firmware));
 
     // lba28 fallback
-    device->lba_count = (uint32_t)data[60] | ((uint32_t)data[61] << 16);
+    device->lba_count = (u32)data[60] | ((u32)data[61] << 16);
 
     // check for 48bit lba
     if (data[83] & (1 << 10)) {
-        device->lba_count = ((uint64_t)data[100]) |
-            ((uint64_t)data[101] << 16) |
-            ((uint64_t)data[102] << 32) |
-            ((uint64_t)data[103] << 48);
+        device->lba_count = ((u64)data[100]) |
+            ((u64)data[101] << 16) |
+            ((u64)data[102] << 32) |
+            ((u64)data[103] << 48);
     }
 
-    device->logical_sector_size = (uint32_t)data[117] | ((uint32_t)data[118] << 16);
+    device->logical_sector_size = (u32)data[117] | ((u32)data[118] << 16);
     if (device->logical_sector_size == 0) device->logical_sector_size = 512;
 
     device->physical_sector_size = device->logical_sector_size;
-    uint16_t word106 = data[106];
+    u16 word106 = data[106];
     if (word106 & (1 << 13)) {
-        uint8_t log2_multiple = word106 & 0x1F;
+        u8 log2_multiple = word106 & 0x1F;
         device->physical_sector_size = device->logical_sector_size << log2_multiple;
     }
 
-    device->capacity = device->lba_count * (uint64_t)device->logical_sector_size;
+    device->capacity = device->lba_count * (u64)device->logical_sector_size;
 
     dma_heap_free(device->ahci_driver_ctx->dma, ctx.cmdtable);
     dma_heap_free(device->ahci_driver_ctx->dma, ctx.data_buffer);
@@ -153,8 +153,8 @@ bool ahci_sata_identify_device(ahci_device_t* device) {
     return true;
 }
 
-bool ahci_sata_read(ahci_device_t* device, uint64_t lba, uint8_t* buffer) {
-    constexpr uint64_t sector_count = 1;
+bool ahci_sata_read(ahci_device_t* device, u64 lba, u8* buffer) {
+    constexpr u64 sector_count = 1;
 
     if (!device)
         return false;
@@ -178,7 +178,7 @@ bool ahci_sata_read(ahci_device_t* device, uint64_t lba, uint8_t* buffer) {
         dma_heap_free(ahci_driver_ctx->dma, ctx->data_buffer);
     };
 
-    device->port->is = (uint32_t)-1;
+    device->port->is = (u32)-1;
     device->port->ci |= (1 << slot);
 
     while (device->port->ci & (1 << slot)) {
@@ -213,7 +213,7 @@ bool ahci_init(const pci_device_t* device, ahci_driver_ctx_t* ahci_driver_ctx, s
     if (!ahci_driver_ctx->dma)
         return false;
 
-    const uint64_t mmio_addr_physical = (uint64_t)pci_read_bar(device, 5);
+    const u64 mmio_addr_physical = (u64)pci_read_bar(device, 5);
     volatile hba_mem_t* hba = (volatile hba_mem_t*)vmem_map_mmio_region(get_global_dma_heap_manager()->pml4, (void*)mmio_addr_physical);
     if (!hba)
         return false;
@@ -228,9 +228,9 @@ bool ahci_init(const pci_device_t* device, ahci_driver_ctx_t* ahci_driver_ctx, s
 
         volatile hba_port_t* port = &hba->ports[i];
 
-        uint8_t ssts_det = port->ssts & AHCI_SSTS_DET_MASK;
-        // uint8_t ssts_spd = (port->ssts & AHCI_SSTS_SPD_MASK) >> 4;
-        uint8_t ssts_ipm = (port->ssts & AHCI_SSTS_IPM_MASK) >> 8;
+        u8 ssts_det = port->ssts & AHCI_SSTS_DET_MASK;
+        // u8 ssts_spd = (port->ssts & AHCI_SSTS_SPD_MASK) >> 4;
+        u8 ssts_ipm = (port->ssts & AHCI_SSTS_IPM_MASK) >> 8;
 
         if (ssts_det != AHCI_DET_PHY_INITIALIZED || ssts_ipm != AHCI_IPM_ACTIVE)
             continue;
@@ -277,7 +277,7 @@ bool ahci_device_init(ahci_device_t* device) {
     return false;
 }
 
-bool ahci_read(ahci_device_t* device, uint64_t lba, uint8_t* buffer, size_t size) {
+bool ahci_read(ahci_device_t* device, u64 lba, u8* buffer, size_t size) {
     if (!device || !buffer)
         return false;
 

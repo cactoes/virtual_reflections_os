@@ -26,27 +26,27 @@
 // #include "arch/x86_64/generic.hpp"
 
 // static inline void x86_64_msr_set_kernel_gs_base(void* addr) {
-//     x86_64_wrmsr(X86_64_MSR_KERNEL_GS_BASE, (uint64_t)addr);
+//     x86_64_wrmsr(X86_64_MSR_KERNEL_GS_BASE, (u64)addr);
 // }
 
 // static inline void x86_64_msr_set_gs_base(void* addr) {
-//     x86_64_wrmsr(X86_64_MSR_GS_BASE, (uint64_t)addr);
+//     x86_64_wrmsr(X86_64_MSR_GS_BASE, (u64)addr);
 // }
 
 // static inline void x86_64_msr_enable_sce() {
-//     uint64_t efer = x86_64_rdmsr(X86_64_MSR_EFER);
+//     u64 efer = x86_64_rdmsr(X86_64_MSR_EFER);
 //     x86_64_wrmsr(X86_64_MSR_EFER, efer | X86_64_EFER_SCE);
 // }
 
-// static inline void x86_64_msr_set_star(uint64_t star) {
+// static inline void x86_64_msr_set_star(u64 star) {
 //     x86_64_wrmsr(X86_64_MSR_STAR, star);
 // }
 
 // static inline void x86_64_msr_set_lstar(void* lstar) {
-//     x86_64_wrmsr(X86_64_MSR_LSTAR, (uint64_t)lstar);
+//     x86_64_wrmsr(X86_64_MSR_LSTAR, (u64)lstar);
 // }
 
-// static inline void x86_64_msr_set_sf_mask(uint64_t mask) {
+// static inline void x86_64_msr_set_sf_mask(u64 mask) {
 //     x86_64_wrmsr(X86_64_MSR_SFMASK, mask);
 // }
 

@@ -17,7 +17,7 @@ void system_info_parse_memory_size(system_info_manager_t* system_info_manager, m
     system_info_manager->memory_size = 0;
 
     for (auto mm_entry = mb2_get_first_entry((multiboot2_info_t*)multiboot_struct); mm_entry; mm_entry = mb2_get_next_entry((multiboot2_info_t*)multiboot_struct, mm_entry))
-        if (mm_entry->type == (uint32_t)memory_map_type_t::USABLE)
+        if (mm_entry->type == (u32)memory_map_type_t::USABLE)
             system_info_manager->memory_size += mm_entry->len;
 }
 

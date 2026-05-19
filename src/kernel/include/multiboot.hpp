@@ -24,100 +24,100 @@
 #include "common.hpp"
 
 struct multiboot1_mmap_entry_t {
-    uint32_t size;
-    uint64_t addr;
-    uint64_t len;
-    uint32_t type;
+    u32 size;
+    u64 addr;
+    u64 len;
+    u32 type;
 } PACKED;
 
 struct multiboot1_info_t {
-    uint32_t flags;
-    uint32_t mem_lower;
-    uint32_t mem_upper;
-    uint32_t boot_device;
-    uint32_t cmdline;
-    uint32_t mods_count;
-    uint32_t mods_addr;
-    uint32_t num;
-    uint32_t size;
-    uint32_t addr;
-    uint32_t shndx;
-    uint32_t mmap_length;
-    uint32_t mmap_addr;
-    uint32_t drives_length;
-    uint32_t drives_addr;
-    uint32_t config_table;
-    uint32_t boot_loader_name;
-    uint32_t apm_table;
-    uint32_t vbe_control_info;
-    uint32_t vbe_mode_info;
-    uint32_t vbe_mode;
-    uint32_t vbe_interface_seg;
-    uint32_t vbe_interface_off;
-    uint32_t vbe_interface_len;
+    u32 flags;
+    u32 mem_lower;
+    u32 mem_upper;
+    u32 boot_device;
+    u32 cmdline;
+    u32 mods_count;
+    u32 mods_addr;
+    u32 num;
+    u32 size;
+    u32 addr;
+    u32 shndx;
+    u32 mmap_length;
+    u32 mmap_addr;
+    u32 drives_length;
+    u32 drives_addr;
+    u32 config_table;
+    u32 boot_loader_name;
+    u32 apm_table;
+    u32 vbe_control_info;
+    u32 vbe_mode_info;
+    u32 vbe_mode;
+    u32 vbe_interface_seg;
+    u32 vbe_interface_off;
+    u32 vbe_interface_len;
 } PACKED;
 
 struct multiboot2_tag_framebuffer_t {
-    uint32_t type;
-    uint32_t size;
+    u32 type;
+    u32 size;
 
-    uint64_t framebuffer_addr;
-    uint32_t framebuffer_pitch;
-    uint32_t framebuffer_width;
-    uint32_t framebuffer_height;
+    u64 framebuffer_addr;
+    u32 framebuffer_pitch;
+    u32 framebuffer_width;
+    u32 framebuffer_height;
 
-    uint8_t framebuffer_bpp;
-    uint8_t framebuffer_type;
-    uint16_t reserved;
+    u8 framebuffer_bpp;
+    u8 framebuffer_type;
+    u16 reserved;
 
     union {      
         struct {
-            uint32_t framebuffer_palette_num_colors;
+            u32 framebuffer_palette_num_colors;
         } indexed;
 
         struct {
-            uint8_t framebuffer_red_field_position;
-            uint8_t framebuffer_red_mask_size;
-            uint8_t framebuffer_green_field_position;
-            uint8_t framebuffer_green_mask_size;
-            uint8_t framebuffer_blue_field_position;
-            uint8_t framebuffer_blue_mask_size;
+            u8 framebuffer_red_field_position;
+            u8 framebuffer_red_mask_size;
+            u8 framebuffer_green_field_position;
+            u8 framebuffer_green_mask_size;
+            u8 framebuffer_blue_field_position;
+            u8 framebuffer_blue_mask_size;
         } rgb;
     };
 } PACKED;
 
 struct multiboot2_mmap_entry_t {
-    uint64_t addr;
-    uint64_t len;
-    uint32_t type;
-    uint32_t zero;
+    u64 addr;
+    u64 len;
+    u32 type;
+    u32 zero;
 } PACKED;
 
 struct multiboot2_tag_mmap_t {
-    uint32_t type;
-    uint32_t size;
-    uint32_t entry_size;
-    uint32_t entry_version;
+    u32 type;
+    u32 size;
+    u32 entry_size;
+    u32 entry_version;
     multiboot2_mmap_entry_t entries[];
 } PACKED;
 
 struct multiboot2_tag_t {
-    uint32_t type;
-    uint32_t size;
+    u32 type;
+    u32 size;
 } PACKED;
 
 struct multiboot2_info_t {
-    uint32_t total_size;
-    uint32_t reserved;
+    u32 total_size;
+    u32 reserved;
     multiboot2_tag_t tags[];
 } PACKED;
 
 // struct multiboot_t {
-//     // uint64_t magic;
+//     // u64 magic;
 //     void* info;
 // };
 
-enum class memory_map_type_t : uint32_t {
+enum class memory_map_type_t : u32 {
     UNKOWN           = 0,
     USABLE           = 1,
     RESERVED         = 2,
@@ -125,7 +125,7 @@ enum class memory_map_type_t : uint32_t {
     ACPI_NVS         = 4
 };
 
-enum class multiboot_flags_t : uint32_t {
+enum class multiboot_flags_t : u32 {
     MEM          = (1 << 0),
     BOOT_DEVICE  = (1 << 1),
     CMDLINE      = (1 << 2),
@@ -140,7 +140,7 @@ enum class multiboot_flags_t : uint32_t {
     VBE          = (1 << 11)
 };
 
-enum class multiboot_tag_type_t : uint32_t {
+enum class multiboot_tag_type_t : u32 {
     MMAP = 6,
     FRAMEBUFFER = 8,
 };

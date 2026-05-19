@@ -18,7 +18,7 @@
 #include "drivers/storage/ide.hpp"
 #include "drivers/storage/block_device.hpp"
 
-typedef uint64_t file_descriptor_t;
+typedef u64 file_descriptor_t;
 typedef file_descriptor_t fd_t;
 
 enum class fs_type_t {
@@ -54,7 +54,7 @@ bool vfs_mount_file_system(vfs_t* vfs, const char* name, fs_type_t type, std::un
 const vfs_mount_point_t* vfs_get_mount_point(vfs_t* vfs, const char* path);
 file_descriptor_t vfs_open_file(vfs_t* vfs, const char* path);
 bool vfs_close_file(vfs_t* vfs, file_descriptor_t fd);
-bool vfs_read_file(vfs_t* vfs, file_descriptor_t fd, uint8_t** data, size_t* size);
+bool vfs_read_file(vfs_t* vfs, file_descriptor_t fd, u8** data, size_t* size);
 bool vfs_list_directory(vfs_t* vfs, const char* path, std::dynamic_array<vfs_node_t>* out_nodes);
 
 bool vfs_mount_block_device(vfs_t* vfs, std::unique_ptr<block_device_t> device, const char* name);

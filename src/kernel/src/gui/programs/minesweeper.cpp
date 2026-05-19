@@ -16,8 +16,8 @@ struct tile_t {
 
     bool has_clicked;
     
-    uint64_t grid_x;
-    uint64_t grid_y;
+    u64 grid_x;
+    u64 grid_y;
 };
 
 struct game_config_t {
@@ -44,7 +44,7 @@ static bool is_game_running = false;
 
 extern color_t vga_to_rgb(vga_tm_color_t color);
 
-const uint8_t tile_empty[tile_size][tile_size] {
+const u8 tile_empty[tile_size][tile_size] {
     8u, 8u, 8u, 8u, 8u, 8u, 8u, 8u, 8u, 8u,
     8u, 7u, 7u, 7u, 7u, 7u, 7u, 7u, 7u, 7u,
     8u, 7u, 7u, 7u, 7u, 7u, 7u, 7u, 7u, 7u,
@@ -56,7 +56,7 @@ const uint8_t tile_empty[tile_size][tile_size] {
     8u, 7u, 7u, 7u, 7u, 7u, 7u, 7u, 7u, 7u,
     8u, 7u, 7u, 7u, 7u, 7u, 7u, 7u, 7u, 7u,
 };
-const uint8_t tile_bomb1[tile_size][tile_size] { // 9u
+const u8 tile_bomb1[tile_size][tile_size] { // 9u
     8u, 8u, 8u, 8u, 8u, 8u, 8u, 8u, 8u, 8u,
     8u, 7u, 7u, 7u, 7u, 7u, 7u, 7u, 7u, 7u,
     8u, 7u, 7u, 7u, 7u, 9u, 7u, 7u, 7u, 7u,
@@ -68,7 +68,7 @@ const uint8_t tile_bomb1[tile_size][tile_size] { // 9u
     8u, 7u, 7u, 7u, 9u, 9u, 9u, 7u, 7u, 7u,
     8u, 7u, 7u, 7u, 7u, 7u, 7u, 7u, 7u, 7u,
 };
-const uint8_t tile_bomb2[tile_size][tile_size] { // 2u
+const u8 tile_bomb2[tile_size][tile_size] { // 2u
     8u, 8u, 8u, 8u, 8u, 8u, 8u, 8u, 8u, 8u,
     8u, 7u, 7u, 7u, 7u, 7u, 7u, 7u, 7u, 7u,
     8u, 7u, 7u, 7u, 2u, 2u, 7u, 7u, 7u, 7u,
@@ -80,7 +80,7 @@ const uint8_t tile_bomb2[tile_size][tile_size] { // 2u
     8u, 7u, 7u, 2u, 2u, 2u, 2u, 7u, 7u, 7u,
     8u, 7u, 7u, 7u, 7u, 7u, 7u, 7u, 7u, 7u,
 };
-const uint8_t tile_bomb3[tile_size][tile_size] { // 4u
+const u8 tile_bomb3[tile_size][tile_size] { // 4u
     8u, 8u, 8u, 8u, 8u, 8u, 8u, 8u, 8u, 8u,
     8u, 7u, 7u, 7u, 7u, 7u, 7u, 7u, 7u, 7u,
     8u, 7u, 7u, 7u, 4u, 4u, 7u, 7u, 7u, 7u,
@@ -92,7 +92,7 @@ const uint8_t tile_bomb3[tile_size][tile_size] { // 4u
     8u, 7u, 7u, 7u, 4u, 4u, 7u, 7u, 7u, 7u,
     8u, 7u, 7u, 7u, 7u, 7u, 7u, 7u, 7u, 7u,
 };
-const uint8_t tile_bomb4[tile_size][tile_size] { // 1u
+const u8 tile_bomb4[tile_size][tile_size] { // 1u
     8u, 8u, 8u, 8u, 8u, 8u, 8u, 8u, 8u, 8u,
     8u, 7u, 7u, 7u, 7u, 7u, 7u, 7u, 7u, 7u,
     8u, 7u, 7u, 1u, 7u, 7u, 1u, 7u, 7u, 7u,
@@ -104,7 +104,7 @@ const uint8_t tile_bomb4[tile_size][tile_size] { // 1u
     8u, 7u, 7u, 7u, 7u, 7u, 1u, 7u, 7u, 7u,
     8u, 7u, 7u, 7u, 7u, 7u, 7u, 7u, 7u, 7u,
 };
-const uint8_t tile_bomb5[tile_size][tile_size] { // 6u
+const u8 tile_bomb5[tile_size][tile_size] { // 6u
     8u, 8u, 8u, 8u, 8u, 8u, 8u, 8u, 8u, 8u,
     8u, 7u, 7u, 7u, 7u, 7u, 7u, 7u, 7u, 7u,
     8u, 7u, 7u, 6u, 6u, 6u, 6u, 7u, 7u, 7u,
@@ -116,7 +116,7 @@ const uint8_t tile_bomb5[tile_size][tile_size] { // 6u
     8u, 7u, 7u, 7u, 6u, 6u, 7u, 7u, 7u, 7u,
     8u, 7u, 7u, 7u, 7u, 7u, 7u, 7u, 7u, 7u,
 };
-const uint8_t tile_bomb6[tile_size][tile_size] { // 3u
+const u8 tile_bomb6[tile_size][tile_size] { // 3u
     8u, 8u, 8u, 8u, 8u, 8u, 8u, 8u, 8u, 8u,
     8u, 7u, 7u, 7u, 7u, 7u, 7u, 7u, 7u, 7u,
     8u, 7u, 7u, 7u, 3u, 3u, 7u, 7u, 7u, 7u,
@@ -128,7 +128,7 @@ const uint8_t tile_bomb6[tile_size][tile_size] { // 3u
     8u, 7u, 7u, 7u, 3u, 3u, 7u, 7u, 7u, 7u,
     8u, 7u, 7u, 7u, 7u, 7u, 7u, 7u, 7u, 7u,
 };
-const uint8_t tile_bomb7[tile_size][tile_size] { // 0u
+const u8 tile_bomb7[tile_size][tile_size] { // 0u
     8u, 8u, 8u, 8u, 8u, 8u, 8u, 8u, 8u, 8u,
     8u, 7u, 7u, 7u, 7u, 7u, 7u, 7u, 7u, 7u,
     8u, 7u, 7u, 0u, 0u, 0u, 0u, 7u, 7u, 7u,
@@ -140,7 +140,7 @@ const uint8_t tile_bomb7[tile_size][tile_size] { // 0u
     8u, 7u, 7u, 7u, 0u, 7u, 7u, 7u, 7u, 7u,
     8u, 7u, 7u, 7u, 7u, 7u, 7u, 7u, 7u, 7u,
 };
-const uint8_t tile_bomb8[tile_size][tile_size] { // 8u
+const u8 tile_bomb8[tile_size][tile_size] { // 8u
     8u, 8u, 8u, 8u, 8u, 8u, 8u, 8u, 8u, 8u,
     8u, 7u, 7u, 7u, 7u, 7u, 7u, 7u, 7u, 7u,
     8u, 7u, 7u, 7u, 8u, 8u, 7u, 7u, 7u, 7u,
@@ -152,7 +152,7 @@ const uint8_t tile_bomb8[tile_size][tile_size] { // 8u
     8u, 7u, 7u, 7u, 8u, 8u, 7u, 7u, 7u, 7u,
     8u, 7u, 7u, 7u, 7u, 7u, 7u, 7u, 7u, 7u,
 };
-const uint8_t tile_bomb[tile_size][tile_size] {
+const u8 tile_bomb[tile_size][tile_size] {
     8u, 8u, 8u, 8u, 8u, 8u, 8u, 8u, 8u, 8u,
     8u, 7u, 7u, 7u, 7u, 7u, 7u, 7u, 7u, 7u,
     8u, 7u, 0u, 7u, 7u, 0u, 7u, 7u, 0u, 7u,
@@ -164,7 +164,7 @@ const uint8_t tile_bomb[tile_size][tile_size] {
     0u, 7u, 0u, 7u, 7u, 0u, 7u, 7u, 0u, 7u,
     8u, 7u, 7u, 7u, 7u, 7u, 7u, 7u, 7u, 7u,
 };
-const uint8_t tile_bomb_exploded[tile_size][tile_size] {
+const u8 tile_bomb_exploded[tile_size][tile_size] {
     8u, 8u, 8u, 8u, 8u, 8u, 8u, 8u, 8u, 8u,
     8u, 12, 12, 12, 12, 12, 12, 12, 12, 12,
     8u, 12, 0u, 12, 12, 0u, 12, 12, 0u, 12,
@@ -176,7 +176,7 @@ const uint8_t tile_bomb_exploded[tile_size][tile_size] {
     0u, 12, 0u, 12, 12, 0u, 12, 12, 0u, 12,
     8u, 12, 12, 12, 12, 12, 12, 12, 12, 12,
 };
-const uint8_t tile_unrevealed[tile_size][tile_size] {
+const u8 tile_unrevealed[tile_size][tile_size] {
     15, 15, 15, 15, 15, 15, 15, 15, 15, 15,
     15, 7u, 7u, 7u, 7u, 7u, 7u, 7u, 7u, 8u,
     15, 7u, 7u, 7u, 7u, 7u, 7u, 7u, 7u, 8u,
@@ -188,7 +188,7 @@ const uint8_t tile_unrevealed[tile_size][tile_size] {
     15, 7u, 7u, 7u, 7u, 7u, 7u, 7u, 7u, 8u,
     8u, 8u, 8u, 8u, 8u, 8u, 8u, 8u, 8u, 8u,
 };
-const uint8_t tile_marked[tile_size][tile_size] {
+const u8 tile_marked[tile_size][tile_size] {
     15, 15, 15, 15, 15, 15, 15, 15, 15, 15,
     15, 7u, 7u, 7u, 7u, 7u, 7u, 7u, 7u, 8u,
     15, 7u, 7u, 7u, 4u, 4u, 7u, 7u, 7u, 8u,
@@ -200,7 +200,7 @@ const uint8_t tile_marked[tile_size][tile_size] {
     15, 7u, 7u, 7u, 7u, 7u, 7u, 7u, 7u, 8u,
     8u, 8u, 8u, 8u, 8u, 8u, 8u, 8u, 8u, 8u,
 };
-const uint8_t tile_marked_wrong[tile_size][tile_size] {
+const u8 tile_marked_wrong[tile_size][tile_size] {
     15, 15, 15, 15, 15, 15, 15, 15, 15, 15,
     15, 12, 12, 12, 12, 12, 12, 12, 12, 8u,
     15, 12, 12, 12, 4u, 4u, 12, 12, 12, 8u,
@@ -416,7 +416,7 @@ void minesweeper_init() {
     is_game_running = true;
 }
 
-void tile_render(tile_t* tile, uint64_t offset_x, uint64_t offset_y, const uint8_t sprite[tile_size][tile_size]) {
+void tile_render(tile_t* tile, u64 offset_x, u64 offset_y, const u8 sprite[tile_size][tile_size]) {
     for (size_t x = 0; x < tile_size; x++)
         for (size_t y = 0; y < tile_size; y++)
             desktop_render_pixel(tile_size * tile->grid_x + offset_x + x,
@@ -424,7 +424,7 @@ void tile_render(tile_t* tile, uint64_t offset_x, uint64_t offset_y, const uint8
                 vga_to_rgb((vga_tm_color_t)sprite[y][x]));
 }
 
-void minesweeper_render_tile(tile_t* tile, uint64_t offset_x, uint64_t offset_y) {
+void minesweeper_render_tile(tile_t* tile, u64 offset_x, u64 offset_y) {
     if (tile->is_peeking) {
         tile_render(tile, offset_x, offset_y, tile_empty);
         return;
@@ -475,7 +475,7 @@ void minesweeper_render_tile(tile_t* tile, uint64_t offset_x, uint64_t offset_y)
     }
 }
 
-void minesweeper_render_target(uint64_t dt, uint64_t x, uint64_t y) {
+void minesweeper_render_target(u64 dt, u64 x, u64 y) {
     xoff = x;
     yoff = y;
 

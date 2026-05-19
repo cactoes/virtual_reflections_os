@@ -30,3 +30,10 @@ void amd64_gdtr_update(amd64_gdtr_t* gdtr, amd64_gdt_t* gdt) {
     gdtr->limit = sizeof(amd64_gdt_t) - 1;
     gdtr->address = (u64)gdt;
 }
+
+u16 amd64_get_selector_for(u16 index) {
+    if (index >= GDT_ENTRY_COUNT)
+        return 0;
+
+    return AMD64_GDT_INDEX_TO_ENTRY(index);
+}

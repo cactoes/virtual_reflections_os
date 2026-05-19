@@ -34,13 +34,13 @@ extern "C" int DriverExit() {
 /// @brief                  returns version of the feature
 /// @param szFeature        name of the feature
 /// @return                 feature version / capability of the feature
-extern "C" uint64_t QueryCapability(const char* szFeature) {
-    const uint64_t uHash = hash_fnv1a_64(szFeature);
+extern "C" u64 QueryCapability(const char* szFeature) {
+    const u64 uHash = hash_fnv1a_64(szFeature);
 
     switch (uHash) {
         case hash_fnv1a_64("dhcp"):     return DHCP_VERSION;
         case hash_fnv1a_64("e1000"):    return E1000_VERSION;
         case hash_fnv1a_64("dns"):      return DNS_VERSION;
-        default:                        return (uint64_t)-1;
+        default:                        return (u64)-1;
     }
 }

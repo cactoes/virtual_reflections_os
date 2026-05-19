@@ -4,7 +4,7 @@
 #include "utils/event.hpp"
 #include "std/ring_buffer.hpp"
 
-static uint32_t g_last_scan_code = MAX_UINT32;
+static u32 g_last_scan_code = MAX_UINT32;
 static ps2_key_state_t g_key_state_array[PS2_KEYBOARD_KEY_STATE_ARRAY_SIZE] {};
 static std::ring_buffer<8, ps2_key_state_t> global_keyboard_state_buffer {};
 static event_manager_t<const ps2_key_state_t*> g_keyboard_event_manager {};
@@ -40,7 +40,7 @@ interrupt_regs_t* ps2_keyboard_handle_interrupt(interrupt_regs_t* p_rsp, void*) 
     return p_rsp;
 }
 
-uint32_t ps2_keyboard_get_last_scancode() {
+u32 ps2_keyboard_get_last_scancode() {
     return g_last_scan_code;
 }
 
@@ -48,14 +48,14 @@ void ps2_keyboard_clear_last_scancode() {
     g_last_scan_code = MAX_UINT32;
 }
 
-const ps2_key_state_t* ps2_keyboard_get_key_state(uint32_t scan_code) {
+const ps2_key_state_t* ps2_keyboard_get_key_state(u32 scan_code) {
     if (scan_code >= PS2_KEYBOARD_KEY_STATE_ARRAY_SIZE)
         return nullptr;
 
     return &g_key_state_array[scan_code];
 }
 
-bool ps2_keyboard_is_scan_code_extended(uint32_t scan_code) {
+bool ps2_keyboard_is_scan_code_extended(u32 scan_code) {
     if (auto state = ps2_keyboard_get_key_state(scan_code))
         return state->is_escaped;
 
@@ -79,7 +79,7 @@ void ps2_keyboard_init() {
         ps2_read(PS2_DATA_PORT);
 
     ps2_write(PS2_CMD_PORT, 0x20);
-    uint8_t config = ps2_read(PS2_DATA_PORT);
+    u8 config = ps2_read(PS2_DATA_PORT);
     config |= (1 << 0); // interrupts
     // config &= ~(1 << 6); // disable translation
     ps2_write(PS2_CMD_PORT, 0x60);

@@ -4,7 +4,7 @@
 
 static graphics_driver_t* global_graphics_driver = nullptr;
 
-const uint8_t font8x8[95][8] = {
+const u8 font8x8[95][8] = {
     { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 }, // space (32)
     { 0x18, 0x3C, 0x3C, 0x18, 0x18, 0x00, 0x18, 0x00 }, // ! (33)
     { 0x36, 0x36, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 }, // " (34)
@@ -102,7 +102,7 @@ const uint8_t font8x8[95][8] = {
     { 0x6E, 0x3B, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 }, // ~ (126)
 };
 
-const uint8_t font8x8_fallback[8] = {
+const u8 font8x8_fallback[8] = {
     0xFF, 0x81, 0x81, 0x81, 0x81, 0x81, 0x81, 0xFF
 };
 
@@ -157,13 +157,13 @@ bool graphics_driver_init_framebuffer(graphics_driver_t* graphics_driver, multib
     const size_t framebuffer_size = (framebuffer_tag->framebuffer_pitch * framebuffer_tag->framebuffer_height);
     void* mapped_framebuffer = (void*)malloc(align_up(framebuffer_size, PAGE_SIZE_LARGE));
     for (size_t i = 0; i < align_up(framebuffer_size, PAGE_SIZE_LARGE); i += PAGE_SIZE_LARGE)
-        vmem_map_2mb(nullptr, (void*)((uint64_t)mapped_framebuffer + i), (void*)(framebuffer_tag->framebuffer_addr + i));
+        vmem_map_2mb(nullptr, (void*)((u64)mapped_framebuffer + i), (void*)(framebuffer_tag->framebuffer_addr + i));
 
     graphics_driver->framebuffer = (framebuffer_t*)malloc(sizeof(framebuffer_t));
 
     if (!framebuffer_init(graphics_driver->framebuffer,
         format,
-        (uint32_t*)mapped_framebuffer,
+        (u32*)mapped_framebuffer,
         framebuffer_size,
         framebuffer_tag->framebuffer_width,
         framebuffer_tag->framebuffer_height,
@@ -211,7 +211,7 @@ bool graphics_driver_init(graphics_driver_t* graphics_driver, multiboot2_info_t*
 vga_gm_color_index_t rgb_to_vga(const color_t& c) {
     // *taken from the internet
 
-    static constexpr uint8_t s_palette[16][3] = {
+    static constexpr u8 s_palette[16][3] = {
         {0x00, 0x00, 0x00}, {0x00, 0x00, 0xAA}, {0x00, 0xAA, 0x00}, {0x00, 0xAA, 0xAA},
         {0xAA, 0x00, 0x00}, {0xAA, 0x00, 0xAA}, {0xAA, 0x55, 0x00}, {0xAA, 0xAA, 0xAA},
         {0x55, 0x55, 0x55}, {0x55, 0x55, 0xFF}, {0x55, 0xFF, 0x55}, {0x55, 0xFF, 0xFF},
@@ -303,7 +303,7 @@ bool graphics_driver_draw_character(graphics_driver_t* graphics_driver, size_t x
     if (scale <= 0)
         scale = 1;
 
-    const uint8_t* glyph = c < 32 || c > 126 ? font8x8_fallback : font8x8[c - 32];
+    const u8* glyph = c < 32 || c > 126 ? font8x8_fallback : font8x8[c - 32];
     
     size_t scaled_width = (size_t)(8 * scale);
     size_t scaled_height = (size_t)(8 * scale);

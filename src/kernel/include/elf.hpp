@@ -66,7 +66,7 @@ enum class elf_type_t {
 #define ELF_RELOCATE_SYMBOL(s)          ((s) >> 32)
 #define ELF_RELOCATE_TYPE(t)            ((t) & MAX_UINT32)
 
-#define ELF_GET_SECTION_HEADER(header) ((elf_section_header_t*)((uint64_t)(header) + (header)->section_header_offset))
+#define ELF_GET_SECTION_HEADER(header) ((elf_section_header_t*)((u64)(header) + (header)->section_header_offset))
 #define ELF_GET_SECTION(header, index) &ELF_GET_SECTION_HEADER((header))[(index)]
 
 #include "common.hpp"
@@ -74,65 +74,65 @@ enum class elf_type_t {
 #include "std/map.hpp"
 
 struct elf_header_t {
-    uint8_t identity[ELF_IDENTITY_SIZE];
-    uint16_t type;
-    uint16_t machine;
-    uint32_t version;
-    uint64_t entry_point;
-    uint64_t program_header_offset;
-    uint64_t section_header_offset;
-    uint32_t flags;
-    uint16_t header_size;
-    uint16_t program_header_entry_size;
-    uint16_t program_header_count;
-    uint16_t section_header_entry_size;
-    uint16_t section_header_count;
-    uint16_t string_table_index;
+    u8 identity[ELF_IDENTITY_SIZE];
+    u16 type;
+    u16 machine;
+    u32 version;
+    u64 entry_point;
+    u64 program_header_offset;
+    u64 section_header_offset;
+    u32 flags;
+    u16 header_size;
+    u16 program_header_entry_size;
+    u16 program_header_count;
+    u16 section_header_entry_size;
+    u16 section_header_count;
+    u16 string_table_index;
 };
 
 struct elf_section_header_t {
-    uint32_t name_offset;
-    uint32_t type;
-    uint64_t flags;
-    uint64_t virtual_address;
-    uint64_t file_offset;
-    uint64_t size;
-    uint32_t link;
-    uint32_t info;
-    uint64_t alignment;
-    uint64_t entry_size;
+    u32 name_offset;
+    u32 type;
+    u64 flags;
+    u64 virtual_address;
+    u64 file_offset;
+    u64 size;
+    u32 link;
+    u32 info;
+    u64 alignment;
+    u64 entry_size;
 };
 
 struct elf_symbol_t {
-    uint32_t name_offset;
-    uint8_t info;
-    uint8_t other;
-    uint16_t section_index;
-    uint64_t value;
-    uint64_t size;
+    u32 name_offset;
+    u8 info;
+    u8 other;
+    u16 section_index;
+    u64 value;
+    u64 size;
 };
 
 struct elf_program_header_t {
-    uint32_t type;
-    uint32_t flags;
-    uint64_t file_offset;
-    uint64_t virtual_address;
-    uint64_t physical_address;
-    uint64_t file_size;
-    uint64_t memory_size;
-    uint64_t alignment;
+    u32 type;
+    u32 flags;
+    u64 file_offset;
+    u64 virtual_address;
+    u64 physical_address;
+    u64 file_size;
+    u64 memory_size;
+    u64 alignment;
 };
 
 struct elf_relocation_entry_t {
-    uint64_t offset;
-    uint64_t info;
-    int64_t addend;
+    u64 offset;
+    u64 info;
+    i64 addend;
 };
 
 struct elf_program_section_info_t {
     size_t size;
-    uint64_t min_address;
-    uint64_t max_address;
+    u64 min_address;
+    u64 max_address;
 };
 
 struct elf_tables_t {
@@ -140,28 +140,28 @@ struct elf_tables_t {
     elf_section_header_t* string_table;
 };
 
-elf_section_header_t* elf_find_section_by_name(uint8_t* p_elf_data, const char* p_name);
+elf_section_header_t* elf_find_section_by_name(u8* p_elf_data, const char* p_name);
 
-bool elf_find_symbol_address(uint8_t* p_elf_data, elf_section_header_t* p_symbol_table, elf_section_header_t* p_string_table, const char* p_symbol_name, uint64_t* p_symbol_value);
+bool elf_find_symbol_address(u8* p_elf_data, elf_section_header_t* p_symbol_table, elf_section_header_t* p_string_table, const char* p_symbol_name, u64* p_symbol_value);
 
-int elf_relocate(uint8_t* p_elf_data, uint8_t* p_base_address, elf_section_header_t* p_target_section, elf_section_header_t* p_symbol_table, elf_section_header_t* p_string_table, std::linear_map<std::string, void*>* p_symbol_map);
+int elf_relocate(u8* p_elf_data, u8* p_base_address, elf_section_header_t* p_target_section, elf_section_header_t* p_symbol_table, elf_section_header_t* p_string_table, std::linear_map<std::string, void*>* p_symbol_map);
 
-int elf_check_file(uint8_t* p_elf_data, elf_type_t elf_bin_type = elf_type_t::DYNAMIC);
+int elf_check_file(u8* p_elf_data, elf_type_t elf_bin_type = elf_type_t::DYNAMIC);
 
-elf_program_section_info_t elf_parse_program_sections(uint8_t* p_elf_data);
+elf_program_section_info_t elf_parse_program_sections(u8* p_elf_data);
 
-void elf_load_program_sections(uint8_t* p_elf_data, uint8_t* p_base_address, elf_program_section_info_t* p_psi);
+void elf_load_program_sections(u8* p_elf_data, u8* p_base_address, elf_program_section_info_t* p_psi);
 
-elf_tables_t elf_get_tables(uint8_t* p_elf_data);
+elf_tables_t elf_get_tables(u8* p_elf_data);
 
-int elf_relocate_rel_sections(uint8_t* p_elf_data, uint8_t* p_base_address, elf_tables_t* p_tables, std::linear_map<std::string, void*>* p_symbol_map);
+int elf_relocate_rel_sections(u8* p_elf_data, u8* p_base_address, elf_tables_t* p_tables, std::linear_map<std::string, void*>* p_symbol_map);
 
 template <typename R, typename... Args>
 using elf_func_t = R (*)(Args...);
 
 template <typename R, typename... Args>
-elf_func_t<R, Args...> elf_get_function(uint8_t* p_elf_data, uint8_t* p_base_address, elf_tables_t* p_tables, elf_program_section_info_t* p_psi, const char* p_name) {
-    uint64_t offset = 0;
+elf_func_t<R, Args...> elf_get_function(u8* p_elf_data, u8* p_base_address, elf_tables_t* p_tables, elf_program_section_info_t* p_psi, const char* p_name) {
+    u64 offset = 0;
     if (!elf_find_symbol_address(p_elf_data, p_tables->symbol_table, p_tables->string_table, p_name, &offset))
         return nullptr;
 

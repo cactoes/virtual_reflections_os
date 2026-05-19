@@ -25,7 +25,7 @@
 //     x86_64_msr_enable_sce();
 // }
 
-// static inline void msr_set_star(uint64_t star) {
+// static inline void msr_set_star(u64 star) {
 //     x86_64_msr_set_star(star);
 // }
 
@@ -33,7 +33,7 @@
 //     x86_64_msr_set_lstar(lstar);
 // }
 
-// static inline void msr_set_sf_mask(uint64_t mask) {
+// static inline void msr_set_sf_mask(u64 mask) {
 //     x86_64_msr_set_sf_mask(mask);
 // }
 

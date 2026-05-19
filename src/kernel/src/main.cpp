@@ -68,7 +68,7 @@
 #define HEAP_START_SIZE 0x100000 * 32 // 32 mb
 #define PIT_TIMER_INTERVAL 1000 // times per second
 
-// void tcp_socket(socket_t*, uint32_t ip, uint16_t port, const uint8_t* packet, size_t size) {
+// void tcp_socket(socket_t*, u32 ip, u16 port, const u8* packet, size_t size) {
 //     char* data = (char*)malloc(size + 1);
 //     memzero(data, size + 1);
 //     memcpy(data, packet, size);
@@ -88,7 +88,7 @@
 //     socket_bind(&socket);
 
 //     const char http_request[] = "GET / HTTP/1.0\r\n\r\n";
-//     socket_send(&socket, (const uint8_t*)http_request, sizeof(http_request) - 1);
+//     socket_send(&socket, (const u8*)http_request, sizeof(http_request) - 1);
 
 //     while (true) {}
 // }
@@ -174,15 +174,6 @@ extern "C" NORETURN void virtual_kernel_entry(multiboot2_info_t* multiboot_struc
     // initialze the debug out stream
     debug_init();
 
-    kprintf("[ \033[92mOK\033[0m ] multiboot validated\n");
-    // printf("[ \033[92mOK\033[0m ] multiboot validated\n");
-
-    // initialize the gdt / tss
-    // gdt_init();
-
-    kprintf("[ \033[92mOK\033[0m ] installed gdt / tss\n");
-    // printf("[ \033[92mOK\033[0m ] installed gdt / tss\n");
-
     // we already need system info here ...
     // just make sure we dont use the string's yet since memory is not setup yet
     system_info_manager_t sim {};
@@ -190,11 +181,10 @@ extern "C" NORETURN void virtual_kernel_entry(multiboot2_info_t* multiboot_struc
     system_info_parse_memory_size(get_global_system_info_manager(), multiboot_struct);
 
     kprintf("[ \033[92mOK\033[0m ] parsed memory: %ul\n", sim.memory_size);
-    // printf("[ \033[92mOK\033[0m ] parsed memory: %ul\n", sim.memory_size);
 
     // same as the assembly
-    const uint64_t kernel_page_count = (LINKER_END_KERNEL_PHYS + (PAGE_SIZE_LARGE - 1)) >> 21;
-    for (uint64_t i = 0; i < kernel_page_count; i++)
+    const u64 kernel_page_count = (LINKER_END_KERNEL_PHYS + (PAGE_SIZE_LARGE - 1)) >> 21;
+    for (u64 i = 0; i < kernel_page_count; i++)
         vmem_unmap_2mb(kernel_pt_paddr, (void*)(i * PAGE_SIZE_LARGE));
 
     // initialze virtual memory
@@ -209,7 +199,6 @@ extern "C" NORETURN void virtual_kernel_entry(multiboot2_info_t* multiboot_struc
     set_global_heap(&heap);
 
     kprintf("[ \033[92mOK\033[0m ] initialized memory\n");
-    // printf("[ \033[92mOK\033[0m ] initialized memory\n");
 
     graphics_driver_t gd {};
     graphics_driver_init(&gd, multiboot_struct);
@@ -219,20 +208,14 @@ extern "C" NORETURN void virtual_kernel_entry(multiboot2_info_t* multiboot_struc
     kprintf("[ \033[92mOK\033[0m ] initialized graphics driver\n");
     printf("[ \033[92mOK\033[0m ] initialized graphics driver\n");
 
-    // void* kernel_pt_paddr = vmem_virtual_to_physical(kernel_pt_vaddr);
-
     // initialze the interrupt line(s)
-    set_interrupt_hook(interrupt_t::HARDWARE_PIT, pit_handle_interrupt, nullptr);
-    set_interrupt_hook(interrupt_t::HARDWARE_KEYBOARD, ps2_keyboard_handle_interrupt, nullptr);
-    set_interrupt_hook(interrupt_t::HARDWARE_PS2_MOUSE, ps2_mouse_handle_interrupt, nullptr);
-    set_interrupt_hook(interrupt_t::SOFTWARE_SCHEDULER, vthread_handle_interrupt, nullptr);
+    hook_interrupt(interrupt_t::HARDWARE_PIT, pit_handle_interrupt, nullptr);
+    hook_interrupt(interrupt_t::HARDWARE_KEYBOARD, ps2_keyboard_handle_interrupt, nullptr);
+    hook_interrupt(interrupt_t::HARDWARE_PS2_MOUSE, ps2_mouse_handle_interrupt, nullptr);
+    hook_interrupt(interrupt_t::SOFTWARE_SCHEDULER, vthread_handle_interrupt, nullptr);
 
-    interrupt_set_handler((void *(*)(uint64_t, void *))handle_interrupt);
     ps2_mouse_init();
     pit_init(PIT_TIMER_INTERVAL);
-    interrupt_init(0x8); // gdt_get_kernel_code_selector
-
-    // initialize_cpus();
 
     dma_heap_manager_t allocator {};
     set_global_dma_heap_manager(&allocator);
@@ -300,7 +283,7 @@ extern "C" NORETURN void virtual_kernel_entry(multiboot2_info_t* multiboot_struc
     //             }
 
     //             // DONT FREE IT!
-    //             uint8_t* driver_file_data = nullptr;
+    //             u8* driver_file_data = nullptr;
     //             size_t size;
     //             if (!vfs_read_file(&vfs, driver_file_handle, &driver_file_data, &size)) {
     //                 kprintf("[ \033[91mERROR\033[0m ] failed to parse driver file '%s'\n", driver_name.c_str());
@@ -330,53 +313,6 @@ extern "C" NORETURN void virtual_kernel_entry(multiboot2_info_t* multiboot_struc
     //     }
     // }
 
-    // auto net_test = []() {
-    //     auto tcp_callback = [](const uint8_t* data, size_t size) {
-    //         char* str = (char*)malloc(size + 1);
-    //         memzero(str, size + 1);
-    //         memcpy(str, data, size);
-    //         kprintf(str);
-    //         kprintf("\n");
-    //         free(str);
-    //     };
-
-    //     const auto subsys_dns_client = subsys_get<subsys_dns_client_t>(SUBSYS_DNS_CLIENT);
-
-    //     while (!nidm_get_prefered_device(get_global_nidm())->is_configured);
-    //     while (!subsys_dns_client->is_configured());
-
-    //     auto ip = subsys_dns_client->resolve("cactoes.xyz");
-    //     auto conn = tcp_connect(ip, 80, tcp_callback);
-
-    //     if (conn->state != tcp_state_t::ESTABLISHED) {
-    //         kprintf("failed to make tcp connection\n");
-    //         return 1;
-    //     }
-
-    //     const char* http_request = 
-    //         "GET / HTTP/1.1\r\n"
-    //         "Host: cactoes.xyz\r\n"
-    //         "Connection: close\r\n"
-    //         "User-Agent: virtual reflections e0\r\n"
-    //         "\r\n";
-    //     kprintf("[HTTP] Sending request:\n%s", http_request);
-    //     tcp_send_packet((uint8_t*)http_request, strlen(http_request), TCP_FLAG_ACK | TCP_FLAG_PSH, conn);
-    //     return 0;
-    // };
-
-    // vthread_create(net_test, kernel_pt_paddr);
-
-    // if (vthread_create(desktop_init, p_kpml4) == VTHREAD_HANDLE_INVALID)
-    //     kprintf("failed to create desktop thread\n");
-    
-    // while (!is_desktop_ready());
-    // minesweeper_init();
-
-    // if (vthread_create(desktop_init, p_kpml4) == VTHREAD_HANDLE_INVALID)
-    //     printf("Failed start graphical environment\n");
-
-    // desktop_init();
-
     const vthread_handle_t critical_threads[] = {
         vthread_create(nic_thread, kernel_pt_paddr, "network interface controller"),
         vthread_create([]() { while (true) ps2_mouse_process_packet(); return 1; }, kernel_pt_paddr, "PS/2 Mouse"),
@@ -398,22 +334,4 @@ extern "C" NORETURN void virtual_kernel_entry(multiboot2_info_t* multiboot_struc
     // we shoudn t reach this point since the kernel should never stop
     // incase we do just hang here so we dont break anything
     while (true) vthread_yield();
-}
-
-extern "C" void kernel_entry(void* multiboot_struct, void* kernel_page_table) {
-    // vmem_recusive_map_page_table(kernel_page_table, kernel_page_table);
-    // reload_page_table();
-
-    // uint64_t new_stack;
-    // asm volatile (
-    //     "mov %%rsp, %0\n\t"
-    //     "add %1, %0\n\t"
-    //     "mov %0, %%rsp"
-    //     : "=&r"(new_stack)
-    //     : "r"(KERNEL_VIRTUAL_BASE)
-    //     : "memory"
-    // );
-
-    // ((multiboot_t*)multiboot_struct)->info = (void*)PTOV_I(((multiboot_t*)multiboot_struct)->info);
-    // virtual_kernel_entry((multiboot_t*)PTOV_I(multiboot_struct), (void*)PTOV_I(kernel_page_table));
 }

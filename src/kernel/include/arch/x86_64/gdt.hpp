@@ -31,23 +31,23 @@
 // #include "common.hpp"
 
 // struct x86_64_gdt_entry_t {
-//     uint16_t limit;
-//     uint16_t base_low16;
-//     uint8_t base_mid8;
-//     uint8_t access;
-//     uint8_t granularity;
-//     uint8_t base_high8;
+//     u16 limit;
+//     u16 base_low16;
+//     u8 base_mid8;
+//     u8 access;
+//     u8 granularity;
+//     u8 base_high8;
 // };
 
 // struct x86_64_tss_entry_t {
-//     uint16_t length;
-//     uint16_t base_low16;
-//     uint8_t base_mid8;
-//     uint8_t flags1;
-//     uint8_t flags2;
-//     uint8_t base_high8;
-//     uint32_t base_upper32;
-//     uint32_t reserved;
+//     u16 length;
+//     u16 base_low16;
+//     u8 base_mid8;
+//     u8 flags1;
+//     u8 flags2;
+//     u8 base_high8;
+//     u32 base_upper32;
+//     u32 reserved;
 // };
 
 // template <size_t entry_count>
@@ -57,27 +57,27 @@
 // };
 
 // struct x86_64_gdtr_t {
-//     uint16_t limit;
-//     uint64_t address;
+//     u16 limit;
+//     u64 address;
 // } PACKED;
 
 // struct x86_64_tss_t {
-//     uint32_t resereved0;
-//     uint64_t rsp0;
-//     uint64_t rsp1;
-//     uint64_t rsp2;
-//     uint64_t resereved1;
-//     uint64_t resereved2;
-//     uint64_t ist1;
-//     uint64_t ist2;
-//     uint64_t ist3;
-//     uint64_t ist4;
-//     uint64_t ist5;
-//     uint64_t ist6;
-//     uint64_t ist7;
-//     uint64_t resereved3;
-//     uint16_t resereved4;
-//     uint16_t iomap_offset;
+//     u32 resereved0;
+//     u64 rsp0;
+//     u64 rsp1;
+//     u64 rsp2;
+//     u64 resereved1;
+//     u64 resereved2;
+//     u64 ist1;
+//     u64 ist2;
+//     u64 ist3;
+//     u64 ist4;
+//     u64 ist5;
+//     u64 ist6;
+//     u64 ist7;
+//     u64 resereved3;
+//     u16 resereved4;
+//     u16 iomap_offset;
 // } PACKED;
 
 // static x86_64_gdt_entry_t g_x86_64_zero_entry  {
@@ -158,12 +158,12 @@
 // template <size_t entry_count>
 // void x86_64_gdt_set_tss(x86_64_gdt_t<entry_count>* p_gdt, x86_64_tss_t* p_tss) {
 //     p_gdt->tss_entry.length = sizeof(x86_64_tss_t) - 1;
-//     p_gdt->tss_entry.base_low16 = (uint16_t)(((uint64_t)p_tss) & MAX_UINT16);
-//     p_gdt->tss_entry.base_mid8 = (uint8_t)(((uint64_t)p_tss >> 16) & MAX_UINT8);
+//     p_gdt->tss_entry.base_low16 = (u16)(((u64)p_tss) & MAX_UINT16);
+//     p_gdt->tss_entry.base_mid8 = (u8)(((u64)p_tss >> 16) & MAX_UINT8);
 //     p_gdt->tss_entry.flags1 = 0b10001001;
 //     p_gdt->tss_entry.flags2 = 0;
-//     p_gdt->tss_entry.base_high8 = (uint8_t)(((uint64_t)p_tss >> 24) & MAX_UINT8);
-//     p_gdt->tss_entry.base_upper32 = (uint32_t) (((uint64_t)p_tss >> 32) & MAX_UINT32);
+//     p_gdt->tss_entry.base_high8 = (u8)(((u64)p_tss >> 24) & MAX_UINT8);
+//     p_gdt->tss_entry.base_upper32 = (u32) (((u64)p_tss >> 32) & MAX_UINT32);
 //     p_gdt->tss_entry.reserved = 0;
 // }
 
@@ -172,7 +172,7 @@
 // template <size_t entry_count>
 // void x86_64_gdtr_update(x86_64_gdtr_t* p_gdtr, x86_64_gdt_t<entry_count>* p_gdt) {
 //     p_gdtr->limit = sizeof(x86_64_gdt_t<entry_count>) - 1;
-//     p_gdtr->address = (uint64_t)p_gdt;
+//     p_gdtr->address = (u64)p_gdt;
 // }
 
 // #endif // __X86_64_GDT_HPP__

@@ -23,7 +23,7 @@
 #include "common.hpp"
 #include "network/nidm.hpp"
 
-// typedef void(*tcp_connect_callback_t)(const uint8_t* data, size_t size);
+// typedef void(*tcp_connect_callback_t)(const u8* data, size_t size);
 
 enum class tcp_state_t {
     // CLOSED,
@@ -46,52 +46,52 @@ enum class tcp_state_t {
 };
 
 struct tcp_header_t {
-    uint16_t src_port;
-    uint16_t dst_port;
-    uint32_t seq_num;
-    uint32_t ack_num;
-    uint8_t data_offset_reserved;
-    uint8_t flags;
-    uint16_t window;
-    uint16_t checksum;
-    uint16_t urgent_ptr;
+    u16 src_port;
+    u16 dst_port;
+    u32 seq_num;
+    u32 ack_num;
+    u8 data_offset_reserved;
+    u8 flags;
+    u16 window;
+    u16 checksum;
+    u16 urgent_ptr;
 } PACKED;
 
 struct tcb_t {
-    uint32_t local_ip;
-    uint16_t local_port;
+    u32 local_ip;
+    u16 local_port;
 
-    uint32_t remote_ip;
-    uint16_t remote_port;
+    u32 remote_ip;
+    u16 remote_port;
 
-    uint32_t snd_nxt;
-    uint32_t snd_una;
-    uint32_t rcv_nxt;
+    u32 snd_nxt;
+    u32 snd_una;
+    u32 rcv_nxt;
 
     tcp_state_t state;
 };
 
-bool tcp_send(tcb_t* tcb, const uint8_t* payload, size_t size);
-tcb_t* tcp_create_tcb(uint32_t local_ip, uint16_t local_port, uint32_t remote_ip, uint16_t remote_port);
-void tcp_receive(network_interface_t* interface, uint32_t src_ip, uint8_t* payload, size_t payload_length);
+bool tcp_send(tcb_t* tcb, const u8* payload, size_t size);
+tcb_t* tcp_create_tcb(u32 local_ip, u16 local_port, u32 remote_ip, u16 remote_port);
+void tcp_receive(network_interface_t* interface, u32 src_ip, u8* payload, size_t payload_length);
 bool tcp_is_connection_established(tcb_t* tcb);
 
 // struct tcp_connection_t {
 
 
-//     uint32_t snd_nxt;
-//     uint32_t snd_una;
-//     uint32_t rcv_nxt;
-//     uint32_t iss;
-//     uint32_t irs;
+//     u32 snd_nxt;
+//     u32 snd_una;
+//     u32 rcv_nxt;
+//     u32 iss;
+//     u32 irs;
 
 //     tcp_state_t state;
 //     tcp_connect_callback_t callback;
 // };
 
-// tcp_connection_t* tcp_connect(uint32_t ip, uint32_t port, tcp_connect_callback_t callback);
-// tcp_connection_t* tcp_listen(uint32_t port, tcp_connect_callback_t callback);
-// bool tcp_send_packet(uint8_t* p_payload, size_t payload_length, uint8_t flags, tcp_connection_t* connection);
-// void tcp_receive(network_interface_device_t* p_device, uint8_t* p_payload, size_t payload_length, uint32_t src_ip);
+// tcp_connection_t* tcp_connect(u32 ip, u32 port, tcp_connect_callback_t callback);
+// tcp_connection_t* tcp_listen(u32 port, tcp_connect_callback_t callback);
+// bool tcp_send_packet(u8* p_payload, size_t payload_length, u8 flags, tcp_connection_t* connection);
+// void tcp_receive(network_interface_device_t* p_device, u8* p_payload, size_t payload_length, u32 src_ip);
 
 #endif // __DRIVERS_NETWORK_TCP_HPP__

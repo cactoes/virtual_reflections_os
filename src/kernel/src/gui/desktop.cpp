@@ -15,9 +15,9 @@
 static vga_buffer_t* g_desktop_back_buffer = nullptr;
 static bool g_desktop_ready = false;
 static int g_desktop_mouse_pos[2] { 0, 0 };
-static std::linear_map<uint64_t, event_manager_t<void*>> g_desktop_event_container {};
+static std::linear_map<u64, event_manager_t<void*>> g_desktop_event_container {};
 static linked_list<desktop_render_target_t> g_render_targets {};
-constexpr uint64_t k_desktop_target_fps_ms = 1000 / 60;
+constexpr u64 k_desktop_target_fps_ms = 1000 / 60;
 
 vga_buffer_t* desktop_render_get_buffer() {
     return g_desktop_back_buffer;
@@ -89,7 +89,7 @@ void desktop_handle_ps2_mouse_input(const ps2_mouse_state_t* p_state) {
 }
 
 bool desktop_event_subscribe(const char* p_name, void(*p_callback)(void*)) {
-    const uint64_t hash = hash_fnv1a_64(p_name);
+    const u64 hash = hash_fnv1a_64(p_name);
 
     auto it = g_desktop_event_container.get(hash);
     if (it == g_desktop_event_container.end())
@@ -156,7 +156,7 @@ bool desktop_render_char(int x, int y, char ch, const color_t& color) {
         ch = 128;
     
     for (int row = 0; row < 8; row++) {
-        uint8_t line = font8x8[(int)ch][row];
+        u8 line = font8x8[(int)ch][row];
         for (int col = 0; col < 8; col++) {
             if (line & (128 >> col))
                 desktop_render_pixel(x + col, y + row, color);
@@ -181,8 +181,8 @@ bool desktop_render_text(int x, int y, const char* str, const color_t& color) {
 }
 
 void desktop_render_draw_cursor() {
-    const uint64_t x = g_desktop_mouse_pos[0];
-    const uint64_t y = g_desktop_mouse_pos[1];
+    const u64 x = g_desktop_mouse_pos[0];
+    const u64 y = g_desktop_mouse_pos[1];
 
     // outline
     desktop_render_linev(x, y, 10, { 0, 0, 0 });
@@ -275,33 +275,33 @@ void desktop_render_window(const desktop_render_target_t* target) {
 #include "arch/generic.hpp"
 
 struct bmp_file_header_t {
-    uint8_t signature[2];
-    uint32_t file_size;
-    uint16_t unused[2];
-    uint32_t image_data_offset;
+    u8 signature[2];
+    u32 file_size;
+    u16 unused[2];
+    u32 image_data_offset;
 } PACKED;
 
 struct bmp_info_header_t {
-    uint32_t header_size;
+    u32 header_size;
     int width;
     int height;
-    uint16_t planes;
-    uint16_t bits_per_pixel;
-    uint32_t compression;
-    uint32_t uncompressed_size;
+    u16 planes;
+    u16 bits_per_pixel;
+    u32 compression;
+    u32 uncompressed_size;
     int pixels_per_m_x;
     int pixels_per_m_y;
-    uint32_t number_of_colors;
-    uint32_t number_of_importand_colors;
+    u32 number_of_colors;
+    u32 number_of_importand_colors;
 } PACKED;
 
 struct bmp_color_t {
-    uint8_t r;
-    uint8_t g;
-    uint8_t b;
+    u8 r;
+    u8 g;
+    u8 b;
 } PACKED;
 
-bool is_bmp(uint8_t* data, size_t size) {
+bool is_bmp(u8* data, size_t size) {
     if (!data)
         return false;
 
@@ -316,7 +316,7 @@ void load_background() {
     if (fd == FILE_DESCRIPTOR_INVALID)
         return kprintf("failed to open logo.bmp\n");
 
-    uint8_t* data;
+    u8* data;
     size_t size;
     if (!vfs_read_file(get_global_vfs(), fd, &data, &size))
         return kprintf("failed to read logo.bmp");
@@ -330,7 +330,7 @@ void load_background() {
     if (info_header->bits_per_pixel != 8)
         return kprintf("not 8-bit image\n");
 
-    uint8_t* color_pallet = (uint8_t*)(data + sizeof(bmp_file_header_t) + sizeof(bmp_info_header_t));
+    u8* color_pallet = (u8*)(data + sizeof(bmp_file_header_t) + sizeof(bmp_info_header_t));
 
     bmp_color_t colors[256] {};
     for (int i = 0; i < info_header->number_of_colors; i++) {
@@ -339,7 +339,7 @@ void load_background() {
         colors[i].r = *(color_pallet + (i * 4) + 2);
     }
 
-    uint8_t* image_data = (uint8_t*)(data + file_header->image_data_offset);
+    u8* image_data = (u8*)(data + file_header->image_data_offset);
 
     int width  = info_header->width;
     int height = info_header->height;
@@ -357,7 +357,7 @@ void load_background() {
         int bmp_y = bottom_up ? (height - 1 - y) : y;
 
         for (int x = 0; x < width; x++) {
-            uint8_t index = image_data[bmp_y * row_stride + x];
+            u8 index = image_data[bmp_y * row_stride + x];
             bmp_color_t c = colors[index];
             desktop_render_pixel(
                 x,
@@ -396,11 +396,11 @@ int desktop_init() {
     g_desktop_ready = true;
 
     // main render loop
-    uint64_t g_last_tick = 0;
+    u64 g_last_tick = 0;
     while (true) {
         // wait for new frame
-        const uint64_t now = clock_get_time_since_boot();
-        const uint64_t dt = now - g_last_tick;
+        const u64 now = clock_get_time_since_boot();
+        const u64 dt = now - g_last_tick;
 
         if (dt < k_desktop_target_fps_ms) {
             vthread_sleep(k_desktop_target_fps_ms - (dt));

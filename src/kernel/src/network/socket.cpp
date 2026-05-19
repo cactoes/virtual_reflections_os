@@ -6,7 +6,7 @@
 
 static std::dynamic_array<socket_t*> global_sockets {};
 
-bool socket_receive(socket_protocol_t protocol, uint16_t dst_port, uint32_t src_ip, uint16_t src_port, const uint8_t* data, size_t size) {
+bool socket_receive(socket_protocol_t protocol, u16 dst_port, u32 src_ip, u16 src_port, const u8* data, size_t size) {
     for (auto s : global_sockets) {
         if (s->local_port == dst_port && s->protocol == protocol) {
             s->listener(s, src_ip, src_port, data, size);
@@ -25,7 +25,7 @@ bool socket_bind(socket_t* socket) {
     return true;
 }
 
-bool socket_send(socket_t* socket, const uint8_t* data, size_t size) {
+bool socket_send(socket_t* socket, const u8* data, size_t size) {
     if (!socket || !data)
         return false;
 
@@ -51,7 +51,7 @@ bool socket_send(socket_t* socket, const uint8_t* data, size_t size) {
     return false;
 }
 
-socket_t* socket_get(socket_protocol_t protocol, uint16_t dst_port) {
+socket_t* socket_get(socket_protocol_t protocol, u16 dst_port) {
     for (auto s : global_sockets) {
         if (s->local_port == dst_port && s->protocol == protocol) {
             return s;

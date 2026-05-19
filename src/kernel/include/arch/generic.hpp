@@ -30,7 +30,7 @@ static inline void set_gdt(void* p_gdtr) {
     x86_64_set_gdt(p_gdtr);
 }
 
-static inline void load_tss(uint16_t entry) {
+static inline void load_tss(u16 entry) {
     x86_64_load_tss(entry);
 }
 
@@ -74,44 +74,44 @@ static inline void memory() {
     x86_64_memory();
 }
 
-static inline uint64_t read_cr2() {
+static inline u64 read_cr2() {
     return x86_64_read_cr2();
 }
 
 template <typename T>
-static inline void out_port(uint16_t port, T value);
+static inline void out_port(u16 port, T value);
 
 template <>
-inline void out_port<uint8_t>(uint16_t port, uint8_t value) {
-    x86_64_out_port<uint8_t>(port, value);
+inline void out_port<u8>(u16 port, u8 value) {
+    x86_64_out_port<u8>(port, value);
 }
 
 template <>
-inline void out_port<uint16_t>(uint16_t port, uint16_t value) {
-    x86_64_out_port<uint16_t>(port, value);
+inline void out_port<u16>(u16 port, u16 value) {
+    x86_64_out_port<u16>(port, value);
 }
 
 template <>
-inline void out_port<uint32_t>(uint16_t port, uint32_t value) {
-    x86_64_out_port<uint32_t>(port, value);
+inline void out_port<u32>(u16 port, u32 value) {
+    x86_64_out_port<u32>(port, value);
 }
 
 template <typename T>
-static inline T in_port(uint16_t port);
+static inline T in_port(u16 port);
 
 template <>
-inline uint8_t in_port<uint8_t>(uint16_t port) {
-    return x86_64_in_port<uint8_t>(port);
+inline u8 in_port<u8>(u16 port) {
+    return x86_64_in_port<u8>(port);
 }
 
 template <>
-inline uint16_t in_port<uint16_t>(uint16_t port) {
-    return x86_64_in_port<uint16_t>(port);
+inline u16 in_port<u16>(u16 port) {
+    return x86_64_in_port<u16>(port);
 }
 
 template <>
-inline uint32_t in_port<uint32_t>(uint16_t port) {
-    return x86_64_in_port<uint32_t>(port);
+inline u32 in_port<u32>(u16 port) {
+    return x86_64_in_port<u32>(port);
 }
 
 static inline bool get_cpu_name(char* buffer, size_t size) {
@@ -120,9 +120,9 @@ static inline bool get_cpu_name(char* buffer, size_t size) {
     
     memzero(buffer, size);
 
-    uint32_t registers[4];
+    u32 registers[4];
     char* p = buffer;
-    for (uint32_t i = 0; i < 3; i++) {
+    for (u32 i = 0; i < 3; i++) {
         x86_64_cpuid(0x80000002 + i, 0, &registers[0], &registers[1], &registers[2], &registers[3]);
         memcpy(p, registers, sizeof(registers));
         p += sizeof(registers);
@@ -131,11 +131,11 @@ static inline bool get_cpu_name(char* buffer, size_t size) {
     return true;
 }
 
-static inline uint64_t save_flags_and_cli() {
+static inline u64 save_flags_and_cli() {
     return x86_64_save_flags_and_cli();
 }
 
-static inline void restore_flags(uint64_t flags) {
+static inline void restore_flags(u64 flags) {
     x86_64_restore_flags(flags);
 }
 
@@ -147,10 +147,10 @@ static inline void fpu_load(void* store) {
     x86_64_fpu_load(store);
 }
 
-extern "C" void* x86_64_memset(void*, uint8_t, size_t) noexcept;
+extern "C" void* x86_64_memset(void*, u8, size_t) noexcept;
 extern "C" void* x86_64_memcpy(void*, const void*, size_t) noexcept;
 
-inline void* memset_impl(void* dst, uint8_t val, size_t size) noexcept {
+inline void* memset_impl(void* dst, u8 val, size_t size) noexcept {
     return x86_64_memset(dst, val, size);
 }
 
@@ -164,27 +164,27 @@ inline void* memcpy_impl(void* dst, const void* src, size_t size) noexcept {
 
 inline bool memeq_impl(const void* a, const void* b, size_t size) noexcept {
     for (size_t i = 0; i < size; i++) {
-        if (((uint8_t*)a)[i] != ((uint8_t*)b)[i])
+        if (((u8*)a)[i] != ((u8*)b)[i])
             return false;
     }
 
     return true;
 }
 
-inline bool memreq_impl(const void* a, uint8_t val, size_t size) noexcept {
+inline bool memreq_impl(const void* a, u8 val, size_t size) noexcept {
     for (size_t i = 0; i < size; i++) {
-        if (((uint8_t*)a)[i] != val)
+        if (((u8*)a)[i] != val)
             return false;
     }
 
     return true;
 }
 
-inline uint64_t rdmsr(uint32_t addr) {
+inline u64 rdmsr(u32 addr) {
     return x86_64_rdmsr(addr);
 }
 
-inline void wrmsr(uint32_t addr, uint64_t value) {
+inline void wrmsr(u32 addr, u64 value) {
     x86_64_wrmsr(addr, value);
 }
 

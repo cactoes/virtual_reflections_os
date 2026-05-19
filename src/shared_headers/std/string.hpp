@@ -39,7 +39,7 @@ static size_t sprintf(char* buffer, size_t size, void* ptr) {
 
     static const char s_numbers[] = "0123456789abcdef";
 
-    uint64_t number = (uint64_t)ptr;
+    u64 number = (u64)ptr;
 
     memset(buffer, '0', 16ul);
 
@@ -56,7 +56,7 @@ static size_t sprintf(char* buffer, size_t size, void* ptr) {
 /// @param num              input number
 /// @param base             number base
 /// @return                 size of string inc null terminator
-static size_t sprintf(char* buffer, size_t size, uint32_t num, int base = 10) {
+static size_t sprintf(char* buffer, size_t size, u32 num, int base = 10) {
     if (size < 11 || !buffer)
         return 0;
 
@@ -71,7 +71,7 @@ static size_t sprintf(char* buffer, size_t size, uint32_t num, int base = 10) {
         return 2;
     }
 
-    uint32_t number = num;
+    u32 number = num;
 
     char tmp[11] = { 0 };
     int i = sizeof(tmp) - 1;
@@ -92,7 +92,7 @@ static size_t sprintf(char* buffer, size_t size, uint32_t num, int base = 10) {
 /// @param num              input number
 /// @param base             number base
 /// @return                 size of string inc null terminator
-static size_t sprintf(char* buffer, size_t size, int32_t num, int base = 10) {
+static size_t sprintf(char* buffer, size_t size, i32 num, int base = 10) {
     if (size < 12 || !buffer)
         return 0;
 
@@ -107,7 +107,7 @@ static size_t sprintf(char* buffer, size_t size, int32_t num, int base = 10) {
         return 2;
     }
 
-    uint32_t number = ABS((uint32_t)num);
+    u32 number = ABS((u32)num);
 
     char tmp[12] = { 0 };
     int i = sizeof(tmp) - 1;
@@ -131,7 +131,7 @@ static size_t sprintf(char* buffer, size_t size, int32_t num, int base = 10) {
 /// @param num              input number
 /// @param base             number base
 /// @return                 size of string inc null terminator
-static size_t sprintf(char* buffer, size_t size, uint64_t num, int base = 10) {
+static size_t sprintf(char* buffer, size_t size, u64 num, int base = 10) {
     if (size < 21 || !buffer)
         return 0;
 
@@ -146,7 +146,7 @@ static size_t sprintf(char* buffer, size_t size, uint64_t num, int base = 10) {
         return 2;
     }
 
-    uint64_t number = num;
+    u64 number = num;
 
     char tmp[21] = { 0 };
     int i = sizeof(tmp) - 1;
@@ -167,7 +167,7 @@ static size_t sprintf(char* buffer, size_t size, uint64_t num, int base = 10) {
 /// @param num              input number
 /// @param base             number base
 /// @return                 size of string inc null terminator
-static size_t sprintf(char* buffer, size_t size, int64_t num, int base = 10) {
+static size_t sprintf(char* buffer, size_t size, i64 num, int base = 10) {
     if (size < 22 || !buffer)
         return 0;
 
@@ -182,7 +182,7 @@ static size_t sprintf(char* buffer, size_t size, int64_t num, int base = 10) {
         return 2;
     }
 
-    uint64_t number = ABS((uint64_t)num);
+    u64 number = ABS((u64)num);
 
     char tmp[22] = { 0 };
     int i = sizeof(tmp) - 1;
@@ -286,7 +286,7 @@ static size_t sprintf(char* buffer, size_t size, const char* fmt, va_list args) 
                         if (fmt[i+1] == 'l') {
                             i++;
                             char tmpbuf[21] = { 0 };
-                            auto strsize = sprintf(tmpbuf, 21, va_arg(args, uint64_t)) - 1;
+                            auto strsize = sprintf(tmpbuf, 21, va_arg(args, u64)) - 1;
                             if (STR_CHECK_BUFF(len, size, strsize)) {
                                 memcpy(&buffer[len], tmpbuf, strsize);
                                 len += strsize;
@@ -298,7 +298,7 @@ static size_t sprintf(char* buffer, size_t size, const char* fmt, va_list args) 
                         if (fmt[i+1] == 'h') {
                             i++;
                             char tmpbuf[21] = { 0 };
-                            auto strsize = sprintf(tmpbuf, 21, va_arg(args, uint64_t), 16) - 1;
+                            auto strsize = sprintf(tmpbuf, 21, va_arg(args, u64), 16) - 1;
                             if (STR_CHECK_BUFF(len, size, strsize)) {
                                 memcpy(&buffer[len], tmpbuf, strsize);
                                 len += strsize;
@@ -308,7 +308,7 @@ static size_t sprintf(char* buffer, size_t size, const char* fmt, va_list args) 
                         }
                     }
                     char tmpbuf[11] = { 0 };
-                    auto strsize = sprintf(tmpbuf, 11, va_arg(args, uint32_t)) - 1;
+                    auto strsize = sprintf(tmpbuf, 11, va_arg(args, u32)) - 1;
                     if (STR_CHECK_BUFF(len, size, strsize)) {
                         memcpy(&buffer[len], tmpbuf, strsize);
                         len += strsize;
@@ -320,7 +320,7 @@ static size_t sprintf(char* buffer, size_t size, const char* fmt, va_list args) 
                         if (fmt[i+1] == 'l') {
                             i++;
                             char tmpbuf[22] = { 0 };
-                            auto strsize = sprintf(tmpbuf, 22, va_arg(args, int64_t)) - 1;
+                            auto strsize = sprintf(tmpbuf, 22, va_arg(args, i64)) - 1;
                             if (STR_CHECK_BUFF(len, size, strsize)) {
                                 memcpy(&buffer[len], tmpbuf, strsize);
                                 len += strsize;
@@ -332,7 +332,7 @@ static size_t sprintf(char* buffer, size_t size, const char* fmt, va_list args) 
                         if (fmt[i+1] == 'h') {
                             i++;
                             char tmpbuf[22] = { 0 };
-                            auto strsize = sprintf(tmpbuf, 22, va_arg(args, int64_t), 16) - 1;
+                            auto strsize = sprintf(tmpbuf, 22, va_arg(args, i64), 16) - 1;
                             if (STR_CHECK_BUFF(len, size, strsize)) {
                                 memcpy(&buffer[len], tmpbuf, strsize);
                                 len += strsize;
@@ -342,7 +342,7 @@ static size_t sprintf(char* buffer, size_t size, const char* fmt, va_list args) 
                         }
                     }
                     char tmpbuf[12] = { 0 };
-                    auto strsize = sprintf(tmpbuf, 12, va_arg(args, int32_t)) - 1;
+                    auto strsize = sprintf(tmpbuf, 12, va_arg(args, i32)) - 1;
                     if (STR_CHECK_BUFF(len, size, strsize)) {
                         memcpy(&buffer[len], tmpbuf, strsize);
                         len += strsize;
@@ -387,12 +387,12 @@ static size_t sprintf(char* buffer, size_t size, const char* fmt, va_list args) 
 ///                         %p  = void*
 ///                         %s  = char*
 ///                         %c  = char
-///                         %u  = uint32_t
-///                         %ul = uint64_t
-///                         %uh = uint64_t as hex
-///                         %i  = int32_t
-///                         %il = int64_t
-///                         %ih = int64_t as hex
+///                         %u  = u32
+///                         %ul = u64
+///                         %uh = u64 as hex
+///                         %i  = i32
+///                         %il = i64
+///                         %ih = i64 as hex
 ///                         %f  = float / double
 /// @param                  argument list
 /// @return                 size of string inc null terminator
@@ -468,7 +468,7 @@ static bool str_ends_with(const char* str, const char* target) {
     return streq(str + str_len - target_len, target);
 }
 
-static void str_unpack_be16(const uint16_t* src, int word_count, char* dst, int max_len) {
+static void str_unpack_be16(const u16* src, int word_count, char* dst, int max_len) {
     int pos = 0;
     memzero(dst, max_len);
 
@@ -732,11 +732,11 @@ static std::string size_format_to_string(size_t size) {
 }
 
 static std::string time_format_to_string(size_t ms) {
-    uint64_t total_seconds = ms / 1000;
-    uint64_t seconds = total_seconds % 60;
-    uint64_t minutes = (total_seconds / 60) % 60;
-    uint64_t hours = (total_seconds / 3600) % 24;
-    uint64_t days = total_seconds / 86400;
+    u64 total_seconds = ms / 1000;
+    u64 seconds = total_seconds % 60;
+    u64 minutes = (total_seconds / 60) % 60;
+    u64 hours = (total_seconds / 3600) % 24;
+    u64 days = total_seconds / 86400;
 
     char buffer[256];
 

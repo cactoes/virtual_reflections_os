@@ -11,7 +11,7 @@
 #define DHCP_PORT_CLIENT                        68
 #define DHCP_PORT_SERVER                        67
 
-#define DHCP_MAGIC                              (uint32_t)0x63825363
+#define DHCP_MAGIC                              (u32)0x63825363
 
 #define DHCP_OP_BOOTREQUEST                     1
 #define DHCP_OP_BOOTREPLY                       2
@@ -53,72 +53,72 @@
 #include "std/pointer.hpp"
 
 struct DHCPPacket {
-    uint8_t m_nOp;
-    uint8_t m_nHType;
-    uint8_t m_nHLen;
-    uint8_t m_nHops;
-    uint32_t m_nXID;
-    uint16_t m_nSecs;
-    uint16_t m_nFlags;
+    u8 m_nOp;
+    u8 m_nHType;
+    u8 m_nHLen;
+    u8 m_nHops;
+    u32 m_nXID;
+    u16 m_nSecs;
+    u16 m_nFlags;
 
-    uint32_t m_nClientIPAddress;
-    uint32_t m_nYourIPAddress;
-    uint32_t m_nServerIPAddress;
-    uint32_t m_nGatewayIPAddress;
+    u32 m_nClientIPAddress;
+    u32 m_nYourIPAddress;
+    u32 m_nServerIPAddress;
+    u32 m_nGatewayIPAddress;
 
-    uint8_t m_aClientHWAddress[16];
-    uint8_t m_aServerName[64];
-    uint8_t m_aFile[128];
+    u8 m_aClientHWAddress[16];
+    u8 m_aServerName[64];
+    u8 m_aFile[128];
 
-    uint32_t m_nMagic;
+    u32 m_nMagic;
 
-    uint8_t m_aOptions[308];
+    u8 m_aOptions[308];
 } PACKED;
 
 struct DHCPOptionsWriter {
-    uint8_t* m_pBuffer;
+    u8* m_pBuffer;
     size_t m_nBufferSize;
     size_t m_nOffset;
 };
 
 template <size_t size>
 struct DHCPOption {
-    uint8_t m_nType;
-    uint8_t m_nLength;
-    uint8_t m_aValue[size];
+    u8 m_nType;
+    u8 m_nLength;
+    u8 m_aValue[size];
 };
 
 struct DHCPClientState {
     // general
-    uint8_t m_aMac[6];
+    u8 m_aMac[6];
     char m_szHostname[128];
 
     // sesion
-    uint32_t m_nXID;
-    uint32_t m_nDHCPServerIP;
+    u32 m_nXID;
+    u32 m_nDHCPServerIP;
 
     // contract
-    uint32_t m_nOfferdIP;
-    uint32_t m_nIPLeaseTimeS;
-    uint32_t m_nSubnetMask;
-    uint32_t m_nGateway;
+    u32 m_nOfferdIP;
+    u32 m_nIPLeaseTimeS;
+    u32 m_nSubnetMask;
+    u32 m_nGateway;
 };
 
-typedef void(*DHCPSendPacketFN)(uint32_t nDstIp, uint16_t nDstPort, uint16_t nSrcPort, uint8_t* pData, size_t nSize);
+typedef void(*DHCPSendPacketFN)(u32 nDstIp, u16 nDstPort, u16 nSrcPort, u8* pData, size_t nSize);
 
-void DHCPOptionsWriterInit(DHCPOptionsWriter* pWriter, uint8_t* pBuffer, size_t nBufferSize);
-bool DHCPOptionsWriterAddOption(DHCPOptionsWriter* pWriter, uint8_t nType, uint8_t* pData, size_t nLength);
+void DHCPOptionsWriterInit(DHCPOptionsWriter* pWriter, u8* pBuffer, size_t nBufferSize);
+bool DHCPOptionsWriterAddOption(DHCPOptionsWriter* pWriter, u8 nType, u8* pData, size_t nLength);
 bool DHCPOptionsWriterShutdown(DHCPOptionsWriter* pWriter);
 
-uint32_t DHCPGenerateXID();
-uint8_t* DHCPGetOption(DHCPPacket* pPacket, uint8_t nType);
-DHCPPacket DHCPCreateDiscoverPacket(const char* szHostName, uint32_t nXID, uint8_t pMac[6]);
-DHCPPacket DHCPCreateRequestPacket(const char* szHostName, uint32_t nWantedIP, uint32_t nDHCPServerIP, uint32_t nXID, uint8_t pMac[6]);
-DHCPPacket DHCPCreateLeaseExtendPacket(const char* szHostName, uint32_t nIpToExtend, uint32_t nXID, uint8_t pMac[6], uint32_t nDHCPServerIp);
+u32 DHCPGenerateXID();
+u8* DHCPGetOption(DHCPPacket* pPacket, u8 nType);
+DHCPPacket DHCPCreateDiscoverPacket(const char* szHostName, u32 nXID, u8 pMac[6]);
+DHCPPacket DHCPCreateRequestPacket(const char* szHostName, u32 nWantedIP, u32 nDHCPServerIP, u32 nXID, u8 pMac[6]);
+DHCPPacket DHCPCreateLeaseExtendPacket(const char* szHostName, u32 nIpToExtend, u32 nXID, u8 pMac[6], u32 nDHCPServerIp);
 
 /// @brief dhcp exports
 extern "C" {
-    DHCPClientState* DHCPClientInit(const char* szHostName, uint8_t pMac[6]);
+    DHCPClientState* DHCPClientInit(const char* szHostName, u8 pMac[6]);
     void DHCPClientNewSession(DHCPClientState* pClientState);
     void DHCPClientShutdown(DHCPClientState* pClientState);
 

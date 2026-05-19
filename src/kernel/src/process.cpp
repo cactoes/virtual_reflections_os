@@ -40,7 +40,7 @@ bool create_process(process_t* process, const char* path) {
     if (!base_address_v)
         return false;
 
-    elf_load_program_sections(process->data, (uint8_t*)base_address_v, &program_section_info);
+    elf_load_program_sections(process->data, (u8*)base_address_v, &program_section_info);
 
     auto tables = elf_get_tables(process->data);
     if (!tables.string_table || !tables.symbol_table)
@@ -57,9 +57,9 @@ bool create_process(process_t* process, const char* path) {
     vmem_recusive_map_page_table(process->page_table, new_page_table_p);
 
     // copy the kernel entries so its always linked
-    uint64_t* current_page_table_v = GET_PML4_VIRT();
+    u64* current_page_table_v = GET_PML4_VIRT();
     for (size_t i = KPAGING_GET_PE(KERNEL_VIRTUAL_BASE, 39); i < 511; i++)
-        ((uint64_t*)process->page_table)[i] = current_page_table_v[i];
+        ((u64*)process->page_table)[i] = current_page_table_v[i];
 
     // TODO @since 24/04/2026 -- 09:53
     // place at a non randomly chosen location
@@ -71,22 +71,22 @@ bool create_process(process_t* process, const char* path) {
     p_vthread->stack_bottom = stack_user_v;
     p_vthread->stack_bottom_kernel = stack_kernel_v;
 
-    p_vthread->kstack = (void*)((uint64_t)malloc_aligned(PAGE_SIZE_LARGE, 16));
+    p_vthread->kstack = (void*)((u64)malloc_aligned(PAGE_SIZE_LARGE, 16));
 
-    uint16_t user_ds = (uint16_t)((4 << 3) | 3); // USER_DATA_SELECTOR_INDEX
-    uint16_t user_cs = (uint16_t)((5 << 3) | 3); // USER_CODE_SELECTOR_INDEX
+    u16 user_ds = (u16)((4 << 3) | 3); // USER_DATA_SELECTOR_INDEX
+    u16 user_cs = (u16)((5 << 3) | 3); // USER_CODE_SELECTOR_INDEX
 
-    uint64_t* stack_top = (uint64_t*)(((uint64_t)stack_user_v + PAGE_SIZE_LARGE - sizeof(interrupt_regs_t)) & ~0xF);
-    uint64_t* mapped_stack_top = (uint64_t*)(((uint64_t)stack_kernel_v + PAGE_SIZE_LARGE - sizeof(interrupt_regs_t)) & ~0xF);
+    u64* stack_top = (u64*)(((u64)stack_user_v + PAGE_SIZE_LARGE - sizeof(interrupt_regs_t)) & ~0xF);
+    u64* mapped_stack_top = (u64*)(((u64)stack_kernel_v + PAGE_SIZE_LARGE - sizeof(interrupt_regs_t)) & ~0xF);
 
     void* entry = (void*)((elf_header_t*)process->data)->entry_point;
 
     // itret frame
-    *(--mapped_stack_top) = (uint64_t)user_ds;
-    *(--mapped_stack_top) = (uint64_t)stack_top;
+    *(--mapped_stack_top) = (u64)user_ds;
+    *(--mapped_stack_top) = (u64)stack_top;
     *(--mapped_stack_top) = 0x202;
-    *(--mapped_stack_top) = (uint64_t)user_cs;
-    *(--mapped_stack_top) = (uint64_t)entry;
+    *(--mapped_stack_top) = (u64)user_cs;
+    *(--mapped_stack_top) = (u64)entry;
     *(--mapped_stack_top) = 0;
 
     // general registers
@@ -99,7 +99,7 @@ bool create_process(process_t* process, const char* path) {
     p_vthread->stack_top = (void*)mapped_stack_top;
     p_vthread->vt_state = vthread_state_t::RUNNING;
     p_vthread->handle = vhtread_next_handle();
-    p_vthread->fpu_state = (uint8_t*)malloc_aligned(sizeof(uint8_t) * 512, 16);
+    p_vthread->fpu_state = (u8*)malloc_aligned(sizeof(u8) * 512, 16);
     p_vthread->pml4 = new_page_table_p;
     p_vthread->tls.handle = p_vthread->handle;
     p_vthread->parent = process;
@@ -113,7 +113,7 @@ bool create_process(process_t* process, const char* path) {
     set_pml4(new_page_table_p);
 
     for (size_t i = 0; i < program_section_info.size; i += PAGE_SIZE_LARGE) {
-        if (!vmem_map_2mb(new_page_table_p, (void*)(program_section_info.min_address + i * PAGE_SIZE_LARGE), (void*)((uint64_t)base_address_p + i * PAGE_SIZE_LARGE), true))
+        if (!vmem_map_2mb(new_page_table_p, (void*)(program_section_info.min_address + i * PAGE_SIZE_LARGE), (void*)((u64)base_address_p + i * PAGE_SIZE_LARGE), true))
             return false;
     }
 

@@ -5,13 +5,13 @@
 #include "virtual_reflections_driver.hpp"
 #include "std/string.hpp"
 
-void DHCPOptionsWriterInit(DHCPOptionsWriter* pWriter, uint8_t* pBuffer, size_t nBufferSize) {
+void DHCPOptionsWriterInit(DHCPOptionsWriter* pWriter, u8* pBuffer, size_t nBufferSize) {
     pWriter->m_pBuffer = pBuffer;
     pWriter->m_nBufferSize = nBufferSize;
     pWriter->m_nOffset = 0;
 }
 
-bool DHCPOptionsWriterAddOption(DHCPOptionsWriter* pWriter, uint8_t nType, uint8_t* pData, size_t nLength) {
+bool DHCPOptionsWriterAddOption(DHCPOptionsWriter* pWriter, u8 nType, u8* pData, size_t nLength) {
     if (pWriter->m_nOffset + nLength + 2 > pWriter->m_nBufferSize)
         return false;
 
@@ -31,13 +31,13 @@ bool DHCPOptionsWriterShutdown(DHCPOptionsWriter* pWriter) {
     return true;
 }
 
-uint32_t DHCPGenerateXID() {
+u32 DHCPGenerateXID() {
     seed_random(KsTimeSinceBoot());
     return random_number(0, MAX_UINT32);
 }
 
-uint8_t* DHCPGetOption(DHCPPacket* pPacket, uint8_t nType) {
-    uint8_t* pOptions = &pPacket->m_aOptions[0];
+u8* DHCPGetOption(DHCPPacket* pPacket, u8 nType) {
+    u8* pOptions = &pPacket->m_aOptions[0];
 
     while (true) {
         if (pOptions[0] == nType)
@@ -50,7 +50,7 @@ uint8_t* DHCPGetOption(DHCPPacket* pPacket, uint8_t nType) {
     }
 }
 
-DHCPPacket DHCPCreateDiscoverPacket(const char* szHostName, uint32_t nXID, uint8_t pMac[6]) {
+DHCPPacket DHCPCreateDiscoverPacket(const char* szHostName, u32 nXID, u8 pMac[6]) {
     DHCPPacket dhcpPacket{};
     memzero(&dhcpPacket, sizeof(DHCPPacket));
     
@@ -76,23 +76,23 @@ DHCPPacket DHCPCreateDiscoverPacket(const char* szHostName, uint32_t nXID, uint8
     DHCPOptionsWriter dhcpOptionsWriter {};
     DHCPOptionsWriterInit(&dhcpOptionsWriter, &dhcpPacket.m_aOptions[0], sizeof(DHCPPacket::m_aOptions));
 
-    uint8_t aDHCPMessageType[] { DHCP_MESSAGE_TYPE_DHCPDISCOVER };
+    u8 aDHCPMessageType[] { DHCP_MESSAGE_TYPE_DHCPDISCOVER };
     DHCPOptionsWriterAddOption(&dhcpOptionsWriter, DHCP_OPTION_DHCP_MESSAGE_TYPE, &aDHCPMessageType[0], sizeof(aDHCPMessageType));
     
-    uint8_t aClientID[] { DHCP_HTYPE_ETHERNET, pMac[0], pMac[1], pMac[2], pMac[3], pMac[4], pMac[5] };
+    u8 aClientID[] { DHCP_HTYPE_ETHERNET, pMac[0], pMac[1], pMac[2], pMac[3], pMac[4], pMac[5] };
     DHCPOptionsWriterAddOption(&dhcpOptionsWriter, DHCP_OPTION_CLIENT_ID, &aClientID[0], sizeof(aClientID));
     
     size_t nHostNameLen = 0;
     for (const char* p = szHostName; *p; p++)
         nHostNameLen++;
-    DHCPOptionsWriterAddOption(&dhcpOptionsWriter, DHCP_OPTION_HOSTNAME, (uint8_t*)szHostName, nHostNameLen);
+    DHCPOptionsWriterAddOption(&dhcpOptionsWriter, DHCP_OPTION_HOSTNAME, (u8*)szHostName, nHostNameLen);
 
     DHCPOptionsWriterShutdown(&dhcpOptionsWriter);
 
     return dhcpPacket;
 }
 
-DHCPPacket DHCPCreateRequestPacket(const char* szHostName, uint32_t nWantedIP, uint32_t nDHCPServerIP, uint32_t nXID, uint8_t pMac[6]) {
+DHCPPacket DHCPCreateRequestPacket(const char* szHostName, u32 nWantedIP, u32 nDHCPServerIP, u32 nXID, u8 pMac[6]) {
     DHCPPacket dhcpPacket{};
     memzero(&dhcpPacket, sizeof(DHCPPacket));
     
@@ -118,21 +118,21 @@ DHCPPacket DHCPCreateRequestPacket(const char* szHostName, uint32_t nWantedIP, u
     DHCPOptionsWriter dhcpOptionsWriter {};
     DHCPOptionsWriterInit(&dhcpOptionsWriter, &dhcpPacket.m_aOptions[0], sizeof(DHCPPacket::m_aOptions));
 
-    uint8_t aDHCPMessageType[] { DHCP_MESSAGE_TYPE_DHCPREQUEST };
+    u8 aDHCPMessageType[] { DHCP_MESSAGE_TYPE_DHCPREQUEST };
     DHCPOptionsWriterAddOption(&dhcpOptionsWriter, DHCP_OPTION_DHCP_MESSAGE_TYPE, &aDHCPMessageType[0], sizeof(aDHCPMessageType));
     
-    uint32_t beWantedIP = bswap32(nWantedIP);
-    DHCPOptionsWriterAddOption(&dhcpOptionsWriter, DHCP_OPTION_REQUESTED_IP_ADDR, (uint8_t*)&beWantedIP, 4);
+    u32 beWantedIP = bswap32(nWantedIP);
+    DHCPOptionsWriterAddOption(&dhcpOptionsWriter, DHCP_OPTION_REQUESTED_IP_ADDR, (u8*)&beWantedIP, 4);
 
     size_t nHostNameLen = strlen(szHostName);
-    DHCPOptionsWriterAddOption(&dhcpOptionsWriter, DHCP_OPTION_HOSTNAME, (uint8_t*)szHostName, nHostNameLen);
+    DHCPOptionsWriterAddOption(&dhcpOptionsWriter, DHCP_OPTION_HOSTNAME, (u8*)szHostName, nHostNameLen);
 
     DHCPOptionsWriterShutdown(&dhcpOptionsWriter);
 
     return dhcpPacket;
 }
 
-DHCPPacket DHCPCreateLeaseExtendPacket(const char* szHostName, uint32_t nIpToExtend, uint32_t nXID, uint8_t pMac[6], uint32_t nDHCPServerIp) {
+DHCPPacket DHCPCreateLeaseExtendPacket(const char* szHostName, u32 nIpToExtend, u32 nXID, u8 pMac[6], u32 nDHCPServerIp) {
     DHCPPacket dhcpPacket{};
     memzero(&dhcpPacket, sizeof(DHCPPacket));
     
@@ -158,24 +158,24 @@ DHCPPacket DHCPCreateLeaseExtendPacket(const char* szHostName, uint32_t nIpToExt
     DHCPOptionsWriter dhcpOptionsWriter {};
     DHCPOptionsWriterInit(&dhcpOptionsWriter, &dhcpPacket.m_aOptions[0], sizeof(DHCPPacket::m_aOptions));
 
-    uint8_t aDHCPMessageType[] { DHCP_MESSAGE_TYPE_DHCPREQUEST };
+    u8 aDHCPMessageType[] { DHCP_MESSAGE_TYPE_DHCPREQUEST };
     DHCPOptionsWriterAddOption(&dhcpOptionsWriter, DHCP_OPTION_DHCP_MESSAGE_TYPE, &aDHCPMessageType[0], sizeof(aDHCPMessageType));
 
-    uint32_t beExtendedIp = bswap32(nIpToExtend);
-    DHCPOptionsWriterAddOption(&dhcpOptionsWriter, DHCP_OPTION_REQUESTED_IP_ADDR, (uint8_t*)&beExtendedIp, 4);
+    u32 beExtendedIp = bswap32(nIpToExtend);
+    DHCPOptionsWriterAddOption(&dhcpOptionsWriter, DHCP_OPTION_REQUESTED_IP_ADDR, (u8*)&beExtendedIp, 4);
 
-    uint32_t beDHCPServerIp = bswap32(nDHCPServerIp);
-    DHCPOptionsWriterAddOption(&dhcpOptionsWriter, DHCP_OPTION_DHCP_SERVER_ID, (uint8_t*)&beDHCPServerIp, 4);
+    u32 beDHCPServerIp = bswap32(nDHCPServerIp);
+    DHCPOptionsWriterAddOption(&dhcpOptionsWriter, DHCP_OPTION_DHCP_SERVER_ID, (u8*)&beDHCPServerIp, 4);
 
     size_t nHostNameLen = strlen(szHostName);
-    DHCPOptionsWriterAddOption(&dhcpOptionsWriter, DHCP_OPTION_HOSTNAME, (uint8_t*)szHostName, nHostNameLen);
+    DHCPOptionsWriterAddOption(&dhcpOptionsWriter, DHCP_OPTION_HOSTNAME, (u8*)szHostName, nHostNameLen);
 
     DHCPOptionsWriterShutdown(&dhcpOptionsWriter);
 
     return dhcpPacket;
 }
 
-DHCPClientState* DHCPClientInit(const char* szHostName, uint8_t pMac[6]) {
+DHCPClientState* DHCPClientInit(const char* szHostName, u8 pMac[6]) {
     DHCPClientState* pClientState = (DHCPClientState*)malloc(sizeof(DHCPClientState));
     memzero(pClientState, sizeof(DHCPClientState));
 
@@ -205,11 +205,11 @@ void DHCPClientShutdown(DHCPClientState* pClientState) {
 
 void DHCPClientStart(DHCPClientState* pClientState, DHCPSendPacketFN pSendPacket) {
     DHCPPacket dhcpPacket = DHCPCreateDiscoverPacket(pClientState->m_szHostname, pClientState->m_nXID, pClientState->m_aMac);
-    pSendPacket(TO_IP(255, 255, 255, 255), DHCP_PORT_SERVER, DHCP_PORT_CLIENT, (uint8_t*)&dhcpPacket, sizeof(DHCPPacket));
+    pSendPacket(TO_IP(255, 255, 255, 255), DHCP_PORT_SERVER, DHCP_PORT_CLIENT, (u8*)&dhcpPacket, sizeof(DHCPPacket));
 }
 
-uint32_t DHCPFieldToNumber(uint8_t* pField, size_t nSize) {
-    uint32_t num = 0;
+u32 DHCPFieldToNumber(u8* pField, size_t nSize) {
+    u32 num = 0;
     for (size_t i = 0; i < nSize; i++) {
         num <<= 8;
         num += pField[i];
@@ -250,7 +250,7 @@ int DHCPClientHandlePacket(DHCPClientState* pClientState, DHCPSendPacketFN pSend
             pClientState->m_nIPLeaseTimeS = DHCPFieldToNumber(&pIPLeaseTime->m_aValue[0], 4);
 
             DHCPPacket dhcpPacket = DHCPCreateRequestPacket(pClientState->m_szHostname, pClientState->m_nOfferdIP, pClientState->m_nDHCPServerIP, pClientState->m_nXID, pClientState->m_aMac);
-            pSendPacket(pClientState->m_nDHCPServerIP, DHCP_PORT_SERVER, DHCP_PORT_CLIENT, (uint8_t*)&dhcpPacket, sizeof(DHCPPacket));
+            pSendPacket(pClientState->m_nDHCPServerIP, DHCP_PORT_SERVER, DHCP_PORT_CLIENT, (u8*)&dhcpPacket, sizeof(DHCPPacket));
             return DHCP_CLIENT_RECIEVE_REQ;
         }
         default:
@@ -262,5 +262,5 @@ int DHCPClientHandlePacket(DHCPClientState* pClientState, DHCPSendPacketFN pSend
 
 void DHCPClientLeaseExtend(DHCPClientState* pClientState, DHCPSendPacketFN pSendPacket) {
     DHCPPacket dhcpPacket = DHCPCreateLeaseExtendPacket(pClientState->m_szHostname, pClientState->m_nOfferdIP, pClientState->m_nXID, pClientState->m_aMac, pClientState->m_nDHCPServerIP);
-    pSendPacket(pClientState->m_nDHCPServerIP, DHCP_PORT_SERVER, DHCP_PORT_CLIENT, (uint8_t*)&dhcpPacket, sizeof(DHCPPacket));
+    pSendPacket(pClientState->m_nDHCPServerIP, DHCP_PORT_SERVER, DHCP_PORT_CLIENT, (u8*)&dhcpPacket, sizeof(DHCPPacket));
 }

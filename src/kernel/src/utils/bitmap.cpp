@@ -1,6 +1,6 @@
 #include "utils/bitmap.hpp"
 
-bool bitmap_get(uint64_t* p_bitmap, size_t size, size_t index) {
+bool bitmap_get(u64* p_bitmap, size_t size, size_t index) {
     if (index >= bitmap_get_size(size))
         return false;
 
@@ -9,7 +9,7 @@ bool bitmap_get(uint64_t* p_bitmap, size_t size, size_t index) {
     return BIT_CHECK(p_bitmap[item_index], bit_index);
 }
 
-void bitmap_set(uint64_t* p_bitmap, size_t size, size_t index, bool state) {
+void bitmap_set(u64* p_bitmap, size_t size, size_t index, bool state) {
     if (index >= bitmap_get_size(size))
         return;
 

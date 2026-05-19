@@ -106,103 +106,103 @@
 #include "utils/mutex.hpp"
 
 struct hba_port_t {
-    volatile uint32_t clb;
-    volatile uint32_t clbu;
-    volatile uint32_t fb;
-    volatile uint32_t fbu;
-    volatile uint32_t is;
-    volatile uint32_t ie;
-    volatile uint32_t cmd;
-    volatile uint32_t rsv0;
-    volatile uint32_t tfd;
-    volatile uint32_t sig;
-    volatile uint32_t ssts;
-    volatile uint32_t sctl;
-    volatile uint32_t serr;
-    volatile uint32_t sact;
-    volatile uint32_t ci;
-    volatile uint32_t sntf;
-    volatile uint32_t fbs;
-    volatile uint32_t rsv1[11];
-    volatile uint32_t vendor[4];
+    volatile u32 clb;
+    volatile u32 clbu;
+    volatile u32 fb;
+    volatile u32 fbu;
+    volatile u32 is;
+    volatile u32 ie;
+    volatile u32 cmd;
+    volatile u32 rsv0;
+    volatile u32 tfd;
+    volatile u32 sig;
+    volatile u32 ssts;
+    volatile u32 sctl;
+    volatile u32 serr;
+    volatile u32 sact;
+    volatile u32 ci;
+    volatile u32 sntf;
+    volatile u32 fbs;
+    volatile u32 rsv1[11];
+    volatile u32 vendor[4];
 };
 
 struct hba_mem_t {
-    volatile uint32_t cap;
-    volatile uint32_t ghc;
-    volatile uint32_t is;
-    volatile uint32_t pi;
-    volatile uint32_t vs;
-    volatile uint32_t ccc_ctl;
-    volatile uint32_t ccc_pts;
-    volatile uint32_t em_loc;
-    volatile uint32_t em_ctl;
-    volatile uint32_t cap2;
-    volatile uint32_t bohc;
+    volatile u32 cap;
+    volatile u32 ghc;
+    volatile u32 is;
+    volatile u32 pi;
+    volatile u32 vs;
+    volatile u32 ccc_ctl;
+    volatile u32 ccc_pts;
+    volatile u32 em_loc;
+    volatile u32 em_ctl;
+    volatile u32 cap2;
+    volatile u32 bohc;
 
-    volatile uint8_t rsv[116];
-    volatile uint8_t vendor[96];
+    volatile u8 rsv[116];
+    volatile u8 vendor[96];
 
     volatile hba_port_t ports[32];
 };
 
 struct hba_cmd_header_t {
-    uint8_t  cfl     : 5;
-    uint8_t  a       : 1;
-    uint8_t  w       : 1;
-    uint8_t  p       : 1;
-    uint8_t  r       : 1;
-    uint8_t  b       : 1;
-    uint8_t  c       : 1;
-    uint8_t  rsv0    : 1;
-    uint8_t  pmp     : 4;
-    uint16_t prdtl;
+    u8  cfl     : 5;
+    u8  a       : 1;
+    u8  w       : 1;
+    u8  p       : 1;
+    u8  r       : 1;
+    u8  b       : 1;
+    u8  c       : 1;
+    u8  rsv0    : 1;
+    u8  pmp     : 4;
+    u16 prdtl;
 
-    volatile uint32_t prdbc;
-    uint32_t ctba;
-    uint32_t ctbau;
-    uint32_t rsv1[4];
+    volatile u32 prdbc;
+    u32 ctba;
+    u32 ctbau;
+    u32 rsv1[4];
 } PACKED;
 
 struct fis_reg_h2d_t {
-    uint8_t fis_type;
-    uint8_t pmport     : 4;
-    uint8_t rsv0       : 3;
-    uint8_t c          : 1;
-    uint8_t command;
-    uint8_t featurel;
+    u8 fis_type;
+    u8 pmport     : 4;
+    u8 rsv0       : 3;
+    u8 c          : 1;
+    u8 command;
+    u8 featurel;
 
-    uint8_t lba0;
-    uint8_t lba1;
-    uint8_t lba2;
-    uint8_t device;
+    u8 lba0;
+    u8 lba1;
+    u8 lba2;
+    u8 device;
 
-    uint8_t lba3;
-    uint8_t lba4;
-    uint8_t lba5;
-    uint8_t featureh;
+    u8 lba3;
+    u8 lba4;
+    u8 lba5;
+    u8 featureh;
 
-    uint8_t countl;
-    uint8_t counth;
-    uint8_t icc;
-    uint8_t control;
+    u8 countl;
+    u8 counth;
+    u8 icc;
+    u8 control;
 
-    uint8_t rsv1[4];
+    u8 rsv1[4];
 } PACKED;
 
 struct hba_cmd_tbl_t {
-    uint8_t cfis[64];
-    uint8_t acmd[16];
-    uint8_t rsv[48];
+    u8 cfis[64];
+    u8 acmd[16];
+    u8 rsv[48];
 
     struct hba_prdt_entry_t {
-        uint32_t dba;
-        uint32_t dbau;
-        uint32_t rsv0;
+        u32 dba;
+        u32 dbau;
+        u32 rsv0;
         
-        uint32_t dbc    : 22;
-        uint32_t rsv1   : 9;
-        uint32_t i      : 1;
+        u32 dbc    : 22;
+        u32 rsv1   : 9;
+        u32 i      : 1;
     } prdt_entry[1];
 } PACKED;
 
@@ -211,7 +211,7 @@ struct ahci_cmd_context_t {
     hba_cmd_tbl_t* cmdtable;
     void* data_buffer;
     fis_reg_h2d_t* fis;
-    uint8_t slot;
+    u8 slot;
 };
 
 struct ahci_driver_ctx_t {
@@ -229,10 +229,10 @@ struct ahci_device_t {
 
     ahci_device_type_t type;
 
-    uint64_t lba_count;
-    uint64_t capacity;
-    uint64_t logical_sector_size;
-    uint64_t physical_sector_size;
+    u64 lba_count;
+    u64 capacity;
+    u64 logical_sector_size;
+    u64 physical_sector_size;
 
     ahci_driver_ctx_t* ahci_driver_ctx;
 
@@ -247,7 +247,7 @@ struct ahci_device_t {
 
 bool ahci_init(const pci_device_t* device, ahci_driver_ctx_t* ahci_driver_ctx, std::dynamic_array<ahci_device_t>* device_list);
 bool ahci_device_init(ahci_device_t* device);
-bool ahci_read(ahci_device_t* device, uint64_t lba, uint8_t* buffer, size_t size);
+bool ahci_read(ahci_device_t* device, u64 lba, u8* buffer, size_t size);
 bool ahci_write(ahci_device_t* device);
 bool is_ahci_device(const pci_device_t* device);
 

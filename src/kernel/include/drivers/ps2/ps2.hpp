@@ -53,8 +53,8 @@ enum class ps2_device_type_t {
 void ps2_wait_input();
 void ps2_wait_output();
 
-void ps2_write(uint8_t port, uint8_t value);
-uint8_t ps2_read(uint8_t port);
+void ps2_write(u8 port, u8 value);
+u8 ps2_read(u8 port);
 bool ps2_port_test_device(ps2_device_type_t device_type);
 
 #endif // __DRIVERS_PS2_PS2_HPP__

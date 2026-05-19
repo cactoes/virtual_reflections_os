@@ -11,14 +11,14 @@
 #include "common.hpp"
 #include "memory/heap.hpp"
 
-typedef uint64_t vthread_handle_t;
+typedef u64 vthread_handle_t;
 
 struct process_t {
     heap_t heap;
     void* page_table;
     vthread_handle_t main_thread;
 
-    uint8_t* data;
+    u8* data;
     size_t data_size;
     void* start_address;
 };

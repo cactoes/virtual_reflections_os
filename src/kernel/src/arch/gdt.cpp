@@ -29,11 +29,11 @@
 //     x86_64_tss_set_stack_pointer0(&g_tss, p_stack_pointer);
 // }
 
-// uint64_t gdt_get_kernel_code_selector() {
+// u64 gdt_get_kernel_code_selector() {
 //     return X86_64_GDT_INDEX_TO_ENTRY(KERNEL_CODE_SELECTOR_INDEX);
 // }
 
-// uint64_t gdt_get_kernel_data_selector() {
+// u64 gdt_get_kernel_data_selector() {
 //     return X86_64_GDT_INDEX_TO_ENTRY(KERNEL_DATA_SELECTOR_INDEX);
 // }
 

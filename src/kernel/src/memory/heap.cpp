@@ -47,17 +47,17 @@ int heap_filter_blocks(heap_t* p_heap, void* p_param, heap_block_filter_callback
 
 bool heap_init(heap_t* heap, void* pml4, void* vaddr, size_t size, bool is_user) {
     // the heap is just raw memory no data structures
-    uint64_t heap_size = vmem_smart_alloc_pages(pml4, (void*)((uint64_t)vaddr + PAGE_SIZE_LARGE), size, is_user);
+    u64 heap_size = vmem_smart_alloc_pages(pml4, (void*)((u64)vaddr + PAGE_SIZE_LARGE), size, is_user);
 
     // heap struct
     void* p_page = pmem_get_page();
-    while (p_page && !is_aligned((uint64_t)p_page, PAGE_SIZE_LARGE))
+    while (p_page && !is_aligned((u64)p_page, PAGE_SIZE_LARGE))
         p_page = pmem_get_page();
 
     if (p_page == nullptr)
         return false;
 
-    if (!pmem_try_reserve_address((void*)((uint64_t)p_page + PAGE_SIZE), (PAGE_SIZE_LARGE / PAGE_SIZE - 1)))
+    if (!pmem_try_reserve_address((void*)((u64)p_page + PAGE_SIZE), (PAGE_SIZE_LARGE / PAGE_SIZE - 1)))
         return false;
 
     if (!vmem_map_2mb(pml4, vaddr, p_page, is_user))
@@ -67,12 +67,12 @@ bool heap_init(heap_t* heap, void* pml4, void* vaddr, size_t size, bool is_user)
     heap->heap_block_array = (heap_block_t*)vaddr;
     heap->heap_block_array_size = PAGE_SIZE_LARGE / sizeof(heap_block_t);
     heap->heap_block_count = 1;
-    heap->start_virtual_addr = (void*)((uint64_t)vaddr + PAGE_SIZE_LARGE);
+    heap->start_virtual_addr = (void*)((u64)vaddr + PAGE_SIZE_LARGE);
     heap->size = heap_size;
     heap->pml4 = pml4;
 
     // first block is size of entire heap, but un allocated
-    heap->heap_block_array->start_real_addr = (void*)((uint64_t)vaddr + PAGE_SIZE_LARGE);
+    heap->heap_block_array->start_real_addr = (void*)((u64)vaddr + PAGE_SIZE_LARGE);
     heap->heap_block_array->next = nullptr;
     heap->heap_block_array->size = heap_size;
     heap->heap_block_array->free = true;
@@ -93,7 +93,7 @@ bool heap_expand(heap_t* p_heap, size_t size) {
     if (result != HEAP_FILTERS_SIZE(filters))
         return false;
 
-    void* heap_virtual_end = (void*)((uint64_t)p_heap->start_virtual_addr + p_heap->size);
+    void* heap_virtual_end = (void*)((u64)p_heap->start_virtual_addr + p_heap->size);
     const auto new_heap_block_size = vmem_smart_alloc_pages(p_heap->pml4, heap_virtual_end, size);
 
     p_heap->size += new_heap_block_size;
@@ -154,7 +154,7 @@ void* heap_alloc(heap_t* p_heap, size_t size) {
     unused_block->free = false;
     unused_block->used = true;
     unused_block->size = size;
-    unused_block->start_real_addr = (void*)((uint64_t)donor_block->start_real_addr + donor_block->size);
+    unused_block->start_real_addr = (void*)((u64)donor_block->start_real_addr + donor_block->size);
 
     unused_block->next = donor_block->next;
     donor_block->next = unused_block;
@@ -183,7 +183,7 @@ void heap_free(heap_t* p_heap, void* p_ptr) {
     }
 }
 
-void* dma_heap_alloc(heap_t* p_dma_heap, size_t size, uint64_t align) {
+void* dma_heap_alloc(heap_t* p_dma_heap, size_t size, u64 align) {
     if (!is_aligned(size, align))
         return nullptr;
 
@@ -205,7 +205,7 @@ void* dma_heap_alloc(heap_t* p_dma_heap, size_t size, uint64_t align) {
     // we could exit if we dont have a donor block but not needed to check here
     // we make sure the alignment & size checks out if so we can just return it here
     if (donor_block && donor_block->size == size
-        && is_aligned((uint64_t)donor_block->start_real_addr, align)
+        && is_aligned((u64)donor_block->start_real_addr, align)
         // not sure if we need to check the physical here
         /* && mem_is_aligned(dma_get_physical(dma_heap, donor_block->start_real_addr), align) */) {
         
@@ -231,14 +231,14 @@ void* dma_heap_alloc(heap_t* p_dma_heap, size_t size, uint64_t align) {
     unused_block->free = false;
     unused_block->used = true;
     unused_block->size = size + align;
-    unused_block->start_real_addr = (void*)((uint64_t)donor_block->start_real_addr + donor_block->size);
+    unused_block->start_real_addr = (void*)((u64)donor_block->start_real_addr + donor_block->size);
 
     unused_block->next = donor_block->next;
     donor_block->next = unused_block;
 
-    if (!is_aligned((uint64_t)unused_block->start_real_addr, align)) {
-        uint64_t misalignment = (uint64_t)unused_block->start_real_addr % align;
-        uint64_t correction = (align - misalignment) % align;
+    if (!is_aligned((u64)unused_block->start_real_addr, align)) {
+        u64 misalignment = (u64)unused_block->start_real_addr % align;
+        u64 correction = (align - misalignment) % align;
         
         // if (donor_block->size < correction)
         //     return nullptr;
@@ -247,11 +247,11 @@ void* dma_heap_alloc(heap_t* p_dma_heap, size_t size, uint64_t align) {
 
         filler_block->free = true;
         filler_block->size = correction;
-        // filler_block->start_real_addr = (void*)((uint64_t)donor_block->start_real_addr + donor_block->size);
+        // filler_block->start_real_addr = (void*)((u64)donor_block->start_real_addr + donor_block->size);
         filler_block->start_real_addr = unused_block->start_real_addr;
         filler_block->used = true;
 
-        unused_block->start_real_addr = (void*)((uint64_t)filler_block->start_real_addr + correction);
+        unused_block->start_real_addr = (void*)((u64)filler_block->start_real_addr + correction);
         unused_block->size -= correction;
 
         donor_block->next = filler_block;
@@ -281,21 +281,21 @@ void dma_heap_free(heap_t* p_dma_heap, void* p_block) {
     }
 }
 
-uint64_t dma_get_physical(heap_t* p_dma_heap, void* p_block) {
-    // return (uint64_t)vmem_virtual_to_physical(p_dma_heap->pml4, p_block);
-    return (uint64_t)vmem_virtual_to_physical(p_block);
+u64 dma_get_physical(heap_t* p_dma_heap, void* p_block) {
+    // return (u64)vmem_virtual_to_physical(p_dma_heap->pml4, p_block);
+    return (u64)vmem_virtual_to_physical(p_block);
 }
 
-uint32_t dma_get_physical_lower(heap_t* p_dma_heap, void* p_block) {
-    return (uint32_t)dma_get_physical(p_dma_heap, p_block);
+u32 dma_get_physical_lower(heap_t* p_dma_heap, void* p_block) {
+    return (u32)dma_get_physical(p_dma_heap, p_block);
 }
 
-uint32_t dma_get_physical_upper(heap_t* p_dma_heap, void* p_block) {
-    return (uint32_t)(dma_get_physical(p_dma_heap, p_block) >> 32);
+u32 dma_get_physical_upper(heap_t* p_dma_heap, void* p_block) {
+    return (u32)(dma_get_physical(p_dma_heap, p_block) >> 32);
 }
 
 int dma_heap_init(void* p_pml4, heap_t* p_dma_heap, void* p_virtual_address, size_t size) {
-    if (!is_aligned((uint64_t)p_virtual_address, PAGE_SIZE))
+    if (!is_aligned((u64)p_virtual_address, PAGE_SIZE))
         return 1;
 
     // TODO @since 13/06/2025 -- 02:06
@@ -304,21 +304,21 @@ int dma_heap_init(void* p_pml4, heap_t* p_dma_heap, void* p_virtual_address, siz
         return 1;
 
     // the heap is just raw memory no data structures
-    uint64_t heap_size = vmem_smart_alloc_pages(p_pml4, (void*)((uint64_t)p_virtual_address + PAGE_SIZE_LARGE), size);
+    u64 heap_size = vmem_smart_alloc_pages(p_pml4, (void*)((u64)p_virtual_address + PAGE_SIZE_LARGE), size);
 
     if (heap_size != size)
         return 2;
 
     // heap struct
     void* p_page = pmem_get_page();
-    while (p_page && !is_aligned((uint64_t)p_page, PAGE_SIZE_LARGE)) {
+    while (p_page && !is_aligned((u64)p_page, PAGE_SIZE_LARGE)) {
         p_page = pmem_get_page();
     }
 
     if (p_page == nullptr)
         return 3;
 
-    if (!pmem_try_reserve_address((void*)((uint64_t)p_page + PAGE_SIZE), (PAGE_SIZE_LARGE / PAGE_SIZE - 1)))
+    if (!pmem_try_reserve_address((void*)((u64)p_page + PAGE_SIZE), (PAGE_SIZE_LARGE / PAGE_SIZE - 1)))
         return 3;
 
     if (!vmem_map_2mb(p_pml4, p_virtual_address, p_page))
@@ -328,12 +328,12 @@ int dma_heap_init(void* p_pml4, heap_t* p_dma_heap, void* p_virtual_address, siz
     p_dma_heap->heap_block_array = (heap_block_t*)p_virtual_address;
     p_dma_heap->heap_block_array_size = PAGE_SIZE_LARGE / sizeof(heap_block_t);
     p_dma_heap->heap_block_count = 1;
-    p_dma_heap->start_virtual_addr = (void*)((uint64_t)p_virtual_address + PAGE_SIZE_LARGE);
+    p_dma_heap->start_virtual_addr = (void*)((u64)p_virtual_address + PAGE_SIZE_LARGE);
     p_dma_heap->size = heap_size;
     p_dma_heap->pml4 = p_pml4;
 
     // first block is size of entire heap, but un allocated
-    p_dma_heap->heap_block_array->start_real_addr = (void*)((uint64_t)p_virtual_address + PAGE_SIZE_LARGE);
+    p_dma_heap->heap_block_array->start_real_addr = (void*)((u64)p_virtual_address + PAGE_SIZE_LARGE);
     p_dma_heap->heap_block_array->next = nullptr;
     p_dma_heap->heap_block_array->size = heap_size;
     p_dma_heap->heap_block_array->free = true;
@@ -363,16 +363,16 @@ dma_heap_manager_t* get_global_dma_heap_manager() {
 }
 
 void* dma_heap_manager_get_virtual_address(dma_heap_manager_t* manager, size_t size) {
-    uint64_t begin = (uint64_t)manager->start_virtual_addr;
-    uint64_t end = (uint64_t)manager->start_virtual_addr + manager->size;
+    u64 begin = (u64)manager->start_virtual_addr;
+    u64 end = (u64)manager->start_virtual_addr + manager->size;
 
     while (begin + size <= end) {
         bool found = true;
 
         for (auto& heap : manager->heaps) {
             // take entire heap not just allocatable reagion
-            uint64_t heap_begin = (uint64_t)heap.heap_block_array;
-            uint64_t heap_end = (uint64_t)heap.start_virtual_addr + heap.size + PAGE_SIZE_LARGE;
+            u64 heap_begin = (u64)heap.heap_block_array;
+            u64 heap_end = (u64)heap.start_virtual_addr + heap.size + PAGE_SIZE_LARGE;
 
             if (begin < heap_end && begin + size > heap_begin) {
                 begin = heap_end;
@@ -422,13 +422,13 @@ void free(void* ptr) noexcept {
 }
 
 void* malloc_aligned(size_t size, size_t align) noexcept {
-    uint64_t raw = (uint64_t)malloc(size + align + sizeof(uint64_t));
+    u64 raw = (u64)malloc(size + align + sizeof(u64));
     if (!raw)
         return nullptr;
     
-    uint64_t* aligned = (uint64_t*)align_up(raw + sizeof(uint64_t), align);
+    u64* aligned = (u64*)align_up(raw + sizeof(u64), align);
     
-    aligned[-1] = (uint64_t)raw;
+    aligned[-1] = (u64)raw;
 
     return (void*)aligned;
 }

@@ -2,21 +2,21 @@
 #include "arch/generic.hpp"
 
 void ps2_wait_input() {
-    while ((in_port<uint8_t>(PS2_CMD_PORT) & PS2_CTRL_STATUS_OUT_BUF) == 0);
+    while ((in_port<u8>(PS2_CMD_PORT) & PS2_CTRL_STATUS_OUT_BUF) == 0);
 }
 
 void ps2_wait_output() {
-    while (in_port<uint8_t>(PS2_CMD_PORT) & PS2_CTRL_STATUS_IN_BUF);
+    while (in_port<u8>(PS2_CMD_PORT) & PS2_CTRL_STATUS_IN_BUF);
 }
 
-void ps2_write(uint8_t port, uint8_t value) {
+void ps2_write(u8 port, u8 value) {
     // ps2_wait_output();
-    out_port<uint8_t>(port, value);
+    out_port<u8>(port, value);
 }
 
-uint8_t ps2_read(uint8_t port) {
+u8 ps2_read(u8 port) {
     // ps2_wait_input();
-    return in_port<uint8_t>(port);
+    return in_port<u8>(port);
 }
 
 bool ps2_port_test_device(ps2_device_type_t device_type) {

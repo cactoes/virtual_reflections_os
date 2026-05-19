@@ -1,6 +1,6 @@
 #include "drivers/graphics/framebuffer.hpp"
 
-uint32_t framebuffer_format_color(framebuffer_t* framebuffer, uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
+u32 framebuffer_format_color(framebuffer_t* framebuffer, u8 r, u8 g, u8 b, u8 a) {
     if (!framebuffer)
         return 0;
 
@@ -20,27 +20,27 @@ uint32_t framebuffer_format_color(framebuffer_t* framebuffer, uint8_t r, uint8_t
     return 0;
 }
 
-bool framebuffer_init(framebuffer_t* framebuffer, framebuffer_color_format_t format, uint32_t* address, size_t size, size_t width, size_t height, size_t pitch) {
+bool framebuffer_init(framebuffer_t* framebuffer, framebuffer_color_format_t format, u32* address, size_t size, size_t width, size_t height, size_t pitch) {
     if (!framebuffer || !address || size == 0)
         return false;
 
     framebuffer->address = address;
-    framebuffer->back_buffer = (uint32_t*)malloc(size);
+    framebuffer->back_buffer = (u32*)malloc(size);
     framebuffer->size = size;
     framebuffer->width = width;
     framebuffer->height = height;
     framebuffer->pitch = pitch;
     framebuffer->format = format;
-    framebuffer->caluclated_pitch = (pitch / sizeof(uint32_t));
+    framebuffer->caluclated_pitch = (pitch / sizeof(u32));
 
     return true;
 }
 
-bool framebuffer_write_pixel(framebuffer_t* framebuffer, size_t x, size_t y, uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
+bool framebuffer_write_pixel(framebuffer_t* framebuffer, size_t x, size_t y, u8 r, u8 g, u8 b, u8 a) {
     return framebuffer_write_pixel(framebuffer, x, y, framebuffer_format_color(framebuffer, r, g, b, a));
 }
 
-bool framebuffer_write_pixel(framebuffer_t* framebuffer, size_t x, size_t y, uint32_t color) {
+bool framebuffer_write_pixel(framebuffer_t* framebuffer, size_t x, size_t y, u32 color) {
     if (!framebuffer || !framebuffer->back_buffer)
         return false;
 
@@ -52,15 +52,15 @@ bool framebuffer_write_pixel(framebuffer_t* framebuffer, size_t x, size_t y, uin
     return true;
 }
 
-void framebuffer_write_pixel_raw(framebuffer_t* framebuffer, size_t x, size_t y, uint32_t color) {
+void framebuffer_write_pixel_raw(framebuffer_t* framebuffer, size_t x, size_t y, u32 color) {
     framebuffer->back_buffer[y * framebuffer->caluclated_pitch + x] = color;
 }
 
-bool framebuffer_write_lineh(framebuffer_t* framebuffer, size_t x, size_t y, size_t len, uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
+bool framebuffer_write_lineh(framebuffer_t* framebuffer, size_t x, size_t y, size_t len, u8 r, u8 g, u8 b, u8 a) {
     return framebuffer_write_lineh(framebuffer, x, y, len, framebuffer_format_color(framebuffer, r, g, b, a));
 }
 
-bool framebuffer_write_lineh(framebuffer_t* framebuffer, size_t x, size_t y, size_t len, uint32_t color) {
+bool framebuffer_write_lineh(framebuffer_t* framebuffer, size_t x, size_t y, size_t len, u32 color) {
     if (!framebuffer || !framebuffer->back_buffer)
         return false;
 
@@ -73,11 +73,11 @@ bool framebuffer_write_lineh(framebuffer_t* framebuffer, size_t x, size_t y, siz
     return true;
 }
 
-bool framebuffer_write_linev(framebuffer_t* framebuffer, size_t x, size_t y, size_t len, uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
+bool framebuffer_write_linev(framebuffer_t* framebuffer, size_t x, size_t y, size_t len, u8 r, u8 g, u8 b, u8 a) {
     return framebuffer_write_linev(framebuffer, x, y, len, framebuffer_format_color(framebuffer, r, g, b, a));
 }
 
-bool framebuffer_write_linev(framebuffer_t* framebuffer, size_t x, size_t y, size_t len, uint32_t color) {
+bool framebuffer_write_linev(framebuffer_t* framebuffer, size_t x, size_t y, size_t len, u32 color) {
     if (!framebuffer || !framebuffer->back_buffer)
         return false;
 
@@ -90,11 +90,11 @@ bool framebuffer_write_linev(framebuffer_t* framebuffer, size_t x, size_t y, siz
     return true;
 }
 
-bool framebuffer_write_square(framebuffer_t* framebuffer, size_t x, size_t y, size_t w, size_t h, uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
+bool framebuffer_write_square(framebuffer_t* framebuffer, size_t x, size_t y, size_t w, size_t h, u8 r, u8 g, u8 b, u8 a) {
     return framebuffer_write_square(framebuffer, x, y, w, h, framebuffer_format_color(framebuffer, r, g, b, a));
 }
 
-bool framebuffer_write_square(framebuffer_t* framebuffer, size_t x, size_t y, size_t w, size_t h, uint32_t color) {
+bool framebuffer_write_square(framebuffer_t* framebuffer, size_t x, size_t y, size_t w, size_t h, u32 color) {
     if (!framebuffer || !framebuffer->back_buffer)
         return false;
 
@@ -127,7 +127,7 @@ bool framebuffer_move_square(framebuffer_t* framebuffer, size_t x, size_t y, siz
         ny + h > framebuffer->height)
         return false;
 
-    uint32_t* temp = (uint32_t*)malloc(w * h * sizeof(uint32_t));
+    u32* temp = (u32*)malloc(w * h * sizeof(u32));
     if (!temp)
         return false;
 
@@ -135,7 +135,7 @@ bool framebuffer_move_square(framebuffer_t* framebuffer, size_t x, size_t y, siz
         memcpy(
             &temp[row * w],
             &framebuffer->back_buffer[(y + row) * framebuffer->caluclated_pitch + x],
-            w * sizeof(uint32_t)
+            w * sizeof(u32)
         );
     }
 
@@ -143,7 +143,7 @@ bool framebuffer_move_square(framebuffer_t* framebuffer, size_t x, size_t y, siz
         memset(
             &framebuffer->back_buffer[(y + row) * framebuffer->caluclated_pitch + x],
             0,
-            w * sizeof(uint32_t)
+            w * sizeof(u32)
         );
     }
 
@@ -151,7 +151,7 @@ bool framebuffer_move_square(framebuffer_t* framebuffer, size_t x, size_t y, siz
         memcpy(
             &framebuffer->back_buffer[(ny + row) * framebuffer->caluclated_pitch + nx],
             &temp[row * w],
-            w * sizeof(uint32_t)
+            w * sizeof(u32)
         );
     }
 

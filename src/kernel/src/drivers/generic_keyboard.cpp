@@ -11,7 +11,7 @@ bool holding_caps() {
     return ps2_keyboard_get_key_state(PS2_KEYBOARD_SC_CAPS_LOCK)->is_pressed;
 }
 
-virtual_key_t scan_to_virtual(uint32_t scan_code, bool escaped) {
+virtual_key_t scan_to_virtual(u32 scan_code, bool escaped) {
     if (escaped) {
         switch (scan_code) {
             case 0x48: return VK_UP;

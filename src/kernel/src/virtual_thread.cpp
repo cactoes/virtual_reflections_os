@@ -12,6 +12,7 @@
 #include "utils/debug.hpp"
 #include "memory/heap.hpp"
 #include "io.hpp"
+#include "arch/amd64/idt.hpp"
 
 // TODO @since 23/10/2025 -- 19:06
 // change into 1 "bigger" thread handler
@@ -118,7 +119,7 @@ vthread_handle_t vthread_start_and_setup_main() {
     const char name[] = "kernel_thread_main";
     memcpy(p_vthread->name, name, sizeof(name));
     
-    p_vthread->fpu_state = (uint8_t*)malloc_aligned(sizeof(uint8_t) * 512, 16);
+    p_vthread->fpu_state = (u8*)malloc_aligned(sizeof(u8) * 512, 16);
 
     g_current_thread = p_vthread.get();
 
@@ -126,21 +127,21 @@ vthread_handle_t vthread_start_and_setup_main() {
 }
 
 vthread_handle_t vthread_create(thread_entry_t p_thread_entry, void* pml4, const char name[VTHREAD_MAX_NAME_SIZE]) {
-    uint64_t* stack = (uint64_t*)malloc_aligned(VTHREAD_STACK_SIZE, 16);
+    u64* stack = (u64*)malloc_aligned(VTHREAD_STACK_SIZE, 16);
     if (!stack)
         return VTHREAD_HANDLE_INVALID;
 
     memzero(stack, VTHREAD_STACK_SIZE);
     std::unique_ptr<vthread_t> p_vthread = std::make_unique<vthread_t>();
     p_vthread->stack_bottom = stack;
-    uint64_t* stack_top = (uint64_t*)(((uint64_t)stack + VTHREAD_STACK_SIZE - sizeof(interrupt_regs_t)) & ~0xF);
+    u64* stack_top = (u64*)(((u64)stack + VTHREAD_STACK_SIZE - sizeof(interrupt_regs_t)) & ~0xF);
 
     // itret frame
     *(--stack_top) = 0x10; // gdt_get_kernel_data_selector()
-    *(--stack_top) = (uint64_t)stack_top;
+    *(--stack_top) = (u64)stack_top;
     *(--stack_top) = 0x202;
     *(--stack_top) = 0x8; // gdt_get_kernel_code_selector()
-    *(--stack_top) = (uint64_t)vthread_entry_point;
+    *(--stack_top) = (u64)vthread_entry_point;
     *(--stack_top) = 0;
 
     // general registers
@@ -148,7 +149,7 @@ vthread_handle_t vthread_create(thread_entry_t p_thread_entry, void* pml4, const
         *(--stack_top) = 0;
 
     // startup arguments for the loader
-    *(--stack_top) = (uint64_t)p_thread_entry;
+    *(--stack_top) = (u64)p_thread_entry;
     *(--stack_top) = 0;
 
     const vthread_handle_t new_handle = vhtread_next_handle();
@@ -156,7 +157,7 @@ vthread_handle_t vthread_create(thread_entry_t p_thread_entry, void* pml4, const
     p_vthread->stack_top = stack_top;
     p_vthread->handle = new_handle;
     p_vthread->vt_state = vthread_state_t::RUNNING;
-    p_vthread->fpu_state = (uint8_t*)malloc_aligned(sizeof(uint8_t) * 512, 16);
+    p_vthread->fpu_state = (u8*)malloc_aligned(sizeof(u8) * 512, 16);
     p_vthread->pml4 = pml4;
     p_vthread->tls.handle = new_handle;
 
@@ -180,11 +181,11 @@ interrupt_regs_t* vthread_handle_interrupt(interrupt_regs_t* p_cpu_state, void*)
 
 bool vthread_check_stack(vthread_t* thread) {
     // stak has overflown
-    if ((uint64_t)thread->stack_top < (uint64_t)thread->stack_bottom)
+    if ((u64)thread->stack_top < (u64)thread->stack_bottom)
         return false;
 
     // thread stack is in deadzone, to prevent overflow we terminate it
-    if ((uint64_t)thread->stack_top - (uint64_t)thread->stack_bottom < VTHREAD_STACK_DEADZONE)
+    if ((u64)thread->stack_top - (u64)thread->stack_bottom < VTHREAD_STACK_DEADZONE)
         return false;
 
     // stack is still safe :)
@@ -204,7 +205,7 @@ interrupt_regs_t* vthread_schedule(interrupt_regs_t* p_cpu_state) {
     do {
         g_current_thread = vthread_get_next_thead(g_current_thread->handle);
 
-        if ((uint64_t)g_current_thread < PAGE_SIZE_LARGE)
+        if ((u64)g_current_thread < PAGE_SIZE_LARGE)
             debug_trap("invalid thread");
 
         switch (g_current_thread->vt_state) {
@@ -233,7 +234,7 @@ interrupt_regs_t* vthread_schedule(interrupt_regs_t* p_cpu_state) {
     // this means that the thread is a userprocess
     // & needs a kernel stack when an interrupt happens
     if (g_current_thread->kstack) {
-        auto kstack_top = (void*)((uint64_t)g_current_thread->kstack + VTHREAD_STACK_SIZE);
+        auto kstack_top = (void*)((u64)g_current_thread->kstack + VTHREAD_STACK_SIZE);
         amd64_tss_set_stack_pointer0(amd64_get_tss(), kstack_top);
         set_kernel_stack(get_current_cpu(), kstack_top);
     } else {
@@ -250,16 +251,16 @@ interrupt_regs_t* vthread_schedule(interrupt_regs_t* p_cpu_state) {
 }
 
 void vthread_yield() {
-    call_scheduler_interrupt();
+    amd64_call_scheduler_interrupt();
 }
 
 thread_local_storage_t* vthread_get_tls() {
     return g_current_thread ? &g_current_thread->tls : nullptr;
 }
 
-void vthread_sleep(uint64_t time_ms) {
+void vthread_sleep(u64 time_ms) {
     if (g_current_thread->handle == VTHREAD_MAIN_THREAD_HANDLE) {
-        uint64_t sleep_until_ms = clock_get_time_since_boot() + time_ms;
+        u64 sleep_until_ms = clock_get_time_since_boot() + time_ms;
         while (clock_get_time_since_boot() < sleep_until_ms)
             vthread_yield();
 

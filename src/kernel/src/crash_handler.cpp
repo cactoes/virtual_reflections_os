@@ -13,7 +13,7 @@ NORETURN void kernel_fatal_end() {
         debug_trap("kernel fatal");
 }
 
-void kernel_fatal_internal(uint64_t code, const char* message, interrupt_regs_t* cpu_state) {
+void kernel_fatal_internal(u64 code, const char* message, interrupt_regs_t* cpu_state) {
     cli();
 
     kprintf("kernel fatal triggerd!\n");
@@ -35,7 +35,7 @@ void kernel_fatal_internal(uint64_t code, const char* message, interrupt_regs_t*
         case 0xC: kprintf("STACK_SEGMENT_FAULT"); break;
         case 0xD: {
             if (cpu_state) {
-                uint16_t seg_index = cpu_state->error_code >> 3;
+                u16 seg_index = cpu_state->error_code >> 3;
                 bool is_external = cpu_state->error_code & 0x1;
                 bool is_idt = cpu_state->error_code & 0x2;
     

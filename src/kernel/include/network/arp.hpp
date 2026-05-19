@@ -14,28 +14,28 @@
 // TODO @since 27/08/2025 -- 01:53
 // cache clearing idk
 struct arp_table_entry_t {
-    uint64_t timestamp;
-    uint8_t mac[6];
+    u64 timestamp;
+    u8 mac[6];
 };
 
 struct arp_packet_t {
-    uint16_t harware_type;
-    uint16_t protocol_type;
+    u16 harware_type;
+    u16 protocol_type;
 
-    uint8_t hardware_length;
-    uint8_t protocol_length;
+    u8 hardware_length;
+    u8 protocol_length;
 
-    uint16_t operation;
+    u16 operation;
 
-    uint8_t sender_hw[6];
-    uint32_t sender_ip;
-    uint8_t target_hw[6];
-    uint32_t target_ip;
+    u8 sender_hw[6];
+    u32 sender_ip;
+    u8 target_hw[6];
+    u32 target_ip;
 } PACKED;
 
-void arp_table_insert(uint32_t ipv4, uint8_t mac[6]);
-void arp_discover_request_ipv4(network_interface_t* interface, uint32_t ipv4);
-void arp_receive(network_interface_t* interface, uint8_t* packet, size_t size);
-bool arp_lookup(uint32_t ipv4_addr, uint8_t mac_out[6]);
+void arp_table_insert(u32 ipv4, u8 mac[6]);
+void arp_discover_request_ipv4(network_interface_t* interface, u32 ipv4);
+void arp_receive(network_interface_t* interface, u8* packet, size_t size);
+bool arp_lookup(u32 ipv4_addr, u8 mac_out[6]);
 
 #endif // __DRIVERS_NETWORK_ARP_HPP__

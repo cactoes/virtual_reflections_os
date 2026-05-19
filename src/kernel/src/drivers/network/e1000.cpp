@@ -5,19 +5,21 @@
 #include "interrupt_manager.hpp"
 #include "io.hpp"
 
+extern "C" interrupt_t amd64_convert_to_interrupt(u64 code);
+
 static heap_t* g_e1000_dma_heap = nullptr;
 
-void e1000_write_reg(e1000_t* p_device, uint32_t offset, uint32_t value) {
-    *((volatile uint32_t*)((uint8_t*)p_device->mmio_region + offset)) = value;
+void e1000_write_reg(e1000_t* p_device, u32 offset, u32 value) {
+    *((volatile u32*)((u8*)p_device->mmio_region + offset)) = value;
 }
 
-uint32_t e1000_read_reg(e1000_t* p_device, uint32_t offset) {
-    return *((volatile uint32_t*)((uint8_t*)p_device->mmio_region + offset));
+u32 e1000_read_reg(e1000_t* p_device, u32 offset) {
+    return *((volatile u32*)((u8*)p_device->mmio_region + offset));
 }
 
 bool e1000_load_mac(e1000_t* p_device) {
-    uint32_t ral = e1000_read_reg(p_device, E1000_RAL0);
-    uint32_t rah = e1000_read_reg(p_device, E1000_RAH0);
+    u32 ral = e1000_read_reg(p_device, E1000_RAL0);
+    u32 rah = e1000_read_reg(p_device, E1000_RAH0);
 
     if (ral == 0x00000000 || ral == MAX_UINT32 || 
         rah == 0x00000000 || rah == MAX_UINT32 || 
@@ -40,7 +42,7 @@ int e1000_receive_init(e1000_t* p_device) {
     if (!p_device->rdesc_array)
         return 1;
 
-    p_device->rdesc_buffer_array = (uint8_t*)dma_heap_alloc(g_e1000_dma_heap, E1000_RECEIVE_DESC_COUNT * E1000_BUFFER_SIZE, 16);
+    p_device->rdesc_buffer_array = (u8*)dma_heap_alloc(g_e1000_dma_heap, E1000_RECEIVE_DESC_COUNT * E1000_BUFFER_SIZE, 16);
     if (!p_device->rdesc_buffer_array)
         return 2;
 
@@ -49,17 +51,17 @@ int e1000_receive_init(e1000_t* p_device) {
         p_device->rdesc_array[i].buffer_addr = dma_get_physical(g_e1000_dma_heap, (p_device->rdesc_buffer_array + i * E1000_BUFFER_SIZE));
     }
 
-    uint64_t physical = (uint64_t)dma_get_physical(g_e1000_dma_heap, p_device->rdesc_array);
+    u64 physical = (u64)dma_get_physical(g_e1000_dma_heap, p_device->rdesc_array);
     if (physical == 0)
         return 3;
 
-    e1000_write_reg(p_device, E1000_RDBAL, (uint32_t)physical);
-    e1000_write_reg(p_device, E1000_RDBAH, (uint32_t)(physical >> 32));
+    e1000_write_reg(p_device, E1000_RDBAL, (u32)physical);
+    e1000_write_reg(p_device, E1000_RDBAH, (u32)(physical >> 32));
     e1000_write_reg(p_device, E1000_RDLEN, E1000_RECEIVE_DESC_COUNT * sizeof(e1000_rdesc_t));
     e1000_write_reg(p_device, E1000_RDH, 0);
     e1000_write_reg(p_device, E1000_RDT, E1000_RECEIVE_DESC_COUNT - 1);
 
-    uint32_t rctl = E1000_RCTL_EN | E1000_RCTL_BAM | E1000_RCTL_SECRC | E1000_RCTL_SZ_2048;
+    u32 rctl = E1000_RCTL_EN | E1000_RCTL_BAM | E1000_RCTL_SECRC | E1000_RCTL_SZ_2048;
     e1000_write_reg(p_device, E1000_RCTL, rctl);
 
     p_device->rx_tail = 0;
@@ -72,7 +74,7 @@ int e1000_transmit_init(e1000_t* p_device) {
     if (!p_device->tdesc_array)
         return 1;
 
-    p_device->tdesc_buffer_array = (uint8_t*)dma_heap_alloc(g_e1000_dma_heap, E1000_TRANSMIT_DESC_COUNT * E1000_BUFFER_SIZE, 16);
+    p_device->tdesc_buffer_array = (u8*)dma_heap_alloc(g_e1000_dma_heap, E1000_TRANSMIT_DESC_COUNT * E1000_BUFFER_SIZE, 16);
     if (!p_device->tdesc_buffer_array)
         return 2;
     
@@ -81,17 +83,17 @@ int e1000_transmit_init(e1000_t* p_device) {
         p_device->tdesc_array[i].buffer_addr = dma_get_physical(g_e1000_dma_heap, (p_device->tdesc_buffer_array + i * E1000_BUFFER_SIZE));
     }
 
-    uint64_t physical = (uint64_t)dma_get_physical(g_e1000_dma_heap, p_device->tdesc_array);
+    u64 physical = (u64)dma_get_physical(g_e1000_dma_heap, p_device->tdesc_array);
     if (physical == 0)
         return 3;
 
-    e1000_write_reg(p_device, E1000_TDBAL, (uint32_t)physical);
-    e1000_write_reg(p_device, E1000_TDBAH, (uint32_t)(physical >> 32));
+    e1000_write_reg(p_device, E1000_TDBAL, (u32)physical);
+    e1000_write_reg(p_device, E1000_TDBAH, (u32)(physical >> 32));
     e1000_write_reg(p_device, E1000_TDLEN, E1000_TRANSMIT_DESC_COUNT * sizeof(e1000_tdesc_t));
     e1000_write_reg(p_device, E1000_TDH, 0);
     e1000_write_reg(p_device, E1000_TDT, 0);
 
-    uint32_t tctl = E1000_TCTL_EN | E1000_TCTL_PSP | (0x0F << E1000_TCTL_CT_SHIFT) | (0x40 << E1000_TCTL_COLD_SHIFT);
+    u32 tctl = E1000_TCTL_EN | E1000_TCTL_PSP | (0x0F << E1000_TCTL_CT_SHIFT) | (0x40 << E1000_TCTL_COLD_SHIFT);
     e1000_write_reg(p_device, E1000_TCTL, tctl);
 
     p_device->tx_tail = 0;
@@ -107,12 +109,12 @@ DISABLE_SSE void e1000_recieve_packet(e1000_t* p_device) {
 
     // check if packet is ready
     while (desc->status & E1000_RDESC_STATUS_DONE) {
-        uint8_t* packet = p_device->rdesc_buffer_array + (p_device->rx_tail * E1000_BUFFER_SIZE);
+        u8* packet = p_device->rdesc_buffer_array + (p_device->rx_tail * E1000_BUFFER_SIZE);
         size_t length = desc->length;
         
         network_packet_t network_packet {};
         network_packet.interface = nic_get_interface_from_device(get_global_nic(), p_device);
-        network_packet.data = (uint8_t*)malloc(length);
+        network_packet.data = (u8*)malloc(length);
         memcpy(network_packet.data, packet, length);
         network_packet.size = length;
         nic_receive_packet(get_global_nic(), network_packet);
@@ -126,7 +128,7 @@ DISABLE_SSE void e1000_recieve_packet(e1000_t* p_device) {
         desc = &p_device->rdesc_array[p_device->rx_tail];
     }
     
-    uint16_t rdt_value = (p_device->rx_tail + E1000_RECEIVE_DESC_COUNT - 1) % E1000_RECEIVE_DESC_COUNT;
+    u16 rdt_value = (p_device->rx_tail + E1000_RECEIVE_DESC_COUNT - 1) % E1000_RECEIVE_DESC_COUNT;
     e1000_write_reg(p_device, E1000_RDT, rdt_value);
 }
 
@@ -135,7 +137,7 @@ void e1000_enable_interrupts(e1000_t* p_device) {
     e1000_read_reg(p_device, E1000_ICR);
 
     // enable interrupts
-    uint32_t interrupt_mask = E1000_IMS_RXT0 | E1000_IMS_RXDMT0 | E1000_IMS_RXSEQ | E1000_IMS_LSC;
+    u32 interrupt_mask = E1000_IMS_RXT0 | E1000_IMS_RXDMT0 | E1000_IMS_RXSEQ | E1000_IMS_LSC;
     e1000_write_reg(p_device, E1000_IMS, interrupt_mask);
 }
 
@@ -152,7 +154,7 @@ int e1000_init_device(const pci_device_t* p_pcie_device, e1000_t* p_network_devi
     if (!g_e1000_dma_heap)
         return 2;
 
-    uint64_t bar_addr_physical = pci_read_bar(p_pcie_device, 0) & ~0xF;
+    u64 bar_addr_physical = pci_read_bar(p_pcie_device, 0) & ~0xF;
     p_network_device->mmio_region = vmem_map_mmio_region(get_global_dma_heap_manager()->pml4, (void*)bar_addr_physical);
     
     // TODO @since 28/10/2025 -- 01:02
@@ -193,8 +195,10 @@ int e1000_init_device(const pci_device_t* p_pcie_device, e1000_t* p_network_devi
     // re-enable specific interrupts
     e1000_enable_interrupts(p_network_device);
 
-    const uint32_t irq = pci_config_read(p_pcie_device, PCI_CONFIG_IRQ_LINE) & MAX_UINT8;
-    if (!set_interrupt_hook(convert_to_interrupt(interrupt_irq_to_int(irq)), e1000_handle_interrupt, (void*)p_network_device))
+    const u32 irq = pci_config_read(p_pcie_device, PCI_CONFIG_IRQ_LINE) & MAX_UINT8;
+    // TODO @since 19/05/2026 -- 15:44
+    // find out how we are going to convert from this irq to interrupt
+    if (!hook_interrupt(amd64_convert_to_interrupt(irq + 0x20), e1000_handle_interrupt, (void*)p_network_device))
         return 9;
 
     // done
@@ -205,7 +209,7 @@ interrupt_regs_t* e1000_handle_interrupt(interrupt_regs_t* p_rsp, void* data) {
     auto p_device = (e1000_t*)data;
 
     // get & clear the interrupt
-    uint32_t icr = e1000_read_reg(p_device, E1000_ICR);
+    u32 icr = e1000_read_reg(p_device, E1000_ICR);
 
     // packet recieved interrupt
     if (icr & (E1000_IMS_RXT0 | E1000_IMS_RXDMT0))
@@ -213,7 +217,7 @@ interrupt_regs_t* e1000_handle_interrupt(interrupt_regs_t* p_rsp, void* data) {
 
     // link status changed interrupt
     if (icr & E1000_IMS_LSC) {
-        uint32_t status = e1000_read_reg(p_device, E1000_STATUS);
+        u32 status = e1000_read_reg(p_device, E1000_STATUS);
         kprintf("Link status changed: 0x%uh\n", status);
     }
 
@@ -224,13 +228,13 @@ int e1000_send_packet(e1000_t* p_device, const void* data, size_t size) {
     if (size > E1000_BUFFER_SIZE)
         return 1;
 
-    const uint32_t next_tail = (p_device->tx_tail + 1) % E1000_TRANSMIT_DESC_COUNT;
-    const uint32_t head = e1000_read_reg(p_device, E1000_TDH);
+    const u32 next_tail = (p_device->tx_tail + 1) % E1000_TRANSMIT_DESC_COUNT;
+    const u32 head = e1000_read_reg(p_device, E1000_TDH);
     
     if (next_tail == head)
         return 2;
 
-    uint8_t* buffer = p_device->tdesc_buffer_array + (p_device->tx_tail * E1000_BUFFER_SIZE);
+    u8* buffer = p_device->tdesc_buffer_array + (p_device->tx_tail * E1000_BUFFER_SIZE);
     memcpy(buffer, data, size);
         
     e1000_tdesc_t* desc = &p_device->tdesc_array[p_device->tx_tail];

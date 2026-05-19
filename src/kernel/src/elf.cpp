@@ -1,6 +1,6 @@
 #include "elf.hpp"
 
-elf_section_header_t* elf_find_section_by_name(uint8_t* p_elf_data, const char* p_name) {
+elf_section_header_t* elf_find_section_by_name(u8* p_elf_data, const char* p_name) {
     elf_header_t* p_elf_header = (elf_header_t*)p_elf_data;
 
     if (p_elf_header->string_table_index == 0)
@@ -19,7 +19,7 @@ elf_section_header_t* elf_find_section_by_name(uint8_t* p_elf_data, const char* 
     return nullptr;
 }
 
-bool elf_find_symbol_address(uint8_t* p_elf_data, elf_section_header_t* p_symbol_table, elf_section_header_t* p_string_table, const char* p_symbol_name, uint64_t* p_symbol_value) {
+bool elf_find_symbol_address(u8* p_elf_data, elf_section_header_t* p_symbol_table, elf_section_header_t* p_string_table, const char* p_symbol_name, u64* p_symbol_value) {
     int symbol_count = p_symbol_table->size / p_symbol_table->entry_size;
     
     elf_symbol_t* symbol_table = (elf_symbol_t*)(p_elf_data + p_symbol_table->file_offset);
@@ -36,7 +36,7 @@ bool elf_find_symbol_address(uint8_t* p_elf_data, elf_section_header_t* p_symbol
     return false;
 }
 
-int elf_relocate(uint8_t* p_elf_data, uint8_t* p_base_address, elf_section_header_t* p_target_section, elf_section_header_t* p_symbol_table, elf_section_header_t* p_string_table, std::linear_map<std::string, void*>* p_symbol_map) {
+int elf_relocate(u8* p_elf_data, u8* p_base_address, elf_section_header_t* p_target_section, elf_section_header_t* p_symbol_table, elf_section_header_t* p_string_table, std::linear_map<std::string, void*>* p_symbol_map) {
     int relocation_count = p_target_section->size / p_target_section->entry_size;
     elf_relocation_entry_t* relocations = (elf_relocation_entry_t*)(p_elf_data + p_target_section->file_offset);
 
@@ -46,23 +46,23 @@ int elf_relocate(uint8_t* p_elf_data, uint8_t* p_base_address, elf_section_heade
     for (size_t i = 0; i < relocation_count; i++) {
         elf_relocation_entry_t* entry = &relocations[i];
 
-        uint32_t symbol_index = ELF_RELOCATE_SYMBOL(entry->info);
-        uint32_t relocation_type = ELF_RELOCATE_TYPE(entry->info);
+        u32 symbol_index = ELF_RELOCATE_SYMBOL(entry->info);
+        u32 relocation_type = ELF_RELOCATE_TYPE(entry->info);
 
-        uint64_t* p_relocation_address = (uint64_t*)(p_base_address + entry->offset);
-        uint64_t symbol_value = 0;
+        u64* p_relocation_address = (u64*)(p_base_address + entry->offset);
+        u64 symbol_value = 0;
 
         if (symbol_index != 0) {
             const char* symbol_name = string_table + symbol_table[symbol_index].name_offset;
 
             if (symbol_table[symbol_index].value != 0 || symbol_table[symbol_index].section_index != 0) {
-                symbol_value = (uint64_t)(p_base_address + symbol_table[symbol_index].value);
+                symbol_value = (u64)(p_base_address + symbol_table[symbol_index].value);
             } else {
                 auto target = p_symbol_map->get(symbol_name);
                 if (target == p_symbol_map->end())
                     return 1;
                 
-                symbol_value = (uint64_t)target->value;
+                symbol_value = (u64)target->value;
             }
         }
 
@@ -74,9 +74,9 @@ int elf_relocate(uint8_t* p_elf_data, uint8_t* p_base_address, elf_section_heade
                 break;
                 
             case ELF_RELOCATION_TYPE_PC32: {
-                int32_t* addr32 = (int32_t*)p_relocation_address;
-                uint64_t pc = (uint64_t)p_relocation_address;
-                *addr32 = (int32_t)(symbol_value + entry->addend - pc);
+                i32* addr32 = (i32*)p_relocation_address;
+                u64 pc = (u64)p_relocation_address;
+                *addr32 = (i32)(symbol_value + entry->addend - pc);
                 break;
             }
             case ELF_RELOCATION_TYPE_GLOB_DAT:
@@ -84,7 +84,7 @@ int elf_relocate(uint8_t* p_elf_data, uint8_t* p_base_address, elf_section_heade
                 *p_relocation_address = symbol_value;
                 break;
             case ELF_RELOCATION_TYPE_RELATIVE:
-                *p_relocation_address = (uint64_t)(p_base_address + entry->addend);
+                *p_relocation_address = (u64)(p_base_address + entry->addend);
                 break;
             default:
                 return 2;
@@ -94,8 +94,8 @@ int elf_relocate(uint8_t* p_elf_data, uint8_t* p_base_address, elf_section_heade
     return 0;
 }
 
-int elf_check_file(uint8_t* p_elf_data, elf_type_t elf_bin_type) {
-    const static uint8_t s_elf_header[] {
+int elf_check_file(u8* p_elf_data, elf_type_t elf_bin_type) {
+    const static u8 s_elf_header[] {
         ELF_MAGIC_0, ELF_MAGIC_1, ELF_MAGIC_2, ELF_MAGIC_3,
         ELF_CLASS_64, ELF_DATA_ENCODING_LSB, ELF_VERSION_1
     };
@@ -111,13 +111,13 @@ int elf_check_file(uint8_t* p_elf_data, elf_type_t elf_bin_type) {
     return 0;
 }
 
-elf_program_section_info_t elf_parse_program_sections(uint8_t* p_elf_data) {
+elf_program_section_info_t elf_parse_program_sections(u8* p_elf_data) {
     elf_header_t* p_elf_header = (elf_header_t*)p_elf_data;
     elf_program_header_t* p_program_headers = (elf_program_header_t*)(p_elf_data + p_elf_header->program_header_offset);
 
     elf_program_section_info_t psi {};
 
-    psi.min_address = (uint64_t)-1;
+    psi.min_address = (u64)-1;
     psi.max_address = 0;
 
     for (size_t i = 0; i < p_elf_header->program_header_count; i++) {
@@ -137,7 +137,7 @@ elf_program_section_info_t elf_parse_program_sections(uint8_t* p_elf_data) {
     return psi;
 }
 
-void elf_load_program_sections(uint8_t* p_elf_data, uint8_t* p_base_address, elf_program_section_info_t* p_psi) {
+void elf_load_program_sections(u8* p_elf_data, u8* p_base_address, elf_program_section_info_t* p_psi) {
     elf_header_t* p_elf_header = (elf_header_t*)p_elf_data;
     elf_program_header_t* p_program_headers = (elf_program_header_t*)(p_elf_data + p_elf_header->program_header_offset);
 
@@ -147,7 +147,7 @@ void elf_load_program_sections(uint8_t* p_elf_data, uint8_t* p_base_address, elf
         if (program_header.type != ELF_PROGRAM_TYPE_LOAD)
             continue;
 
-        uint8_t* segment_address = p_base_address + (program_header.virtual_address - p_psi->min_address);
+        u8* segment_address = p_base_address + (program_header.virtual_address - p_psi->min_address);
     
         memcpy(segment_address, p_elf_data + program_header.file_offset, program_header.file_size);
         
@@ -156,7 +156,7 @@ void elf_load_program_sections(uint8_t* p_elf_data, uint8_t* p_base_address, elf
     }
 }
 
-elf_tables_t elf_get_tables(uint8_t* p_elf_data) {
+elf_tables_t elf_get_tables(u8* p_elf_data) {
     elf_tables_t tables {};
 
     elf_section_header_t* dynamic_symbols = elf_find_section_by_name(p_elf_data, ".dynsym");
@@ -170,7 +170,7 @@ elf_tables_t elf_get_tables(uint8_t* p_elf_data) {
     return tables;
 }
 
-int elf_relocate_rel_sections(uint8_t* p_elf_data, uint8_t* p_base_address, elf_tables_t* p_tables, std::linear_map<std::string, void*>* p_symbol_map) {
+int elf_relocate_rel_sections(u8* p_elf_data, u8* p_base_address, elf_tables_t* p_tables, std::linear_map<std::string, void*>* p_symbol_map) {
     if (elf_section_header_t* rela_dyn = elf_find_section_by_name(p_elf_data, ".rela.dyn")) {
         if (elf_relocate(p_elf_data, p_base_address, rela_dyn, p_tables->symbol_table, p_tables->string_table, p_symbol_map) != 0) {
             return 1;

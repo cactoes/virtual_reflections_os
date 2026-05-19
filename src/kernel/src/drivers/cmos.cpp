@@ -10,21 +10,21 @@ static int days_in_month(int year, int month) {
     return days[month - 1];
 }
 
-uint8_t cmos_read(uint8_t reg) {
-    out_port<uint8_t>(CMOS_ADDR, reg);
-    return in_port<uint8_t>(CMOS_DATA);
+u8 cmos_read(u8 reg) {
+    out_port<u8>(CMOS_ADDR, reg);
+    return in_port<u8>(CMOS_DATA);
 }
 
-uint64_t cmos_read_time() {
+u64 cmos_read_time() {
     while (cmos_read(CMOS_REG_STATUS_A) & CMOS_UIP);
 
-    uint8_t second = cmos_read(CMOS_REG_SECONDS);
-    uint8_t minute = cmos_read(CMOS_REG_MINUTES);
-    uint8_t hour = cmos_read(CMOS_REG_HOURS);
-    uint8_t day = cmos_read(CMOS_REG_DAY_OF_MONTH);
-    uint8_t month = cmos_read(CMOS_REG_MONTH);
-    uint8_t year = cmos_read(CMOS_REG_YEAR);
-    uint8_t regB = cmos_read(CMOS_REG_STATUS_B);
+    u8 second = cmos_read(CMOS_REG_SECONDS);
+    u8 minute = cmos_read(CMOS_REG_MINUTES);
+    u8 hour = cmos_read(CMOS_REG_HOURS);
+    u8 day = cmos_read(CMOS_REG_DAY_OF_MONTH);
+    u8 month = cmos_read(CMOS_REG_MONTH);
+    u8 year = cmos_read(CMOS_REG_YEAR);
+    u8 regB = cmos_read(CMOS_REG_STATUS_B);
 
     if (!(regB & 0x04)) {
         second = BCD_TO_BIN(second);
@@ -38,7 +38,7 @@ uint64_t cmos_read_time() {
     int full_year = 2000 + year;
     if (full_year < 1970) full_year += 100;
 
-    uint64_t days = 0;
+    u64 days = 0;
     for (int y = 1970; y < full_year; y++)
         days += (y % 4 == 0 && (y % 100 != 0 || y % 400 == 0)) ? 366 : 365;
 
@@ -47,6 +47,6 @@ uint64_t cmos_read_time() {
 
     days += (day - 1);
 
-    uint64_t seconds = days * 86400ULL + (uint64_t)hour * 3600ULL + (uint64_t)minute * 60ULL + second;
+    u64 seconds = days * 86400ULL + (u64)hour * 3600ULL + (u64)minute * 60ULL + second;
     return seconds * 1000ULL;
 }

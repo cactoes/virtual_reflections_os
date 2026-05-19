@@ -19,12 +19,12 @@ bool mbr_is_entry_valid(const mbr_entry_t* entry) {
     return true;
 }
 
-bool is_mbr(const uint8_t* data, size_t size) {
+bool is_mbr(const u8* data, size_t size) {
     if (!data)
         return false;
 
     if (size < 512)
         return false;
 
-    return *(const uint16_t*)(data + 510) == 0xAA55;
+    return *(const u16*)(data + 510) == 0xAA55;
 }

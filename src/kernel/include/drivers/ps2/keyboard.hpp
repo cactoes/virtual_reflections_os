@@ -26,8 +26,8 @@
 #include "cpu.hpp"
 
 struct ps2_key_state_t {
-    uint32_t full_code = 0;
-    uint32_t scan_code = 0;
+    u32 full_code = 0;
+    u32 scan_code = 0;
     struct {
         bool is_released : 1;
         bool is_pressed : 1;
@@ -38,10 +38,10 @@ struct ps2_key_state_t {
 } PACKED;
 
 interrupt_regs_t* ps2_keyboard_handle_interrupt(interrupt_regs_t* p_rsp, void*);
-uint32_t ps2_keyboard_get_last_scancode();
+u32 ps2_keyboard_get_last_scancode();
 void ps2_keyboard_clear_last_scancode();
-const ps2_key_state_t* ps2_keyboard_get_key_state(uint32_t scan_code);
-bool ps2_keyboard_is_scan_code_extended(uint32_t scan_code);
+const ps2_key_state_t* ps2_keyboard_get_key_state(u32 scan_code);
+bool ps2_keyboard_is_scan_code_extended(u32 scan_code);
 void ps2_keyboard_event_subscribe(void(*p_handler)(const ps2_key_state_t*));
 void ps2_keyboard_process_packet();
 void ps2_keyboard_init();

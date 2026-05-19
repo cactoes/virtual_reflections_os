@@ -20,8 +20,8 @@ enum class graphics_driver_type_t {
 };
 
 struct color_t {
-    uint8_t r, g, b;
-    uint8_t a = 255;
+    u8 r, g, b;
+    u8 a = 255;
 };
 
 struct graphics_driver_t {

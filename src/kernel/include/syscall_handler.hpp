@@ -26,11 +26,11 @@
 #include "common.hpp"
 #include "cpu.hpp"
 
-extern "C" uint64_t x86_64_syscall_dispatch(uint64_t syscall_num, syscall_regs_t* regs);
-uint64_t syscall_dispatch(uint64_t syscall_num, void* a1, void* a2, void* a3, void* a4, void* a5, void* a6);
+extern "C" u64 x86_64_syscall_dispatch(u64 syscall_num, syscall_regs_t* regs);
+u64 syscall_dispatch(u64 syscall_num, void* a1, void* a2, void* a3, void* a4, void* a5, void* a6);
 
-uint64_t syscall_terminate_current_process();
-uint64_t syscall_heap_alloc(size_t size);
-uint64_t syscall_heap_free(void* ptr);
+u64 syscall_terminate_current_process();
+u64 syscall_heap_alloc(size_t size);
+u64 syscall_heap_free(void* ptr);
 
 #endif // __SYSCALL_HANDLER_HPP__

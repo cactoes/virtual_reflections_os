@@ -26,7 +26,7 @@
 #include "cpu.hpp"
 #include "process.hpp"
 
-typedef uint64_t vthread_handle_t;
+typedef u64 vthread_handle_t;
 typedef int(*thread_entry_t)();
 
 struct critical_section_t {
@@ -36,7 +36,7 @@ struct critical_section_t {
 struct thread_local_storage_t {
     vthread_handle_t handle;
     // file_descriptor_t out_streams[3] { FILE_DESCRIPTOR_INVALID, FILE_DESCRIPTOR_INVALID, FILE_DESCRIPTOR_INVALID };
-    uint64_t saved_irq_flags;
+    u64 saved_irq_flags;
     int irq_disable_depth;
 };
 
@@ -68,7 +68,7 @@ struct vthread_t {
     void* kstack;
 
     // internal thread stuff
-    uint64_t sleep_until_ms;
+    u64 sleep_until_ms;
     int exit_code;
     bool is_critical;
     char name[VTHREAD_MAX_NAME_SIZE + 1];
@@ -77,7 +77,7 @@ struct vthread_t {
     void* pml4;
 
     // 64-byte aligned fpu area
-    uint8_t* fpu_state;
+    u8* fpu_state;
 };
 
 /// @brief                  start the main virtual thread & perform initial setup
@@ -110,7 +110,7 @@ thread_local_storage_t* vthread_get_tls();
 /// @brief                  puts the current thread to sleep for a given time in ms
 /// @param time_ms          number of milliseconds to sleep
 /// @remarks                main thread (handle 0) is not allowed to sleep
-void vthread_sleep(uint64_t time_ms);
+void vthread_sleep(u64 time_ms);
 
 /// @brief                  waits until the thread with the given handle is closed & removed
 /// @param handle           handle of the thread to wait for

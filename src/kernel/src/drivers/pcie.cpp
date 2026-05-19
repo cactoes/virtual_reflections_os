@@ -11,16 +11,16 @@ pcie_device_manager_t* get_global_pcie_device_manager() {
     return global_pcie_device_manager;
 }
 
-uint32_t pci_config_read(const pci_device_t* p_device, uint32_t offset) {
-    const uint32_t address = PCI_CREATE_CONFIG_ADDRESS(p_device->bus, p_device->device, p_device->function, offset & ~0x3);
-    out_port<uint32_t>(PCI_CONFIG_ADDRESS, address);
-    return in_port<uint32_t>(PCI_CONFIG_DATA);
+u32 pci_config_read(const pci_device_t* p_device, u32 offset) {
+    const u32 address = PCI_CREATE_CONFIG_ADDRESS(p_device->bus, p_device->device, p_device->function, offset & ~0x3);
+    out_port<u32>(PCI_CONFIG_ADDRESS, address);
+    return in_port<u32>(PCI_CONFIG_DATA);
 }
 
-void pci_config_write(const pci_device_t* p_device, uint32_t offset, uint32_t value) {
-    const uint32_t address = PCI_CREATE_CONFIG_ADDRESS(p_device->bus, p_device->device, p_device->function, offset & ~0x3);
-    out_port<uint32_t>(PCI_CONFIG_ADDRESS, address);
-    out_port<uint32_t>(PCI_CONFIG_DATA, value);
+void pci_config_write(const pci_device_t* p_device, u32 offset, u32 value) {
+    const u32 address = PCI_CREATE_CONFIG_ADDRESS(p_device->bus, p_device->device, p_device->function, offset & ~0x3);
+    out_port<u32>(PCI_CONFIG_ADDRESS, address);
+    out_port<u32>(PCI_CONFIG_DATA, value);
 }
 
 const char* pci_get_class_description(const pci_device_t* p_device) {
@@ -74,7 +74,7 @@ const char* pci_get_class_description(const pci_device_t* p_device) {
     }
 }
 
-uint32_t pci_read_bar(const pci_device_t* p_device, uint32_t bar) {
+u32 pci_read_bar(const pci_device_t* p_device, u32 bar) {
     if (bar > 5)
         return 0;
 
@@ -82,9 +82,9 @@ uint32_t pci_read_bar(const pci_device_t* p_device, uint32_t bar) {
 }
 
 bool pci_enumerate_devices(pcie_device_manager_t* device_manager) {
-        for (uint32_t bus = 0; bus < 256; bus++) {
-        for (uint32_t device = 0; device < 32; device++) {
-            for (uint32_t function = 0; function < 8; function++) {
+        for (u32 bus = 0; bus < 256; bus++) {
+        for (u32 device = 0; device < 32; device++) {
+            for (u32 function = 0; function < 8; function++) {
                 pci_device_t pci_device {};
                 pci_device.bus = bus;
                 pci_device.device = device;
@@ -105,15 +105,15 @@ bool pci_enumerate_devices(pcie_device_manager_t* device_manager) {
 }
 
 bool find_device_vendor_device_id(const pci_device_t* p_device, const pci_vendor_device_id_t* p_req) {
-    return (p_req->vendor_id == (uint16_t)PCI_UNKNOWN || p_device->vendor_device_id.vendor_id == p_req->vendor_id) &&
-           (p_req->device_id == (uint16_t)PCI_UNKNOWN || p_device->vendor_device_id.device_id == p_req->device_id);
+    return (p_req->vendor_id == (u16)PCI_UNKNOWN || p_device->vendor_device_id.vendor_id == p_req->vendor_id) &&
+           (p_req->device_id == (u16)PCI_UNKNOWN || p_device->vendor_device_id.device_id == p_req->device_id);
 }
 
 bool find_device_class_info(const pci_device_t* p_device, const pci_class_info_t* p_req) {
-    return (p_req->class_code == (uint8_t)PCI_UNKNOWN || p_device->class_info.class_code == p_req->class_code) &&
-           (p_req->sub_class == (uint8_t)PCI_UNKNOWN || p_device->class_info.sub_class == p_req->sub_class) &&
-           (p_req->prog_if == (uint8_t)PCI_UNKNOWN || p_device->class_info.prog_if == p_req->prog_if) &&
-           (p_req->revision_id == (uint8_t)PCI_UNKNOWN || p_device->class_info.revision_id == p_req->revision_id);
+    return (p_req->class_code == (u8)PCI_UNKNOWN || p_device->class_info.class_code == p_req->class_code) &&
+           (p_req->sub_class == (u8)PCI_UNKNOWN || p_device->class_info.sub_class == p_req->sub_class) &&
+           (p_req->prog_if == (u8)PCI_UNKNOWN || p_device->class_info.prog_if == p_req->prog_if) &&
+           (p_req->revision_id == (u8)PCI_UNKNOWN || p_device->class_info.revision_id == p_req->revision_id);
 }
 
 pci_device_t* pci_find_device(pcie_device_manager_t* device_manager, const pci_vendor_device_id_t* p_vendor_device_id_target) {

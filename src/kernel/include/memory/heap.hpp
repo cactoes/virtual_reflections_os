@@ -112,7 +112,7 @@ void heap_free(heap_t* p_heap, void* p_ptr);
 /// @brief                      allocates a aligned mem block
 /// @param[inout] dma_heap      pointer to the dma_heap_t struct
 /// @return                     ptr to the block
-void* dma_heap_alloc(heap_t* p_dma_heap, size_t size, uint64_t align);
+void* dma_heap_alloc(heap_t* p_dma_heap, size_t size, u64 align);
 
 /// @brief                      frees the given block
 /// @param[inout] dma_heap      ptr to the dma_heap_t struct where the block is located
@@ -123,21 +123,21 @@ void dma_heap_free(heap_t* p_dma_heap, void* p_block);
 /// @param[inout] dma_heap  heap that contains the block
 /// @param[in] block        ptr to the block / the virtual addr
 /// @return                 physical addr
-uint64_t dma_get_physical(heap_t* p_dma_heap, void* p_block);
+u64 dma_get_physical(heap_t* p_dma_heap, void* p_block);
 
 /// @brief                  converts a virtual addr in the dma heap to a physical addr
 ///                         lower 32 bits
 /// @param[inout] dma_heap  heap that contains the block
 /// @param[in] block        ptr to the block / the virtual addr
 /// @return                 physical addr lower 32 bits
-uint32_t dma_get_physical_lower(heap_t* p_dma_heap, void* p_block);
+u32 dma_get_physical_lower(heap_t* p_dma_heap, void* p_block);
 
 /// @brief                  converts a virtual addr in the dma heap to a physical addr
 ///                         upper 32 bits
 /// @param[inout] dma_heap  heap that contains the block
 /// @param[in] block        ptr to the block / the virtual addr
 /// @return                 physical addr upper 32 bits
-uint32_t dma_get_physical_upper(heap_t* p_dma_heap, void* p_block);
+u32 dma_get_physical_upper(heap_t* p_dma_heap, void* p_block);
 
 /// @brief                          initializes a dma heap
 /// @param[inout] pml4              ptr to the page table to use

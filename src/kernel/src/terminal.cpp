@@ -32,7 +32,7 @@ void terminal_execute(const std::string& path, const std::dynamic_array<std::str
             for (size_t i = 0; i < heap->heap_block_array_size; i++) {
                 heap_block_t* block = &heap->heap_block_array[i];
                 if (block->used && block->size > 100 && !block->free) {
-                    kprintf("%c %p-%p (%s)\n", block->free ? 'f' : 'u', block->start_real_addr, (void*)((uint64_t)block->start_real_addr + block->size), size_format_to_string(block->size).c_str());
+                    kprintf("%c %p-%p (%s)\n", block->free ? 'f' : 'u', block->start_real_addr, (void*)((u64)block->start_real_addr + block->size), size_format_to_string(block->size).c_str());
                 }
             }
             break;
@@ -113,10 +113,10 @@ void terminal_execute(const std::string& path, const std::dynamic_array<std::str
                 break;
             }
 
-            uint8_t* buffer;
+            u8* buffer;
             size_t size;
             if (vfs_read_file(get_global_vfs(), result, &buffer, &size)) {
-                std::dynamic_array<uint8_t> data {};
+                std::dynamic_array<u8> data {};
                 data.assign(buffer, size);
                 data.insert_back('\n');
                 data.insert_back(0);
@@ -146,7 +146,7 @@ void terminal_execute(const std::string& path, const std::dynamic_array<std::str
                     }
 
                     printf("%s:\n", arg0.c_str());
-                    uint64_t capability = driver_query_capability(get_global_driver_manager(), handle, arg1.c_str());
+                    u64 capability = driver_query_capability(get_global_driver_manager(), handle, arg1.c_str());
                     if (capability == MAX_UINT64) {
                         printf("    Capability: %s not supported", arg1.c_str());
                     } else if (capability == 0) {

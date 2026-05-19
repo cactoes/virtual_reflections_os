@@ -15,7 +15,7 @@ void* syscall_malloc(size_t size) {
 }
 
 bool syscall_free(void* ptr) {
-    uint64_t result;
+    u64 result;
 
     asm volatile (
         "mov $2, %%rax\n\t"

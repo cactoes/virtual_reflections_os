@@ -2,7 +2,7 @@
 #include "std/string.hpp"
 #include "std/pointer.hpp"
 
-bool fmt_name(const char* name, uint8_t len, char* buffer) {
+bool fmt_name(const char* name, u8 len, char* buffer) {
     if (!name || !buffer)
         return false;
 
@@ -31,17 +31,17 @@ bool get_name(iso9660_dir_record_t* record, char* out, size_t out_size) {
     if (!record || !out)
         return false;
 
-    uint8_t* system_use = (uint8_t*)record->name + record->name_len;
+    u8* system_use = (u8*)record->name + record->name_len;
 
     if (record->name_len % 2 == 0)
         system_use++;
 
-    size_t system_use_len = record->length - (system_use - (uint8_t*)record);
+    size_t system_use_len = record->length - (system_use - (u8*)record);
     if (system_use_len < 0)
         return fmt_name(record->name, record->name_len, out);
 
-    const uint8_t* ptr = system_use;
-    const uint8_t* end = system_use + system_use_len;
+    const u8* ptr = system_use;
+    const u8* end = system_use + system_use_len;
 
     while (ptr + 4 <= end) {
         const iso9660_susp_entry_t* entry = (const iso9660_susp_entry_t*)ptr;
@@ -51,10 +51,10 @@ bool get_name(iso9660_dir_record_t* record, char* out, size_t out_size) {
 
         if (memeq(entry->signature, "NM", 2)) {
             size_t data_len = entry->length - 4;
-            const uint8_t* name_ptr = ptr + 4;
+            const u8* name_ptr = ptr + 4;
 
             if (data_len > 0) {
-                uint8_t flags = *name_ptr;
+                u8 flags = *name_ptr;
                 name_ptr++;
                 data_len--;
             }
@@ -80,7 +80,7 @@ bool iso9660_init(std::unique_ptr<block_device_t> device, iso9660_fsdata_t* fs_d
     if (!device || !fs_data)
         return false;
 
-    uint8_t* buffer = (uint8_t*)malloc(device->block_size);
+    u8* buffer = (u8*)malloc(device->block_size);
     if (!buffer)
         return false;
 
@@ -104,12 +104,12 @@ bool iso9660_init(std::unique_ptr<block_device_t> device, iso9660_fsdata_t* fs_d
     return true;
 }
 
-std::unique_ptr<uint8_t> iso9660_read_from_disk(block_device_t* device, size_t size, uint64_t lba, bool* error = nullptr) {
+std::unique_ptr<u8> iso9660_read_from_disk(block_device_t* device, size_t size, u64 lba, bool* error = nullptr) {
     if (!device)
-        return std::unique_ptr<uint8_t>(nullptr);
+        return std::unique_ptr<u8>(nullptr);
 
-    const uint64_t lba_count = (size + device->block_size - 1) / device->block_size;
-    std::unique_ptr<uint8_t> data = std::unique_ptr<uint8_t>((uint8_t*)malloc(lba_count * device->block_size));
+    const u64 lba_count = (size + device->block_size - 1) / device->block_size;
+    std::unique_ptr<u8> data = std::unique_ptr<u8>((u8*)malloc(lba_count * device->block_size));
 
     if (error) *error = false;
 
@@ -123,7 +123,7 @@ std::unique_ptr<uint8_t> iso9660_read_from_disk(block_device_t* device, size_t s
     return data;
 }
 
-bool iso9660_find_node(iso9660_fsdata_t* fs_data, const char* path, uint64_t size, uint64_t lba, iso9660_node_t* out_node) {
+bool iso9660_find_node(iso9660_fsdata_t* fs_data, const char* path, u64 size, u64 lba, iso9660_node_t* out_node) {
     if (!fs_data || !out_node)
         return false;
 
@@ -146,7 +146,7 @@ bool iso9660_find_node(iso9660_fsdata_t* fs_data, const char* path, uint64_t siz
 
     // read target disk section
     bool error;
-    std::unique_ptr<uint8_t> disk_data = iso9660_read_from_disk(fs_data->block_device.get(), size, lba, &error);
+    std::unique_ptr<u8> disk_data = iso9660_read_from_disk(fs_data->block_device.get(), size, lba, &error);
     if (error)
         return false;
 
@@ -224,7 +224,7 @@ bool iso9660_file_exists(iso9660_fsdata_t* fs_data, const char* path) {
     return !node.is_directory;
 }
 
-bool iso9660_read(iso9660_fsdata_t* fs_data, const char* path, uint8_t** out_data, size_t* out_size) {
+bool iso9660_read(iso9660_fsdata_t* fs_data, const char* path, u8** out_data, size_t* out_size) {
     if (!fs_data || !out_data || !out_size)
         return false;
 
@@ -235,8 +235,8 @@ bool iso9660_read(iso9660_fsdata_t* fs_data, const char* path, uint8_t** out_dat
     if (node.is_directory)
         return false;
 
-    const uint64_t aligned_size = align_up(node.size, fs_data->block_device->block_size);
-    std::unique_ptr<uint8_t> file_buffer = std::unique_ptr<uint8_t>((uint8_t*)malloc(aligned_size));
+    const u64 aligned_size = align_up(node.size, fs_data->block_device->block_size);
+    std::unique_ptr<u8> file_buffer = std::unique_ptr<u8>((u8*)malloc(aligned_size));
     if (!file_buffer.get())
         return false;
 
@@ -244,7 +244,7 @@ bool iso9660_read(iso9660_fsdata_t* fs_data, const char* path, uint8_t** out_dat
         return false;
 
     *out_size = 0;
-    *out_data = (uint8_t*)malloc(node.size);
+    *out_data = (u8*)malloc(node.size);
     if (!*out_data)
         return false;
 
@@ -265,7 +265,7 @@ bool iso9660_list_directory(iso9660_fsdata_t* fs_data, const char* path, std::dy
         return false;
 
     bool error;
-    std::unique_ptr<uint8_t> disk_data = iso9660_read_from_disk(fs_data->block_device.get(), node.size, node.lba, &error);
+    std::unique_ptr<u8> disk_data = iso9660_read_from_disk(fs_data->block_device.get(), node.size, node.lba, &error);
     if (error)
         return false;
 

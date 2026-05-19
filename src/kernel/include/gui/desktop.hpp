@@ -18,10 +18,10 @@
 #include "drivers/graphics/graphics_driver.hpp"
 
 struct desktop_render_target_t {
-    typedef void(*callback_t)(uint64_t dt, uint64_t x, uint64_t y);
+    typedef void(*callback_t)(u64 dt, u64 x, u64 y);
     callback_t callback;
-    uint64_t x, y;
-    uint64_t w, h;
+    u64 x, y;
+    u64 w, h;
     bool dragging;
     std::string name;
 };

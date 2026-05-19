@@ -5,7 +5,7 @@
 // TODO @since 02/02/2026 -- 17:13
 // move these string functions
 
-void convert_utf16_to_ascii(char* destination, const uint16_t* source, size_t count) {
+void convert_utf16_to_ascii(char* destination, const u16* source, size_t count) {
     while (count-- && *source && *source != 0xFFFF) {
         *destination++ = (char)(*source++ & 0xFF);
     }
@@ -28,41 +28,41 @@ int compare_ascii_case_insensitive(const char* a, const char* b) {
     return *a - *b;
 }
 
-uint32_t cluster_to_lba(const fat32_fsdata_t* fs_data, uint32_t cluster) {
+u32 cluster_to_lba(const fat32_fsdata_t* fs_data, u32 cluster) {
     if (!fs_data)
         return false;
 
     return fs_data->layout.first_data_sector + (cluster - 2) * fs_data->layout.sectors_per_cluster;
 }
 
-uint32_t get_next_cluster(const fat32_fsdata_t* fs_data, uint32_t cluster) {
+u32 get_next_cluster(const fat32_fsdata_t* fs_data, u32 cluster) {
     if (!fs_data)
         return false;
 
-    uint32_t offset = cluster * 4;
-    uint32_t fat_sector = fs_data->layout.first_fat_sector + (offset / fs_data->layout.bytes_per_sector);
-    uint32_t entry_offset = offset % fs_data->layout.bytes_per_sector;
+    u32 offset = cluster * 4;
+    u32 fat_sector = fs_data->layout.first_fat_sector + (offset / fs_data->layout.bytes_per_sector);
+    u32 entry_offset = offset % fs_data->layout.bytes_per_sector;
 
-    uint8_t* sector_data = (uint8_t*)malloc(fs_data->block_device->block_size);
+    u8* sector_data = (u8*)malloc(fs_data->block_device->block_size);
     if (!block_read(fs_data->block_device.get(), fat_sector, sector_data)) {
         free(sector_data);
         return FAT32_EOC32;
     }
     
-    uint32_t value = *(uint32_t*)(sector_data + entry_offset);
+    u32 value = *(u32*)(sector_data + entry_offset);
     free(sector_data);
     return value & 0x0FFFFFFF;
 }
 
-std::unique_ptr<uint8_t> fat32_read_from_disk(fat32_fsdata_t* fs_data, size_t cluster, bool* error) {
+std::unique_ptr<u8> fat32_read_from_disk(fat32_fsdata_t* fs_data, size_t cluster, bool* error) {
     if (!fs_data)
-        return std::unique_ptr<uint8_t>(nullptr);
+        return std::unique_ptr<u8>(nullptr);
 
-    std::unique_ptr<uint8_t> data = std::unique_ptr<uint8_t>((uint8_t*)malloc(fs_data->layout.bytes_per_sector * fs_data->layout.sectors_per_cluster));
+    std::unique_ptr<u8> data = std::unique_ptr<u8>((u8*)malloc(fs_data->layout.bytes_per_sector * fs_data->layout.sectors_per_cluster));
 
     if (error) *error = false;
 
-    for (uint32_t sector = 0; sector < fs_data->layout.sectors_per_cluster; sector++) {
+    for (u32 sector = 0; sector < fs_data->layout.sectors_per_cluster; sector++) {
         if (!block_read_sized(fs_data->block_device.get(), cluster_to_lba(fs_data, cluster) + sector, data.get() + (sector * fs_data->layout.bytes_per_sector), fs_data->layout.bytes_per_sector)) {
             if (error) *error = true;
             break;
@@ -72,7 +72,7 @@ std::unique_ptr<uint8_t> fat32_read_from_disk(fat32_fsdata_t* fs_data, size_t cl
     return data;
 }
 
-bool fat32_validate(uint8_t* buffer, size_t size) {
+bool fat32_validate(u8* buffer, size_t size) {
     if (!buffer)
         return false;
 
@@ -81,7 +81,7 @@ bool fat32_validate(uint8_t* buffer, size_t size) {
 
     const fat32_bpb_extended_t* bpb = (fat32_bpb_extended_t*)buffer;
 
-    if (*(uint16_t*)(buffer + 510) != 0xAA55)
+    if (*(u16*)(buffer + 510) != 0xAA55)
         return false;
 
     if (bpb->bpb.bytes_per_sector != 512 &&
@@ -90,7 +90,7 @@ bool fat32_validate(uint8_t* buffer, size_t size) {
         bpb->bpb.bytes_per_sector != 4096)
         return false;
 
-    uint8_t sectors_per_cluster = bpb->bpb.sectors_per_cluster;
+    u8 sectors_per_cluster = bpb->bpb.sectors_per_cluster;
     if (sectors_per_cluster == 0 || (sectors_per_cluster & (sectors_per_cluster - 1)))
         return false;
 
@@ -116,7 +116,7 @@ bool fat32_init(std::unique_ptr<block_device_t> device, fat32_fsdata_t* fs_data)
     if (!device || !fs_data)
         return false;
 
-    uint8_t* buffer = (uint8_t*)malloc(device->block_size);
+    u8* buffer = (u8*)malloc(device->block_size);
     if (!block_read(device.get(), 0, buffer))
         return false;
 
@@ -135,7 +135,7 @@ bool fat32_init(std::unique_ptr<block_device_t> device, fat32_fsdata_t* fs_data)
     return true;
 }
 
-bool fat32_find_node(fat32_fsdata_t* fs_data, const char* path, size_t size, uint32_t cluster, fat32_node_t* out_node) {
+bool fat32_find_node(fat32_fsdata_t* fs_data, const char* path, size_t size, u32 cluster, fat32_node_t* out_node) {
     if (!fs_data || !out_node)
         return false;
 
@@ -158,12 +158,12 @@ bool fat32_find_node(fat32_fsdata_t* fs_data, const char* path, size_t size, uin
     while (cluster < FAT32_EOC32) {
         // read target disk cluster
         bool error;
-        std::unique_ptr<uint8_t> dir_data = fat32_read_from_disk(fs_data, cluster, &error);
+        std::unique_ptr<u8> dir_data = fat32_read_from_disk(fs_data, cluster, &error);
         if (error)
             return false;
 
         char long_filename[260] { 0 };
-        for (uint32_t offset = 0; offset < fs_data->layout.bytes_per_sector * fs_data->layout.sectors_per_cluster; offset += 32) {
+        for (u32 offset = 0; offset < fs_data->layout.bytes_per_sector * fs_data->layout.sectors_per_cluster; offset += 32) {
             fat32_dir_entry_t* entry = (fat32_dir_entry_t*)(dir_data.get() + offset);
 
             if (entry->name[0] == 0)
@@ -179,7 +179,7 @@ bool fat32_find_node(fat32_fsdata_t* fs_data, const char* path, size_t size, uin
                 int index = ((lfn_entry->order & 0x1F) - 1) * 13;
                 char ascii_part[14] = {0};
 
-                uint16_t utf16_name[13];
+                u16 utf16_name[13];
                 memcpy(utf16_name + 0, lfn_entry->name1, sizeof(lfn_entry->name1));
                 memcpy(utf16_name + 5, lfn_entry->name2, sizeof(lfn_entry->name2));
                 memcpy(utf16_name + 11, lfn_entry->name3, sizeof(lfn_entry->name3));
@@ -213,7 +213,7 @@ bool fat32_find_node(fat32_fsdata_t* fs_data, const char* path, size_t size, uin
             }
 
             if (compare_ascii_case_insensitive(current_name, target.c_str()) == 0) {
-                uint32_t first_cluster = (entry->first_cluster_high << 16) | entry->first_cluster_low;
+                u32 first_cluster = (entry->first_cluster_high << 16) | entry->first_cluster_low;
                 bool is_directory = (entry->attributes & FAT32_DIRATTR_DIRECTORY) != 0;
 
                 if (!is_directory && (path_parts.length() == 1)) {
@@ -265,7 +265,7 @@ bool fat32_file_exists(fat32_fsdata_t* fs_data, const char* path) {
     return !node.is_directory;
 }
 
-bool fat32_read(fat32_fsdata_t* fs_data, const char* path, uint8_t** out_data, size_t* out_size) {
+bool fat32_read(fat32_fsdata_t* fs_data, const char* path, u8** out_data, size_t* out_size) {
     if (!fs_data || !out_data || !out_size)
         return false;
 
@@ -277,15 +277,15 @@ bool fat32_read(fat32_fsdata_t* fs_data, const char* path, uint8_t** out_data, s
         return false;
 
     *out_size = node.size;
-    *out_data = (uint8_t*)malloc(node.size);
+    *out_data = (u8*)malloc(node.size);
     if (!*out_data)
         return false;
 
-    uint64_t cluster = node.first_cluster;
+    u64 cluster = node.first_cluster;
     size_t bytes_read_total = 0;
     while (cluster < FAT32_EOC32 && bytes_read_total < *out_size) {
         bool error;
-        std::unique_ptr<uint8_t> cluster_data = fat32_read_from_disk(fs_data, cluster, &error);
+        std::unique_ptr<u8> cluster_data = fat32_read_from_disk(fs_data, cluster, &error);
         if (error) {
             *out_data = nullptr;
             *out_size = 0;
@@ -293,7 +293,7 @@ bool fat32_read(fat32_fsdata_t* fs_data, const char* path, uint8_t** out_data, s
         }
 
         size_t bytes_to_copy = MIN(fs_data->layout.bytes_per_sector * fs_data->layout.sectors_per_cluster, *out_size - bytes_read_total);
-        memcpy(*(uint8_t**)out_data + bytes_read_total, cluster_data.get(), bytes_to_copy);
+        memcpy(*(u8**)out_data + bytes_read_total, cluster_data.get(), bytes_to_copy);
         bytes_read_total += bytes_to_copy;
 
         cluster = get_next_cluster(fs_data, cluster);
@@ -316,16 +316,16 @@ bool fat32_list_directory(fat32_fsdata_t* fs_data, const char* path, std::dynami
     if (!node.is_directory)
         return false;
 
-    uint64_t cluster = node.first_cluster;
+    u64 cluster = node.first_cluster;
     while (cluster < FAT32_EOC32) {
         // read target disk cluster
         bool error;
-        std::unique_ptr<uint8_t> dir_data = fat32_read_from_disk(fs_data, cluster, &error);
+        std::unique_ptr<u8> dir_data = fat32_read_from_disk(fs_data, cluster, &error);
         if (error)
             return false;
 
         char long_filename[260] { 0 };
-        for (uint32_t offset = 0; offset < fs_data->layout.bytes_per_sector * fs_data->layout.sectors_per_cluster; offset += 32) {
+        for (u32 offset = 0; offset < fs_data->layout.bytes_per_sector * fs_data->layout.sectors_per_cluster; offset += 32) {
             fat32_dir_entry_t* entry = (fat32_dir_entry_t*)(dir_data.get() + offset);
 
             if (entry->name[0] == 0)
@@ -341,7 +341,7 @@ bool fat32_list_directory(fat32_fsdata_t* fs_data, const char* path, std::dynami
                 int index = ((lfn_entry->order & 0x1F) - 1) * 13;
                 char ascii_part[14] = {0};
 
-                uint16_t utf16_name[13];
+                u16 utf16_name[13];
                 memcpy(utf16_name + 0, lfn_entry->name1, sizeof(lfn_entry->name1));
                 memcpy(utf16_name + 5, lfn_entry->name2, sizeof(lfn_entry->name2));
                 memcpy(utf16_name + 11, lfn_entry->name3, sizeof(lfn_entry->name3));

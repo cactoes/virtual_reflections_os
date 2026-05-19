@@ -12,13 +12,13 @@
 #include "network/nidm.hpp"
 
 struct icmp_header_t {
-    uint8_t type;
-    uint8_t code;
-    uint16_t checksum;
-    uint16_t identifier;
-    uint16_t sequence;
+    u8 type;
+    u8 code;
+    u16 checksum;
+    u16 identifier;
+    u16 sequence;
 } PACKED;
 
-void icmp_receive(network_interface_t* interface, uint8_t* payload, size_t len);
+void icmp_receive(network_interface_t* interface, u8* payload, size_t len);
 
 #endif // __DRIVERS_NETWORK_ICMP_HPP__

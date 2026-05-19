@@ -11,7 +11,7 @@
 #define DHCP_PORT_CLIENT                        68
 #define DHCP_PORT_SERVER                        67
 
-#define DHCP_MAGIC                              (uint32_t)0x63825363
+#define DHCP_MAGIC                              (u32)0x63825363
 
 #define DHCP_OP_BOOTREQUEST                     1
 #define DHCP_OP_BOOTREPLY                       2
@@ -55,59 +55,59 @@
 #include "network/nidm.hpp"
 
 struct dhcp_packet_t {
-    uint8_t op;
-    uint8_t htype;
-    uint8_t hlen;
-    uint8_t hops;
-    uint32_t xid;
-    uint16_t secs;
-    uint16_t flags;
+    u8 op;
+    u8 htype;
+    u8 hlen;
+    u8 hops;
+    u32 xid;
+    u16 secs;
+    u16 flags;
 
-    uint32_t client_ip_addr;
-    uint32_t your_ip_addr;
-    uint32_t server_ip_addr;
-    uint32_t gateway_ip_addr;
+    u32 client_ip_addr;
+    u32 your_ip_addr;
+    u32 server_ip_addr;
+    u32 gateway_ip_addr;
 
-    uint8_t client_hw_addr[16];
-    uint8_t server_name[64];
-    uint8_t file[128];
+    u8 client_hw_addr[16];
+    u8 server_name[64];
+    u8 file[128];
 
-    uint32_t magic;
+    u32 magic;
 
-    uint8_t options[308];
+    u8 options[308];
 } PACKED;
 
 struct dhcp_options_writer_t {
-    uint8_t* buffer;
+    u8* buffer;
     size_t buffer_size;
     size_t offset;
 };
 
 template <size_t size>
 struct dhcp_option_t {
-    uint8_t type;
-    uint8_t length;
-    uint8_t value[size];
+    u8 type;
+    u8 length;
+    u8 value[size];
 };
 
 struct dhcp_client_t {
     mutex_t mutex;
 
     struct session_t {
-        uint32_t xid;
+        u32 xid;
         ipv4_address_t ip;
         ipv4_address_t dhcp_ip;
-        uint32_t lease_time;
+        u32 lease_time;
         network_interface_t* interface;
     } session;
 };
 
-uint8_t* dhcp_option_get(dhcp_packet_t* packet, uint8_t type);
-uint32_t dhcp_field_to_number(uint8_t* field, size_t size);
+u8* dhcp_option_get(dhcp_packet_t* packet, u8 type);
+u32 dhcp_field_to_number(u8* field, size_t size);
 
 dhcp_packet_t dhcp_create_discover_packet(const char* hostname, dhcp_client_t::session_t* session);
-dhcp_packet_t dhcp_create_request_packet(const char* hostname, dhcp_client_t::session_t* session, uint32_t wanted_ip);
-dhcp_packet_t dhcp_create_lease_extend_packet(const char* hostname, dhcp_client_t::session_t* session, uint32_t ip_to_extend);
+dhcp_packet_t dhcp_create_request_packet(const char* hostname, dhcp_client_t::session_t* session, u32 wanted_ip);
+dhcp_packet_t dhcp_create_lease_extend_packet(const char* hostname, dhcp_client_t::session_t* session, u32 ip_to_extend);
 
 dhcp_client_t* dhcp_client_create();
 dhcp_client_t::session_t dhcp_client_create_session(network_interface_t* target_interface);

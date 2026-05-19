@@ -7,12 +7,12 @@
 // // TODO @since 06/11/2025 -- 15:04
 // // header id checks
 
-// uint32_t DNSGenerateHeaderID() {
+// u32 DNSGenerateHeaderID() {
 //     seed_random(KsTimeSinceBoot());
 //     return random_number(0, MAX_UINT16);
 // }
 
-// std::dynamic_array<uint8_t> DNSQueryBuild(const char* szHostname, DNSQueryType nType) {
+// std::dynamic_array<u8> DNSQueryBuild(const char* szHostname, DNSQueryType nType) {
 //     DNSHeader dnsHeader {};
 //     dnsHeader.m_nId = DNSGenerateHeaderID();
 //     dnsHeader.m_nFlags = bswap16(0x0100);
@@ -21,42 +21,42 @@
 //     dnsHeader.m_nNSCount = 0;
 //     dnsHeader.m_nARCount = 0;
 
-//     std::dynamic_array<uint8_t> arrEncodedName = DNSEncodeHostname(szHostname);
-//     uint16_t nQType = bswap16((uint16_t)nType);
-//     uint16_t nQClass = bswap16((uint16_t)1);
+//     std::dynamic_array<u8> arrEncodedName = DNSEncodeHostname(szHostname);
+//     u16 nQType = bswap16((u16)nType);
+//     u16 nQClass = bswap16((u16)1);
 
-//     std::dynamic_array<uint8_t> arrQuery {};
+//     std::dynamic_array<u8> arrQuery {};
 //     arrQuery.resize(sizeof(DNSHeader) + arrEncodedName.length() + 4);
 
 //     // copy header
 //     for (size_t i = 0; i < sizeof(DNSHeader); i++)
-//         arrQuery.insert_back(((uint8_t*)&dnsHeader)[i]);
+//         arrQuery.insert_back(((u8*)&dnsHeader)[i]);
 
 //     // copy name
 //     for (size_t i = 0; i < arrEncodedName.length(); i++)
 //         arrQuery.insert_back(arrEncodedName[i]);
 
 //     // copy type
-//     for (size_t i = 0; i < sizeof(uint16_t); i++)
-//         arrQuery.insert_back(((uint8_t*)&nQType)[i]);
+//     for (size_t i = 0; i < sizeof(u16); i++)
+//         arrQuery.insert_back(((u8*)&nQType)[i]);
 
 //     // copy class
-//     for (size_t i = 0; i < sizeof(uint16_t); i++)
-//         arrQuery.insert_back(((uint8_t*)&nQClass)[i]);
+//     for (size_t i = 0; i < sizeof(u16); i++)
+//         arrQuery.insert_back(((u8*)&nQClass)[i]);
 
 //     return arrQuery;
 // }
 
-// std::dynamic_array<uint8_t> DNSEncodeHostname(const char* szHostname) {
-//     std::dynamic_array<uint8_t> arrOutput {};
+// std::dynamic_array<u8> DNSEncodeHostname(const char* szHostname) {
+//     std::dynamic_array<u8> arrOutput {};
 //     arrOutput.resize(strlen(szHostname));
 
 //     std::dynamic_array<std::string> arrParts = str_split(szHostname, '.');
 
 //     for (auto& strPart : arrParts) {
-//         arrOutput.insert_back((uint8_t)strPart.length());
+//         arrOutput.insert_back((u8)strPart.length());
 //         for (size_t i = 0; i < strPart.length(); i++)
-//             arrOutput.insert_back((uint8_t)(strPart.c_str()[i]));
+//             arrOutput.insert_back((u8)(strPart.c_str()[i]));
 //     }
 
 //     arrOutput.insert_back(0);
@@ -64,14 +64,14 @@
 //     return arrOutput;
 // }
 
-// std::string DNSClientDecodeHostname(const uint8_t* pPacket, size_t nSize, size_t& rOffset) {
+// std::string DNSClientDecodeHostname(const u8* pPacket, size_t nSize, size_t& rOffset) {
 //     std::string strResult;
 //     bool bJumped = false;
 //     size_t oOffset = rOffset;
 //     int nMaxLoops = 128;
     
 //     while (rOffset < nSize && nMaxLoops-- > 0) {
-//         uint8_t nLength = pPacket[rOffset];
+//         u8 nLength = pPacket[rOffset];
         
 //         if (nLength == 0) {
 //             rOffset++;
@@ -82,7 +82,7 @@
 //             if (rOffset + 1 >= nSize)
 //                 break;
             
-//             uint16_t pointer = ((nLength & 0x3F) << 8) | pPacket[rOffset + 1];
+//             u16 pointer = ((nLength & 0x3F) << 8) | pPacket[rOffset + 1];
 //             if (pointer >= nSize)
 //                 break;
             
@@ -113,7 +113,7 @@
 //     return strResult;
 // }
 
-// size_t DNSClientNameLength(const uint8_t* pData, size_t nSize) {
+// size_t DNSClientNameLength(const u8* pData, size_t nSize) {
 //     size_t nOffset = 0;
 
 //     if (!pData || nSize == 0)
@@ -127,7 +127,7 @@
 //             return nOffset;
 //         }
 
-//         uint8_t nLabelLength = pData[nOffset];
+//         u8 nLabelLength = pData[nOffset];
 //         if (nLabelLength + 1 > nSize - nOffset)
 //             return 0;
 
@@ -140,7 +140,7 @@
 //     return nOffset + 1;
 // }
 
-// DNSClientState* DNSClientInit(uint16_t nPort, uint32_t nDNSServerIp) {
+// DNSClientState* DNSClientInit(u16 nPort, u32 nDNSServerIp) {
 //     DNSClientState* pClientState = (DNSClientState*)malloc(sizeof(DNSClientState));
 //     memzero(pClientState, sizeof(DNSClientState));
 
@@ -157,13 +157,13 @@
 //     free(pClientState);
 // }
 
-// int DNSClientHandlePacket(DNSClientState* pClientState, uint8_t* pPacket, size_t nSize) {
+// int DNSClientHandlePacket(DNSClientState* pClientState, u8* pPacket, size_t nSize) {
 //     if (nSize < sizeof(DNSHeader))
 //         return 1;
 
 //     DNSHeader* dnsHeader = (DNSHeader*)pPacket;
-//     uint16_t nANCount = bswap16(dnsHeader->m_nANCount);
-//     uint16_t nQDCount = bswap16(dnsHeader->m_nQDCount);
+//     u16 nANCount = bswap16(dnsHeader->m_nANCount);
+//     u16 nQDCount = bswap16(dnsHeader->m_nQDCount);
 
 //     size_t nOffset = sizeof(DNSHeader);
 
@@ -184,23 +184,23 @@
 //         if (nOffset + 10 > nSize)
 //             return 1;
 
-//         uint16_t nQType = bswap16(*(uint16_t*)&pPacket[nOffset]);
-//         nOffset += sizeof(uint16_t);
+//         u16 nQType = bswap16(*(u16*)&pPacket[nOffset]);
+//         nOffset += sizeof(u16);
 
-//         uint16_t nQClass = bswap16(*(uint16_t*)&pPacket[nOffset]);
-//         nOffset += sizeof(uint16_t);
+//         u16 nQClass = bswap16(*(u16*)&pPacket[nOffset]);
+//         nOffset += sizeof(u16);
 
-//         uint32_t nTTL = bswap32(*(uint32_t*)&pPacket[nOffset]);
-//         nOffset += sizeof(uint32_t);
+//         u32 nTTL = bswap32(*(u32*)&pPacket[nOffset]);
+//         nOffset += sizeof(u32);
         
-//         uint16_t nRDLength = bswap16(*(uint16_t*)&pPacket[nOffset]);
-//         nOffset += sizeof(uint16_t);
+//         u16 nRDLength = bswap16(*(u16*)&pPacket[nOffset]);
+//         nOffset += sizeof(u16);
 
 //         if (nOffset + nRDLength > nSize)
 //             break;
 
 //         if (nQType == 1 && nRDLength == 4) {
-//             uint32_t nIP = *(uint32_t*)&pPacket[nOffset];
+//             u32 nIP = *(u32*)&pPacket[nOffset];
 //             DNSClientSetRecord(pClientState, strHostname.c_str(), bswap32(nIP));
 //             KsPrint("stored new dns record");
 //         }
@@ -211,13 +211,13 @@
 //     return 0;
 // }
 
-// uint32_t DNSClientResolve(DNSClientState* pClientState, const char* szHostname, DNSSendPacketFN pSendPacket, uint64_t nTimeoutTimeMs) {
-//     std::dynamic_array<uint8_t> arrQuery = DNSQueryBuild(szHostname, DNSQueryType::A);
+// u32 DNSClientResolve(DNSClientState* pClientState, const char* szHostname, DNSSendPacketFN pSendPacket, u64 nTimeoutTimeMs) {
+//     std::dynamic_array<u8> arrQuery = DNSQueryBuild(szHostname, DNSQueryType::A);
 
 //     if (pSendPacket(pClientState->m_nDNSServerIP, DNS_PORT_SERVER, pClientState->m_nPort, arrQuery.get_data(), arrQuery.length()) != 0)
 //         return -1;
 
-//     const uint64_t nTimeoutTime = KsTimeSinceBoot() + nTimeoutTimeMs;
+//     const u64 nTimeoutTime = KsTimeSinceBoot() + nTimeoutTimeMs;
 //     const DNSCacheRecord* dnsCacheRecord = nullptr;
 
 //     while (KsTimeSinceBoot() < nTimeoutTime) {
@@ -245,6 +245,6 @@
 //     return nullptr;
 // }
 
-// void DNSClientSetRecord(DNSClientState* pClientState, const char* szHostname, uint32_t nIP) {
+// void DNSClientSetRecord(DNSClientState* pClientState, const char* szHostname, u32 nIP) {
 //     pClientState->m_mapRecords[szHostname] = DNSCacheRecord{ .m_strHostname = szHostname, .m_nIP = nIP };
 // }

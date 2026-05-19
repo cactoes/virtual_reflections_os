@@ -12,13 +12,13 @@
 #include "network/nidm.hpp"
 
 struct udp_header_t {
-    uint16_t src_port;
-    uint16_t dst_port;
-    uint16_t length;
-    uint16_t checksum;
+    u16 src_port;
+    u16 dst_port;
+    u16 length;
+    u16 checksum;
 } PACKED;
 
-void udp_receive(network_interface_t* interface, uint32_t src_ip, uint8_t* payload, size_t payload_length);
-bool udp_send(uint32_t dst_ip, uint16_t src_port, uint16_t dst_port, const uint8_t* payload, size_t size);
+void udp_receive(network_interface_t* interface, u32 src_ip, u8* payload, size_t payload_length);
+bool udp_send(u32 dst_ip, u16 src_port, u16 dst_port, const u8* payload, size_t size);
 
 #endif // __DRIVERS_NETWORK_UDP_HPP__

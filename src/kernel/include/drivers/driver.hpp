@@ -27,8 +27,8 @@ struct system_driver_t {
     system_driver_functions_t functions;
 };
 
-typedef uint64_t system_driver_handle_t;
-typedef uint64_t(*driver_query_capability_t)(const char*);
+typedef u64 system_driver_handle_t;
+typedef u64(*driver_query_capability_t)(const char*);
 
 struct driver_manager_t {
     system_driver_handle_t current_handle;
@@ -48,6 +48,6 @@ int driver_stop(driver_manager_t* driver_manager, system_driver_handle_t handle)
 
 void* driver_get_function(driver_manager_t* driver_manager, system_driver_handle_t handle, const char* p_name);
 
-uint64_t driver_query_capability(driver_manager_t* driver_manager, system_driver_handle_t handle, const char* feature);
+u64 driver_query_capability(driver_manager_t* driver_manager, system_driver_handle_t handle, const char* feature);
 
 #endif // __DRIVERS_DRIVER_HPP__

@@ -10,14 +10,14 @@ void kprint(const char* str) {
     kprintf("[DRIVER] %s\n", str);
 }
 
-uint64_t ktime_since_boot() {
+u64 ktime_since_boot() {
     return clock_get_time_since_boot();
 }
 
-void knet_udp_send(uint32_t dst_ip, uint16_t src_port, uint16_t dst_port, uint8_t* packet, size_t size) {
+void knet_udp_send(u32 dst_ip, u16 src_port, u16 dst_port, u8* packet, size_t size) {
     // udp_send(dst_ip, src_port, dst_port, packet, size);
 }
 
-void ksleep(uint64_t ms) {
+void ksleep(u64 ms) {
     vthread_sleep(ms);
 }

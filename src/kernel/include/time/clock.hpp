@@ -10,7 +10,7 @@
 
 #include "common.hpp"
 
-uint64_t clock_get_time_since_boot();
-uint64_t clock_get_current_time();
+u64 clock_get_time_since_boot();
+u64 clock_get_current_time();
 
 #endif // __TIME_CLOCK_HPP__

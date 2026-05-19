@@ -15,27 +15,27 @@
 // #include "std/map.hpp"
 
 // struct DNSHeader {
-//     uint16_t m_nId;
-//     uint16_t m_nFlags;
-//     uint16_t m_nQDCount;
-//     uint16_t m_nANCount;
-//     uint16_t m_nNSCount;
-//     uint16_t m_nARCount;
+//     u16 m_nId;
+//     u16 m_nFlags;
+//     u16 m_nQDCount;
+//     u16 m_nANCount;
+//     u16 m_nNSCount;
+//     u16 m_nARCount;
 // } PACKED;
 
 // struct DNSQuery {
-//     uint16_t m_nQType;
-//     uint16_t m_nQClass;
+//     u16 m_nQType;
+//     u16 m_nQClass;
 // } PACKED;
 
 // struct DNSRecord {
-//     uint16_t m_nQType;
-//     uint16_t m_nQClass;
-//     uint32_t m_nTTL;
-//     uint16_t m_nRDLength;
+//     u16 m_nQType;
+//     u16 m_nQClass;
+//     u32 m_nTTL;
+//     u16 m_nRDLength;
 // } PACKED;
 
-// enum class DNSQueryType : uint16_t {
+// enum class DNSQueryType : u16 {
 //     A = 1,
 //     NS = 2,
 //     CNAME = 5,
@@ -45,36 +45,36 @@
 
 // struct DNSCacheRecord {
 //     std::string m_strHostname;
-//     uint32_t m_nIP;
+//     u32 m_nIP;
 // };
 
 // struct DNSClientState {
 //     std::linear_map<std::string, DNSCacheRecord> m_mapRecords;
-//     uint32_t m_nDNSServerIP;
-//     uint16_t m_nPort;
+//     u32 m_nDNSServerIP;
+//     u16 m_nPort;
 //     bool m_bIsConfigured;
 // };
 
-// typedef int(*DNSSendPacketFN)(uint32_t nDstIp, uint16_t nDstPort, uint16_t nSrcPort, uint8_t* pData, size_t nSize);
+// typedef int(*DNSSendPacketFN)(u32 nDstIp, u16 nDstPort, u16 nSrcPort, u8* pData, size_t nSize);
 
-// uint32_t DNSGenerateHeaderID();
+// u32 DNSGenerateHeaderID();
 
-// std::dynamic_array<uint8_t> DNSQueryBuild(const char* szHostname, DNSQueryType nType);
-// std::dynamic_array<uint8_t> DNSEncodeHostname(const char* szHostname);
+// std::dynamic_array<u8> DNSQueryBuild(const char* szHostname, DNSQueryType nType);
+// std::dynamic_array<u8> DNSEncodeHostname(const char* szHostname);
 
-// std::string DNSClientDecodeHostname(const uint8_t* pPacket, size_t nSize, size_t& rOffset);
-// size_t DNSClientNameLength(const uint8_t* pData, size_t nSize);
+// std::string DNSClientDecodeHostname(const u8* pPacket, size_t nSize, size_t& rOffset);
+// size_t DNSClientNameLength(const u8* pData, size_t nSize);
 
 // /// @brief dns exports
 // extern "C" {
-//     DNSClientState* DNSClientInit(uint16_t nPort, uint32_t nDNSServerIp);
+//     DNSClientState* DNSClientInit(u16 nPort, u32 nDNSServerIp);
 //     void DNSClientShutdown(DNSClientState* pClientState);
 
-//     int DNSClientHandlePacket(DNSClientState* pClientState, uint8_t* pPacket, size_t nSize);
+//     int DNSClientHandlePacket(DNSClientState* pClientState, u8* pPacket, size_t nSize);
     
-//     uint32_t DNSClientResolve(DNSClientState* pClientState, const char* szHostname, DNSSendPacketFN pSendPacket, uint64_t nTimeoutTimeMs = 1000);
+//     u32 DNSClientResolve(DNSClientState* pClientState, const char* szHostname, DNSSendPacketFN pSendPacket, u64 nTimeoutTimeMs = 1000);
 //     const DNSCacheRecord* DNSClientGetRecord(DNSClientState* pClientState, const char* szHostname);
-//     void DNSClientSetRecord(DNSClientState* pClientState, const char* szHostname, uint32_t nIP);
+//     void DNSClientSetRecord(DNSClientState* pClientState, const char* szHostname, u32 nIP);
 // }
 
 // #endif // __DNS_HPP__

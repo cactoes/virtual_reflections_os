@@ -6,8 +6,8 @@
 static event_manager_t<const ps2_mouse_state_t*> g_mouse_event_manager {};
 
 static ps2_mouse_state_t g_mouse_state {};
-static uint8_t g_mouse_packet_buffer[PS2_MOUSE_PACKET_SIZE] {};
-static uint8_t g_mouse_packet_index = 0;
+static u8 g_mouse_packet_buffer[PS2_MOUSE_PACKET_SIZE] {};
+static u8 g_mouse_packet_index = 0;
 
 static std::ring_buffer<8, ps2_mouse_state_t> global_mouse_state_buffer {};
 
@@ -31,10 +31,10 @@ interrupt_regs_t* ps2_mouse_handle_interrupt(interrupt_regs_t* p_rsp, void*) {
     if (g_mouse_packet_index < PS2_MOUSE_PACKET_SIZE)
         return p_rsp;
 
-    const uint8_t status = g_mouse_packet_buffer[0];
-    const uint8_t dx_raw = g_mouse_packet_buffer[1];
-    const uint8_t dy_raw = g_mouse_packet_buffer[2];
-    const uint8_t dz_raw = g_mouse_packet_buffer[3];
+    const u8 status = g_mouse_packet_buffer[0];
+    const u8 dx_raw = g_mouse_packet_buffer[1];
+    const u8 dy_raw = g_mouse_packet_buffer[2];
+    const u8 dz_raw = g_mouse_packet_buffer[3];
 
     bool valid = status & PS2_MOUSE_STATUS_VALID_PKT;
 
@@ -52,7 +52,7 @@ interrupt_regs_t* ps2_mouse_handle_interrupt(interrupt_regs_t* p_rsp, void*) {
     g_mouse_state.dy = (status & PS2_MOUSE_STATUS_Y_SIGN_BIT) ? dy_raw - 256 : dy_raw;
     g_mouse_state.dy = -g_mouse_state.dy;
 
-    g_mouse_state.ds = (int8_t)dz_raw;
+    g_mouse_state.ds = (i8)dz_raw;
 
     g_mouse_state.buttons.left   = status & PS2_MOUSE_STATUS_MB_LEFT;
     g_mouse_state.buttons.right  = status & PS2_MOUSE_STATUS_MB_RIGHT;
@@ -65,7 +65,7 @@ interrupt_regs_t* ps2_mouse_handle_interrupt(interrupt_regs_t* p_rsp, void*) {
     return p_rsp;
 }
 
-void ps2_mouse_write(uint8_t value) {
+void ps2_mouse_write(u8 value) {
     ps2_write(PS2_CMD_PORT, PS2_MOUSE_WRITE_TO_MOUSE);
     ps2_write(PS2_DATA_PORT, value);
     ps2_read(PS2_DATA_PORT);
@@ -75,7 +75,7 @@ void ps2_mouse_init() {
     ps2_write(PS2_CMD_PORT, PS2_MOUSE_ENABLE_AUX_DEVICE);
 
     ps2_write(PS2_CMD_PORT, PS2_MOUSE_READ_CMD_BYTE);
-    uint8_t status = ps2_read(PS2_DATA_PORT);
+    u8 status = ps2_read(PS2_DATA_PORT);
 
     status |= PS2_MOUSE_CMD_ENABLE_MOUSE_IRQ;
 

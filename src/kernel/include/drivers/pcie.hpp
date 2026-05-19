@@ -30,20 +30,20 @@
 #include "utils/vector.hpp"
 
 union pci_vendor_device_id_t {
-    uint32_t raw;
+    u32 raw;
     struct {
-        uint16_t vendor_id;
-        uint16_t device_id;
+        u16 vendor_id;
+        u16 device_id;
     };
 };
 
 union pci_class_info_t {
-    uint32_t raw;
+    u32 raw;
     struct {
-        uint8_t revision_id;
-        uint8_t prog_if;
-        uint8_t sub_class;
-        uint8_t class_code;
+        u8 revision_id;
+        u8 prog_if;
+        u8 sub_class;
+        u8 class_code;
     };
 };
 
@@ -51,9 +51,9 @@ struct pci_device_t {
     pci_vendor_device_id_t vendor_device_id;
     pci_class_info_t class_info;
 
-    uint32_t bus;
-    uint32_t device;
-    uint32_t function;
+    u32 bus;
+    u32 device;
+    u32 function;
 };
 
 struct pcie_device_manager_t {
@@ -63,12 +63,12 @@ struct pcie_device_manager_t {
 void set_global_pcie_device_manager(pcie_device_manager_t* pcie_device_manager);
 pcie_device_manager_t* get_global_pcie_device_manager();
 
-uint32_t pci_config_read(const pci_device_t* p_device, uint32_t offset);
-void pci_config_write(const pci_device_t* p_device, uint32_t offset, uint32_t value);
+u32 pci_config_read(const pci_device_t* p_device, u32 offset);
+void pci_config_write(const pci_device_t* p_device, u32 offset, u32 value);
 
 const char* pci_get_class_description(const pci_device_t* p_device);
 
-uint32_t pci_read_bar(const pci_device_t* p_device, uint32_t bar);
+u32 pci_read_bar(const pci_device_t* p_device, u32 bar);
 
 bool pci_enumerate_devices(pcie_device_manager_t* device_manager);
 pci_device_t* pci_find_device(pcie_device_manager_t* device_manager, const pci_vendor_device_id_t* p_vendor_device_id_target);

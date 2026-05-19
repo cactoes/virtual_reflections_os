@@ -6,11 +6,13 @@
 
 #include "arch/amd64/msr.hpp"
 #include "arch/amd64/gdt.hpp"
-#include "common2.hpp"
+#include "arch/amd64/idt.hpp"
+#include "arch/amd64/cpu.hpp"
+#include "arch/amd64/port.hpp"
+#include "interrupt_manager.hpp"
+#include "common.hpp"
 
 /// @brief  generic defines
-#define PAGE_SIZE_LARGE             0x200000
-
 #define PF_PRESENT                  (1 << 0)
 #define PF_READ_WRITE               (1 << 1)
 #define PF_PAGE_SIZE                (1 << 7)
@@ -56,6 +58,12 @@ amd64_gdtr_t gdtr;
 
 __attribute__((section(".bss")))
 amd64_tss_t tss;
+
+__attribute__((section(".bss")))
+amd64_idt_entry_t idt[AMD64_INT_IDT_ENTRY_COUNT];
+
+__attribute__((section(".bss")))
+amd64_idt_register_t idtr;
 
 /// @brief              local memzero define defined in boot text section
 /// @param[in] address  pointer to address to clear
@@ -135,6 +143,114 @@ void amd64_init_gdt() {
     amd64_reload_segments(AMD64_GDT_INDEX_TO_ENTRY(KERNEL_CODE_SELECTOR_INDEX), AMD64_GDT_INDEX_TO_ENTRY(KERNEL_DATA_SELECTOR_INDEX));
 }
 
+extern "C"
+__attribute__((section(".text")))
+interrupt_t amd64_convert_to_interrupt(u64 code) {
+    switch (code) {
+        case 0: return interrupt_t::EXCEPTION_DIVISION_BY_ZERO;
+        case 1: return interrupt_t::EXCEPTION_SINGLE_STEP_INTERRUPT;
+        case 2: return interrupt_t::EXCEPTION_NMI;
+        case 3: return interrupt_t::EXCEPTION_BREAKPOINT;
+        case 4: return interrupt_t::EXCEPTION_OVERFLOW;
+        case 5: return interrupt_t::EXCEPTION_BOUND_RANGE_EXCEEDED;
+        case 6: return interrupt_t::EXCEPTION_INVALID_OPCODE;
+        case 7: return interrupt_t::EXCEPTION_COPROCESSOR_NOT_AVAILABLE;
+        case 8: return interrupt_t::EXCEPTION_DOUBLE_FAULT;
+        case 9: return interrupt_t::EXCEPTION_COPROCESSOR_SEGMENT_OVERRUN;
+        case 10: return interrupt_t::EXCEPTION_INVALID_TSS;
+        case 11: return interrupt_t::EXCEPTION_SEGMENT_NOT_PRESENT;
+        case 12: return interrupt_t::EXCEPTION_STACK_SEGMENT_FAULT;
+        case 13: return interrupt_t::EXCEPTION_GENERAL_PROTECTION_FAULT;
+        case 14: return interrupt_t::EXCEPTION_PAGE_FAULT;
+        case 15: return interrupt_t::EXCEPTION_RESERVED;
+        case 16: return interrupt_t::EXCEPTION_X87_FLOATING_POINT_EXCEPTION;
+        case 17: return interrupt_t::EXCEPTION_ALIGNMENT_CHECK;
+        case 18: return interrupt_t::EXCEPTION_MACHINE_CHECK;
+        case 19: return interrupt_t::EXCEPTION_SIMD_FP_EXCEPTION;
+        case 20: return interrupt_t::EXCEPTION_VIRTUALIZATION_EXCEPTION;
+        case 21: return interrupt_t::EXCEPTION_CONTROL_PROTECTION_EXCEPTION;
+
+        case 32: return interrupt_t::HARDWARE_PIT;
+        case 33: return interrupt_t::HARDWARE_KEYBOARD;
+        case 34: return interrupt_t::HARDWARE_CASCADE;
+        case 35: return interrupt_t::HARDWARE_COM2;
+        case 36: return interrupt_t::HARDWARE_COM1;
+        case 37: return interrupt_t::HARDWARE_LPT2;
+        case 38: return interrupt_t::HARDWARE_FLOPPY_DISK;
+        case 39: return interrupt_t::HARDWARE_LPT1;
+        case 40: return interrupt_t::HARDWARE_CMOS_RTC;
+        case 41: return interrupt_t::HARDWARE_FFP_L_SCSI_NIC;
+        case 42: return interrupt_t::HARDWARE_FFP_SSCI_NIC1;
+        case 43: return interrupt_t::HARDWARE_FFP_SSCI_NIC2;
+        case 44: return interrupt_t::HARDWARE_PS2_MOUSE;
+        case 45: return interrupt_t::HARDWARE_COPROCESSOR;
+        case 46: return interrupt_t::HARDWARE_PRIMARY_ATA_HD;
+        case 47: return interrupt_t::HARDWARE_SECONDARY_ATA_HD;
+
+        case 128: return interrupt_t::SOFTWARE_SYSTEMCALL;
+        case 129: return interrupt_t::SOFTWARE_SCHEDULER;
+
+        default: return interrupt_t::UNKOWN;
+    }
+
+    return interrupt_t::UNKOWN;
+}
+
+static
+__attribute__((section(".text")))
+interrupt_regs_t* amd64_interrupt_dispatcher(u64 code, interrupt_regs_t* stack) {
+    extern volatile bool global_is_in_interupt;
+    global_is_in_interupt = true;
+
+    interrupt_t interrupt = amd64_convert_to_interrupt(code);
+
+    if (interrupt == interrupt_t::UNKOWN) {
+        global_is_in_interupt = false;
+        return stack;
+    }
+
+    interrupt_regs_t* result_stack = interrupt_manager_dispatch(interrupt, stack);
+
+    if (code >= 32 && code <= 47)
+        amd64_interrupt_send_eoi(code - 0x20);
+
+    global_is_in_interupt = false;
+    return result_stack;
+}
+
+static
+__attribute__((section(".text")))
+void amd64_init_idt() {
+    amd64_set_interrupt_dispatch_callback(amd64_interrupt_dispatcher);
+
+    amd64_set_idtr(&idtr, idt);
+    amd64_set_idt_entries(idt, amd64_get_selector_for(KERNEL_CODE_SELECTOR_INDEX));
+
+    amd64_out_port8(AMD64_INT_PIC1, 0x11);
+    amd64_out_port8(AMD64_INT_PIC2, 0x11);
+
+    amd64_out_port8(AMD64_INT_PIC1_DATA, 0x20);
+    amd64_out_port8(AMD64_INT_PIC2_DATA, 0x28);
+
+    amd64_out_port8(AMD64_INT_PIC1_DATA, 4);
+    amd64_out_port8(AMD64_INT_PIC2_DATA, 2);
+
+    amd64_out_port8(AMD64_INT_PIC1_DATA, 1);
+    amd64_out_port8(AMD64_INT_PIC2_DATA, 1);
+
+    static const u8 irqs_to_unmask[] = {
+        AMD64_INT_IRQ_PIT,
+        AMD64_INT_IRQ_PS2_KEYBOARD,
+        AMD64_INT_IRQ_PS2_MOUSE
+    };
+
+    for (size_t i = 0; i < sizeof(irqs_to_unmask); i++)
+        amd64_irq_unmask(irqs_to_unmask[i]);
+
+    amd64_flush_idt(idtr);
+    amd64_interrupts_enable();
+}
+
 /// @brief                          amd64 boot entry, the assembly jumps to here to continue the setup
 /// @param[in] multiboot2_struct    pointer to the multiboot 2 structure
 extern "C"
@@ -184,12 +300,11 @@ void amd64_entry(void* multiboot2_struct) {
         : "memory"
     );
 
-    // 4. initialze cpu0 (idt, gdt, msr)
-
     // gdt
     amd64_init_gdt();
 
     // idt
+    amd64_init_idt();
 
     // msr
     amd64_init_msr();

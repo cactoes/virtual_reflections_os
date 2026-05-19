@@ -6,7 +6,7 @@
 static network_interface_controller_t* global_nic = nullptr;
 
 // struct network_packet_t {
-//     std::unique_ptr<uint8_t> data;
+//     std::unique_ptr<u8> data;
 //     size_t size;
 //     network_interface_device_t* device;
 // };
@@ -44,7 +44,7 @@ bool nic_register_interface(network_interface_controller_t* nic, network_interfa
 
 bool nic_process_packet(network_interface_controller_t* nic) {
     // swap handling of packets
-    static uint64_t buffer_selector = 0;
+    static u64 buffer_selector = 0;
     
     network_packet_t packet {};
 
@@ -80,11 +80,11 @@ bool nic_receive_packet(network_interface_controller_t* nic, const network_packe
     return nic->incoming_packets.insert(packet);
 }
 
-bool is_same_subnet(uint32_t target_ip, uint32_t our_ip, uint32_t subnet_mask) {
+bool is_same_subnet(u32 target_ip, u32 our_ip, u32 subnet_mask) {
     return (target_ip & subnet_mask) == (our_ip & subnet_mask);
 }
 
-network_interface_t* route_lookup(network_interface_controller_t* nic, uint32_t dst_ip) {
+network_interface_t* route_lookup(network_interface_controller_t* nic, u32 dst_ip) {
     if (nic->interfaces.length() == 0)
         return nullptr;
 

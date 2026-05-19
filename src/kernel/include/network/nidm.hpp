@@ -18,12 +18,12 @@
 #include "std/ring_buffer.hpp"
 
 union ipv4_address_t {
-    uint32_t raw;
+    u32 raw;
     struct {
-        uint8_t byte0;
-        uint8_t byte1;
-        uint8_t byte2;
-        uint8_t byte3;
+        u8 byte0;
+        u8 byte1;
+        u8 byte2;
+        u8 byte3;
     } PACKED;
 };
 
@@ -33,7 +33,7 @@ enum class network_interface_device_type_t {
 };
 
 struct network_interface_t {
-    uint8_t mac[6];
+    u8 mac[6];
 
     ipv4_address_t ip;
     ipv4_address_t gateway;
@@ -52,7 +52,7 @@ struct network_interface_t {
 };
 
 struct network_packet_t {
-    uint8_t* data;
+    u8* data;
     size_t size;
     network_interface_t* interface;
 };
@@ -74,7 +74,7 @@ bool nic_process_packet(network_interface_controller_t* nic);
 bool nic_dispatch_packet(network_interface_controller_t* nic, const network_packet_t& packet);
 bool nic_receive_packet(network_interface_controller_t* nic, const network_packet_t& packet);
 
-network_interface_t* route_lookup(network_interface_controller_t* nic, uint32_t dst_ip);
+network_interface_t* route_lookup(network_interface_controller_t* nic, u32 dst_ip);
 network_interface_t* nic_get_default_interface(network_interface_controller_t* nic);
 network_interface_t* nic_get_interface_from_device(network_interface_controller_t* nic, void* device);
 
@@ -92,21 +92,21 @@ int nic_thread();
 //     bool is_up;
 //     bool is_prefered;
 //     bool is_configured;
-//     uint8_t mac[6];
+//     u8 mac[6];
 
 //     ipv4_address_t ip;
 //     ipv4_address_t gateway;
 //     ipv4_address_t subnet_mask;
 // };
 
-// // typedef void(*network_callback_t)(uint8_t* p_packet, size_t length);
-// typedef std::function_t<void, uint8_t*, size_t> network_callback_t;
+// // typedef void(*network_callback_t)(u8* p_packet, size_t length);
+// typedef std::function_t<void, u8*, size_t> network_callback_t;
 
 // struct nidm_t {
 //     mutex_t mutex {};
 
 //     std::dynamic_array<std::unique_ptr<network_interface_device_t>> devices;
-//     std::linear_map<uint16_t, network_callback_t> udp_callbacks;
+//     std::linear_map<u16, network_callback_t> udp_callbacks;
 // };
 
 // void set_global_nidm(nidm_t* nidm);
@@ -128,9 +128,9 @@ int nic_thread();
 
 // int nidm_packet_send(nidm_t* nidm, const void* p_data, size_t size);
 
-// int nidm_udp_bind(nidm_t* nidm, uint16_t port, network_callback_t p_callback);
+// int nidm_udp_bind(nidm_t* nidm, u16 port, network_callback_t p_callback);
 
-// int nidm_udp_dispatch(nidm_t* nidm, uint16_t port, uint8_t* p_packet, size_t length);
+// int nidm_udp_dispatch(nidm_t* nidm, u16 port, u8* p_packet, size_t length);
 
 // network_interface_device_t* nidm_get_prefered_device(nidm_t* nidm);
 

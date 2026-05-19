@@ -23,18 +23,18 @@ system_driver_handle_t driver_manager_get_driver_handle(driver_manager_t* driver
 }
 
 system_driver_handle_t driver_load(driver_manager_t* driver_manager, const char* p_name, void* p_driver_file) {
-    if (elf_check_file((uint8_t*)p_driver_file) != 0)
+    if (elf_check_file((u8*)p_driver_file) != 0)
         return SYSTEM_DRIVER_HANDLE_INVALID;
 
-    auto program_section_info = elf_parse_program_sections((uint8_t*)p_driver_file);
+    auto program_section_info = elf_parse_program_sections((u8*)p_driver_file);
 
-    uint8_t* base_address = (uint8_t*)malloc(program_section_info.size);
+    u8* base_address = (u8*)malloc(program_section_info.size);
     if (!base_address)
         return SYSTEM_DRIVER_HANDLE_INVALID;
 
-    elf_load_program_sections((uint8_t*)p_driver_file, base_address, &program_section_info);
+    elf_load_program_sections((u8*)p_driver_file, base_address, &program_section_info);
 
-    auto tables = elf_get_tables((uint8_t*)p_driver_file);
+    auto tables = elf_get_tables((u8*)p_driver_file);
     if (!tables.string_table || !tables.symbol_table)
         return SYSTEM_DRIVER_HANDLE_INVALID;
 
@@ -50,10 +50,10 @@ system_driver_handle_t driver_load(driver_manager_t* driver_manager, const char*
     symbol_map["ktime_since_boot"] = (void*)&ktime_since_boot;
     symbol_map["knet_udp_send"] = (void*)&knet_udp_send;
 
-    symbol_map["memset_impl"] = (void*)&memset_impl;
-    symbol_map["memzero_impl"] = (void*)&memzero_impl;
-    symbol_map["memcpy_impl"] = (void*)&memcpy_impl;
-    symbol_map["memeq_impl"] = (void*)&memeq_impl;
+    // symbol_map["memset_impl"] = (void*)&memset_impl;
+    // symbol_map["memzero_impl"] = (void*)&memzero_impl;
+    // symbol_map["memcpy_impl"] = (void*)&memcpy_impl;
+    // symbol_map["memeq_impl"] = (void*)&memeq_impl;
 
     symbol_map["_Znwm"] = (void*)(void* (*)(__SIZE_TYPE__))&operator new;
     symbol_map["_Znam"] = (void*)(void* (*)(__SIZE_TYPE__))&operator new[];
@@ -63,7 +63,7 @@ system_driver_handle_t driver_load(driver_manager_t* driver_manager, const char*
     symbol_map["_ZdaPvm"] = (void*)(void (*)(void*, __SIZE_TYPE__))&operator delete[];
     symbol_map["_ZnwmPv"] = (void*)(void* (*)(__SIZE_TYPE__, void*))&operator new;
 
-    if (elf_relocate_rel_sections((uint8_t*)p_driver_file, base_address, &tables, &symbol_map) != 0)
+    if (elf_relocate_rel_sections((u8*)p_driver_file, base_address, &tables, &symbol_map) != 0)
         return SYSTEM_DRIVER_HANDLE_INVALID;
 
     kprintf("[DRIVER] loaded driver '%s' at: 0x%p\n", p_name, base_address);
@@ -73,8 +73,8 @@ system_driver_handle_t driver_load(driver_manager_t* driver_manager, const char*
     system_driver->base_address = (void*)base_address;
     system_driver->file_data_ptr = p_driver_file;
     system_driver->name = p_name;
-    system_driver->functions.driver_init = elf_get_function<int>((uint8_t*)p_driver_file, base_address, &tables, &program_section_info, "driver_init");
-    system_driver->functions.driver_exit = elf_get_function<int>((uint8_t*)p_driver_file, base_address, &tables, &program_section_info, "driver_exit");
+    system_driver->functions.driver_init = elf_get_function<int>((u8*)p_driver_file, base_address, &tables, &program_section_info, "driver_init");
+    system_driver->functions.driver_exit = elf_get_function<int>((u8*)p_driver_file, base_address, &tables, &program_section_info, "driver_exit");
     
     driver_manager->current_handle++;
 
@@ -120,16 +120,16 @@ void* driver_get_function(driver_manager_t* driver_manager, system_driver_handle
 
     system_driver_t* driver = driver_it->value.get();
 
-    auto program_section_info = elf_parse_program_sections((uint8_t*)driver->file_data_ptr);
+    auto program_section_info = elf_parse_program_sections((u8*)driver->file_data_ptr);
 
-    auto tables = elf_get_tables((uint8_t*)driver->file_data_ptr);
+    auto tables = elf_get_tables((u8*)driver->file_data_ptr);
     if (!tables.string_table || !tables.symbol_table)
         return nullptr;
 
-    return (void*)elf_get_function<void>((uint8_t*)driver->file_data_ptr, (uint8_t*)driver->base_address, &tables, &program_section_info, p_name);
+    return (void*)elf_get_function<void>((u8*)driver->file_data_ptr, (u8*)driver->base_address, &tables, &program_section_info, p_name);
 }
 
-uint64_t driver_query_capability(driver_manager_t* driver_manager, system_driver_handle_t handle, const char* feature) {
+u64 driver_query_capability(driver_manager_t* driver_manager, system_driver_handle_t handle, const char* feature) {
     driver_query_capability_t driver_query_capability_fn = (driver_query_capability_t)driver_get_function(driver_manager, handle, "query_capability");
     if (!driver_query_capability_fn)
         return -1;

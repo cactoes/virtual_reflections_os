@@ -21,10 +21,10 @@
 #include "common.hpp"
 #include "cpu.hpp"
 
-extern "C" NORETURN void kernel_fatal_internal(uint64_t code, const char* message, interrupt_regs_t* cpu_state = nullptr);
+extern "C" NORETURN void kernel_fatal_internal(u64 code, const char* message, interrupt_regs_t* cpu_state = nullptr);
 
 // NAKED
-NORETURN inline void kernel_fatal(uint64_t code, const char* message) {
+NORETURN inline void kernel_fatal(u64 code, const char* message) {
     // TODO @since 02/01/2026 -- 18:02
     // fix get cpu state
     kernel_fatal_internal(code, message, nullptr);
