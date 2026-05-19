@@ -1,16 +1,7 @@
 #include "arch/amd64/idt.hpp"
 #include "arch/amd64/port.hpp"
 
-static interrupt_dispatch_callback_t global_interrupt_dispatch_callback = nullptr;
-
 extern "C" void* amd64_isr_stub_table[];
-
-extern "C" interrupt_regs_t* amd64_interrupt_dispatch(u64 code, interrupt_regs_t* stack) {
-    if (global_interrupt_dispatch_callback)
-        return global_interrupt_dispatch_callback(code, stack);
-
-    return stack;
-}
 
 static void amd64_set_idt_entry(amd64_idt_entry_t* idt, u16 kernel_code_selector, u8 int_number, void* callback) {
     amd64_idt_entry_t* descriptor = &idt[int_number];
@@ -32,10 +23,6 @@ void amd64_set_idt_entries(amd64_idt_entry_t* p_idt, u16 kernel_code_selector) {
 void amd64_set_idtr(amd64_idt_register_t* idtr, amd64_idt_entry_t* idt) {
     idtr->base = (u64)&idt[0];
     idtr->limit = (u16)(sizeof(amd64_idt_entry_t) * AMD64_INT_IDT_ENTRY_COUNT - 1);
-}
-
-void amd64_set_interrupt_dispatch_callback(interrupt_dispatch_callback_t callback) {
-    global_interrupt_dispatch_callback = callback; 
 }
 
 void amd64_interrupt_send_eoi(u8 irq) {

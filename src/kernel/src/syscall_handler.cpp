@@ -2,20 +2,6 @@
 #include "io.hpp"
 #include "virtual_thread.hpp"
 
-u64 x86_64_syscall_dispatch(u64 syscall_num, syscall_regs_t* regs) {
-    return syscall_dispatch(syscall_num,
-        (void*)regs->rdi,
-        (void*)regs->rsi,
-        (void*)regs->rdx,
-        (void*)regs->r10,
-        (void*)regs->r8,
-        (void*)regs->r9);
-}
-
-extern "C" u64 amd64_syscall_dispatch(u64 syscall_num, syscall_regs_t* regs) {
-    return x86_64_syscall_dispatch(syscall_num, regs);
-}
-
 u64 syscall_dispatch(u64 syscall_num, void* a1, void* a2, void* a3, void* a4, void* a5, void* a6) {
     switch (syscall_num) {
         case SYSCALL_TERMINATE_PROCESS:

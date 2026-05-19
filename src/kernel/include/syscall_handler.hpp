@@ -1,7 +1,7 @@
 //==========================================
 /// @file       syscall_handler.hpp
 /// @brief      
-/// @note       syscall abi:
+/// @note       syscall abi (amd64):
 ///             RAX = syscall number
 ///             RDI = arg1
 ///             RSI = arg2
@@ -19,14 +19,13 @@
 
 #define SYSCALL_RESULT_OK 0
 
-#define SYSCALL_TERMINATE_PROCESS 0
-#define SYSCALL_HEAP_ALLOC 1
-#define SYSCALL_HEAP_FREE 2
+#define SYSCALL_TERMINATE_PROCESS   0
+#define SYSCALL_HEAP_ALLOC          1
+#define SYSCALL_HEAP_FREE           2
 
 #include "common.hpp"
 #include "cpu.hpp"
 
-extern "C" u64 x86_64_syscall_dispatch(u64 syscall_num, syscall_regs_t* regs);
 u64 syscall_dispatch(u64 syscall_num, void* a1, void* a2, void* a3, void* a4, void* a5, void* a6);
 
 u64 syscall_terminate_current_process();

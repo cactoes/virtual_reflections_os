@@ -10,6 +10,7 @@
 #include "arch/amd64/cpu.hpp"
 #include "arch/amd64/port.hpp"
 #include "interrupt_manager.hpp"
+#include "syscall_handler.hpp"
 #include "common.hpp"
 
 /// @brief  generic defines
@@ -187,7 +188,6 @@ interrupt_t amd64_convert_to_interrupt(u64 code) {
         case 46: return interrupt_t::HARDWARE_PRIMARY_ATA_HD;
         case 47: return interrupt_t::HARDWARE_SECONDARY_ATA_HD;
 
-        case 128: return interrupt_t::SOFTWARE_SYSTEMCALL;
         case 129: return interrupt_t::SOFTWARE_SCHEDULER;
 
         default: return interrupt_t::UNKOWN;
@@ -196,9 +196,9 @@ interrupt_t amd64_convert_to_interrupt(u64 code) {
     return interrupt_t::UNKOWN;
 }
 
-static
+extern "C"
 __attribute__((section(".text")))
-interrupt_regs_t* amd64_interrupt_dispatcher(u64 code, interrupt_regs_t* stack) {
+interrupt_regs_t* amd64_interrupt_dispatch(u64 code, interrupt_regs_t* stack) {
     extern volatile bool global_is_in_interupt;
     global_is_in_interupt = true;
 
@@ -221,8 +221,6 @@ interrupt_regs_t* amd64_interrupt_dispatcher(u64 code, interrupt_regs_t* stack) 
 static
 __attribute__((section(".text")))
 void amd64_init_idt() {
-    amd64_set_interrupt_dispatch_callback(amd64_interrupt_dispatcher);
-
     amd64_set_idtr(&idtr, idt);
     amd64_set_idt_entries(idt, amd64_get_selector_for(KERNEL_CODE_SELECTOR_INDEX));
 
@@ -249,6 +247,18 @@ void amd64_init_idt() {
 
     amd64_flush_idt(idtr);
     amd64_interrupts_enable();
+}
+
+extern "C"
+__attribute__((section(".text")))
+u64 amd64_syscall_dispatch(u64 syscall_num, syscall_regs_t* regs) {
+    return syscall_dispatch(syscall_num,
+        (void*)regs->rdi,
+        (void*)regs->rsi,
+        (void*)regs->rdx,
+        (void*)regs->r10,
+        (void*)regs->r8,
+        (void*)regs->r9);
 }
 
 /// @brief                          amd64 boot entry, the assembly jumps to here to continue the setup
@@ -300,13 +310,8 @@ void amd64_entry(void* multiboot2_struct) {
         : "memory"
     );
 
-    // gdt
     amd64_init_gdt();
-
-    // idt
     amd64_init_idt();
-
-    // msr
     amd64_init_msr();
 
     // call all c++ global constructors

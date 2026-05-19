@@ -42,7 +42,6 @@ typedef interrupt_regs_t*(*interrupt_dispatch_callback_t)(u64 code, interrupt_re
 
 void amd64_set_idt_entries(amd64_idt_entry_t* idt, u16 kernel_code_selector);
 void amd64_set_idtr(amd64_idt_register_t* idtr, amd64_idt_entry_t* idt);
-void amd64_set_interrupt_dispatch_callback(interrupt_dispatch_callback_t callback);
 void amd64_interrupt_send_eoi(u8 irq);
 void amd64_irq_unmask(u8 irq);
 
