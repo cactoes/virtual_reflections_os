@@ -2,7 +2,6 @@
 #include "elf.hpp"
 #include "memory/vmem.hpp"
 #include "memory/paging.hpp"
-#include "arch/gdt.hpp"
 #include "arch/generic.hpp"
 #include "linker.hpp"
 #include "virtual_thread.hpp"

@@ -314,5 +314,7 @@ void amd64_entry(void* multiboot2_struct) {
 
     // jump to virtual kernel entrypoint
     virtual_kernel_entry((struct multiboot_t*)((u64)multiboot2_struct + KERNEL_VIRTUAL_BASE_ADDRESS), (void*)&linker_variables::page_table_l4);
+
+    // backup catch
     while (true);
 }

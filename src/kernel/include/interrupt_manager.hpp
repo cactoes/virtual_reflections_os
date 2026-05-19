@@ -52,7 +52,6 @@ enum class interrupt_t : u64 {
     HARDWARE_PRIMARY_ATA_HD = 36,
     HARDWARE_SECONDARY_ATA_HD = 37,
 
-    SOFTWARE_SYSTEMCALL,
     SOFTWARE_SCHEDULER,
 
     SIZE,
@@ -69,44 +68,6 @@ struct interrupt_hook_t {
 
 interrupt_regs_t* interrupt_manager_dispatch(interrupt_t interrupt, interrupt_regs_t* stack);
 bool hook_interrupt(interrupt_t code, interrupt_callback_t callback, void* data);
-
-// /// @brief              checks if the given interrupt code is an exception
-// /// @param code         interrupt code to check
-// /// @return             true if code is in the exception range (0-21), false otherwise
-// bool is_interrupt_exception(u64 code);
-
-// /// @brief              checks if the given interrupt code is an exception
-// /// @param code         interrupt code to check
-// /// @return             true if code is in the exception range (0-21), false otherwise
-// bool is_interrupt_exception(interrupt_t code);
-
-// /// @brief              checks if the given interrupt code is a hardware interrupt
-// /// @param code         interrupt code to check
-// /// @return             true if code is a hardware interrupt, false otherwise
-// bool is_interrupt_hardware(u64 code);
-
-// /// @brief              checks if the given interrupt code is a hardware interrupt
-// /// @param code         interrupt code to check
-// /// @return             true if code is a hardware interrupt, false otherwise
-// bool is_interrupt_hardware(interrupt_t code);
-
-// /// @brief              converts a raw interrupt code to an interrupt_t enum value
-// /// @param code         raw interrupt code to convert
-// /// @return             interrupt_t
-// interrupt_t convert_to_interrupt(u64 code);
-
-// bool set_interrupt_hook(interrupt_t code, interrupt_callback_t callback, void* data);
-
-// /// @brief          convert a hardware irq number to its corresponding interrupt vector
-// /// @param irq      hardware irq number to convert
-// /// @return         interrupt vector number corresponding to the given irq
-// u64 interrupt_irq_to_int(u64 irq);
-
-// /// @brief          handles an interrupt by dispatching to the correct callback or handler
-// /// @param code     interrupt code to handle
-// /// @param[in]      p_rsp   pointer to cpu state at time of interrupt
-// /// @return         updated cpu state pointer after handling the interrupt
-// void* handle_interrupt(u64 code, interrupt_regs_t* p_rsp);
 
 /// @brief          checks if current section is in side an interrupt
 /// @return         is in interrupt state

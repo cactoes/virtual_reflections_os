@@ -1,8 +1,5 @@
 #include "arch/generic.hpp"
-#include "arch/gdt.hpp"
-#include "arch/interrupt.hpp"
 #include "arch/pit.hpp"
-#include "arch/msr.hpp"
 
 #include "drivers/vga.hpp"
 #include "drivers/pcie.hpp"
@@ -168,6 +165,14 @@ void init_pci_devices(const pci_device_t* device) {
     }
 };
 
+interrupt_regs_t* crash_handler_callback(interrupt_regs_t* stack, void* data) {
+    // TODO @since 19/05/2026 -- 16:09
+    // this is still heavily based on architecture
+    // so we need to find some alternative for this
+    kernel_fatal_internal((u64)data, "critical interrupt triggerd!", stack);
+    return stack;
+}
+
 extern bool io_term_init(size_t w, size_t h);
 
 extern "C" NORETURN void virtual_kernel_entry(multiboot2_info_t* multiboot_struct, void* kernel_pt_paddr) {
@@ -209,9 +214,35 @@ extern "C" NORETURN void virtual_kernel_entry(multiboot2_info_t* multiboot_struc
     printf("[ \033[92mOK\033[0m ] initialized graphics driver\n");
 
     // initialze the interrupt line(s)
+    hook_interrupt(interrupt_t::EXCEPTION_DIVISION_BY_ZERO, crash_handler_callback, (void*)interrupt_t::EXCEPTION_DIVISION_BY_ZERO);
+    hook_interrupt(interrupt_t::EXCEPTION_SINGLE_STEP_INTERRUPT, crash_handler_callback, (void*)interrupt_t::EXCEPTION_SINGLE_STEP_INTERRUPT);
+    hook_interrupt(interrupt_t::EXCEPTION_NMI, crash_handler_callback, (void*)interrupt_t::EXCEPTION_NMI);
+    hook_interrupt(interrupt_t::EXCEPTION_BREAKPOINT, crash_handler_callback, (void*)interrupt_t::EXCEPTION_BREAKPOINT);
+    hook_interrupt(interrupt_t::EXCEPTION_OVERFLOW, crash_handler_callback, (void*)interrupt_t::EXCEPTION_OVERFLOW);
+    hook_interrupt(interrupt_t::EXCEPTION_BOUND_RANGE_EXCEEDED, crash_handler_callback, (void*)interrupt_t::EXCEPTION_BOUND_RANGE_EXCEEDED);
+    hook_interrupt(interrupt_t::EXCEPTION_INVALID_OPCODE, crash_handler_callback, (void*)interrupt_t::EXCEPTION_INVALID_OPCODE);
+    hook_interrupt(interrupt_t::EXCEPTION_COPROCESSOR_NOT_AVAILABLE, crash_handler_callback, (void*)interrupt_t::EXCEPTION_COPROCESSOR_NOT_AVAILABLE);
+    hook_interrupt(interrupt_t::EXCEPTION_DOUBLE_FAULT, crash_handler_callback, (void*)interrupt_t::EXCEPTION_DOUBLE_FAULT);
+    hook_interrupt(interrupt_t::EXCEPTION_COPROCESSOR_SEGMENT_OVERRUN, crash_handler_callback, (void*)interrupt_t::EXCEPTION_COPROCESSOR_SEGMENT_OVERRUN);
+    hook_interrupt(interrupt_t::EXCEPTION_INVALID_TSS, crash_handler_callback, (void*)interrupt_t::EXCEPTION_INVALID_TSS);
+    hook_interrupt(interrupt_t::EXCEPTION_SEGMENT_NOT_PRESENT, crash_handler_callback, (void*)interrupt_t::EXCEPTION_SEGMENT_NOT_PRESENT);
+    hook_interrupt(interrupt_t::EXCEPTION_STACK_SEGMENT_FAULT, crash_handler_callback, (void*)interrupt_t::EXCEPTION_STACK_SEGMENT_FAULT);
+    hook_interrupt(interrupt_t::EXCEPTION_GENERAL_PROTECTION_FAULT, crash_handler_callback, (void*)interrupt_t::EXCEPTION_GENERAL_PROTECTION_FAULT);
+    hook_interrupt(interrupt_t::EXCEPTION_PAGE_FAULT, crash_handler_callback, (void*)interrupt_t::EXCEPTION_PAGE_FAULT);
+    hook_interrupt(interrupt_t::EXCEPTION_RESERVED, crash_handler_callback, (void*)interrupt_t::EXCEPTION_RESERVED);
+    hook_interrupt(interrupt_t::EXCEPTION_X87_FLOATING_POINT_EXCEPTION, crash_handler_callback, (void*)interrupt_t::EXCEPTION_X87_FLOATING_POINT_EXCEPTION);
+    hook_interrupt(interrupt_t::EXCEPTION_ALIGNMENT_CHECK, crash_handler_callback, (void*)interrupt_t::EXCEPTION_ALIGNMENT_CHECK);
+    hook_interrupt(interrupt_t::EXCEPTION_MACHINE_CHECK, crash_handler_callback, (void*)interrupt_t::EXCEPTION_MACHINE_CHECK);
+    hook_interrupt(interrupt_t::EXCEPTION_SIMD_FP_EXCEPTION, crash_handler_callback, (void*)interrupt_t::EXCEPTION_SIMD_FP_EXCEPTION);
+    hook_interrupt(interrupt_t::EXCEPTION_VIRTUALIZATION_EXCEPTION, crash_handler_callback, (void*)interrupt_t::EXCEPTION_VIRTUALIZATION_EXCEPTION);
+    hook_interrupt(interrupt_t::EXCEPTION_CONTROL_PROTECTION_EXCEPTION, crash_handler_callback, (void*)interrupt_t::EXCEPTION_CONTROL_PROTECTION_EXCEPTION);
+
     hook_interrupt(interrupt_t::HARDWARE_PIT, pit_handle_interrupt, nullptr);
     hook_interrupt(interrupt_t::HARDWARE_KEYBOARD, ps2_keyboard_handle_interrupt, nullptr);
     hook_interrupt(interrupt_t::HARDWARE_PS2_MOUSE, ps2_mouse_handle_interrupt, nullptr);
+
+    // TODO @since 19/05/2026 -- 16:11
+    // make this less platform dependent
     hook_interrupt(interrupt_t::SOFTWARE_SCHEDULER, vthread_handle_interrupt, nullptr);
 
     ps2_mouse_init();

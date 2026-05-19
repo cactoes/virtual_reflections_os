@@ -1,8 +1,6 @@
 #include "virtual_thread.hpp"
 #include "std/map.hpp"
 #include "utils/mutex.hpp"
-#include "arch/gdt.hpp"
-#include "arch/interrupt.hpp"
 #include "arch/generic.hpp"
 #include "crash_handler.hpp"
 #include "time/clock.hpp"

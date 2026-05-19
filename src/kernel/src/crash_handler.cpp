@@ -1,6 +1,5 @@
 #include "crash_handler.hpp"
 #include "arch/generic.hpp"
-#include "arch/interrupt.hpp"
 #include "drivers/vga.hpp"
 #include "std/string.hpp"
 #include "utils/debug.hpp"
