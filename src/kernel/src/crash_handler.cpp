@@ -1,5 +1,5 @@
 #include "crash_handler.hpp"
-#include "arch/generic.hpp"
+
 #include "drivers/vga.hpp"
 #include "std/string.hpp"
 #include "utils/debug.hpp"
@@ -53,7 +53,7 @@ void kernel_fatal_internal(u64 code, const char* message, interrupt_regs_t* cpu_
                 bool is_mode_user = (cpu_state->error_code & 0x4);
     
                 kprintf("PAGE_FAULT\n        address: 0x%p\n        reason:%s\n        operation:%s\n        mode:%s",
-                    read_cr2(),
+                    amd64_read_cr2(),
                     is_reason_protection ? "protection violation" : "non-present page",
                     is_operation_write ? "write" : "read",
                     is_mode_user ? "user" : "kernel");
@@ -83,7 +83,7 @@ void kernel_fatal_internal(u64 code, const char* message, interrupt_regs_t* cpu_
     kprintf("\n");
 
     kprintf("cpu dump:\n");
-    kprintf("    cr2:        0x%uh\n", read_cr2());
+    kprintf("    cr2:        0x%uh\n", amd64_read_cr2());
     if (cpu_state) {
         kprintf("    rflags:     0x%uh\n", cpu_state->rflags);
         kprintf("    error code: 0x%uh\n", cpu_state->error_code);

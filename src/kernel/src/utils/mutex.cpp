@@ -1,8 +1,13 @@
 #include "utils/mutex.hpp"
-#include "arch/generic.hpp"
+
 #include "virtual_thread.hpp"
 #include "interrupt_manager.hpp"
 #include "utils/debug.hpp"
+#include "arch/amd64/cpu.hpp"
+#include "arch/amd64/atomic.hpp"
+
+// TODO @since 21/05/2026 -- 22:57
+// remove the stupid amd64 here
 
 #define MUTEX_ARRAY_SIZE 128
 
@@ -43,12 +48,12 @@ void mutex_lock(mutex_t* p_mutex) {
 
     if (thread_local_storage_t* tls = __thread_tls) {
         if (tls->irq_disable_depth == 0)
-            tls->saved_irq_flags = save_flags_and_cli();
+            tls->saved_irq_flags = amd64_save_flags_and_cli();
     
         tls->irq_disable_depth++;
     }
 
-    while (atomic_exchange(&p_mutex->locked, 1) != 0)
+    while (amd64_atomic_exchange(&p_mutex->locked, 1) != 0)
         vthread_yield();
 
     if (thread_local_storage_t* tls = __thread_tls) {
@@ -69,12 +74,12 @@ void mutex_unlock(mutex_t* p_mutex) {
         tls->irq_disable_depth--;
 
         if (tls->irq_disable_depth == 0)
-            restore_flags(tls->saved_irq_flags);
+            amd64_restore_flags(tls->saved_irq_flags);
     }
 
     remove_from_mutex_array(global_mutex_array, p_mutex);
     
-    atomic_exchange(&p_mutex->locked, 0);
+    amd64_atomic_exchange(&p_mutex->locked, 0);
 }
 
 void mutex_clear_all_thread_references_and_release(vthread_handle_t handle) {
@@ -86,11 +91,11 @@ void mutex_clear_all_thread_references_and_release(vthread_handle_t handle) {
 }
 
 void spinlock_lock(spinlock_t* lock) {
-    lock->prev_interrupt_state = save_flags_and_cli();
-    while (atomic_exchange(&lock->locked, 1) != 0);
+    lock->prev_interrupt_state = amd64_save_flags_and_cli();
+    while (amd64_atomic_exchange(&lock->locked, 1) != 0);
 }
 
 void spinlock_unlock(spinlock_t* lock) {
-    atomic_exchange(&lock->locked, 0);
-    restore_flags(lock->prev_interrupt_state);
+    amd64_atomic_exchange(&lock->locked, 0);
+    amd64_restore_flags(lock->prev_interrupt_state);
 }

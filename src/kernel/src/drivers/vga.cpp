@@ -1,6 +1,9 @@
 #include "drivers/vga.hpp"
-#include "arch/generic.hpp"
+
 #include "memory/heap.hpp"
+// TODO @since 21/05/2026 -- 22:29
+// you know the drill
+#include "arch/amd64/port.hpp"
 
 vga_buffer_t g_vga_tm_buffer {};
 static vga_buffer_t* g_vga_gm_buffer = nullptr;
@@ -117,10 +120,10 @@ int vga_tm_set_cursor(vga_buffer_t* p_buffer, u32 x, u32 y) {
 
     int position = x + p_buffer->size.width * y;
 
-    out_port<u8>(VGA_CRTC_INDEX, 14);
-    out_port<u8>(VGA_CRTC_DATA, (position >> 8) & 0xFF);
-    out_port<u8>(VGA_CRTC_INDEX, 15);
-    out_port<u8>(VGA_CRTC_DATA, position & 0xFF);
+    amd64_out_port8(VGA_CRTC_INDEX, 14);
+    amd64_out_port8(VGA_CRTC_DATA, (position >> 8) & 0xFF);
+    amd64_out_port8(VGA_CRTC_INDEX, 15);
+    amd64_out_port8(VGA_CRTC_DATA, position & 0xFF);
 
     p_buffer->cursor.x = x;
     p_buffer->cursor.y = y;
@@ -155,22 +158,22 @@ int vga_tm_get_color(vga_buffer_t* p_buffer, vga_tm_color_map_t* p_color_map) {
 }
 
 void vga_gm_set_palette_color(u8 color_index, u8 red, u8 green, u8 blue) {
-    out_port<u8>(0x03C8, color_index);
-    out_port<u8>(0x03C9, red >> 2);
-    out_port<u8>(0x03C9, green >> 2);
-    out_port<u8>(0x03C9, blue >> 2);
+    amd64_out_port8(0x03C8, color_index);
+    amd64_out_port8(0x03C9, red >> 2);
+    amd64_out_port8(0x03C9, green >> 2);
+    amd64_out_port8(0x03C9, blue >> 2);
 }
 
 void vga_gm_startup(vga_buffer_t* p_back_buffer) {
-    out_port<u8>(VGA_MISC_PORT, 0x63);
+    amd64_out_port8(VGA_MISC_PORT, 0x63);
 
-    out_port<u8>(VGA_SEQ_INDEX, 0x00); out_port<u8>(VGA_SEQ_DATA, 0x03);
-    out_port<u8>(VGA_SEQ_INDEX, 0x01); out_port<u8>(VGA_SEQ_DATA, 0x01);
-    out_port<u8>(VGA_SEQ_INDEX, 0x02); out_port<u8>(VGA_SEQ_DATA, 0x0F);
-    out_port<u8>(VGA_SEQ_INDEX, 0x03); out_port<u8>(VGA_SEQ_DATA, 0x00);
-    out_port<u8>(VGA_SEQ_INDEX, 0x04); out_port<u8>(VGA_SEQ_DATA, 0x0E);
+    amd64_out_port8(VGA_SEQ_INDEX, 0x00); amd64_out_port8(VGA_SEQ_DATA, 0x03);
+    amd64_out_port8(VGA_SEQ_INDEX, 0x01); amd64_out_port8(VGA_SEQ_DATA, 0x01);
+    amd64_out_port8(VGA_SEQ_INDEX, 0x02); amd64_out_port8(VGA_SEQ_DATA, 0x0F);
+    amd64_out_port8(VGA_SEQ_INDEX, 0x03); amd64_out_port8(VGA_SEQ_DATA, 0x00);
+    amd64_out_port8(VGA_SEQ_INDEX, 0x04); amd64_out_port8(VGA_SEQ_DATA, 0x0E);
 
-    out_port<u8>(VGA_CRTC_INDEX, 0x11); out_port<u8>(VGA_CRTC_DATA, 0x00);
+    amd64_out_port8(VGA_CRTC_INDEX, 0x11); amd64_out_port8(VGA_CRTC_DATA, 0x00);
 
     static const u8 s_crtc_320x200[25] = {
         0x5F, 0x4F, 0x50, 0x82, 0x54, 0x80, 0xBF, 0x1F,
@@ -180,34 +183,34 @@ void vga_gm_startup(vga_buffer_t* p_back_buffer) {
     };
 
     for (u8 i = 0; i < ARRAY_SIZE(s_crtc_320x200); i++) {
-        out_port<u8>(VGA_CRTC_INDEX, i);
-        out_port<u8>(VGA_CRTC_DATA, s_crtc_320x200[i]);
+        amd64_out_port8(VGA_CRTC_INDEX, i);
+        amd64_out_port8(VGA_CRTC_DATA, s_crtc_320x200[i]);
     }
 
-    out_port<u8>(VGA_GC_INDEX, 0x00); out_port<u8>(VGA_GC_DATA, 0x00);
-    out_port<u8>(VGA_GC_INDEX, 0x01); out_port<u8>(VGA_GC_DATA, 0x00);
-    out_port<u8>(VGA_GC_INDEX, 0x02); out_port<u8>(VGA_GC_DATA, 0x00);
-    out_port<u8>(VGA_GC_INDEX, 0x03); out_port<u8>(VGA_GC_DATA, 0x00);
-    out_port<u8>(VGA_GC_INDEX, 0x04); out_port<u8>(VGA_GC_DATA, 0x00);
-    out_port<u8>(VGA_GC_INDEX, 0x05); out_port<u8>(VGA_GC_DATA, 0x40);
-    out_port<u8>(VGA_GC_INDEX, 0x06); out_port<u8>(VGA_GC_DATA, 0x05);
-    out_port<u8>(VGA_GC_INDEX, 0x07); out_port<u8>(VGA_GC_DATA, 0x0F);
-    out_port<u8>(VGA_GC_INDEX, 0x08); out_port<u8>(VGA_GC_DATA, 0xFF);
+    amd64_out_port8(VGA_GC_INDEX, 0x00); amd64_out_port8(VGA_GC_DATA, 0x00);
+    amd64_out_port8(VGA_GC_INDEX, 0x01); amd64_out_port8(VGA_GC_DATA, 0x00);
+    amd64_out_port8(VGA_GC_INDEX, 0x02); amd64_out_port8(VGA_GC_DATA, 0x00);
+    amd64_out_port8(VGA_GC_INDEX, 0x03); amd64_out_port8(VGA_GC_DATA, 0x00);
+    amd64_out_port8(VGA_GC_INDEX, 0x04); amd64_out_port8(VGA_GC_DATA, 0x00);
+    amd64_out_port8(VGA_GC_INDEX, 0x05); amd64_out_port8(VGA_GC_DATA, 0x40);
+    amd64_out_port8(VGA_GC_INDEX, 0x06); amd64_out_port8(VGA_GC_DATA, 0x05);
+    amd64_out_port8(VGA_GC_INDEX, 0x07); amd64_out_port8(VGA_GC_DATA, 0x0F);
+    amd64_out_port8(VGA_GC_INDEX, 0x08); amd64_out_port8(VGA_GC_DATA, 0xFF);
 
     for (u8 i = 0; i < 16; i++) {
-        in_port<u8>(VGA_INSTAT_READ);
-        out_port<u8>(VGA_AC_INDEX, i);
-        out_port<u8>(VGA_AC_WRITE, i);
+        amd64_in_port8(VGA_INSTAT_READ);
+        amd64_out_port8(VGA_AC_INDEX, i);
+        amd64_out_port8(VGA_AC_WRITE, i);
     }
 
-    in_port<u8>(VGA_INSTAT_READ); out_port<u8>(VGA_AC_INDEX, 0x10); out_port<u8>(VGA_AC_WRITE, 0x41);
-    in_port<u8>(VGA_INSTAT_READ); out_port<u8>(VGA_AC_INDEX, 0x11); out_port<u8>(VGA_AC_WRITE, 0x00);
-    in_port<u8>(VGA_INSTAT_READ); out_port<u8>(VGA_AC_INDEX, 0x12); out_port<u8>(VGA_AC_WRITE, 0x0F);
-    in_port<u8>(VGA_INSTAT_READ); out_port<u8>(VGA_AC_INDEX, 0x13); out_port<u8>(VGA_AC_WRITE, 0x00);
-    in_port<u8>(VGA_INSTAT_READ); out_port<u8>(VGA_AC_INDEX, 0x14); out_port<u8>(VGA_AC_WRITE, 0x00);
+    amd64_in_port8(VGA_INSTAT_READ); amd64_out_port8(VGA_AC_INDEX, 0x10); amd64_out_port8(VGA_AC_WRITE, 0x41);
+    amd64_in_port8(VGA_INSTAT_READ); amd64_out_port8(VGA_AC_INDEX, 0x11); amd64_out_port8(VGA_AC_WRITE, 0x00);
+    amd64_in_port8(VGA_INSTAT_READ); amd64_out_port8(VGA_AC_INDEX, 0x12); amd64_out_port8(VGA_AC_WRITE, 0x0F);
+    amd64_in_port8(VGA_INSTAT_READ); amd64_out_port8(VGA_AC_INDEX, 0x13); amd64_out_port8(VGA_AC_WRITE, 0x00);
+    amd64_in_port8(VGA_INSTAT_READ); amd64_out_port8(VGA_AC_INDEX, 0x14); amd64_out_port8(VGA_AC_WRITE, 0x00);
 
-    in_port<u8>(VGA_INSTAT_READ);
-    out_port<u8>(VGA_AC_INDEX, 0x20);
+    amd64_in_port8(VGA_INSTAT_READ);
+    amd64_out_port8(VGA_AC_INDEX, 0x20);
 
     static const u8 s_ega16[16][3] = {
         {  0,  0,  0}, {  0,  0,170}, {  0,170,  0}, {  0,170,170},

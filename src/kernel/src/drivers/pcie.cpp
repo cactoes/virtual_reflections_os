@@ -1,5 +1,8 @@
 #include "drivers/pcie.hpp"
-#include "arch/generic.hpp"
+
+// TODO @since 21/05/2026 -- 22:29
+// you know the drill
+#include "arch/amd64/port.hpp"
 
 pcie_device_manager_t* global_pcie_device_manager = nullptr;
 
@@ -13,14 +16,14 @@ pcie_device_manager_t* get_global_pcie_device_manager() {
 
 u32 pci_config_read(const pci_device_t* p_device, u32 offset) {
     const u32 address = PCI_CREATE_CONFIG_ADDRESS(p_device->bus, p_device->device, p_device->function, offset & ~0x3);
-    out_port<u32>(PCI_CONFIG_ADDRESS, address);
-    return in_port<u32>(PCI_CONFIG_DATA);
+    amd64_out_port32(PCI_CONFIG_ADDRESS, address);
+    return amd64_in_port32(PCI_CONFIG_DATA);
 }
 
 void pci_config_write(const pci_device_t* p_device, u32 offset, u32 value) {
     const u32 address = PCI_CREATE_CONFIG_ADDRESS(p_device->bus, p_device->device, p_device->function, offset & ~0x3);
-    out_port<u32>(PCI_CONFIG_ADDRESS, address);
-    out_port<u32>(PCI_CONFIG_DATA, value);
+    amd64_out_port32(PCI_CONFIG_ADDRESS, address);
+    amd64_out_port32(PCI_CONFIG_DATA, value);
 }
 
 const char* pci_get_class_description(const pci_device_t* p_device) {

@@ -1,6 +1,6 @@
 #include "memory/vmem.hpp"
 #include "memory/paging.hpp"
-#include "arch/generic.hpp"
+
 #include "multiboot.hpp"
 #include "utils/bitmap.hpp"
 #include "linker.hpp"
@@ -119,17 +119,19 @@ bool vmem_map_2mb(const void* vaddr, const void* paddr, u64 flags) {
 bool v2_vmem_map_2mb_remote(struct process_t* process, const void* vaddr, const void* paddr, u64 flags) {
     // if amd64 ->
 
-    disable_interrupts();
-    void* prev_page_table = get_pml4();
-    set_pml4(process->page_table);
+    // disable_interrupts();
+    // void* prev_page_table = get_pml4();
+    // set_pml4(process->page_table);
 
-    bool result = vmem_map_2mb(vaddr, paddr, flags);
+    // bool result = vmem_map_2mb(vaddr, paddr, flags);
 
-    set_pml4(prev_page_table);
-    enable_interrupts();
+    // set_pml4(prev_page_table);
+    // enable_interrupts();
 
-    return result;
+    // return result;
 
     // else ->
     // error
+
+    return false;
 }

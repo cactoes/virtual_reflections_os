@@ -1,10 +1,13 @@
 #include "drivers/storage/ide.hpp"
-#include "arch/generic.hpp"
+
 #include "std/string.hpp"
+// TODO @since 21/05/2026 -- 22:29
+// you know the drill
+#include "arch/amd64/port.hpp"
 
 bool wait_ide_status(u16 io_base, u8 mask_set, u8 mask_clear) {
     while (true) {
-        u8 status = in_port<u8>(io_base + IDE_REG_COMMAND_STATUS);
+        u8 status = amd64_in_port8(io_base + IDE_REG_COMMAND_STATUS);
 
         if ((status & mask_set) == mask_set && (status & mask_clear) == 0)
             return true;
@@ -18,25 +21,25 @@ bool wait_ide_status(u16 io_base, u8 mask_set, u8 mask_clear) {
 }
 
 bool ide_send_identify(ide_device_t* device, u16* buffer) {
-    out_port<u8>(device->channel.io_base + IDE_REG_DEVICE, (device->type == ide_type_t::MASTER ? IDE_DEVICE_MASTER : IDE_DEVICE_SLAVE));
-    out_port<u8>(device->channel.io_base + IDE_REG_SECCOUNT, 0);
-    out_port<u8>(device->channel.io_base + IDE_REG_LBA_LOW, 0);
-    out_port<u8>(device->channel.io_base + IDE_REG_LBA_MID, 0);
-    out_port<u8>(device->channel.io_base + IDE_REG_LBA_HIGH, 0);
-    out_port<u8>(device->channel.io_base + IDE_REG_COMMAND_STATUS, (device->is_atapi ? IDE_CMD_IDENTIFY_PACKET : IDE_CMD_IDENTIFY));
+    amd64_out_port8(device->channel.io_base + IDE_REG_DEVICE, (device->type == ide_type_t::MASTER ? IDE_DEVICE_MASTER : IDE_DEVICE_SLAVE));
+    amd64_out_port8(device->channel.io_base + IDE_REG_SECCOUNT, 0);
+    amd64_out_port8(device->channel.io_base + IDE_REG_LBA_LOW, 0);
+    amd64_out_port8(device->channel.io_base + IDE_REG_LBA_MID, 0);
+    amd64_out_port8(device->channel.io_base + IDE_REG_LBA_HIGH, 0);
+    amd64_out_port8(device->channel.io_base + IDE_REG_COMMAND_STATUS, (device->is_atapi ? IDE_CMD_IDENTIFY_PACKET : IDE_CMD_IDENTIFY));
 
-    u8 status = in_port<u8>(device->channel.io_base + IDE_REG_COMMAND_STATUS);
+    u8 status = amd64_in_port8(device->channel.io_base + IDE_REG_COMMAND_STATUS);
     if (status == 0)
         return false;
 
     while ((status & IDE_STATUS_BSY) && !(status & IDE_STATUS_DRQ))
-        status = in_port<u8>(device->channel.io_base + IDE_REG_COMMAND_STATUS);
+        status = amd64_in_port8(device->channel.io_base + IDE_REG_COMMAND_STATUS);
 
     if (!(status & IDE_STATUS_DRQ))
         return false;
 
     for (size_t i = 0; i < 256; i++)
-        buffer[i] = in_port<u16>(device->channel.io_base + IDE_REG_DATA);
+        buffer[i] = amd64_in_port16(device->channel.io_base + IDE_REG_DATA);
 
     return true;
 }
@@ -67,7 +70,7 @@ bool ide_atapi_send_packet(ide_device_t* device, const u8* packet, u8* buffer, s
     if (!device || !packet || !buffer)
         return false;
 
-    out_port<u8>(device->channel.io_base + IDE_REG_DEVICE, device->type == ide_type_t::MASTER ? IDE_DEVICE_MASTER : IDE_DEVICE_SLAVE);
+    amd64_out_port8(device->channel.io_base + IDE_REG_DEVICE, device->type == ide_type_t::MASTER ? IDE_DEVICE_MASTER : IDE_DEVICE_SLAVE);
 
     spinlock_lock(&device->spinlock);
 
@@ -76,9 +79,9 @@ bool ide_atapi_send_packet(ide_device_t* device, const u8* packet, u8* buffer, s
         return false;
     }
 
-    out_port<u8>(device->channel.io_base + IDE_REG_LBA_MID, (u8)(size & 0xFF));
-    out_port<u8>(device->channel.io_base + IDE_REG_LBA_HIGH, (u8)((size >> 8) & 0xFF));
-    out_port<u8>(device->channel.io_base + IDE_REG_COMMAND_STATUS, IDE_CMD_PACKET);
+    amd64_out_port8(device->channel.io_base + IDE_REG_LBA_MID, (u8)(size & 0xFF));
+    amd64_out_port8(device->channel.io_base + IDE_REG_LBA_HIGH, (u8)((size >> 8) & 0xFF));
+    amd64_out_port8(device->channel.io_base + IDE_REG_COMMAND_STATUS, IDE_CMD_PACKET);
 
     if (!wait_ide_status(device->channel.io_base, IDE_STATUS_DRQ, IDE_STATUS_BSY)) {
         spinlock_unlock(&device->spinlock);
@@ -87,7 +90,7 @@ bool ide_atapi_send_packet(ide_device_t* device, const u8* packet, u8* buffer, s
 
     for (size_t i = 0; i < 12; i += 2) {
         u16 part = (packet[i + 1] << 8) | packet[i];
-        out_port<u16>(device->channel.io_base + IDE_REG_DATA, part);
+        amd64_out_port16(device->channel.io_base + IDE_REG_DATA, part);
     }
 
     if (!wait_ide_status(device->channel.io_base, IDE_STATUS_DRQ, IDE_STATUS_BSY)) {
@@ -96,7 +99,7 @@ bool ide_atapi_send_packet(ide_device_t* device, const u8* packet, u8* buffer, s
     }
 
     for (size_t i = 0; i < size; i += 2) {
-        u16 word = in_port<u16>(device->channel.io_base + IDE_REG_DATA);
+        u16 word = amd64_in_port16(device->channel.io_base + IDE_REG_DATA);
         buffer[i] = word & 0xFF;
 
         if (i + 1 < size)
@@ -192,21 +195,21 @@ bool ide_init(const pci_device_t* device, std::dynamic_array<ide_device_t>* devi
         for (int drive = 0; drive < 2; drive++) {
             const ide_type_t type = (drive == 0) ? ide_type_t::MASTER : ide_type_t::SLAVE;
 
-            out_port<u8>(channel.io_base + IDE_REG_DEVICE, type == ide_type_t::MASTER ? IDE_DEVICE_MASTER : IDE_DEVICE_SLAVE);
-            out_port<u8>(channel.ctrl_base, IDE_CTRL_DISABLE_IRQ);
+            amd64_out_port8(channel.io_base + IDE_REG_DEVICE, type == ide_type_t::MASTER ? IDE_DEVICE_MASTER : IDE_DEVICE_SLAVE);
+            amd64_out_port8(channel.ctrl_base, IDE_CTRL_DISABLE_IRQ);
 
-            out_port<u8>(channel.io_base + IDE_REG_ERROR_FEATURES, 0); 
-            out_port<u8>(channel.io_base + IDE_REG_COMMAND_STATUS, IDE_CMD_IDENTIFY);
+            amd64_out_port8(channel.io_base + IDE_REG_ERROR_FEATURES, 0); 
+            amd64_out_port8(channel.io_base + IDE_REG_COMMAND_STATUS, IDE_CMD_IDENTIFY);
 
-            u8 status = in_port<u8>(channel.io_base + IDE_REG_COMMAND_STATUS);
+            u8 status = amd64_in_port8(channel.io_base + IDE_REG_COMMAND_STATUS);
             if (status == 0)
                 continue;
 
             while ((status & IDE_STATUS_BSY) && !(status & IDE_STATUS_DRQ))
-                status = in_port<u8>(channel.io_base + IDE_REG_COMMAND_STATUS);
+                status = amd64_in_port8(channel.io_base + IDE_REG_COMMAND_STATUS);
 
-            u8 cl = in_port<u8>(channel.io_base + IDE_REG_LBA_MID);
-            u8 ch = in_port<u8>(channel.io_base + IDE_REG_LBA_HIGH);
+            u8 cl = amd64_in_port8(channel.io_base + IDE_REG_LBA_MID);
+            u8 ch = amd64_in_port8(channel.io_base + IDE_REG_LBA_HIGH);
 
             ide_device_t ide_device {};
             ide_device.channel = channel;

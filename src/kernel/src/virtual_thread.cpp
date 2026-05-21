@@ -1,7 +1,7 @@
 #include "virtual_thread.hpp"
 #include "std/map.hpp"
 #include "utils/mutex.hpp"
-#include "arch/generic.hpp"
+
 #include "crash_handler.hpp"
 #include "time/clock.hpp"
 #include "std/string.hpp"
@@ -11,6 +11,7 @@
 #include "memory/heap.hpp"
 #include "io.hpp"
 #include "arch/amd64/idt.hpp"
+#include "arch/amd64/vmem.hpp"
 
 // TODO @since 23/10/2025 -- 19:06
 // change into 1 "bigger" thread handler
@@ -110,7 +111,7 @@ vthread_handle_t vthread_start_and_setup_main() {
     std::unique_ptr<vthread_t> p_vthread = std::make_unique<vthread_t>();
 
     p_vthread->handle = VTHREAD_MAIN_THREAD_HANDLE;
-    p_vthread->pml4 = get_pml4();
+    p_vthread->pml4 = amd64_get_page_table();
     p_vthread->tls.handle = VTHREAD_MAIN_THREAD_HANDLE;
     p_vthread->is_critical = true;
 
@@ -156,7 +157,7 @@ vthread_handle_t vthread_create_local(thread_entry_t p_thread_entry, const char 
     p_vthread->handle = new_handle;
     p_vthread->vt_state = vthread_state_t::RUNNING;
     p_vthread->fpu_state = (u8*)malloc_aligned(sizeof(u8) * 512, 16);
-    p_vthread->pml4 = get_pml4();
+    p_vthread->pml4 = amd64_get_page_table();
     p_vthread->tls.handle = new_handle;
 
     if (name) {
@@ -198,7 +199,7 @@ void* vthread_schedule(void* stack) {
         return stack;
 
     g_current_thread->stack_top = (void*)stack;
-    fpu_store(g_current_thread->fpu_state);
+    amd64_fpu_store(g_current_thread->fpu_state);
 
     do {
         g_current_thread = vthread_get_next_thead(g_current_thread->handle);
@@ -226,8 +227,8 @@ void* vthread_schedule(void* stack) {
 
     set_current_process(g_current_thread->parent);
 
-    set_pml4(g_current_thread->pml4);
-    fpu_load(g_current_thread->fpu_state);
+    amd64_set_page_table(g_current_thread->pml4);
+    amd64_fpu_load(g_current_thread->fpu_state);
 
     // this means that the thread is a userprocess
     // & needs a kernel stack when an interrupt happens

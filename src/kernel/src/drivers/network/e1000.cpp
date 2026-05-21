@@ -1,6 +1,6 @@
 #include "drivers/network/e1000.hpp"
 #include "memory/heap.hpp"
-#include "arch/generic.hpp"
+
 #include "memory/vmem.hpp"
 #include "interrupt_manager.hpp"
 #include "io.hpp"

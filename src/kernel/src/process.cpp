@@ -2,12 +2,13 @@
 #include "elf.hpp"
 #include "memory/vmem.hpp"
 #include "memory/paging.hpp"
-#include "arch/generic.hpp"
+
 #include "linker.hpp"
 #include "virtual_thread.hpp"
 #include "interrupt_manager.hpp"
 #include "arch/amd64/cpu.hpp"
 #include "arch/amd64/gdt.hpp"
+#include "arch/amd64/vmem.hpp"
 
 static process_t* g_process = nullptr;
 
@@ -107,14 +108,14 @@ bool create_process(process_t* process, const char* path) {
     p_vthread->parent = process;
 
     // do this before the page table switch
-    void* current_page_table_p = get_pml4();
+    void* current_page_table_p = amd64_get_page_table();
     void* base_address_p = vmem_virtual_to_physical(base_address_v);
     void* user_stack_p = vmem_virtual_to_physical(stack_kernel_v);
 
     // we dont want to accidentaly map into wrong address space
     // maybe find out how we can allways map into a remote page table safely?
     disable_interrupts();
-    set_pml4(new_page_table_p);
+    amd64_set_page_table(new_page_table_p);
 
     for (size_t i = 0; i < program_section_info.size; i += PAGE_SIZE_LARGE) {
         if (!vmem_map_2mb((void*)(program_section_info.min_address + i * PAGE_SIZE_LARGE), (void*)((u64)base_address_p + i * PAGE_SIZE_LARGE), VMEM_EXECUTE | VMEM_USER | VMEM_READWRITE))
@@ -127,7 +128,7 @@ bool create_process(process_t* process, const char* path) {
     if (!vmem_map_2mb(stack_user_v, user_stack_p, VMEM_EXECUTE | VMEM_USER | VMEM_READWRITE))
         return false;
 
-    set_pml4(current_page_table_p);
+    amd64_set_page_table(current_page_table_p);
     enable_interrupts();
 
     vthread_add(move(p_vthread));

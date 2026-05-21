@@ -1,6 +1,8 @@
 #include "drivers/cmos.hpp"
 
-#include "arch/generic.hpp"
+// TODO @since 21/05/2026 -- 22:29
+// you know the drill
+#include "arch/amd64/port.hpp"
 
 static int days_in_month(int year, int month) {
     static const int days[] = { 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
@@ -11,8 +13,8 @@ static int days_in_month(int year, int month) {
 }
 
 u8 cmos_read(u8 reg) {
-    out_port<u8>(CMOS_ADDR, reg);
-    return in_port<u8>(CMOS_DATA);
+    amd64_out_port8(CMOS_ADDR, reg);
+    return amd64_in_port8(CMOS_DATA);
 }
 
 u64 cmos_read_time() {

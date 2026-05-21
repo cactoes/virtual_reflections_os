@@ -7,7 +7,7 @@
 
 #include "gui/desktop.hpp"
 #include "time/clock.hpp"
-#include "arch/generic.hpp"
+
 #include "filesystems/vfs.hpp"
 
 #include "drivers/pcie.hpp"
