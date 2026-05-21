@@ -1,5 +1,7 @@
 #include "arch/amd64/gdt.hpp"
 
+#if CPU_ARCHITECTURE == ARCH_AMD64
+
 void amd64_gdt_init(amd64_gdt_t* gdt) {
     memzero(gdt, sizeof(amd64_gdt_t));
 }
@@ -37,3 +39,5 @@ u16 amd64_get_selector_for(u16 index) {
 
     return AMD64_GDT_INDEX_TO_ENTRY(index);
 }
+
+#endif

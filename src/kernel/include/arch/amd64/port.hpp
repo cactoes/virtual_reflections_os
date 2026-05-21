@@ -9,6 +9,9 @@
 #define __AMD64_PORT_HPP__
 
 #include "common.hpp"
+#include "arch/arch_selector.hpp"
+
+#if CPU_ARCHITECTURE == ARCH_AMD64
 
 static inline
 u8 amd64_in_port8(u16 port) {
@@ -45,5 +48,7 @@ static inline
 void amd64_out_port32(u16 port, u32 value) {
     asm volatile ("outl %1, %0" : : "dN"(port), "a"(value));
 }
+
+#endif
 
 #endif // __AMD64_PORT_HPP__

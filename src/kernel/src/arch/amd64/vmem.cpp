@@ -1,6 +1,8 @@
 #include "arch/amd64/vmem.hpp"
 #include "memory/paging.hpp"
 
+#if CPU_ARCHITECTURE == ARCH_AMD64
+
 bool amd64_vmem_map_2mb(const void* vaddr, const void* paddr, bool is_kernel, bool is_readwrite, bool is_executeable) {
     // TODO @since 20/05/2026 -- 00:26
     // readwrite, executable
@@ -90,3 +92,5 @@ void* amd64_vmem_virtual_to_physical(void* vaddr) {
     const u64 page_offset = (u64)vaddr & (PAGE_SIZE_LARGE - 1);
     return (void*)((pdt_virt[pde] & ~(PAGE_SIZE_LARGE - 1)) + page_offset);
 }
+
+#endif

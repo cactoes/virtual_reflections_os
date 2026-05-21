@@ -8,6 +8,10 @@
 #ifndef __AMD64_GDT_HPP__
 #define __AMD64_GDT_HPP__
 
+#include "arch/arch_selector.hpp"
+
+#if CPU_ARCHITECTURE == ARCH_AMD64
+
 #define AMD64_GDT_ACCESS_PRESENT            (1 << 7)
 #define AMD64_GDT_ACCESS_RING0              (0 << 0)
 #define AMD64_GDT_ACCESS_RING1              0b00100000
@@ -192,5 +196,7 @@ static inline void amd64_reload_segments(u16 code_selector, u16 data_selector) {
         : "rax", "memory"
     );
 }
+
+#endif
 
 #endif // __AMD64_GDT_HPP__

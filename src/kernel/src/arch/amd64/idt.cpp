@@ -1,6 +1,8 @@
 #include "arch/amd64/idt.hpp"
 #include "arch/amd64/port.hpp"
 
+#if CPU_ARCHITECTURE == ARCH_AMD64
+
 extern "C" void* amd64_isr_stub_table[];
 
 static void amd64_set_idt_entry(amd64_idt_entry_t* idt, u16 kernel_code_selector, u8 int_number, void* callback) {
@@ -46,3 +48,5 @@ void amd64_irq_unmask(u8 irq) {
     BIT_CLEAR(mask, irq);
     amd64_out_port8(pic_data_port, mask);
 }
+
+#endif

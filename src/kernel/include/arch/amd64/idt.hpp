@@ -8,6 +8,10 @@
 #ifndef __AMD64_IDT_HPP__
 #define __AMD64_IDT_HPP__
 
+#include "arch/arch_selector.hpp"
+
+#if CPU_ARCHITECTURE == ARCH_AMD64
+
 #define AMD64_INT_IDT_ENTRY_COUNT 256
 
 #define AMD64_INT_PIC1            0x20
@@ -64,5 +68,7 @@ static inline
 void amd64_interrupts_disable() {
     asm volatile ("cli");
 }
+
+#endif
 
 #endif // __AMD64_IDT_HPP__

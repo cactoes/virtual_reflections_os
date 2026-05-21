@@ -9,6 +9,9 @@
 #define __AMD64_CPU_HPP__
 
 #include "common.hpp"
+#include "arch/arch_selector.hpp"
+
+#if CPU_ARCHITECTURE == ARCH_AMD64
 
 struct interrupt_regs_t {
     u64 r8;
@@ -93,5 +96,7 @@ void amd64_restore_flags(u64 flags) {
         : "memory", "cc"
     );
 }
+
+#endif
 
 #endif // __AMD64_CPU_HPP__

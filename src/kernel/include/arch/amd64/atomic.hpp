@@ -8,6 +8,10 @@
 #ifndef __AMD64_ATOMIC_HPP__
 #define __AMD64_ATOMIC_HPP__
 
+#include "arch/arch_selector.hpp"
+
+#if CPU_ARCHITECTURE == ARCH_AMD64
+
 static inline
 int amd64_atomic_exchange(volatile int* ptr, int value) {
     int old;
@@ -42,5 +46,7 @@ int amd64_atomic_fetch_sub(volatile int* ptr, int value) {
     );
     return value;
 }
+
+#endif
 
 #endif // __AMD64_ATOMIC_HPP__

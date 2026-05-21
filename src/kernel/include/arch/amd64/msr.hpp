@@ -7,6 +7,10 @@
 #ifndef __AMD64_MSR_HPP__
 #define __AMD64_MSR_HPP__
 
+#include "arch/arch_selector.hpp"
+
+#if CPU_ARCHITECTURE == ARCH_AMD64
+
 #define AMD64_MSR_EFER            0xC0000080
 #define AMD64_MSR_STAR            0xC0000081
 #define AMD64_MSR_LSTAR           0xC0000082
@@ -70,5 +74,7 @@ static inline
 void amd64_msr_set_sf_mask(u64 mask) {
     amd64_wrmsr(AMD64_MSR_SFMASK, mask);
 }
+
+#endif
 
 #endif // __AMD64_MSR_HPP__

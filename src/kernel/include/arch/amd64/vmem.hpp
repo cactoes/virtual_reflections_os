@@ -9,6 +9,9 @@
 #define __AMD64_VMEM_HPP__
 
 #include "common.hpp"
+#include "arch/arch_selector.hpp"
+
+#if CPU_ARCHITECTURE == ARCH_AMD64
 
 bool amd64_vmem_map_2mb(const void* vaddr, const void* paddr, bool is_kernel, bool is_readwrite, bool is_executeable);
 bool amd64_vmem_unmap_2mb(void* vaddr);
@@ -40,5 +43,7 @@ static inline
 void amd64_fpu_load(void* fpu_region) {
     asm volatile("fxrstor (%0)" :: "r"(fpu_region));
 }
+
+#endif
 
 #endif // __AMD64_VMEM_HPP__

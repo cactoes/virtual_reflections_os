@@ -34,6 +34,8 @@ LINKER_FLAGS                := -z max-page-size=0x1000 -n -T $(LINKER_SCRIPT)
 
 # compile time define
 COMPILER_FLAGS += -DGIT_COMMIT_HASH=\"$(GIT_COMMIT_HASH)\"
+# 1 == amd64
+COMPILER_FLAGS += -DCPU_ARCHITECTURE=1
 
 # file sources & targets
 source_files                := $(shell find $(SOURCE_FILES_PATH) -name "*.cpp")

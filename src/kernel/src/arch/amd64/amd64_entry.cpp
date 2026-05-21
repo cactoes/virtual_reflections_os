@@ -12,6 +12,9 @@
 #include "interrupt_manager.hpp"
 #include "syscall_handler.hpp"
 #include "common.hpp"
+#include "arch/arch_selector.hpp"
+
+#if CPU_ARCHITECTURE == ARCH_AMD64
 
 /// @brief  generic defines
 #define PF_PRESENT                  (1 << 0)
@@ -323,3 +326,5 @@ void amd64_entry(void* multiboot2_struct) {
     // backup catch
     while (true);
 }
+
+#endif
