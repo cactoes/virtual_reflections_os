@@ -9,7 +9,6 @@
 #define __INTERRUPT_MANAGER_HPP__
 
 #include "common.hpp"
-#include "cpu.hpp"
 
 enum class interrupt_t : u64 {
     EXCEPTION_DIVISION_BY_ZERO = 0,
@@ -59,14 +58,14 @@ enum class interrupt_t : u64 {
     UNKOWN = (u64)-1,
 };
 
-typedef interrupt_regs_t*(*interrupt_callback_t)(interrupt_regs_t*, void*);
+typedef void*(*interrupt_callback_t)(void* stack, void* data);
 
 struct interrupt_hook_t {
     interrupt_callback_t callback;
     void* data;
 };
 
-interrupt_regs_t* interrupt_manager_dispatch(interrupt_t interrupt, interrupt_regs_t* stack);
+void* interrupt_manager_dispatch(interrupt_t interrupt, void* stack);
 bool hook_interrupt(interrupt_t code, interrupt_callback_t callback, void* data);
 
 /// @brief          checks if current section is in side an interrupt

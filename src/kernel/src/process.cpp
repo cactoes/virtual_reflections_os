@@ -6,6 +6,8 @@
 #include "linker.hpp"
 #include "virtual_thread.hpp"
 #include "interrupt_manager.hpp"
+#include "arch/amd64/cpu.hpp"
+#include "arch/amd64/gdt.hpp"
 
 static process_t* g_process = nullptr;
 
@@ -73,8 +75,8 @@ bool create_process(process_t* process, const char* path) {
 
     p_vthread->kstack = (void*)((u64)malloc_aligned(PAGE_SIZE_LARGE, 16));
 
-    u16 user_ds = (u16)((4 << 3) | 3); // USER_DATA_SELECTOR_INDEX
-    u16 user_cs = (u16)((5 << 3) | 3); // USER_CODE_SELECTOR_INDEX
+    u16 user_ds = (u16)((USER_DATA_SELECTOR_INDEX << 3) | 3);
+    u16 user_cs = (u16)((USER_CODE_SELECTOR_INDEX << 3) | 3);
 
     u64* stack_top = (u64*)(((u64)stack_user_v + PAGE_SIZE_LARGE - sizeof(interrupt_regs_t)) & ~0xF);
     u64* mapped_stack_top = (u64*)(((u64)stack_kernel_v + PAGE_SIZE_LARGE - sizeof(interrupt_regs_t)) & ~0xF);

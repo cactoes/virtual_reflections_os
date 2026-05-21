@@ -9,7 +9,7 @@ static ps2_key_state_t g_key_state_array[PS2_KEYBOARD_KEY_STATE_ARRAY_SIZE] {};
 static std::ring_buffer<8, ps2_key_state_t> global_keyboard_state_buffer {};
 static event_manager_t<const ps2_key_state_t*> g_keyboard_event_manager {};
 
-interrupt_regs_t* ps2_keyboard_handle_interrupt(interrupt_regs_t* p_rsp, void*) {
+void* ps2_keyboard_handle_interrupt(void* stack, void*) {
     ps2_key_state_t key_state {};
     key_state.full_code = ps2_read(PS2_DATA_PORT);
     key_state.is_escaped = false;
@@ -26,7 +26,7 @@ interrupt_regs_t* ps2_keyboard_handle_interrupt(interrupt_regs_t* p_rsp, void*) 
     key_state.is_capslock = key_state.scan_code == PS2_KEYBOARD_SC_CAPS_LOCK;
 
     if (key_state.scan_code >= PS2_KEYBOARD_KEY_STATE_ARRAY_SIZE)
-        return p_rsp;
+        return stack;
 
     // BUG @since 25/09/2025 -- 12:31
     // for some reason PS2_KEYBOARD_FULL_CODE_ESCAPED is not sent when releasing the key?
@@ -37,7 +37,7 @@ interrupt_regs_t* ps2_keyboard_handle_interrupt(interrupt_regs_t* p_rsp, void*) 
     g_last_scan_code = key_state.scan_code;
     global_keyboard_state_buffer.insert(key_state);
 
-    return p_rsp;
+    return stack;
 }
 
 u32 ps2_keyboard_get_last_scancode() {

@@ -164,11 +164,11 @@ void init_pci_devices(const pci_device_t* device) {
     }
 };
 
-interrupt_regs_t* crash_handler_callback(interrupt_regs_t* stack, void* data) {
+void* crash_handler_callback(void* stack, void* data) {
     // TODO @since 19/05/2026 -- 16:09
     // this is still heavily based on architecture
     // so we need to find some alternative for this
-    kernel_fatal_internal((u64)data, "critical interrupt triggerd!", stack);
+    kernel_fatal_internal((u64)data, "critical interrupt triggerd!", (struct interrupt_regs_t*)stack);
     return stack;
 }
 

@@ -7,6 +7,7 @@
 #include "io.hpp"
 #include "utils/mutex.hpp"
 #include "interrupt_manager.hpp"
+#include "arch/amd64/cpu.hpp"
 
 NORETURN void kernel_fatal_end() {
     while (true)

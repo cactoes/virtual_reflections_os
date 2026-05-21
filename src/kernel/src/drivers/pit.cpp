@@ -6,13 +6,13 @@
 static u64 g_tick_count = 0;
 static std::dynamic_array<pit_interrupt_function_t> g_interrupt_functions {};
 
-interrupt_regs_t* pit_handle_interrupt(interrupt_regs_t* p_cpu_state, void* data) {
+void* pit_handle_interrupt(void* stack, void* data) {
     g_tick_count++;
 
     for (auto& func : g_interrupt_functions)
-        p_cpu_state = func(p_cpu_state, data);
+        stack = func(stack, data);
 
-    return p_cpu_state;
+    return stack;
 }
 
 u64 pit_get_global_tick_count() {

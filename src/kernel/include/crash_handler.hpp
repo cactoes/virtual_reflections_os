@@ -19,9 +19,8 @@
 #define KERNEL_FATAL_CRITICAL_SECTION_FAILED        0xF0000006
 
 #include "common.hpp"
-#include "cpu.hpp"
 
-extern "C" NORETURN void kernel_fatal_internal(u64 code, const char* message, interrupt_regs_t* cpu_state = nullptr);
+extern "C" NORETURN void kernel_fatal_internal(u64 code, const char* message, struct interrupt_regs_t* cpu_state = nullptr);
 
 // NAKED
 NORETURN inline void kernel_fatal(u64 code, const char* message) {

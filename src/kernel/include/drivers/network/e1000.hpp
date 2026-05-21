@@ -68,7 +68,6 @@
 #define E1000_TDESC_STATUS_DONE             (1 << 0)
 
 #include "common.hpp"
-#include "cpu.hpp"
 #include "drivers/pcie.hpp"
 #include "network/nidm.hpp"
 
@@ -105,7 +104,7 @@ struct e1000_t {
 };
 
 int e1000_init_device(const pci_device_t* p_pcie_device, e1000_t* p_network_device);
-interrupt_regs_t* e1000_handle_interrupt(interrupt_regs_t* p_rsp, void*);
+void* e1000_handle_interrupt(void* stack, void*);
 int e1000_send_packet(e1000_t* p_device, const void* data, size_t size);
 
 bool is_e1000_device(const pci_device_t* device);

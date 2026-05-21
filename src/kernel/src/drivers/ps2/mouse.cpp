@@ -3,6 +3,9 @@
 #include "utils/event.hpp"
 #include "std/ring_buffer.hpp"
 
+// TODO @since 21/05/2026 -- 14:15
+// amd64 stuff
+
 static event_manager_t<const ps2_mouse_state_t*> g_mouse_event_manager {};
 
 static ps2_mouse_state_t g_mouse_state {};
@@ -25,11 +28,11 @@ void ps2_mouse_sync_packets() {
     g_mouse_packet_index = 0;
 }
 
-interrupt_regs_t* ps2_mouse_handle_interrupt(interrupt_regs_t* p_rsp, void*) {
+void* ps2_mouse_handle_interrupt(void* stack, void*) {
     g_mouse_packet_buffer[g_mouse_packet_index++] = ps2_read(PS2_DATA_PORT);
 
     if (g_mouse_packet_index < PS2_MOUSE_PACKET_SIZE)
-        return p_rsp;
+        return stack;
 
     const u8 status = g_mouse_packet_buffer[0];
     const u8 dx_raw = g_mouse_packet_buffer[1];
@@ -45,7 +48,7 @@ interrupt_regs_t* ps2_mouse_handle_interrupt(interrupt_regs_t* p_rsp, void*) {
 
     if (!valid) {
         ps2_mouse_sync_packets();
-        return p_rsp;
+        return stack;
     }
 
     g_mouse_state.dx = (status & PS2_MOUSE_STATUS_X_SIGN_BIT) ? dx_raw - 256 : dx_raw;
@@ -62,7 +65,7 @@ interrupt_regs_t* ps2_mouse_handle_interrupt(interrupt_regs_t* p_rsp, void*) {
     // g_mouse_event_manager.fire_event(&g_mouse_state);
     global_mouse_state_buffer.insert(g_mouse_state);
 
-    return p_rsp;
+    return stack;
 }
 
 void ps2_mouse_write(u8 value) {

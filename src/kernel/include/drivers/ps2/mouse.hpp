@@ -38,7 +38,6 @@
 #define PS2_MOUSE_SMALL_MOVEMENT_THRESH     0x80
 
 #include "common.hpp"
-#include "cpu.hpp"
 
 struct ps2_mouse_state_t {
     int dx;
@@ -53,7 +52,7 @@ struct ps2_mouse_state_t {
 } PACKED;
 
 void ps2_mouse_init();
-interrupt_regs_t* ps2_mouse_handle_interrupt(interrupt_regs_t* p_rsp, void*);
+void* ps2_mouse_handle_interrupt(void* stack, void*);
 void ps2_mouse_event_subscribe(void(*p_handler)(const ps2_mouse_state_t*));
 const ps2_mouse_state_t* ps2_mouse_get_state();
 void ps2_mouse_process_packet();

@@ -205,7 +205,7 @@ int e1000_init_device(const pci_device_t* p_pcie_device, e1000_t* p_network_devi
     return 0;
 }
 
-interrupt_regs_t* e1000_handle_interrupt(interrupt_regs_t* p_rsp, void* data) {
+void* e1000_handle_interrupt(void* stack, void* data) {
     auto p_device = (e1000_t*)data;
 
     // get & clear the interrupt
@@ -221,7 +221,7 @@ interrupt_regs_t* e1000_handle_interrupt(interrupt_regs_t* p_rsp, void* data) {
         kprintf("Link status changed: 0x%uh\n", status);
     }
 
-    return p_rsp;
+    return stack;
 }
 
 int e1000_send_packet(e1000_t* p_device, const void* data, size_t size) {

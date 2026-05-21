@@ -209,7 +209,7 @@ interrupt_regs_t* amd64_interrupt_dispatch(u64 code, interrupt_regs_t* stack) {
         return stack;
     }
 
-    interrupt_regs_t* result_stack = interrupt_manager_dispatch(interrupt, stack);
+    interrupt_regs_t* result_stack = (interrupt_regs_t*)interrupt_manager_dispatch(interrupt, (void*)stack);
 
     if (code >= 32 && code <= 47)
         amd64_interrupt_send_eoi(code - 0x20);

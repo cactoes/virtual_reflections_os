@@ -173,8 +173,8 @@ vthread_handle_t vthread_create_local(thread_entry_t p_thread_entry, const char 
     return VTHREAD_HANDLE_INVALID;
 }
 
-interrupt_regs_t* vthread_handle_interrupt(interrupt_regs_t* p_cpu_state, void*) {
-    return vthread_schedule(p_cpu_state);
+void* vthread_handle_interrupt(void* stack, void*) {
+    return vthread_schedule(stack);
 }
 
 bool vthread_check_stack(vthread_t* thread) {
@@ -193,11 +193,11 @@ bool vthread_check_stack(vthread_t* thread) {
 extern struct amd64_tss_t* amd64_get_tss();
 extern void amd64_tss_set_stack_pointer0(struct amd64_tss_t* tss, void* stack_pointer);
 
-interrupt_regs_t* vthread_schedule(interrupt_regs_t* p_cpu_state) {
+void* vthread_schedule(void* stack) {
     if (g_threads.size() <= 1)
-        return p_cpu_state;
+        return stack;
 
-    g_current_thread->stack_top = (void*)p_cpu_state;
+    g_current_thread->stack_top = (void*)stack;
     fpu_store(g_current_thread->fpu_state);
 
     do {

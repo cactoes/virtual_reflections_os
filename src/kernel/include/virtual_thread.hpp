@@ -23,7 +23,6 @@
 #include "common.hpp"
 #include "filesystems/vfs.hpp"
 #include "std/pointer.hpp"
-#include "cpu.hpp"
 #include "process.hpp"
 
 typedef u64 vthread_handle_t;
@@ -91,14 +90,15 @@ vthread_handle_t vthread_start_and_setup_main();
 vthread_handle_t vthread_create_local(thread_entry_t p_thread_entry, const char name[VTHREAD_MAX_NAME_SIZE] = nullptr);
 
 /// @brief                      handles a vthread interrupt & updates cpu state
-/// @param[in] p_cpu_state      pointer to the current cpu state
-/// @return                     pointer to the updated cpu state
-interrupt_regs_t* vthread_handle_interrupt(interrupt_regs_t* p_cpu_state, void*);
+/// @param[in] stack            pointer to last stack
+/// @param[in] UNUSED           pointer to context data
+/// @return                     pointer to (new) stack
+void* vthread_handle_interrupt(void* stack, void*);
 
 /// @brief                      schedules the next virtual thread & switches context
-/// @param[in] p_cpu_state      pointer to the current cpu state
-/// @return                     pointer to the cpu state of the next scheduled thread
-interrupt_regs_t* vthread_schedule(interrupt_regs_t* p_cpu_state);
+/// @param[in] stack            pointer to last stack
+/// @return                     pointer to a (new) stack
+void* vthread_schedule(void* stack);
 
 /// @brief      yield execution of the current virtual thread to allow other threads to run
 void vthread_yield();

@@ -10,10 +10,13 @@
 
 #include "common.hpp"
 
-// TODO @since 19/05/2026 -- 13:11
-// IFDEF FOR ARCHITECTURE
+// TODO @since 21/05/2026 -- 13:43
+// check if we need to update for architecture
 
-#include "arch/amd64/cpu.hpp"
+struct cpu_t {
+    u64 kernel_rsp;
+    u64 user_rsp;
+} __attribute__((packed));
 
 cpu_t* get_current_cpu();
 bool cpu_set_kernel_stack(cpu_t* cpu, void* stack);
