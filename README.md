@@ -33,6 +33,7 @@ PS> .\vrtlkt.ps1 -Tool run
 - [ ] general cleanup / restructuring
     - [ ] interrupt manager
 - [ ] gui
+- [ ] rtl8169 driver (maybe rtl8168)
 
 ## Mapping driver symbols in debug mode
 ```
