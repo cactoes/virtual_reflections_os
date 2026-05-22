@@ -10,9 +10,8 @@
 #include "utils/debug.hpp"
 #include "memory/heap.hpp"
 #include "io.hpp"
+#include "arch/amd64/vthread.hpp"
 #include "arch/amd64/idt.hpp"
-#include "arch/amd64/gdt.hpp"
-#include "arch/amd64/vmem.hpp"
 
 // TODO @since 23/10/2025 -- 19:06
 // change into 1 "bigger" thread handler
@@ -24,100 +23,45 @@ static vthread_t*           global_current_thread = nullptr;
 static volatile bool        global_is_in_critical_section = false;
 static volatile spinlock_t  global_thread_lock {};
 
-void vthread_entry_point(thread_entry_t p_thread_entry);
-
+void vthread_cleanup(vthread_t* thread) {
 #if CPU_ARCHITECTURE == ARCH_AMD64
-
-// TODO @since 22/05/2026 -- 18:26
-// move to amd64/vthread.hpp file
-
-// defined in amd64_entry.cpp
-extern struct amd64_tss_t* amd64_get_tss();
-extern void amd64_tss_set_stack_pointer0(struct amd64_tss_t* tss, void* stack_pointer);
-
-void amd64_vthread_store_context(vthread_t* target, void* stack) {
-    target->stack_top = stack;
-    amd64_fpu_store(target->fpu_state);
-}
-
-void amd64_vthread_load_context(vthread_t* target) {
-    amd64_set_page_table(target->page_table);
-    amd64_fpu_load(target->fpu_state);
-
-    // this means that the thread is userspace
-    // & needs a kernel stack when an interrupt happens
-    if (target->kstack) {
-        auto kstack_top = (void*)((u64)target->kstack + VTHREAD_STACK_SIZE);
-        amd64_tss_set_stack_pointer0(amd64_get_tss(), kstack_top);
-        cpu_set_kernel_stack(get_current_cpu(), kstack_top);
-    }
-}
-
-bool amd64_vthread_init(vthread_t* thread, void* thread_entry) {
-    if (!thread || !thread_entry)
-        return false;
-
-    u64* stack = (u64*)malloc_aligned(VTHREAD_STACK_SIZE, 16);
-    if (!stack)
-        return false;
-
-    thread->fpu_state = (u8*)malloc_aligned(sizeof(u8) * 512, 16);
-    if (!thread->fpu_state)
-        return false;
-
-    memzero(stack, VTHREAD_STACK_SIZE);
-    thread->stack_bottom = stack;
-    u64* stack_top = (u64*)(((u64)stack + VTHREAD_STACK_SIZE) & ~0xF);
-
-    // itret frame
-    *(--stack_top) = amd64_get_selector_for(KERNEL_DATA_SELECTOR_INDEX);
-    *(--stack_top) = (u64)stack_top;
-    *(--stack_top) = RFLAGS_IF | RFLAGS_RES;
-    *(--stack_top) = amd64_get_selector_for(KERNEL_CODE_SELECTOR_INDEX);
-    *(--stack_top) = (u64)vthread_entry_point;
-    *(--stack_top) = 0; // error code
-
-    // general registers
-    for (int i = 0; i < 13; i++)
-        *(--stack_top) = 0;
-
-    // startup argument for the loader
-    *(--stack_top) = (u64)thread_entry; // rdi
-
-    *(--stack_top) = 0; // rbp
-
-    thread->stack_top = stack_top;
-    thread->page_table = amd64_get_page_table();
-
-    return true;
-}
-
-bool amd64_init_main_thread(vthread_t* thread) {
-    if (!thread)
-        return false;
-
-    thread->page_table = amd64_get_page_table();
-
-    thread->fpu_state = (u8*)malloc_aligned(sizeof(u8) * 512, 16);
-    if (!thread->fpu_state)
-        return false;
-
-    return true;
-}
-
-void amd64_vthread_cleanup(vthread_t* thread) {
-    // TODO @since 22/05/2026 -- 20:15
-    // free page table ?
-
-    if (thread->fpu_state)
-        free_aligned(thread->fpu_state);
-
-    thread->fpu_state = nullptr;
-}
-
+    amd64_vthread_cleanup(thread);
 #else
 #error CPU_ARCH_NOT_SUPPORTED
 #endif
+}
+
+bool vthread_init_main_thread(vthread_t* thread) {
+#if CPU_ARCHITECTURE == ARCH_AMD64
+    return amd64_vthread_init_main_thread(thread);
+#else
+#error CPU_ARCH_NOT_SUPPORTED
+#endif
+}
+
+bool vthread_init(vthread_t* thread, void* thread_entry) {
+#if CPU_ARCHITECTURE == ARCH_AMD64
+    return amd64_vthread_init(thread, thread_entry);
+#else
+#error CPU_ARCH_NOT_SUPPORTED
+#endif
+}
+
+void vthread_store_context(vthread_t* thread, void* stack) {
+#if CPU_ARCHITECTURE == ARCH_AMD64
+    amd64_vthread_store_context(thread, stack);
+#else
+#error CPU_ARCH_NOT_SUPPORTED
+#endif
+}
+
+void vthread_load_context(vthread_t* thread) {
+#if CPU_ARCHITECTURE == ARCH_AMD64
+    amd64_vthread_load_context(thread);
+#else
+#error CPU_ARCH_NOT_SUPPORTED
+#endif
+}
 
 void vthread_entry_point(thread_entry_t p_thread_entry) {
     global_current_thread->vt_state = vthread_state_t::STARTING;
@@ -157,7 +101,7 @@ void vthread_handle_stopping(vthread_t* p_vthread) {
 
     spinlock_lock((spinlock_t*)&global_thread_lock);
 
-    amd64_vthread_cleanup(p_vthread);
+    vthread_cleanup(p_vthread);
 
     if (p_vthread->stack_bottom_kernel)
         free_aligned(p_vthread->stack_bottom_kernel);
@@ -211,7 +155,7 @@ vthread_handle_t vthread_start_and_setup_main() {
     const char name[] = "kernel_thread_main";
     memcpy(p_vthread->name, name, sizeof(name));
 
-    amd64_init_main_thread(p_vthread.get());
+    vthread_init_main_thread(p_vthread.get());
 
     global_current_thread = p_vthread.get();
 
@@ -229,8 +173,8 @@ vthread_handle_t vthread_create_local(thread_entry_t p_thread_entry, const char 
     p_vthread->tls.handle = new_handle;
     p_vthread->vt_state = vthread_state_t::RUNNING;
 
-    if (!amd64_vthread_init(p_vthread.get(), (void*)p_thread_entry)) {
-        amd64_vthread_cleanup(p_vthread.get());
+    if (!vthread_init(p_vthread.get(), (void*)p_thread_entry)) {
+        vthread_cleanup(p_vthread.get());
         return VTHREAD_HANDLE_INVALID;
     }
 
@@ -243,7 +187,7 @@ vthread_handle_t vthread_create_local(thread_entry_t p_thread_entry, const char 
     if (vthread_add(move(p_vthread)))
         return new_handle;
 
-    amd64_vthread_cleanup(pp_vthread);
+    vthread_cleanup(pp_vthread);
 
     return VTHREAD_HANDLE_INVALID;
 }
@@ -273,7 +217,7 @@ void* vthread_schedule(void* stack) {
     if (g_threads.size() <= 1)
         return stack;
 
-    amd64_vthread_store_context(global_current_thread, stack);
+    vthread_store_context(global_current_thread, stack);
 
     vthread_t* next_thread = vthread_get_next_thead(global_current_thread->handle);
 
@@ -307,7 +251,7 @@ void* vthread_schedule(void* stack) {
     jumpout:
 
     set_current_process(next_thread->parent);
-    amd64_vthread_load_context(next_thread);
+    vthread_load_context(next_thread);
 
     global_current_thread = next_thread;
     return global_current_thread->stack_top;
