@@ -5,9 +5,22 @@
 #include "interrupt_manager.hpp"
 #include "io.hpp"
 
+#include "arch/arch_selector.hpp"
+
 extern "C" interrupt_t amd64_convert_to_interrupt(u64 code);
 
 static heap_t* g_e1000_dma_heap = nullptr;
+
+#if CPU_ARCHITECTURE == ARCH_AMD64
+
+void* amd64_e1000_handle_interrupt(void* stack, void* data) {
+    e1000_generic_handle_interrupt((e1000_t*)data);
+    return stack;
+}
+
+#else
+#error CPU_ARCH_NOT_SUPPORTED
+#endif
 
 void e1000_write_reg(e1000_t* p_device, u32 offset, u32 value) {
     *((volatile u32*)((u8*)p_device->mmio_region + offset)) = value;
@@ -132,6 +145,24 @@ DISABLE_SSE void e1000_recieve_packet(e1000_t* p_device) {
     e1000_write_reg(p_device, E1000_RDT, rdt_value);
 }
 
+void e1000_generic_handle_interrupt(e1000_t* device) {
+    if (!device)
+        return;
+
+    // get & clear the interrupt
+    u32 icr = e1000_read_reg(device, E1000_ICR);
+
+    // packet recieved interrupt
+    if (icr & (E1000_IMS_RXT0 | E1000_IMS_RXDMT0))
+        e1000_recieve_packet(device);
+
+    // link status changed interrupt
+    if (icr & E1000_IMS_LSC) {
+        u32 status = e1000_read_reg(device, E1000_STATUS);
+        kprintf("Link status changed: 0x%uh\n", status);
+    }
+}
+
 void e1000_enable_interrupts(e1000_t* p_device) {
     // clear interrupts
     e1000_read_reg(p_device, E1000_ICR);
@@ -195,33 +226,16 @@ int e1000_init_device(const pci_device_t* p_pcie_device, e1000_t* p_network_devi
     // re-enable specific interrupts
     e1000_enable_interrupts(p_network_device);
 
+#if CPU_ARCHITECTURE == ARCH_AMD64
     const u32 irq = pci_config_read(p_pcie_device, PCI_CONFIG_IRQ_LINE) & MAX_UINT8;
-    // TODO @since 19/05/2026 -- 15:44
-    // find out how we are going to convert from this irq to interrupt
-    if (!hook_interrupt(amd64_convert_to_interrupt(irq + 0x20), e1000_handle_interrupt, (void*)p_network_device))
+    if (!hook_interrupt(amd64_convert_to_interrupt(irq + 0x20), amd64_e1000_handle_interrupt, (void*)p_network_device))
         return 9;
+#else
+#error CPU_ARCH_NOT_SUPPORTED
+#endif
 
     // done
     return 0;
-}
-
-void* e1000_handle_interrupt(void* stack, void* data) {
-    auto p_device = (e1000_t*)data;
-
-    // get & clear the interrupt
-    u32 icr = e1000_read_reg(p_device, E1000_ICR);
-
-    // packet recieved interrupt
-    if (icr & (E1000_IMS_RXT0 | E1000_IMS_RXDMT0))
-        e1000_recieve_packet(p_device);
-
-    // link status changed interrupt
-    if (icr & E1000_IMS_LSC) {
-        u32 status = e1000_read_reg(p_device, E1000_STATUS);
-        kprintf("Link status changed: 0x%uh\n", status);
-    }
-
-    return stack;
 }
 
 int e1000_send_packet(e1000_t* p_device, const void* data, size_t size) {

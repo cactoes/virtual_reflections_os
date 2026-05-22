@@ -104,8 +104,8 @@ struct e1000_t {
 };
 
 int e1000_init_device(const pci_device_t* p_pcie_device, e1000_t* p_network_device);
-void* e1000_handle_interrupt(void* stack, void*);
 int e1000_send_packet(e1000_t* p_device, const void* data, size_t size);
+void e1000_generic_handle_interrupt(e1000_t* device);
 
 bool is_e1000_device(const pci_device_t* device);
 

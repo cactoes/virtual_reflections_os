@@ -69,6 +69,13 @@ amd64_idt_entry_t idt[AMD64_INT_IDT_ENTRY_COUNT];
 __attribute__((section(".bss")))
 amd64_idt_register_t idtr;
 
+/// @brief      returns a pointer to the tss
+/// @return     pinter to tss struct
+__attribute__((section(".text")))
+amd64_tss_t* amd64_get_tss() {
+    return &tss;
+}
+
 /// @brief              local memzero define defined in boot text section
 /// @param[in] address  pointer to address to clear
 /// @param size         size of region to clear
@@ -100,16 +107,6 @@ static
 __attribute__((section(".boot.text")))
 void amd64_reload_page_table() {
     asm volatile("mov %%cr3, %%rax; mov %%rax, %%cr3" ::: "rax", "memory");
-}
-
-// TODO @since 19/05/2026 -- 01:41
-// move
-extern struct cpu_t* get_current_cpu();
-
-// TODO @since 19/05/2026 -- 01:57
-// move
-amd64_tss_t* amd64_get_tss() {
-    return &tss;
 }
 
 static

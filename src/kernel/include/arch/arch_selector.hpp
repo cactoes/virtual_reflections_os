@@ -10,11 +10,13 @@
 
 #define ARCH_AMD64 1
 
+#define CPU_ARCH_NOT_SUPPORTED "this cpu is not supported please select a supported cpu architecture"
+
 #ifndef CPU_ARCHITECTURE
 // for now
 #define CPU_ARCHITECTURE ARCH_AMD64
 // else we do this
-// #error "this cpu is not supported please select a supported cpu architecture"
+// #error CPU_ARCH_NOT_SUPPORTED
 #endif
 
 
