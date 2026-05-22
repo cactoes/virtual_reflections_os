@@ -76,8 +76,8 @@ bool create_process(process_t* process, const char* path) {
 
     p_vthread->kstack = (void*)((u64)malloc_aligned(PAGE_SIZE_LARGE, 16));
 
-    u16 user_ds = (u16)((USER_DATA_SELECTOR_INDEX << 3) | 3);
-    u16 user_cs = (u16)((USER_CODE_SELECTOR_INDEX << 3) | 3);
+    const u16 user_ds = (u16)((USER_DATA_SELECTOR_INDEX << 3) | 3);
+    const u16 user_cs = (u16)((USER_CODE_SELECTOR_INDEX << 3) | 3);
 
     u64* stack_top = (u64*)(((u64)stack_user_v + PAGE_SIZE_LARGE - sizeof(interrupt_regs_t)) & ~0xF);
     u64* mapped_stack_top = (u64*)(((u64)stack_kernel_v + PAGE_SIZE_LARGE - sizeof(interrupt_regs_t)) & ~0xF);
@@ -87,23 +87,23 @@ bool create_process(process_t* process, const char* path) {
     // itret frame
     *(--mapped_stack_top) = (u64)user_ds;
     *(--mapped_stack_top) = (u64)stack_top;
-    *(--mapped_stack_top) = 0x202;
+    *(--mapped_stack_top) = RFLAGS_IF | RFLAGS_RES;
     *(--mapped_stack_top) = (u64)user_cs;
     *(--mapped_stack_top) = (u64)entry;
-    *(--mapped_stack_top) = 0;
+    *(--mapped_stack_top) = 0; // error code
 
     // general registers
     for (int i = 0; i < 13; i++)
         *(--mapped_stack_top) = 0;
 
-    *(--mapped_stack_top) = 0;
-    *(--mapped_stack_top) = 0;
+    *(--mapped_stack_top) = 0; // rdi
+    *(--mapped_stack_top) = 0; // rbp
 
     p_vthread->stack_top = (void*)mapped_stack_top;
     p_vthread->vt_state = vthread_state_t::RUNNING;
     p_vthread->handle = vhtread_next_handle();
     p_vthread->fpu_state = (u8*)malloc_aligned(sizeof(u8) * 512, 16);
-    p_vthread->pml4 = new_page_table_p;
+    p_vthread->page_table = new_page_table_p;
     p_vthread->tls.handle = p_vthread->handle;
     p_vthread->parent = process;
 

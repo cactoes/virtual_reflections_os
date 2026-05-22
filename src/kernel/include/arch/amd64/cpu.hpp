@@ -13,6 +13,8 @@
 
 #if CPU_ARCHITECTURE == ARCH_AMD64
 
+// stack in is this
+// stack out is in reverse
 struct interrupt_regs_t {
     u64 r8;
     u64 r9;

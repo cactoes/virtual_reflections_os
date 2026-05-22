@@ -24,6 +24,7 @@
 #include "filesystems/vfs.hpp"
 #include "std/pointer.hpp"
 #include "process.hpp"
+#include "arch/arch_selector.hpp"
 
 typedef u64 vthread_handle_t;
 typedef int(*thread_entry_t)();
@@ -72,11 +73,15 @@ struct vthread_t {
     bool is_critical;
     char name[VTHREAD_MAX_NAME_SIZE + 1];
 
+#if CPU_ARCHITECTURE == ARCH_AMD64
     // memory map
-    void* pml4;
+    void* page_table;
 
     // 64-byte aligned fpu area
     u8* fpu_state;
+#else
+#error CPU_ARCH_NOT_SUPPORTED
+#endif
 };
 
 /// @brief                  start the main virtual thread & perform initial setup
