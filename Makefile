@@ -20,6 +20,8 @@ SHARED_HEADERS              := $(ROOT_PATH)/src/shared_headers/
 DRIVER_FILES                := $(wildcard $(ROOT_PATH)/build/**/*.sys)
 PROGRAM_FILES               := $(wildcard $(ROOT_PATH)/build/**/*.exe)
 INETDRIVERS_INCLUDES        := $(ROOT_PATH)/src/network_drivers/include
+EFI_DIR 					:= $(BUILD_PATH)/iso/EFI/BOOT
+EFI_FILE 					:= $(EFI_DIR)/BOOTX64.EFI
 
 # compilers
 COMPILER                    := x86_64-elf-g++
@@ -55,12 +57,21 @@ $(BUILD_PATH)/$(TARGET_NAME).bin: $(object_files) $(asm_object_files) $(LINKER_S
 > @mkdir -p $(dir $@)
 > $(SILENT_MODE)$(LINKER) $(LINKER_FLAGS) -o $@ $(object_files) $(asm_object_files)
 
-$(BUILD_PATH)/$(TARGET_NAME).iso: $(BUILD_PATH)/$(TARGET_NAME).bin $(DRIVER_FILES) $(PROGRAM_FILES)
+$(EFI_FILE): $(ISO_PATH)/boot/grub/grub.cfg
+> @echo "creating UEFI bootloader (BOOTX64.EFI)"
+> @mkdir -p $(EFI_DIR)
+> grub-mkstandalone \
+>   -O x86_64-efi \
+>   -o $(EFI_FILE) \
+>   "boot/grub/grub.cfg=$(ISO_PATH)/boot/grub/grub.cfg"
+
+$(BUILD_PATH)/$(TARGET_NAME).iso: $(BUILD_PATH)/$(TARGET_NAME).bin $(DRIVER_FILES) $(PROGRAM_FILES) $(EFI_FILE)
 > @echo "creating iso image"
 > @mkdir -p $(BUILD_PATH)/iso/boot
 > @cp -r $(ISO_PATH) $(BUILD_PATH) 2>/dev/null || true
 > @cp $< $(BUILD_PATH)/iso/boot/$(TARGET_NAME).bin
-> $(SILENT_MODE)$(GRUB_MKRESCUE) /usr/lib/grub/i386-pc -o $@ $(BUILD_PATH)/iso
+> $(SILENT_MODE)$(GRUB_MKRESCUE) -o $@ $(BUILD_PATH)/iso
+# /usr/lib/grub/i386-pc
 
 $(BUILD_PATH)/objects/%.o: $(SOURCE_FILES_PATH)/%.cpp
 > @echo "compiling: $<"

@@ -10,7 +10,8 @@ RUN apt-get install -y \
     nasm \
     xorriso \
     grub-pc-bin \
-    grub-common
+    grub-common \
+    grub-efi-amd64-bin
 
 # linking with the project
 VOLUME /root/env

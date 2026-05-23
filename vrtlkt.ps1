@@ -28,6 +28,15 @@ function Start-QEMU {
         "-m", "$($config["qemu_system_memory"])"
     )
 
+    # if ($config["qemu_use_uefi"]) {
+    #     $argument_list += @("bios", "OVMF.fd")
+    # }
+
+    #  $argument_list += @(
+    #     "-drive", "if=pflash,format=raw,readonly=on,file=OVMF_CODE.fd",
+    #     "-drive", "if=pflash,format=raw,file=OVMF_VARS.fd"
+    # )
+
     if ($config["qemu_enable_ahci"]) {
         $argument_list += @("-device", "ahci,id=ahci")
     }
