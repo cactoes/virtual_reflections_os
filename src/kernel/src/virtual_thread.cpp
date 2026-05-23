@@ -23,15 +23,43 @@ static vthread_t*           global_current_thread = nullptr;
 static volatile bool        global_is_in_critical_section = false;
 static volatile spinlock_t  global_thread_lock {};
 
+/// @brief                      cleans thread resources 
+/// @param[inout] thread        pointer to thread context
+static inline
 void vthread_cleanup(vthread_t* thread) {
+    // first clean platform based resources
 #if CPU_ARCHITECTURE == ARCH_AMD64
     amd64_vthread_cleanup(thread);
 #else
 #error CPU_ARCH_NOT_SUPPORTED
 #endif
+
+    if (thread->stack_bottom_kernel)
+        free_aligned(thread->stack_bottom_kernel);
+    else if (thread->stack_bottom)
+        free_aligned(thread->stack_bottom);
+
+    if (thread->kstack)
+        free_aligned(thread->kstack);
+
+    // TODO @since 09/05/2026 -- 20:56
+    // properly free parent process
+    if (thread->parent)
+        free(thread->parent);
 }
 
+/// @brief                  inits main thread context
+/// @param[inout] thread    pointer to thread context
+/// @return                 success status
+static inline
 bool vthread_init_main_thread(vthread_t* thread) {
+    thread->handle = VTHREAD_MAIN_THREAD_HANDLE;
+    thread->tls.handle = VTHREAD_MAIN_THREAD_HANDLE;
+    thread->is_critical = true;
+
+    const char name[] = "_Z7kthread4mainPv";
+    memcpy(thread->name, name, sizeof(name));
+
 #if CPU_ARCHITECTURE == ARCH_AMD64
     return amd64_vthread_init_main_thread(thread);
 #else
@@ -39,7 +67,18 @@ bool vthread_init_main_thread(vthread_t* thread) {
 #endif
 }
 
+/// @brief                      inits a thread context
+/// @param[inout] thread        pointer to thread context
+/// @param[in] thread_entry     pointer to thread entry function
+/// @return                     success status
+static inline
 bool vthread_init(vthread_t* thread, void* thread_entry) {
+    const vthread_handle_t new_handle = vhtread_next_handle();
+
+    thread->handle = new_handle;
+    thread->tls.handle = new_handle;
+    thread->vt_state = vthread_state_t::RUNNING;
+
 #if CPU_ARCHITECTURE == ARCH_AMD64
     return amd64_vthread_init(thread, thread_entry);
 #else
@@ -47,6 +86,10 @@ bool vthread_init(vthread_t* thread, void* thread_entry) {
 #endif
 }
 
+/// @brief                  stores the current context in thread context
+/// @param[inout] thread    pointer to thread context
+/// @param[in] stack        pointer to last stack
+static inline
 void vthread_store_context(vthread_t* thread, void* stack) {
 #if CPU_ARCHITECTURE == ARCH_AMD64
     amd64_vthread_store_context(thread, stack);
@@ -55,6 +98,8 @@ void vthread_store_context(vthread_t* thread, void* stack) {
 #endif
 }
 
+/// @brief                  loads the thread context into current context
+/// @param[inout] thread    pointer to thread context
 void vthread_load_context(vthread_t* thread) {
 #if CPU_ARCHITECTURE == ARCH_AMD64
     amd64_vthread_load_context(thread);
@@ -67,7 +112,7 @@ void vthread_entry_point(thread_entry_t p_thread_entry) {
     global_current_thread->vt_state = vthread_state_t::STARTING;
     while (global_current_thread->vt_state == vthread_state_t::STARTING)
         vthread_yield();
-    
+
     global_current_thread->exit_code = p_thread_entry();
     global_current_thread->vt_state = vthread_state_t::STOPPING;
 
@@ -103,19 +148,6 @@ void vthread_handle_stopping(vthread_t* p_vthread) {
 
     vthread_cleanup(p_vthread);
 
-    if (p_vthread->stack_bottom_kernel)
-        free_aligned(p_vthread->stack_bottom_kernel);
-    else if (p_vthread->stack_bottom)
-        free_aligned(p_vthread->stack_bottom);
-
-    if (p_vthread->kstack)
-        free_aligned(p_vthread->kstack);
-
-    // TODO @since 09/05/2026 -- 20:56
-    // properly free parent process
-    if (p_vthread->parent)
-        free(p_vthread->parent);
-
     g_threads.remove(p_vthread->handle);
 
     spinlock_unlock((spinlock_t*)&global_thread_lock);
@@ -148,13 +180,6 @@ vthread_handle_t vthread_start_and_setup_main() {
 
     std::unique_ptr<vthread_t> p_vthread = std::make_unique<vthread_t>();
 
-    p_vthread->handle = VTHREAD_MAIN_THREAD_HANDLE;
-    p_vthread->tls.handle = VTHREAD_MAIN_THREAD_HANDLE;
-    p_vthread->is_critical = true;
-
-    const char name[] = "kernel_thread_main";
-    memcpy(p_vthread->name, name, sizeof(name));
-
     vthread_init_main_thread(p_vthread.get());
 
     global_current_thread = p_vthread.get();
@@ -163,15 +188,10 @@ vthread_handle_t vthread_start_and_setup_main() {
 }
 
 vthread_handle_t vthread_create_local(thread_entry_t p_thread_entry, const char name[VTHREAD_MAX_NAME_SIZE]) {
-    const vthread_handle_t new_handle = vhtread_next_handle();
-
     // TODO @since 22/05/2026 -- 18:25
     // remove this leaking smart pointer
     std::unique_ptr<vthread_t> p_vthread = std::make_unique<vthread_t>();
     auto pp_vthread = p_vthread.get();
-    p_vthread->handle = new_handle;
-    p_vthread->tls.handle = new_handle;
-    p_vthread->vt_state = vthread_state_t::RUNNING;
 
     if (!vthread_init(p_vthread.get(), (void*)p_thread_entry)) {
         vthread_cleanup(p_vthread.get());
@@ -185,7 +205,7 @@ vthread_handle_t vthread_create_local(thread_entry_t p_thread_entry, const char 
     }
 
     if (vthread_add(move(p_vthread)))
-        return new_handle;
+        return pp_vthread->handle;
 
     vthread_cleanup(pp_vthread);
 
