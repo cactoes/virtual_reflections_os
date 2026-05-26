@@ -20,5 +20,6 @@ struct cpu_t {
 
 cpu_t* get_current_cpu();
 bool cpu_set_kernel_stack(cpu_t* cpu, void* stack);
+bool cpu_get_name(char* buffer, u64 size);
 
 #endif // __CPU_HPP__

@@ -1,11 +1,7 @@
 #include "system_info.hpp"
 #include "smbios.hpp"
-
+#include "cpu.hpp"
 #include "linker.hpp"
-
-// TODO @since 21/05/2026 -- 22:34
-// move this
-#include "arch/amd64/cpu.hpp"
 
 system_info_manager_t* global_boot_info_manager;
 
@@ -56,21 +52,8 @@ void system_info_parse_system_information(system_info_manager_t* system_info_man
 }
 
 void system_info_get_cpu_name(system_info_manager_t* system_info_manager) {
-    // TODO @since 21/05/2026 -- 22:33
-    // if amd64
-
     char buffer[49];
     memzero(buffer, sizeof(buffer));
-
-    u32 registers[4];
-    char* p = buffer;
-    for (u32 i = 0; i < 3; i++) {
-        amd64_cpuid(0x80000002 + i, 0, &registers[0], &registers[1], &registers[2], &registers[3]);
-        memcpy(p, registers, sizeof(registers));
-        p += sizeof(registers);
-    }
-
-    system_info_manager->cpu_name = buffer;
-
-    // else
+    if (cpu_get_name(buffer, sizeof(buffer)))
+        system_info_manager->cpu_name = buffer;
 }

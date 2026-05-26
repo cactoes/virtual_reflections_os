@@ -241,8 +241,6 @@ extern "C" NORETURN void virtual_kernel_entry(multiboot2_info_t* multiboot_struc
     kprintf("[ \033[92mOK\033[0m ] enabled virtual threading\n");
     printf("[ \033[92mOK\033[0m ] enabled virtual threading\n");
 
-    // we already need system info here ...
-    // just make sure we dont use the string's yet since memory is not setup yet
     system_info_manager_t sim {};
     set_global_system_info_manager(&sim);
     system_info_parse_memory_size(get_global_system_info_manager(), multiboot_struct);
