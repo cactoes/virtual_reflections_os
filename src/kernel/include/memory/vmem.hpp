@@ -41,7 +41,7 @@ size_t vmem_smart_alloc_pages(const void* vaddr, size_t size, u64 flags);
 /// @param[inout] pml4          page table to use
 /// @param[in] multiboot_struct pointer to the custom mb struct for memory regions
 /// @return                     success status
-bool vmem_init(const void* mbstruct);
+// bool vmem_init(const void* mbstruct);
 
 /// @brief                      memory maps an region to virtual memory
 /// @param physical_address     the address to map

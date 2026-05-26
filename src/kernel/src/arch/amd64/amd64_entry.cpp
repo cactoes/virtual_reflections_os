@@ -9,10 +9,12 @@
 #include "arch/amd64/idt.hpp"
 #include "arch/amd64/cpu.hpp"
 #include "arch/amd64/port.hpp"
+#include "arch/arch_selector.hpp"
+#include "memory/vmem.hpp"
+#include "memory/paging.hpp"
 #include "interrupt_manager.hpp"
 #include "syscall_handler.hpp"
 #include "common.hpp"
-#include "arch/arch_selector.hpp"
 
 #if CPU_ARCHITECTURE == ARCH_AMD64
 
@@ -261,11 +263,27 @@ u64 amd64_syscall_dispatch(u64 syscall_num, syscall_regs_t* regs) {
         (void*)regs->r9);
 }
 
+[[noreturn]]
+static
+__attribute__((section(".text")))
+void amd64_kernel_jump_stub(void* mbs) {
+    // unmap the boot code
+    const u64 kernel_page_count = ((u64)&linker_variables::__lnk_kernel_end_physical + (PAGE_SIZE_LARGE - 1)) >> 21;
+    for (u64 i = 0; i < kernel_page_count; i++)
+        vmem_unmap_2mb((void*)(i * PAGE_SIZE_LARGE));
+
+    // jump to virtual kernel entrypoint
+    virtual_kernel_entry((struct multiboot_t*)mbs);
+
+    // just in case
+    while (true);
+}
+
 /// @brief                          amd64 boot entry, the assembly jumps to here to continue the setup
 /// @param[in] multiboot2_struct    pointer to the multiboot 2 structure
 extern "C"
-__attribute__((section(".boot.text")))
 [[noreturn]]
+__attribute__((section(".boot.text")))
 void amd64_entry(void* multiboot2_struct) {
     asm volatile (
         "mov   $0,    %%ax\n"
@@ -317,11 +335,11 @@ void amd64_entry(void* multiboot2_struct) {
     // call all c++ global constructors
     amd64_call_constructors();
 
-    // jump to virtual kernel entrypoint
-    virtual_kernel_entry((struct multiboot_t*)((u64)multiboot2_struct + KERNEL_VIRTUAL_BASE_ADDRESS));
+    // init virtual memory
+    pmem_init(multiboot2_struct);
 
-    // backup catch
-    while (true);
+    // almost ready to jump to the kernel code
+    amd64_kernel_jump_stub((void*)((u64)multiboot2_struct + KERNEL_VIRTUAL_BASE_ADDRESS));
 }
 
 #endif

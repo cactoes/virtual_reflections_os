@@ -38,6 +38,10 @@
 
 #include "common.hpp"
 
+struct pmem_info_t {
+    u64 memory_size;
+};
+
 /// @brief      gets a physical address
 /// @return     physical memroy address
 void* pmem_get_page();
@@ -50,5 +54,7 @@ void* pmem_get_page();
 bool pmem_try_reserve_address(const void* paddr, size_t count = 1);
 
 bool pmem_is_in_memory_range(const void* address);
+
+bool pmem_init(void* multiboot_struct);
 
 #endif // __MEMORY_PAGING_HPP__

@@ -178,34 +178,19 @@ extern "C" NORETURN void virtual_kernel_entry(multiboot2_info_t* multiboot_struc
     // initialze the debug out stream
     debug_init();
 
-    // we already need system info here ...
-    // just make sure we dont use the string's yet since memory is not setup yet
-    system_info_manager_t sim {};
-    set_global_system_info_manager(&sim);
-    system_info_parse_memory_size(get_global_system_info_manager(), multiboot_struct);
-
-    kprintf("[ \033[92mOK\033[0m ] parsed memory: %ul\n", sim.memory_size);
-
-    // same as the assembly
-    const u64 kernel_page_count = (LINKER_END_KERNEL_PHYS + (PAGE_SIZE_LARGE - 1)) >> 21;
-    for (u64 i = 0; i < kernel_page_count; i++)
-        vmem_unmap_2mb((void*)(i * PAGE_SIZE_LARGE));
-
-    // initialze virtual memory
-    if (!vmem_init(multiboot_struct))
-        kernel_fatal(KERNEL_FATAL_VMEM_INIT, "vmem failed to initialize");
-
-    // initialze the global heap
+    // initialze the default heap
     heap_t heap {};
     if (!heap_init(&heap, (void*)VMEM_KERNEL_HEAP_START, HEAP_START_SIZE))
-        kernel_fatal(KERNEL_FATAL_HEAP_INIT, "kernel heap fail to initialze");
+        kernel_fatal(KERNEL_FATAL_HEAP_INIT, "kernel heap fail to initialize");
 
     set_global_heap(&heap);
 
     kprintf("[ \033[92mOK\033[0m ] initialized memory\n");
 
     graphics_driver_t gd {};
-    graphics_driver_init(&gd, multiboot_struct);
+    if (!graphics_driver_init(&gd, multiboot_struct))
+        kernel_fatal(KERNEL_FATAL_GRAPHICS_INIT, "graphics driver to initialize");
+
     set_global_graphics_driver(&gd);
     io_term_init(gd.framebuffer->width, gd.framebuffer->height);
 
@@ -260,8 +245,15 @@ extern "C" NORETURN void virtual_kernel_entry(multiboot2_info_t* multiboot_struc
     // move this shit
     pit_add_interrupt_function(vthread_handle_interrupt);
 
+    // we already need system info here ...
+    // just make sure we dont use the string's yet since memory is not setup yet
+    system_info_manager_t sim {};
+    set_global_system_info_manager(&sim);
+    system_info_parse_memory_size(get_global_system_info_manager(), multiboot_struct);
     system_info_parse_system_information(get_global_system_info_manager());
     system_info_get_cpu_name(get_global_system_info_manager());
+
+    kprintf("[ \033[92mOK\033[0m ] parsed system information\n");
 
     // TODO @since 06/02/2026 -- 10:34
     // proper ps2 startup etc

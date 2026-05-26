@@ -73,29 +73,29 @@ size_t vmem_smart_alloc_pages(const void* vaddr, size_t size, u64 flags) {
     return allocated;
 }
 
-bool vmem_init(const void* mbstruct) {
-    const u64 aligned_kernel_end_addr = align_up(LINKER_END_KERNEL_PHYS, PAGE_SIZE_LARGE);
-    u64 kernel_page_count = aligned_kernel_end_addr / PAGE_SIZE;
+// bool vmem_init(const void* mbstruct) {
+//     const u64 aligned_kernel_end_addr = align_up(LINKER_END_KERNEL_PHYS, PAGE_SIZE_LARGE);
+//     u64 kernel_page_count = aligned_kernel_end_addr / PAGE_SIZE;
 
-    if (!pmem_try_reserve_address(0, kernel_page_count))
-        return false;
+//     if (!pmem_try_reserve_address(0, kernel_page_count))
+//         return false;
 
-    for (auto mm_entry = mb2_get_first_entry((multiboot2_info_t*)mbstruct); mm_entry; mm_entry = mb2_get_next_entry((multiboot2_info_t*)mbstruct, mm_entry)) {
-        // reserve physical pages for reserved memory
-        if (mm_entry->type != (u32)memory_map_type_t::USABLE) {
-            if (!pmem_is_in_memory_range((void*)(mm_entry->addr + mm_entry->len)))
-                continue;
+//     for (auto mm_entry = mb2_get_first_entry((multiboot2_info_t*)mbstruct); mm_entry; mm_entry = mb2_get_next_entry((multiboot2_info_t*)mbstruct, mm_entry)) {
+//         // reserve physical pages for reserved memory
+//         if (mm_entry->type != (u32)memory_map_type_t::USABLE) {
+//             if (!pmem_is_in_memory_range((void*)(mm_entry->addr + mm_entry->len)))
+//                 continue;
 
-            // reserve as much as possible
-            for (size_t i = 0; i < mm_entry->len; i += PAGE_SIZE) {
-                if (!pmem_try_reserve_address((void*)(align_down(mm_entry->addr, PAGE_SIZE) + i), 1))
-                    return false;
-            }
-        }
-    }
+//             // reserve as much as possible
+//             for (size_t i = 0; i < mm_entry->len; i += PAGE_SIZE) {
+//                 if (!pmem_try_reserve_address((void*)(align_down(mm_entry->addr, PAGE_SIZE) + i), 1))
+//                     return false;
+//             }
+//         }
+//     }
 
-    return true;
-}
+//     return true;
+// }
 
 bool vmem_unmap_2mb(void* vaddr) {
     // TODO @since 20/05/2026 -- 01:01
