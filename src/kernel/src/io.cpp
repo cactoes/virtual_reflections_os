@@ -10,9 +10,10 @@
 
 static u64 global_io_bitmap[1];
 
-#define TERM_SCALE              1.4f
+#define TERM_SCALE              1.f
 #define TERM_FONT_SIZE          8
 #define TERM_FONT_PX_SIZE       ((size_t)(TERM_FONT_SIZE * TERM_SCALE))
+#define TERM_FONT_PX_SIZE_Y     ((size_t)(CHARACTER_HEIGHT * TERM_SCALE))
 
 struct test_terminal_t {
     bool enabled;
@@ -32,17 +33,17 @@ struct test_terminal_t {
 void test_terminal_newline(test_terminal_t* term) {
     graphics_driver_t* gd = get_global_graphics_driver();
 
-    graphics_driver_draw_square(gd, term->cursor.x, term->cursor.y, TERM_FONT_PX_SIZE, TERM_FONT_PX_SIZE, { 0, 0, 0 });
+    graphics_driver_draw_square(gd, term->cursor.x, term->cursor.y, TERM_FONT_PX_SIZE, TERM_FONT_PX_SIZE_Y, { 0, 0, 0 });
 
     term->cursor.x = 0;
 
-    if (term->cursor.y + TERM_FONT_PX_SIZE < term->size.height - TERM_FONT_PX_SIZE) {
-        term->cursor.y += TERM_FONT_PX_SIZE;
+    if (term->cursor.y + TERM_FONT_PX_SIZE_Y < term->size.height - TERM_FONT_PX_SIZE_Y) {
+        term->cursor.y += TERM_FONT_PX_SIZE_Y;
         return;
     }
 
-    graphics_driver_move_square(gd, 0, TERM_FONT_PX_SIZE, term->size.width, (term->size.height / TERM_FONT_PX_SIZE - 1) * TERM_FONT_PX_SIZE, 0, 0);
-    graphics_driver_draw_square(gd, 0, (term->size.height / TERM_FONT_PX_SIZE - 1) * TERM_FONT_PX_SIZE, term->size.width, TERM_FONT_PX_SIZE, { 0, 0, 0 });
+    graphics_driver_move_square(gd, 0, TERM_FONT_PX_SIZE_Y, term->size.width, (term->size.height / TERM_FONT_PX_SIZE_Y - 1) * TERM_FONT_PX_SIZE_Y, 0, 0);
+    graphics_driver_draw_square(gd, 0, (term->size.height / TERM_FONT_PX_SIZE_Y - 1) * TERM_FONT_PX_SIZE_Y, term->size.width, TERM_FONT_PX_SIZE_Y, { 0, 0, 0 });
 }
 
 bool test_terminal_putc(test_terminal_t* term, char ch) {
@@ -61,7 +62,7 @@ bool test_terminal_putc(test_terminal_t* term, char ch) {
             term->cursor.x = 0;
             break;
         case '\b':
-            graphics_driver_draw_character(gd, term->cursor.x, term->cursor.y, ' ', term->color, TERM_SCALE);
+            graphics_driver_draw_character(gd, term->cursor.x, term->cursor.y, ' ', term->color, { 0, 0, 0 }, TERM_SCALE);
 
             if (term->cursor.x >= TERM_FONT_PX_SIZE)
                 term->cursor.x -= TERM_FONT_PX_SIZE;
@@ -72,12 +73,12 @@ bool test_terminal_putc(test_terminal_t* term, char ch) {
                 test_terminal_putc(term, ' ');
             break;
         default:
-            graphics_driver_draw_character(gd, term->cursor.x, term->cursor.y, ch, term->color, TERM_SCALE);
+            graphics_driver_draw_character(gd, term->cursor.x, term->cursor.y, ch, term->color, { 0, 0, 0 }, TERM_SCALE);
             term->cursor.x += TERM_FONT_PX_SIZE;
             break;
     }
 
-    graphics_driver_draw_character(gd, term->cursor.x, term->cursor.y, '_', { 255, 255, 255 }, TERM_SCALE);
+    graphics_driver_draw_character(gd, term->cursor.x, term->cursor.y, '_', { 255, 255, 255 }, { 0, 0, 0 }, TERM_SCALE);
     return true;
 }
 
