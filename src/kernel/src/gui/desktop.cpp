@@ -25,13 +25,16 @@ vga_buffer_t* desktop_render_get_buffer() {
 }
 
 void desktop_handle_ps2_mouse_input(const ps2_mouse_state_t* p_state) {
+    size_t x, y;
+    graphics_driver_get_size(get_global_graphics_driver(), &x, &y);
+
     // on mouse move
     if (p_state->dx != 0 || p_state->dy != 0) {
         // update mouse pos
         g_desktop_mouse_pos[0] += p_state->dx;
-        g_desktop_mouse_pos[0] = CLAMP(g_desktop_mouse_pos[0], 0, VGA_GM_BUFFER_WIDTH - 1);
+        g_desktop_mouse_pos[0] = CLAMP(g_desktop_mouse_pos[0], 0, x - 1);
         g_desktop_mouse_pos[1] += p_state->dy;
-        g_desktop_mouse_pos[1] = CLAMP(g_desktop_mouse_pos[1], 0, VGA_GM_BUFFER_HEIGHT - 1);
+        g_desktop_mouse_pos[1] = CLAMP(g_desktop_mouse_pos[1], 0, y - 1);
 
         // call event
         desktop_event_on_mouse_move_t event {};
@@ -386,14 +389,6 @@ int desktop_init() {
     minesweeper_init();
     // webbrowser_init();
 
-    // load_background();
-
-    // desktop_render_end();
-
-    // while (1)
-    // {
-    // }
-
     g_desktop_ready = true;
 
     // main render loop
@@ -411,6 +406,8 @@ int desktop_init() {
         disable_interrupts();
 
         desktop_render_clear_buffer();
+
+        // load_background();
 
         // render targets
         for (size_t i = 0; i < g_render_targets.length(); i++) {
