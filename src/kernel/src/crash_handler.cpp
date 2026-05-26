@@ -8,6 +8,7 @@
 #include "utils/mutex.hpp"
 #include "interrupt_manager.hpp"
 #include "arch/amd64/cpu.hpp"
+#include "drivers/graphics/graphics_driver.hpp"
 
 NORETURN void kernel_fatal_end() {
     while (true)
@@ -118,30 +119,30 @@ void kernel_fatal_internal(u64 code, const char* message, interrupt_regs_t* cpu_
             vthread_terminate();
     }
 
-    // assume we are still in vga text mode
-    // vga_tm_color_map_t color_default {};
-    // color_default.foreground = vga_tm_color_t::WHITE;
-    // color_default.background = vga_tm_color_t::BLACK;
+    graphics_driver_t* gd = get_global_graphics_driver();
 
-    // vga_tm_color_map_t color_highlight {};
-    // color_highlight.foreground = vga_tm_color_t::BLACK;
-    // color_highlight.background = vga_tm_color_t::WHITE;
+    size_t w, h;
+    graphics_driver_get_size(gd, &w, &h);
+    graphics_driver_draw_square(gd, 0, 0, w, h, { 0, 0, 0 });
 
-    // vga_tm_set_color(&g_vga_tm_buffer, &color_default);
-    // vga_tm_clear_buffer(&g_vga_tm_buffer);
-
-    // vga_tm_set_cursor(&g_vga_tm_buffer, 27, 2);
-    // vga_tm_puts_color(&g_vga_tm_buffer, &color_highlight, " Corrupted Beyond Repair ");
-
-    // vga_tm_set_cursor(&g_vga_tm_buffer, 0, 5);
-    // vga_tm_puts(&g_vga_tm_buffer, "        The system encounterd a critical error.\n");
-    // vga_tm_puts(&g_vga_tm_buffer, "        Immediate recovery is not possible.\n\n");
-    // vga_tm_puts(&g_vga_tm_buffer, "        Additional diagnostic information generated (if available).\n");
-    // vga_tm_puts(&g_vga_tm_buffer, "        A system reboot is required.\n\n");
+    size_t w2, h2;
+    graphics_driver_get_text_size(gd, " Corrupted Beyond Repair ", &w2, &h2);
+    graphics_driver_draw_text(gd, w / 2 - w2 / 2, 100, " Corrupted Beyond Repair ", { 0, 0, 0 }, { 255, 255, 255 });
     
-    // char buffer[256] {};
-    // sprintf(buffer, 256, "        Stop code: 0x%uh. ", code);
-    // vga_tm_puts(&g_vga_tm_buffer, buffer);
+    // we take this since its the longes piece of text
+    graphics_driver_get_text_size(gd, "Additional diagnostic information generated (if available).", &w2, &h2);
+
+    graphics_driver_draw_text(gd, w / 2 - w2 / 2, 100 + h2 * 2, "The system encounterd a critical error.", { 255, 255, 255 });
+    graphics_driver_draw_text(gd, w / 2 - w2 / 2, 100 + h2 * 3, "Immediate recovery is not possible.", { 255, 255, 255 });
+    graphics_driver_draw_text(gd, w / 2 - w2 / 2, 100 + h2 * 5, "Additional diagnostic information generated (if available).", { 255, 255, 255 });
+    graphics_driver_draw_text(gd, w / 2 - w2 / 2, 100 + h2 * 6, "A system reboot is required.", { 255, 255, 255 });
+
+    char buffer[256] {};
+    sprintf(buffer, 256, "Stop code: 0x%uh. ", code);
+
+    graphics_driver_draw_text(gd, w / 2 - w2 / 2, 100 + h2 * 8, buffer, { 255, 255, 255 });
+
+    graphics_driver_render(gd);
 
     // reboot?
 
