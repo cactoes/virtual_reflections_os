@@ -37,17 +37,23 @@ bool amd64_vthread_init(vthread_t* thread, void* thread_entry) {
     if (!stack)
         return false;
 
+    memzero(stack, VTHREAD_STACK_SIZE);
+
     thread->fpu_state = (u8*)malloc_aligned(sizeof(u8) * 512, 16);
     if (!thread->fpu_state)
         return false;
+
+    memzero(thread->fpu_state, 512);
 
     memzero(stack, VTHREAD_STACK_SIZE);
     thread->stack_bottom = stack;
     u64* stack_top = (u64*)(((u64)stack + VTHREAD_STACK_SIZE) & ~0xF);
 
+    u64 initial_rsp = (u64)stack_top - 8;
+
     // itret frame
     *(--stack_top) = amd64_get_selector_for(KERNEL_DATA_SELECTOR_INDEX);
-    *(--stack_top) = (u64)stack_top;
+    *(--stack_top) = initial_rsp;
     *(--stack_top) = RFLAGS_IF | RFLAGS_RES;
     *(--stack_top) = amd64_get_selector_for(KERNEL_CODE_SELECTOR_INDEX);
     *(--stack_top) = (u64)vthread_entry_point;
@@ -77,6 +83,8 @@ bool amd64_vthread_init_main_thread(vthread_t* thread) {
     thread->fpu_state = (u8*)malloc_aligned(sizeof(u8) * 512, 16);
     if (!thread->fpu_state)
         return false;
+
+    memzero(thread->fpu_state, 512);
 
     return true;
 }
