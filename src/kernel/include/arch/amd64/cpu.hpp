@@ -75,6 +75,13 @@ u64 amd64_read_cr2() {
 }
 
 static inline
+u64 amd64_read_cr3() {
+    u64 res;
+    asm volatile("mov %%cr3, %0" : "=r"(res));
+    return res;
+}
+
+static inline
 u64 amd64_save_flags_and_cli() {
     u64 flags;
     asm volatile(
