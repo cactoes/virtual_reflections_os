@@ -5,13 +5,13 @@ u32 framebuffer_format_color(framebuffer_t* framebuffer, u8 r, u8 g, u8 b, u8 a)
         return 0;
 
     switch (framebuffer->format) {
-        case framebuffer_color_format_t::ARGB888:
+        case framebuffer_color_format_t::ARGB8888:
             return a << 24 | r << 16 | g << 8 | b;
-        case framebuffer_color_format_t::RGBA888:
+        case framebuffer_color_format_t::RGBA8888:
             return r << 24 | g << 16 | b << 8 | a;
-        case framebuffer_color_format_t::BGRA888:
+        case framebuffer_color_format_t::BGRA8888:
             return b << 24 | g << 16 | r << 8 | a;
-        case framebuffer_color_format_t::ABGR888:
+        case framebuffer_color_format_t::ABGR8888:
             return a << 24 | b << 16 | g << 8 | r;
         default:
             return 0;

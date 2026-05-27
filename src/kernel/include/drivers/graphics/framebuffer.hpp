@@ -12,10 +12,12 @@
 
 enum class framebuffer_color_format_t {
     UNKNOWN = 0,
-    ARGB888,
-    RGBA888,
-    BGRA888,
-    ABGR888,
+    ARGB8888,
+    RGBA8888,
+    BGRA8888,
+    ABGR8888,
+
+    RGB888,
 };
 
 struct framebuffer_t {
