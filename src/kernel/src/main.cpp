@@ -173,6 +173,7 @@ void* crash_handler_callback(void* stack, void* data) {
 }
 
 extern bool io_term_init(size_t w, size_t h);
+extern u64 global_online_systems_flags;
 
 extern "C" NORETURN void virtual_kernel_entry(multiboot2_info_t* multiboot_struct) {
     // initialze the debug out stream
@@ -185,6 +186,8 @@ extern "C" NORETURN void virtual_kernel_entry(multiboot2_info_t* multiboot_struc
 
     set_global_heap(&heap);
 
+    BIT_SET(global_online_systems_flags, KERNEL_SYSTEM_HEAP_BIT);
+
     kprintf("[ \033[92mOK\033[0m ] initialized memory\n");
 
     graphics_driver_t gd {};
@@ -192,6 +195,12 @@ extern "C" NORETURN void virtual_kernel_entry(multiboot2_info_t* multiboot_struc
         kernel_fatal(KERNEL_FATAL_GRAPHICS_INIT, "graphics driver to initialize");
 
     set_global_graphics_driver(&gd);
+
+    graphics_driver_reset(&gd);
+    graphics_driver_render(&gd);
+
+    BIT_SET(global_online_systems_flags, KERNEL_SYSTEM_GD_BIT);
+
     io_term_init(gd.framebuffer->width, gd.framebuffer->height);
 
     kprintf("[ \033[92mOK\033[0m ] initialized graphics driver\n");
@@ -230,13 +239,19 @@ extern "C" NORETURN void virtual_kernel_entry(multiboot2_info_t* multiboot_struc
     ps2_mouse_init();
     pit_init(PIT_TIMER_INTERVAL);
 
+    BIT_SET(global_online_systems_flags, KERNEL_SYSTEM_PIT_BIT);
+
     dma_heap_manager_t allocator {};
     set_global_dma_heap_manager(&allocator);
     dma_heap_manager_init(get_global_dma_heap_manager(), (void*)VMEM_DMA_ALLOCATOR_START, PAGE_SIZE_LARGE * 128);
 
+    BIT_SET(global_online_systems_flags, KERNEL_SYSTEM_DMA_BIT);
+
     // initialize threading
     if (vthread_start_and_setup_main() == VTHREAD_HANDLE_INVALID)
         kernel_fatal(KERNEL_FATAL_VTHREAD_INIT, "virtual threads failed to intialize");
+
+    BIT_SET(global_online_systems_flags, KERNEL_SYSTEM_VTHREAD_BIT);
 
     kprintf("[ \033[92mOK\033[0m ] enabled virtual threading\n");
     printf("[ \033[92mOK\033[0m ] enabled virtual threading\n");
@@ -247,6 +262,8 @@ extern "C" NORETURN void virtual_kernel_entry(multiboot2_info_t* multiboot_struc
     system_info_parse_system_information(get_global_system_info_manager());
     system_info_get_cpu_name(get_global_system_info_manager());
 
+    BIT_SET(global_online_systems_flags, KERNEL_SYSTEM_SIM_BIT);
+
     kprintf("[ \033[92mOK\033[0m ] parsed system information\n");
 
     // TODO @since 06/02/2026 -- 10:34
@@ -256,6 +273,8 @@ extern "C" NORETURN void virtual_kernel_entry(multiboot2_info_t* multiboot_struc
     network_interface_controller_t nic {};
     nic_init(&nic);
     set_global_nic(&nic);
+
+    BIT_SET(global_online_systems_flags, KERNEL_SYSTEM_NIC_BIT);
 
     network_manager_t network_manager {};
     network_manager_init(&network_manager);
@@ -268,28 +287,37 @@ extern "C" NORETURN void virtual_kernel_entry(multiboot2_info_t* multiboot_struc
         printf("[ \033[91mERROR\033[0m ] failed to configure network manager\n");
     }
 
+    BIT_SET(global_online_systems_flags, KERNEL_SYSTEM_NM_BIT);
+
     vfs_t vfs {};
     vfs_init(&vfs);
     set_global_vfs(&vfs);
 
+    BIT_SET(global_online_systems_flags, KERNEL_SYSTEM_VFS_BIT);
+
     storage_manager_t storage_manager {};
     storage_manager_init(&storage_manager);
     set_global_storage_manager(&storage_manager);
+
+    BIT_SET(global_online_systems_flags, KERNEL_SYSTEM_SM_BIT);
 
     pcie_device_manager_t pciedm {};
     set_global_pcie_device_manager(&pciedm);
     pci_enumerate_devices(get_global_pcie_device_manager());
     pci_loop_devices(get_global_pcie_device_manager(), init_pci_devices);
 
+    BIT_SET(global_online_systems_flags, KERNEL_SYSTEM_PCIE_BIT);
+
     driver_manager_t driver_manager {};
     set_global_driver_manager(&driver_manager);
+
+    BIT_SET(global_online_systems_flags, KERNEL_SYSTEM_DM_BIT);
 
     // std::dynamic_array<vfs_node_t> nodes {};
     // if (vfs_list_directory(&vfs, "/harddisk0", &nodes)) {
     //     for (auto& node : nodes) {
     //         if (str_ends_with(node.name.c_str(), ".sys")) {
     //             std::string driver_name = node.name.substr(0, node.name.length() - 4);
-
     //             const std::string driver_path = std::string("/harddisk0/") + driver_name + ".sys";
     //             file_descriptor_t driver_file_handle = vfs_open_file(&vfs, driver_path.c_str());
     //             if (driver_file_handle == FILE_DESCRIPTOR_INVALID) {
@@ -297,7 +325,6 @@ extern "C" NORETURN void virtual_kernel_entry(multiboot2_info_t* multiboot_struc
     //                 printf("[ \033[91mERROR\033[0m ] failed open file handle to driver: '%s'\n", driver_name.c_str());
     //                 continue;
     //             }
-
     //             // DONT FREE IT!
     //             u8* driver_file_data = nullptr;
     //             size_t size;
@@ -306,7 +333,6 @@ extern "C" NORETURN void virtual_kernel_entry(multiboot2_info_t* multiboot_struc
     //                 printf("[ \033[91mERROR\033[0m ] failed to parse driver file '%s'\n", driver_name.c_str());
     //                 continue;
     //             }
-
     //             system_driver_handle_t driver_handle = driver_load(get_global_driver_manager(), driver_name.c_str(), driver_file_data);
     //             if (driver_handle == SYSTEM_DRIVER_HANDLE_INVALID) {
     //                 kprintf("[ \033[91mERROR\033[0m ] failed to load driver '%s'\n", driver_name.c_str());
@@ -314,7 +340,6 @@ extern "C" NORETURN void virtual_kernel_entry(multiboot2_info_t* multiboot_struc
     //                 free(driver_file_data);
     //                 continue;
     //             }
-
     //             int result = driver_start(get_global_driver_manager(), driver_handle);
     //             if (result != 0) {
     //                 kprintf("[ \033[91mERROR\033[0m ] failed to start driver '%s'. code: %i\n", driver_name.c_str(), result);
@@ -322,7 +347,6 @@ extern "C" NORETURN void virtual_kernel_entry(multiboot2_info_t* multiboot_struc
     //                 free(driver_file_data);
     //                 continue;
     //             }
-
     //             kprintf("[ \033[92mOK\033[0m ] loaded driver '%s'. code: %i\n", driver_name.c_str(), result);
     //             printf("[ \033[92mOK\033[0m ] loaded driver '%s'. code: %i\n", driver_name.c_str(), result);
     //         }
