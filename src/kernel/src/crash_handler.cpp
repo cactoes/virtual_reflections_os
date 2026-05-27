@@ -10,6 +10,8 @@
 #include "arch/amd64/cpu.hpp"
 #include "drivers/graphics/graphics_driver.hpp"
 
+volatile u64 global_online_systems_flags = 0;
+
 NORETURN void kernel_fatal_end() {
     while (true)
         debug_trap("kernel fatal");
@@ -108,6 +110,8 @@ void kernel_fatal_internal(u64 code, const char* message, interrupt_regs_t* cpu_
         kprintf("        rsp: 0x%uh\n", cpu_state->rsp);
     }
 
+    auto temp_handle = __thread_tls ? __thread_tls->handle : VTHREAD_HANDLE_INVALID;
+
     // if not main thread just terminate the thread not the system
     // & if a valid tls is setup
     if (__thread_tls && __thread_tls->handle != VTHREAD_MAIN_THREAD_HANDLE && __thread_tls->handle != VTHREAD_HANDLE_INVALID) {
@@ -138,9 +142,46 @@ void kernel_fatal_internal(u64 code, const char* message, interrupt_regs_t* cpu_
     graphics_driver_draw_text(gd, w / 2 - w2 / 2, 100 + h2 * 6, "A system reboot is required.", { 255, 255, 255 });
 
     char buffer[256] {};
-    sprintf(buffer, 256, "Stop code: 0x%uh. ", code);
-
+    sprintf(buffer, 256, "Stop code: 0x%uh. Systems initialized: %ul", code, global_online_systems_flags);
     graphics_driver_draw_text(gd, w / 2 - w2 / 2, 100 + h2 * 8, buffer, { 255, 255, 255 });
+
+    if (code == 0xe) {
+        bool is_reason_protection = (cpu_state->error_code & 0x1);
+        bool is_operation_write = (cpu_state->error_code & 0x2);
+        bool is_mode_user = (cpu_state->error_code & 0x4);
+
+        char buffer[256] {};
+        sprintf(buffer, 256, "address: 0x%p", amd64_read_cr2());
+        graphics_driver_draw_text(gd, w / 2 - w2 / 2, 100 + h2 * 9, buffer, { 255, 255, 255 });
+
+        sprintf(buffer, 256, "reason: %s", is_reason_protection ? "protection violation" : "non-present page");
+        graphics_driver_draw_text(gd, w / 2 - w2 / 2, 100 + h2 * 10, buffer, { 255, 255, 255 });
+
+        sprintf(buffer, 256, "operation: %s", is_operation_write ? "write" : "read");
+        graphics_driver_draw_text(gd, w / 2 - w2 / 2, 100 + h2 * 11, buffer, { 255, 255, 255 });
+
+        sprintf(buffer, 256, "mode: %s", is_mode_user ? "user" : "kernel");
+        graphics_driver_draw_text(gd, w / 2 - w2 / 2, 100 + h2 * 12, buffer, { 255, 255, 255 });
+    } else if (code == 0xd) {
+        char buffer[256] {};
+        sprintf(buffer, 256, "rsp: 0x%p [% 16 == %ul]", cpu_state->rsp, (u64)(cpu_state->rsp % 16));
+        graphics_driver_draw_text(gd, w / 2 - w2 / 2, 100 + h2 * 9, buffer, { 255, 255, 255 });
+
+        sprintf(buffer, 256, "rbp: 0x%p [% 16 == %ul]", cpu_state->rbp, (u64)(cpu_state->rbp % 16));
+        graphics_driver_draw_text(gd, w / 2 - w2 / 2, 100 + h2 * 10, buffer, { 255, 255, 255 });
+
+        sprintf(buffer, 256, "rip: 0x%p [% 16 == %ul]", cpu_state->rip, (u64)(cpu_state->rip % 16));
+        graphics_driver_draw_text(gd, w / 2 - w2 / 2, 100 + h2 * 11, buffer, { 255, 255, 255 });
+
+        sprintf(buffer, 256, "error code: 0x%ul", cpu_state->error_code);
+        graphics_driver_draw_text(gd, w / 2 - w2 / 2, 100 + h2 * 12, buffer, { 255, 255, 255 });
+
+        sprintf(buffer, 256, "cr3: 0x%ul", amd64_read_cr3());
+        graphics_driver_draw_text(gd, w / 2 - w2 / 2, 100 + h2 * 13, buffer, { 255, 255, 255 });
+
+        sprintf(buffer, 256, "handle: 0x%ul", temp_handle);
+        graphics_driver_draw_text(gd, w / 2 - w2 / 2, 100 + h2 * 14, buffer, { 255, 255, 255 });
+    }
 
     graphics_driver_render(gd);
 

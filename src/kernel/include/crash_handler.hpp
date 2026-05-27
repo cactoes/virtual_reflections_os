@@ -19,6 +19,19 @@
 #define KERNEL_FATAL_VTHREAD_STACK_PROTECTION       0xF0000005
 #define KERNEL_FATAL_CRITICAL_SECTION_FAILED        0xF0000006
 
+#define KERNEL_SYSTEM_HEAP_BIT      0
+#define KERNEL_SYSTEM_GD_BIT        1
+#define KERNEL_SYSTEM_PIT_BIT       2
+#define KERNEL_SYSTEM_DMA_BIT       3
+#define KERNEL_SYSTEM_VTHREAD_BIT   4
+#define KERNEL_SYSTEM_SIM_BIT       5
+#define KERNEL_SYSTEM_NIC_BIT       6
+#define KERNEL_SYSTEM_NM_BIT        7
+#define KERNEL_SYSTEM_VFS_BIT       8
+#define KERNEL_SYSTEM_SM_BIT        9
+#define KERNEL_SYSTEM_PCIE_BIT      10
+#define KERNEL_SYSTEM_DM_BIT        11
+
 #include "common.hpp"
 
 extern "C" NORETURN void kernel_fatal_internal(u64 code, const char* message, struct interrupt_regs_t* cpu_state = nullptr);
