@@ -117,36 +117,39 @@ void set_global_graphics_driver(graphics_driver_t* graphics_driver) {
 }
 
 framebuffer_color_format_t get_framebuffer_format(multiboot2_tag_framebuffer_t* tag) {
-    if (tag->framebuffer_type != MULTIBOOT2_FRAMEBUFFER_TYPE_RGB ||
-        tag->framebuffer_bpp != MULTIBOOT2_FRAMEBUFFER_BPP_32BIT)
+    if (tag->framebuffer_type != MULTIBOOT2_FRAMEBUFFER_TYPE_RGB)
+        return framebuffer_color_format_t::UNKNOWN;
+
+    if (tag->framebuffer_bpp != MULTIBOOT2_FRAMEBUFFER_BPP_32BIT) //  && tag->framebuffer_bpp != MULTIBOOT2_FRAMEBUFFER_BPP_24BIT
         return framebuffer_color_format_t::UNKNOWN;
 
     if (tag->rgb.framebuffer_red_field_position == 16 &&
         tag->rgb.framebuffer_green_field_position == 8 &&
         tag->rgb.framebuffer_blue_field_position == 0)
-        return framebuffer_color_format_t::ARGB888;
+        return framebuffer_color_format_t::ARGB8888;
 
     if (tag->rgb.framebuffer_red_field_position == 24 &&
         tag->rgb.framebuffer_green_field_position == 16 &&
         tag->rgb.framebuffer_blue_field_position == 8)
-        return framebuffer_color_format_t::RGBA888;
+        // return tag->framebuffer_bpp == MULTIBOOT2_FRAMEBUFFER_BPP_32BIT ? framebuffer_color_format_t::RGBA8888 : framebuffer_color_format_t::RGB888;
+        return framebuffer_color_format_t::RGBA8888;
 
     if (tag->rgb.framebuffer_red_field_position == 8 &&
         tag->rgb.framebuffer_green_field_position == 16 &&
         tag->rgb.framebuffer_blue_field_position == 24)
-        return framebuffer_color_format_t::BGRA888;
+        return framebuffer_color_format_t::BGRA8888;
 
     if (tag->rgb.framebuffer_red_field_position == 0 &&
         tag->rgb.framebuffer_green_field_position == 8 &&
         tag->rgb.framebuffer_blue_field_position == 16)
-        return framebuffer_color_format_t::ABGR888;
+        return framebuffer_color_format_t::ABGR8888;
 
     return framebuffer_color_format_t::UNKNOWN;
 }
 
 bool graphics_driver_init_framebuffer(graphics_driver_t* graphics_driver, multiboot2_info_t* multiboot_struct) {
     graphics_driver->type = graphics_driver_type_t::FRAMEBUFFER;
-    
+
     multiboot2_tag_framebuffer_t* framebuffer_tag = mb2_get_framebuffer(multiboot_struct);
     if (!framebuffer_tag)
         return false;
@@ -383,6 +386,35 @@ bool graphics_driver_get_size(graphics_driver_t* graphics_driver, size_t* w, siz
     }
 
     return false;
+}
+
+bool graphics_driver_reset(graphics_driver_t* graphics_driver) {
+    if (!graphics_driver)
+        return false;
+
+    void* address = nullptr;
+    u64 size = 0;
+    
+    switch (graphics_driver->type) {
+        case graphics_driver_type_t::FRAMEBUFFER: {
+            address = graphics_driver->framebuffer->back_buffer;
+            size = graphics_driver->framebuffer->size;
+            break;
+        }
+        case graphics_driver_type_t::VGA: {
+            address = graphics_driver->vgabuffer->buffer;
+            size = graphics_driver->vgabuffer->size.width * graphics_driver->vgabuffer->size.height;
+            break;
+        }
+        default:
+            return false;
+    }
+
+    if (!address || size == 0)
+        return false;
+
+    memzero(address, size);
+    return true;
 }
 
 bool graphics_driver_render(graphics_driver_t* graphics_driver) {

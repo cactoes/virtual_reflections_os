@@ -55,6 +55,7 @@ bool graphics_driver_move_square(graphics_driver_t* graphics_driver, size_t x, s
 
 bool graphics_driver_get_size(graphics_driver_t* graphics_driver, size_t* x, size_t* y);
 
+bool graphics_driver_reset(graphics_driver_t* graphics_driver);
 bool graphics_driver_render(graphics_driver_t* graphics_driver);
 
 #endif // __GRAPHICS_DRIVER_HPP__
