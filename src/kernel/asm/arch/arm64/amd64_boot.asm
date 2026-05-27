@@ -10,6 +10,7 @@ MB2_BOOTLOADER_MAGIC        equ 0x36D76289
 
 MB2_TAG_TYPE_FRAMEBUFFER    equ 5
 MB2_FRAMEBUFFER_BPP32       equ 32
+MB2_FRAMEBUFFER_BPP_ANY     equ 0
 
 ; gdt flags
 GDT_ACCESS_RING0            equ (0 << 0)
