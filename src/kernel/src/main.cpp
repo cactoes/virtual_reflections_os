@@ -121,18 +121,18 @@ void init_pci_devices(const pci_device_t* device) {
     }
 
     if (is_rtl8168_device(device)) {
-        rtl81xx_t* rtl81xx = (rtl81xx_t*)malloc(sizeof(rtl81xx_t));
-        memzero(rtl81xx, sizeof(rtl81xx_t));
+        rtl8168_t* rtl8168 = (rtl8168_t*)malloc(sizeof(rtl8168_t));
+        memzero(rtl8168, sizeof(rtl8168_t));
 
-        if (rtl8168_init_device(device, rtl81xx)) {
+        if (rtl8168_init_device(device, rtl8168)) {
             network_interface_t* rtl8168_network_interface = (network_interface_t*)malloc(sizeof(network_interface_t));
             memzero(rtl8168_network_interface, sizeof(network_interface_t));
 
-            rtl8168_network_interface->device = rtl81xx;
+            rtl8168_network_interface->device = rtl8168;
             rtl8168_network_interface->device_type = network_interface_device_type_t::RTL8168;
             rtl8168_network_interface->is_configured = true;
 
-            memcpy(rtl8168_network_interface->mac, rtl81xx->mac, 6);
+            memcpy(rtl8168_network_interface->mac, rtl8168->mac, 6);
 
             const char* device_name = "Realtek RTL8168";
             strncpy(rtl8168_network_interface->device_name, device_name, sizeof(rtl8168_network_interface->device_name));
@@ -142,7 +142,7 @@ void init_pci_devices(const pci_device_t* device) {
 
             nic_register_interface(get_global_nic(), rtl8168_network_interface);
 
-            // network_manager_configre_interface(get_global_network_manager(), e1000_network_interface);
+            // network_manager_configre_interface(get_global_network_manager(), rtl8168_network_interface);
 
             kprintf("[PCIe] initialized rtl8168 device\n");
             printf("[PCIe] initialized rtl8168 device\n");
