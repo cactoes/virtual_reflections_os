@@ -9,6 +9,8 @@
 
 extern "C" interrupt_t amd64_convert_to_interrupt(u64 code);
 
+// TODO @since 28/05/2026 -- 09:44
+// move to local e1000 device
 static heap_t* g_e1000_dma_heap = nullptr;
 
 #if CPU_ARCHITECTURE == ARCH_AMD64
