@@ -173,13 +173,13 @@ void kernel_fatal_internal(u64 code, const char* message, interrupt_regs_t* cpu_
         sprintf(buffer, 256, "rip: 0x%p [% 16 == %ul]", cpu_state->rip, (u64)(cpu_state->rip % 16));
         graphics_driver_draw_text(gd, w / 2 - w2 / 2, 100 + h2 * 11, buffer, { 255, 255, 255 });
 
-        sprintf(buffer, 256, "error code: 0x%ul", cpu_state->error_code);
+        sprintf(buffer, 256, "error code: %ul", cpu_state->error_code);
         graphics_driver_draw_text(gd, w / 2 - w2 / 2, 100 + h2 * 12, buffer, { 255, 255, 255 });
 
-        sprintf(buffer, 256, "cr3: 0x%ul", amd64_read_cr3());
+        sprintf(buffer, 256, "cr3: %ul", amd64_read_cr3());
         graphics_driver_draw_text(gd, w / 2 - w2 / 2, 100 + h2 * 13, buffer, { 255, 255, 255 });
 
-        sprintf(buffer, 256, "handle: 0x%ul", temp_handle);
+        sprintf(buffer, 256, "handle: %ul", temp_handle);
         graphics_driver_draw_text(gd, w / 2 - w2 / 2, 100 + h2 * 14, buffer, { 255, 255, 255 });
     }
 
