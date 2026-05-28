@@ -259,10 +259,9 @@ extern "C" NORETURN void virtual_kernel_entry(multiboot2_info_t* multiboot_struc
     system_info_manager_t sim {};
     set_global_system_info_manager(&sim);
     system_info_parse_memory_size(get_global_system_info_manager(), multiboot_struct);
-    system_info_parse_system_information(get_global_system_info_manager());
+    // only works in non uefi mode
+    // system_info_parse_system_information(get_global_system_info_manager());
     system_info_get_cpu_name(get_global_system_info_manager());
-
-    BIT_SET(global_online_systems_flags, KERNEL_SYSTEM_SIM_BIT);
 
     kprintf("[ \033[92mOK\033[0m ] parsed system information\n");
 

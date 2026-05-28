@@ -40,6 +40,9 @@ bool system_info_dump(smbios_entry_header_t* entry, void* system_info_manager) {
 }
 
 void system_info_parse_system_information(system_info_manager_t* system_info_manager) {
+    // BUG @since 28/05/2026 -- 09:00
+    // only works on NON uefi
+
     if (smbios_t* struct_pointer = (smbios_t*)smbios_find_struct_entry(SMBIOS_SIGNATUE, ARRAY_SIZE(SMBIOS_SIGNATUE) - 1)) {
         smbios_iterate(PTOV_I(struct_pointer->table_address), system_info_manager, system_info_dump);
         return;
