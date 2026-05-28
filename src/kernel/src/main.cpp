@@ -1,5 +1,3 @@
-
-
 #include "drivers/vga.hpp"
 #include "drivers/pcie.hpp"
 #include "drivers/pit.hpp"
@@ -90,13 +88,16 @@
 // }
 
 void init_pci_devices(const pci_device_t* device) {
+    const char* cd = pci_get_class_description(device);
+    printf("[PCIe] %s: (%u:%u.%u) 0x%uh:0x%uh\n", cd, device->bus, device->device, device->function, device->vendor_device_id.vendor_id, device->vendor_device_id.device_id);
+
     if (is_e1000_device(device)) {
         e1000_t* e1000 = (e1000_t*)malloc(sizeof(e1000_t));
         memzero(e1000, sizeof(e1000_t));
         if (e1000_init_device(device, e1000) == 0) {
             network_interface_t* e1000_network_interface = (network_interface_t*)malloc(sizeof(network_interface_t));
             memzero(e1000_network_interface, sizeof(network_interface_t));
-            
+
             e1000_network_interface->device = e1000;
             e1000_network_interface->device_type = network_interface_device_type_t::E1000;
             e1000_network_interface->is_configured = true;
