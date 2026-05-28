@@ -24,7 +24,7 @@
 #define PCI_CMD_MMIO            (1 << 1)
 #define PCI_CMD_BUS_MASTERING   (1 << 2)
 
-#define PCI_BAR_MMIO_ENABLED    (1 << 0)
+#define PCI_BAR_IO_REGION    (1 << 0)
 
 #include "common.hpp"
 #include "utils/vector.hpp"

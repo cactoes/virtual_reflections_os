@@ -180,7 +180,7 @@ int e1000_init_device(const pci_device_t* p_pcie_device, e1000_t* p_network_devi
     cmd |= PCI_CMD_MMIO | PCI_CMD_BUS_MASTERING;
     pci_config_write(p_pcie_device, PCI_COMMAND, cmd);
 
-    if (pci_read_bar(p_pcie_device, 0) & PCI_BAR_MMIO_ENABLED)
+    if (pci_read_bar(p_pcie_device, 0) & PCI_BAR_IO_REGION)
         return 1;
 
     g_e1000_dma_heap = dma_heap_manager_create_heap(get_global_dma_heap_manager(), PAGE_SIZE_LARGE);
