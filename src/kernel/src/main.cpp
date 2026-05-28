@@ -7,6 +7,7 @@
 #include "drivers/ps2/ps2.hpp"
 #include "drivers/driver.hpp"
 #include "drivers/network/e1000.hpp"
+#include "drivers/network/rtl8168.hpp"
 #include "network/nidm.hpp"
 #include "network/tcp.hpp"
 #include "network/arp.hpp"
@@ -88,8 +89,8 @@
 // }
 
 void init_pci_devices(const pci_device_t* device) {
-    const char* cd = pci_get_class_description(device);
-    printf("[PCIe] %s: (%u:%u.%u) 0x%uh:0x%uh\n", cd, device->bus, device->device, device->function, device->vendor_device_id.vendor_id, device->vendor_device_id.device_id);
+    // const char* cd = pci_get_class_description(device);
+    // printf("[PCIe] %s: (%u:%u.%u) 0x%uh:0x%uh\n", cd, device->bus, device->device, device->function, device->vendor_device_id.vendor_id, device->vendor_device_id.device_id);
 
     if (is_e1000_device(device)) {
         e1000_t* e1000 = (e1000_t*)malloc(sizeof(e1000_t));
@@ -116,6 +117,40 @@ void init_pci_devices(const pci_device_t* device) {
         }
 
         // valid device so we can continue to the next device
+        return;
+    }
+
+    if (is_rtl8168_device(device)) {
+        rtl81xx_t* rtl81xx = (rtl81xx_t*)malloc(sizeof(rtl81xx_t));
+        memzero(rtl81xx, sizeof(rtl81xx_t));
+
+        if (rtl8168_init_device(device, rtl81xx)) {
+            network_interface_t* rtl8168_network_interface = (network_interface_t*)malloc(sizeof(network_interface_t));
+            memzero(rtl8168_network_interface, sizeof(network_interface_t));
+
+            rtl8168_network_interface->device = rtl81xx;
+            rtl8168_network_interface->device_type = network_interface_device_type_t::RTL8168;
+            rtl8168_network_interface->is_configured = true;
+
+            memcpy(rtl8168_network_interface->mac, rtl81xx->mac, 6);
+
+            const char* device_name = "Realtek RTL8168";
+            strncpy(rtl8168_network_interface->device_name, device_name, sizeof(rtl8168_network_interface->device_name));
+
+            // for now force this device to be prefered
+            // rtl8168_network_interface->is_prefered = false;
+
+            nic_register_interface(get_global_nic(), rtl8168_network_interface);
+
+            // network_manager_configre_interface(get_global_network_manager(), e1000_network_interface);
+
+            kprintf("[PCIe] initialized rtl8168 device\n");
+            printf("[PCIe] initialized rtl8168 device\n");
+        } else {
+            kprintf("[PCIe] failed to initialize rtl8168 device\n");
+            printf("[PCIe] failed to initialize rtl8168 device\n");
+        }
+
         return;
     }
 

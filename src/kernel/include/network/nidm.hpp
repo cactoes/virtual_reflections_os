@@ -29,7 +29,8 @@ union ipv4_address_t {
 
 enum class network_interface_device_type_t {
     UNKNOWN = 0,
-    E1000
+    E1000,
+    RTL8168
 };
 
 struct network_interface_t {
