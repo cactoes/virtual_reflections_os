@@ -228,7 +228,7 @@ extern "C" NORETURN void virtual_kernel_entry(multiboot2_info_t* multiboot_struc
 
     graphics_driver_t gd {};
     if (!graphics_driver_init(&gd, multiboot_struct))
-        kernel_fatal(KERNEL_FATAL_GRAPHICS_INIT, "graphics driver to initialize");
+        kernel_fatal(KERNEL_FATAL_GRAPHICS_INIT, "graphics failed driver to initialize");
 
     set_global_graphics_driver(&gd);
 
