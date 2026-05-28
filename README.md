@@ -34,6 +34,9 @@ PS> .\vrtlkt.ps1 -Tool run
     - [ ] interrupt manager
 - [ ] gui
 - [ ] rtl8169 driver (maybe rtl8168)
+- [ ] (simple) usb drivers
+    - [ ] keyboard
+    - [ ] usb storage device
 
 ## Mapping driver symbols in debug mode
 ```
