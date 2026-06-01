@@ -108,9 +108,6 @@ void init_pci_devices(const pci_device_t* device) {
             const char* device_name = "Intel E1000";
             strncpy(e1000_network_interface->device_name, device_name, sizeof(e1000_network_interface->device_name));
 
-            // for now force this device to be prefered
-            e1000_network_interface->is_prefered = true;
-
             nic_register_interface(get_global_nic(), e1000_network_interface);
 
             network_manager_configre_interface(get_global_network_manager(), e1000_network_interface);
@@ -137,17 +134,12 @@ void init_pci_devices(const pci_device_t* device) {
             const char* device_name = "Realtek RTL8168";
             strncpy(rtl8168_network_interface->device_name, device_name, sizeof(rtl8168_network_interface->device_name));
 
-            // for now force this device to be prefered
-            // rtl8168_network_interface->is_prefered = false;
-
             nic_register_interface(get_global_nic(), rtl8168_network_interface);
 
             // network_manager_configre_interface(get_global_network_manager(), rtl8168_network_interface);
 
-            kprintf("[PCIe] initialized rtl8168 device\n");
             printf("[PCIe] initialized rtl8168 device\n");
         } else {
-            kprintf("[PCIe] failed to initialize rtl8168 device\n");
             printf("[PCIe] failed to initialize rtl8168 device\n");
         }
 
@@ -162,14 +154,13 @@ void init_pci_devices(const pci_device_t* device) {
                 char name[18];
                 sprintf(name, sizeof(name), "harddisk%i", ide_device_index++);
                 if (!vfs_mount_device(get_global_vfs(), &device, block_device_type_t::IDE, name)) {
-                    kprintf("[IDE] failed to mount drive: %s\n", name);
+                    printf("[IDE] failed to mount drive: %s\n", name);
                 } else {
-                    kprintf("[IDE] mounted: %s\n", name);
                     printf("[IDE] mounted: %s\n", name);
                 }
             }
         } else {
-            kprintf("[IDE] driver failed to init\n");
+            printf("[IDE] driver failed to init\n");
         }
 
         // valid device so we can continue to the next device
@@ -185,14 +176,13 @@ void init_pci_devices(const pci_device_t* device) {
                 char name[18];
                 sprintf(name, sizeof(name), "drive%i", ahci_device_index++);
                 if (!vfs_mount_device(get_global_vfs(), &device, block_device_type_t::AHCI, name)) {
-                    kprintf("failed to mount drive: %s\n", name);
+                    printf("failed to mount drive: %s\n", name);
                 } else {
-                    kprintf("[AHCI] mounted: %s\n", name);
                     printf("[AHCI] mounted: %s\n", name);
                 }
             }
         } else {
-            kprintf("[AHCI] driver failed to init\n");
+            printf("[AHCI] driver failed to init\n");
         }
 
         // valid device so we can continue to the next device
@@ -239,7 +229,6 @@ extern "C" NORETURN void virtual_kernel_entry(multiboot2_info_t* multiboot_struc
 
     io_term_init(gd.framebuffer->width, gd.framebuffer->height);
 
-    kprintf("[ \033[92mOK\033[0m ] initialized graphics driver\n");
     printf("[ \033[92mOK\033[0m ] initialized graphics driver\n");
 
     // initialze the interrupt line(s)
@@ -289,7 +278,6 @@ extern "C" NORETURN void virtual_kernel_entry(multiboot2_info_t* multiboot_struc
 
     BIT_SET(global_online_systems_flags, KERNEL_SYSTEM_VTHREAD_BIT);
 
-    kprintf("[ \033[92mOK\033[0m ] enabled virtual threading\n");
     printf("[ \033[92mOK\033[0m ] enabled virtual threading\n");
 
     system_info_manager_t sim {};
@@ -299,7 +287,7 @@ extern "C" NORETURN void virtual_kernel_entry(multiboot2_info_t* multiboot_struc
     // system_info_parse_system_information(get_global_system_info_manager());
     system_info_get_cpu_name(get_global_system_info_manager());
 
-    kprintf("[ \033[92mOK\033[0m ] parsed system information\n");
+    printf("[ \033[92mOK\033[0m ] parsed system information\n");
 
     // TODO @since 06/02/2026 -- 10:34
     // proper ps2 startup etc
@@ -315,10 +303,8 @@ extern "C" NORETURN void virtual_kernel_entry(multiboot2_info_t* multiboot_struc
     network_manager_init(&network_manager);
     set_global_network_manager(&network_manager);
     if (network_manager_configure(&network_manager)) {
-        kprintf("[ \033[92mOK\033[0m ] configured network manager\n");
         printf("[ \033[92mOK\033[0m ] configured network manager\n");
     } else {
-        kprintf("[ \033[91mERROR\033[0m ] failed to configure network manager\n");
         printf("[ \033[91mERROR\033[0m ] failed to configure network manager\n");
     }
 
@@ -399,12 +385,9 @@ extern "C" NORETURN void virtual_kernel_entry(multiboot2_info_t* multiboot_struc
 
     // kernel finished
     kprintf("[ KERNEL SETUP FINISHED ]\n");
-    printf("[ KERNEL SETUP FINISHED ]\n");
 
-    if (vthread_create_local(terminal_thread_main) == VTHREAD_HANDLE_INVALID) {
-        kprintf("[ \033[91mERROR\033[0m ] failed to start terminal\n");
+    if (vthread_create_local(terminal_thread_main) == VTHREAD_HANDLE_INVALID)
         printf("[ \033[91mERROR\033[0m ] failed to start terminal\n");
-    }
 
     // we shoudn t reach this point since the kernel should never stop
     // incase we do just hang here so we dont break anything

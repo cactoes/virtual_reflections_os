@@ -34,8 +34,11 @@ void nic_init(network_interface_controller_t* nic) {
 }
 
 bool nic_register_interface(network_interface_controller_t* nic, network_interface_t* interface) {
-    if (!nic)
+    if (!nic || !interface)
         return false;
+
+    if (!nic_get_default_interface(nic))
+        interface->is_prefered = true;
 
     nic->interfaces.insert_back(interface);
 
