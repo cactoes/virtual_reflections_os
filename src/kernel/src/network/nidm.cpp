@@ -2,6 +2,7 @@
 #include "network/ethernet.hpp"
 #include "std/ring_buffer.hpp"
 #include "drivers/network/e1000.hpp"
+#include "drivers/network/rtl8168.hpp"
 
 static network_interface_controller_t* global_nic = nullptr;
 
@@ -61,6 +62,9 @@ bool nic_process_packet(network_interface_controller_t* nic) {
             switch (packet.interface->device_type) {
                 case network_interface_device_type_t::E1000:
                     e1000_send_packet((e1000_t*)packet.interface->device, packet.data, packet.size);
+                    break;
+                case network_interface_device_type_t::RTL8168:
+                    rtl8168_send_packet((rtl8168_t*)packet.interface->device, packet.data, packet.size);
                     break;
                 default:
                     break;

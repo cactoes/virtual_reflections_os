@@ -346,7 +346,7 @@ void network_pci_loop(const pci_device_t* device) {
 
             nic_register_interface(get_global_nic(), rtl8168_network_interface);
 
-            // network_manager_configre_interface(get_global_network_manager(), rtl8168_network_interface);
+            network_manager_configre_interface(get_global_network_manager(), rtl8168_network_interface);
 
             system_log_info("PCI(e)", "configured device 'Realtek RTL8168'");
         } else {
