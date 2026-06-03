@@ -102,24 +102,43 @@ void io_term_disable() {
     global_test_terminal.enabled = false;
 }
 
-constexpr color_t vga_to_rgb(vga_tm_color_t color) {
+enum class ansi_color_t : u8 {
+    BLACK           = 0,
+    RED             = 1,
+    GREEN           = 2,
+    BROWN           = 3,
+    BLUE            = 4,
+    MAGENTA         = 5,
+    CYAN            = 6,
+    LIGHT_GRAY      = 7,
+    DARK_GRAY       = 8,
+    LIGHT_BLUE      = 9,
+    LIGHT_GREEN     = 10,
+    LIGHT_CYAN      = 11,
+    LIGHT_RED       = 12,
+    LIGHT_MAGENTA   = 13,
+    YELLOW          = 14,
+    WHITE           = 15,
+};
+
+constexpr color_t ansi_to_rgb(ansi_color_t color) {
     switch (color) {
-        case vga_tm_color_t::BLACK:       return {0x00, 0x00, 0x00};
-        case vga_tm_color_t::BLUE:        return {0x00, 0x00, 0xAA};
-        case vga_tm_color_t::GREEN:       return {0x00, 0xAA, 0x00};
-        case vga_tm_color_t::CYAN:        return {0x00, 0xAA, 0xAA};
-        case vga_tm_color_t::RED:         return {0xAA, 0x00, 0x00};
-        case vga_tm_color_t::MAGENTA:     return {0xAA, 0x00, 0xAA};
-        case vga_tm_color_t::BROWN:       return {0xAA, 0x55, 0x00};
-        case vga_tm_color_t::LIGHT_GRAY:  return {0xAA, 0xAA, 0xAA};
-        case vga_tm_color_t::DARK_GRAY:   return {0x55, 0x55, 0x55};
-        case vga_tm_color_t::LIGHT_BLUE:  return {0x55, 0x55, 0xFF};
-        case vga_tm_color_t::LIGHT_GREEN: return {0x55, 0xFF, 0x55};
-        case vga_tm_color_t::LIGHT_CYAN:  return {0x55, 0xFF, 0xFF};
-        case vga_tm_color_t::LIGHT_RED:   return {0xFF, 0x55, 0x55};
-        case vga_tm_color_t::PINK:        return {0xFF, 0x55, 0xFF};
-        case vga_tm_color_t::YELLOW:      return {0xFF, 0xFF, 0x55};
-        case vga_tm_color_t::WHITE:       return {0xFF, 0xFF, 0xFF};
+        case ansi_color_t::BLACK:           return {0x00, 0x00, 0x00};
+        case ansi_color_t::BLUE:            return {0x00, 0x00, 0xAA};
+        case ansi_color_t::GREEN:           return {0x00, 0xAA, 0x00};
+        case ansi_color_t::CYAN:            return {0x00, 0xAA, 0xAA};
+        case ansi_color_t::RED:             return {0xAA, 0x00, 0x00};
+        case ansi_color_t::MAGENTA:         return {0xAA, 0x00, 0xAA};
+        case ansi_color_t::BROWN:           return {0xAA, 0x55, 0x00};
+        case ansi_color_t::LIGHT_GRAY:      return {0xAA, 0xAA, 0xAA};
+        case ansi_color_t::DARK_GRAY:       return {0x55, 0x55, 0x55};
+        case ansi_color_t::LIGHT_BLUE:      return {0x55, 0x55, 0xFF};
+        case ansi_color_t::LIGHT_GREEN:     return {0x55, 0xFF, 0x55};
+        case ansi_color_t::LIGHT_CYAN:      return {0x55, 0xFF, 0xFF};
+        case ansi_color_t::LIGHT_RED:       return {0xFF, 0x55, 0x55};
+        case ansi_color_t::LIGHT_MAGENTA:   return {0xFF, 0x55, 0xFF};
+        case ansi_color_t::YELLOW:          return {0xFF, 0xFF, 0x55};
+        case ansi_color_t::WHITE:           return {0xFF, 0xFF, 0xFF};
     }
 
     return {0x00, 0x00, 0x00};
@@ -170,13 +189,13 @@ bool write_stream(io_stream_t stream, const char* str) {
                     if (code == 0) {
                         color_map = { 255, 255, 255 };
                     } else if (code >= 30 && code <= 37) {
-                        color_map = vga_to_rgb((vga_tm_color_t)(code - 30));
+                        color_map = ansi_to_rgb((ansi_color_t)(code - 30));
                     } else if (code >= 90 && code <= 97) {
-                        color_map = vga_to_rgb((vga_tm_color_t)(code - 90 + 8));
+                        color_map = ansi_to_rgb((ansi_color_t)(code - 90 + 8));
                     } else if (code >= 40 && code <= 47) {
-                        color_map = vga_to_rgb((vga_tm_color_t)(code - 40));
+                        color_map = ansi_to_rgb((ansi_color_t)(code - 40));
                     } else if (code >= 100 && code <= 107) {
-                        color_map = vga_to_rgb((vga_tm_color_t)(code - 100 + 8));
+                        color_map = ansi_to_rgb((ansi_color_t)(code - 100 + 8));
                     }
 
                     if (ch == 'm') {
