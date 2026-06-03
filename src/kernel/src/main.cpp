@@ -190,6 +190,89 @@ void init_pci_devices(const pci_device_t* device) {
     }
 };
 
+union kernel_components_t {
+    u64 raw;
+    struct {
+        u64 heap                : 1;
+        u64 dma                 : 1;
+        u64 graphics            : 1;
+        u64 interrupts          : 1;
+        u64 system_info         : 1;
+        u64 virtual_threading   : 1;
+        u64 virtual_filesystem  : 1;
+        u64 nic                 : 1;
+    };
+};
+
+static
+void system_log(const char* level, const char* color, const char* message) {
+    kprintf("[ %s%s\033[0m ] %s\n", color, level, message);
+    printf("[ %s%s\033[0m ] %s\n", color, level, message);
+}
+
+static
+void system_log_ok(const char* message) { 
+    system_log("OK", "\033[92m", message); 
+}
+
+static
+void system_log_error(const char* message) { 
+    system_log("ERROR", "\033[91m", message); 
+}
+
+static
+void system_log_info(const char* system, const char* message) { 
+    system_log(system, "\033[96m", message);
+}
+
+static kernel_components_t initialized_kernel_components {};
+static heap_t kernel_heap {};
+static dma_heap_manager_t kernel_dma_allocator {};
+static graphics_driver_t kernel_graphics_driver {};
+static vfs_t kernel_vfs {};
+static network_interface_controller_t kernel_nic {};
+static system_info_manager_t kernel_sim {};
+
+static
+void init_memory() {
+    if (!heap_init(&kernel_heap, (void*)VMEM_KERNEL_HEAP_START, HEAP_START_SIZE))
+        kernel_fatal(KERNEL_FATAL_HEAP_INIT, "kernel heap fail to initialize");
+
+    set_global_heap(&kernel_heap);
+
+    initialized_kernel_components.heap = true;
+
+    if (dma_heap_manager_init(&kernel_dma_allocator, (void*)VMEM_DMA_ALLOCATOR_START, PAGE_SIZE_LARGE * 128)) {
+        initialized_kernel_components.dma = true;
+        set_global_dma_heap_manager(&kernel_dma_allocator);
+    } else {
+        // TODO @since 01/06/2026 -- 23:59
+        // this should also fatal
+        system_log_error("failed to initialize dma allocator");
+    }
+
+    system_log_ok("setup virtual memory");
+}
+
+extern bool io_term_init(size_t w, size_t h);
+
+void init_graphics(multiboot2_info_t* multiboot_struct) {
+    if (graphics_driver_init(&kernel_graphics_driver, multiboot_struct)) {
+        set_global_graphics_driver(&kernel_graphics_driver);
+
+        graphics_driver_reset(&kernel_graphics_driver);
+        graphics_driver_render(&kernel_graphics_driver);
+
+        initialized_kernel_components.graphics = true;
+
+        io_term_init(kernel_graphics_driver.framebuffer->width, kernel_graphics_driver.framebuffer->height);
+    } else {
+        kernel_fatal(KERNEL_FATAL_GRAPHICS_INIT, "graphics failed driver to initialize");
+    }
+
+    system_log_ok("initialized graphics driver");
+}
+
 void* crash_handler_callback(void* stack, void* data) {
     // TODO @since 19/05/2026 -- 16:09
     // this is still heavily based on architecture
@@ -198,62 +281,35 @@ void* crash_handler_callback(void* stack, void* data) {
     return stack;
 }
 
-extern bool io_term_init(size_t w, size_t h);
-extern u64 global_online_systems_flags;
+static
+void init_interrupts() {
+    const interrupt_t exception_interrupts[] = {
+        interrupt_t::EXCEPTION_DIVISION_BY_ZERO,
+        interrupt_t::EXCEPTION_SINGLE_STEP_INTERRUPT,
+        interrupt_t::EXCEPTION_NMI,
+        interrupt_t::EXCEPTION_BREAKPOINT,
+        interrupt_t::EXCEPTION_OVERFLOW,
+        interrupt_t::EXCEPTION_BOUND_RANGE_EXCEEDED,
+        interrupt_t::EXCEPTION_INVALID_OPCODE,
+        interrupt_t::EXCEPTION_COPROCESSOR_NOT_AVAILABLE,
+        interrupt_t::EXCEPTION_DOUBLE_FAULT,
+        interrupt_t::EXCEPTION_COPROCESSOR_SEGMENT_OVERRUN,
+        interrupt_t::EXCEPTION_INVALID_TSS,
+        interrupt_t::EXCEPTION_SEGMENT_NOT_PRESENT,
+        interrupt_t::EXCEPTION_STACK_SEGMENT_FAULT,
+        interrupt_t::EXCEPTION_GENERAL_PROTECTION_FAULT,
+        interrupt_t::EXCEPTION_PAGE_FAULT,
+        interrupt_t::EXCEPTION_RESERVED,
+        interrupt_t::EXCEPTION_X87_FLOATING_POINT_EXCEPTION,
+        interrupt_t::EXCEPTION_ALIGNMENT_CHECK,
+        interrupt_t::EXCEPTION_MACHINE_CHECK,
+        interrupt_t::EXCEPTION_SIMD_FP_EXCEPTION,
+        interrupt_t::EXCEPTION_VIRTUALIZATION_EXCEPTION,
+        interrupt_t::EXCEPTION_CONTROL_PROTECTION_EXCEPTION,
+    };
 
-extern "C" NORETURN void virtual_kernel_entry(multiboot2_info_t* multiboot_struct) {
-    // initialze the debug out stream
-    debug_init();
-
-    // initialze the default heap
-    heap_t heap {};
-    if (!heap_init(&heap, (void*)VMEM_KERNEL_HEAP_START, HEAP_START_SIZE))
-        kernel_fatal(KERNEL_FATAL_HEAP_INIT, "kernel heap fail to initialize");
-
-    set_global_heap(&heap);
-
-    BIT_SET(global_online_systems_flags, KERNEL_SYSTEM_HEAP_BIT);
-
-    kprintf("[ \033[92mOK\033[0m ] initialized memory\n");
-
-    graphics_driver_t gd {};
-    if (!graphics_driver_init(&gd, multiboot_struct))
-        kernel_fatal(KERNEL_FATAL_GRAPHICS_INIT, "graphics failed driver to initialize");
-
-    set_global_graphics_driver(&gd);
-
-    graphics_driver_reset(&gd);
-    graphics_driver_render(&gd);
-
-    BIT_SET(global_online_systems_flags, KERNEL_SYSTEM_GD_BIT);
-
-    io_term_init(gd.framebuffer->width, gd.framebuffer->height);
-
-    printf("[ \033[92mOK\033[0m ] initialized graphics driver\n");
-
-    // initialze the interrupt line(s)
-    hook_interrupt(interrupt_t::EXCEPTION_DIVISION_BY_ZERO, crash_handler_callback, (void*)interrupt_t::EXCEPTION_DIVISION_BY_ZERO);
-    hook_interrupt(interrupt_t::EXCEPTION_SINGLE_STEP_INTERRUPT, crash_handler_callback, (void*)interrupt_t::EXCEPTION_SINGLE_STEP_INTERRUPT);
-    hook_interrupt(interrupt_t::EXCEPTION_NMI, crash_handler_callback, (void*)interrupt_t::EXCEPTION_NMI);
-    hook_interrupt(interrupt_t::EXCEPTION_BREAKPOINT, crash_handler_callback, (void*)interrupt_t::EXCEPTION_BREAKPOINT);
-    hook_interrupt(interrupt_t::EXCEPTION_OVERFLOW, crash_handler_callback, (void*)interrupt_t::EXCEPTION_OVERFLOW);
-    hook_interrupt(interrupt_t::EXCEPTION_BOUND_RANGE_EXCEEDED, crash_handler_callback, (void*)interrupt_t::EXCEPTION_BOUND_RANGE_EXCEEDED);
-    hook_interrupt(interrupt_t::EXCEPTION_INVALID_OPCODE, crash_handler_callback, (void*)interrupt_t::EXCEPTION_INVALID_OPCODE);
-    hook_interrupt(interrupt_t::EXCEPTION_COPROCESSOR_NOT_AVAILABLE, crash_handler_callback, (void*)interrupt_t::EXCEPTION_COPROCESSOR_NOT_AVAILABLE);
-    hook_interrupt(interrupt_t::EXCEPTION_DOUBLE_FAULT, crash_handler_callback, (void*)interrupt_t::EXCEPTION_DOUBLE_FAULT);
-    hook_interrupt(interrupt_t::EXCEPTION_COPROCESSOR_SEGMENT_OVERRUN, crash_handler_callback, (void*)interrupt_t::EXCEPTION_COPROCESSOR_SEGMENT_OVERRUN);
-    hook_interrupt(interrupt_t::EXCEPTION_INVALID_TSS, crash_handler_callback, (void*)interrupt_t::EXCEPTION_INVALID_TSS);
-    hook_interrupt(interrupt_t::EXCEPTION_SEGMENT_NOT_PRESENT, crash_handler_callback, (void*)interrupt_t::EXCEPTION_SEGMENT_NOT_PRESENT);
-    hook_interrupt(interrupt_t::EXCEPTION_STACK_SEGMENT_FAULT, crash_handler_callback, (void*)interrupt_t::EXCEPTION_STACK_SEGMENT_FAULT);
-    hook_interrupt(interrupt_t::EXCEPTION_GENERAL_PROTECTION_FAULT, crash_handler_callback, (void*)interrupt_t::EXCEPTION_GENERAL_PROTECTION_FAULT);
-    hook_interrupt(interrupt_t::EXCEPTION_PAGE_FAULT, crash_handler_callback, (void*)interrupt_t::EXCEPTION_PAGE_FAULT);
-    hook_interrupt(interrupt_t::EXCEPTION_RESERVED, crash_handler_callback, (void*)interrupt_t::EXCEPTION_RESERVED);
-    hook_interrupt(interrupt_t::EXCEPTION_X87_FLOATING_POINT_EXCEPTION, crash_handler_callback, (void*)interrupt_t::EXCEPTION_X87_FLOATING_POINT_EXCEPTION);
-    hook_interrupt(interrupt_t::EXCEPTION_ALIGNMENT_CHECK, crash_handler_callback, (void*)interrupt_t::EXCEPTION_ALIGNMENT_CHECK);
-    hook_interrupt(interrupt_t::EXCEPTION_MACHINE_CHECK, crash_handler_callback, (void*)interrupt_t::EXCEPTION_MACHINE_CHECK);
-    hook_interrupt(interrupt_t::EXCEPTION_SIMD_FP_EXCEPTION, crash_handler_callback, (void*)interrupt_t::EXCEPTION_SIMD_FP_EXCEPTION);
-    hook_interrupt(interrupt_t::EXCEPTION_VIRTUALIZATION_EXCEPTION, crash_handler_callback, (void*)interrupt_t::EXCEPTION_VIRTUALIZATION_EXCEPTION);
-    hook_interrupt(interrupt_t::EXCEPTION_CONTROL_PROTECTION_EXCEPTION, crash_handler_callback, (void*)interrupt_t::EXCEPTION_CONTROL_PROTECTION_EXCEPTION);
+    for (const auto& interrupt : exception_interrupts)
+        hook_interrupt(interrupt, crash_handler_callback, (void*)interrupt);
 
     hook_interrupt(interrupt_t::HARDWARE_PIT, pit_handle_interrupt, nullptr);
     hook_interrupt(interrupt_t::HARDWARE_KEYBOARD, ps2_keyboard_handle_interrupt, nullptr);
@@ -261,43 +317,100 @@ extern "C" NORETURN void virtual_kernel_entry(multiboot2_info_t* multiboot_struc
 
     hook_interrupt(interrupt_t::SOFTWARE_SCHEDULER, vthread_handle_interrupt, nullptr);
 
-    ps2_mouse_init();
     pit_init(PIT_TIMER_INTERVAL);
 
-    BIT_SET(global_online_systems_flags, KERNEL_SYSTEM_PIT_BIT);
+    initialized_kernel_components.interrupts = true;
 
-    dma_heap_manager_t allocator {};
-    set_global_dma_heap_manager(&allocator);
-    dma_heap_manager_init(get_global_dma_heap_manager(), (void*)VMEM_DMA_ALLOCATOR_START, PAGE_SIZE_LARGE * 128);
+    system_log_ok("hooked interrupts");
+}
 
-    BIT_SET(global_online_systems_flags, KERNEL_SYSTEM_DMA_BIT);
+static
+void init_system_info(void* multiboot_struct) {
+    set_global_system_info_manager(&kernel_sim);
+    system_info_parse_memory_size(&kernel_sim, (multiboot2_info_t*)multiboot_struct);
+    // only works in non uefi mode
+    // system_info_parse_system_information(get_global_system_info_manager());
+    system_info_get_cpu_name(&kernel_sim);
 
-    // initialize threading
+    initialized_kernel_components.system_info = true;
+
+    system_log_ok("parsed system info");
+}
+
+static
+void init_virtual_threading() {
     if (vthread_start_and_setup_main() == VTHREAD_HANDLE_INVALID)
         kernel_fatal(KERNEL_FATAL_VTHREAD_INIT, "virtual threads failed to intialize");
 
-    BIT_SET(global_online_systems_flags, KERNEL_SYSTEM_VTHREAD_BIT);
+    // TODO @since 02/06/2026 -- 13:06
+    // make all of these have their own dedicated thread function
+    const vthread_handle_t critical_threads[] = {
+        vthread_create_local(nic_thread, "_ZN7kthread3nicEv"),
+        vthread_create_local([]() { while (true) ps2_mouse_process_packet(); return 1; }, "PS/2 Mouse"),
+        vthread_create_local([]() { while (true) ps2_keyboard_process_packet(); return 1; }, "PS/2 Keyboard")
+    };
 
-    printf("[ \033[92mOK\033[0m ] enabled virtual threading\n");
+    for (const auto& thread : critical_threads)
+        vthread_set_critical(thread, true);
 
-    system_info_manager_t sim {};
-    set_global_system_info_manager(&sim);
-    system_info_parse_memory_size(get_global_system_info_manager(), multiboot_struct);
-    // only works in non uefi mode
-    // system_info_parse_system_information(get_global_system_info_manager());
-    system_info_get_cpu_name(get_global_system_info_manager());
+    initialized_kernel_components.virtual_threading = true;
 
-    printf("[ \033[92mOK\033[0m ] parsed system information\n");
+    system_log_ok("enabled virtual threading");
+}
+
+static
+void init_virtual_filesystem() {
+    vfs_init(&kernel_vfs);
+    set_global_vfs(&kernel_vfs);
+
+    initialized_kernel_components.virtual_filesystem = true;
+
+    system_log_ok("initialized the virtual filesystem");
+}
+
+static
+void init_network_interface_controller() {
+    nic_init(&kernel_nic);
+    set_global_nic(&kernel_nic);
+
+    initialized_kernel_components.nic = true;
+
+    system_log_ok("initialized the network interface controller");
+}
+
+extern "C" NORETURN void virtual_kernel_entry(multiboot2_info_t* multiboot_struct) {
+    // initialze the debug out stream
+    debug_init();
+    
+    // stage 1 -- core essentials
+    // TODO @since 02/06/2026 -- 13:20
+    // init com port / debug port
+    init_memory();
+    init_graphics(multiboot_struct);
+    init_interrupts();
+    init_system_info(multiboot_struct);
+
+    // stage 2 -- core functionality
+    init_virtual_threading();
+    init_virtual_filesystem();
+    init_network_interface_controller();
+    // pci
+
+    // stage 3 -- hardware
+
+    // pci(e)
+    // ps2
+    // usb
+    // etc...
+
+    // drivers?
+
+
 
     // TODO @since 06/02/2026 -- 10:34
     // proper ps2 startup etc
     keyboard_initialize();
-
-    network_interface_controller_t nic {};
-    nic_init(&nic);
-    set_global_nic(&nic);
-
-    BIT_SET(global_online_systems_flags, KERNEL_SYSTEM_NIC_BIT);
+    ps2_mouse_init();
 
     network_manager_t network_manager {};
     network_manager_init(&network_manager);
@@ -308,31 +421,25 @@ extern "C" NORETURN void virtual_kernel_entry(multiboot2_info_t* multiboot_struc
         printf("[ \033[91mERROR\033[0m ] failed to configure network manager\n");
     }
 
-    BIT_SET(global_online_systems_flags, KERNEL_SYSTEM_NM_BIT);
-
-    vfs_t vfs {};
-    vfs_init(&vfs);
-    set_global_vfs(&vfs);
-
-    BIT_SET(global_online_systems_flags, KERNEL_SYSTEM_VFS_BIT);
+    // BIT_SET(global_online_systems_flags, KERNEL_SYSTEM_NM_BIT);
 
     storage_manager_t storage_manager {};
     storage_manager_init(&storage_manager);
     set_global_storage_manager(&storage_manager);
 
-    BIT_SET(global_online_systems_flags, KERNEL_SYSTEM_SM_BIT);
+    // BIT_SET(global_online_systems_flags, KERNEL_SYSTEM_SM_BIT);
 
     pcie_device_manager_t pciedm {};
     set_global_pcie_device_manager(&pciedm);
     pci_enumerate_devices(get_global_pcie_device_manager());
     pci_loop_devices(get_global_pcie_device_manager(), init_pci_devices);
 
-    BIT_SET(global_online_systems_flags, KERNEL_SYSTEM_PCIE_BIT);
+    // BIT_SET(global_online_systems_flags, KERNEL_SYSTEM_PCIE_BIT);
 
     driver_manager_t driver_manager {};
     set_global_driver_manager(&driver_manager);
 
-    BIT_SET(global_online_systems_flags, KERNEL_SYSTEM_DM_BIT);
+    // BIT_SET(global_online_systems_flags, KERNEL_SYSTEM_DM_BIT);
 
     // std::dynamic_array<vfs_node_t> nodes {};
     // if (vfs_list_directory(&vfs, "/harddisk0", &nodes)) {
@@ -374,15 +481,6 @@ extern "C" NORETURN void virtual_kernel_entry(multiboot2_info_t* multiboot_struc
     //     }
     // }
 
-    const vthread_handle_t critical_threads[] = {
-        vthread_create_local(nic_thread, "network interface controller"),
-        vthread_create_local([]() { while (true) ps2_mouse_process_packet(); return 1; }, "PS/2 Mouse"),
-        vthread_create_local([]() { while (true) ps2_keyboard_process_packet(); return 1; }, "PS/2 Keyboard")
-    };
-
-    for (const auto& thread : critical_threads)
-        vthread_set_critical(thread, true);
-
     // kernel finished
     kprintf("[ KERNEL SETUP FINISHED ]\n");
 
@@ -391,5 +489,7 @@ extern "C" NORETURN void virtual_kernel_entry(multiboot2_info_t* multiboot_struc
 
     // we shoudn t reach this point since the kernel should never stop
     // incase we do just hang here so we dont break anything
-    while (true) vthread_yield();
+    while (true)
+        // amd64_halt();
+        vthread_yield();
 }

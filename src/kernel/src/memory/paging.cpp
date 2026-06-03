@@ -10,7 +10,7 @@
 
 static u64 global_page_bitmap[PAGING_BITMAP_SIZE] {};
 static mutex_t global_pmem_mutex { .locked = 0 };
-static pmem_info_t global_pmem_info {};
+pmem_info_t global_pmem_info {};
 
 void* pmem_get_page() {
     const mutex_lock_guard guard(&global_pmem_mutex);

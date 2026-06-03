@@ -34,6 +34,9 @@
 
 #include "common.hpp"
 
+// TODO @since 01/06/2026 -- 23:09
+// rework this crash handler
+
 extern "C" NORETURN void kernel_fatal_internal(u64 code, const char* message, struct interrupt_regs_t* cpu_state = nullptr);
 
 // NAKED

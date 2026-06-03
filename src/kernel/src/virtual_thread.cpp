@@ -57,7 +57,7 @@ bool vthread_init_main_thread(vthread_t* thread) {
     thread->tls.handle = VTHREAD_MAIN_THREAD_HANDLE;
     thread->is_critical = true;
 
-    const char name[] = "_Z7kthread4mainPv";
+    const char name[] = "_ZN7kthread4mainEPv";
     memcpy(thread->name, name, sizeof(name));
 
 #if CPU_ARCHITECTURE == ARCH_AMD64
@@ -184,7 +184,7 @@ vthread_handle_t vthread_start_and_setup_main() {
 
     global_current_thread = p_vthread.get();
 
-    return vthread_add(move(p_vthread)) ? 0 : VTHREAD_HANDLE_INVALID;
+    return vthread_add(move(p_vthread)) ? VTHREAD_MAIN_THREAD_HANDLE : VTHREAD_HANDLE_INVALID;
 }
 
 vthread_handle_t vthread_create_local(thread_entry_t p_thread_entry, const char name[VTHREAD_MAX_NAME_SIZE]) {

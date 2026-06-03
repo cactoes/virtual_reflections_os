@@ -2,6 +2,7 @@
 #include "smbios.hpp"
 #include "cpu.hpp"
 #include "linker.hpp"
+#include "memory/paging.hpp"
 
 system_info_manager_t* global_boot_info_manager;
 
@@ -14,14 +15,9 @@ system_info_manager_t* get_global_system_info_manager() {
 }
 
 void system_info_parse_memory_size(system_info_manager_t* system_info_manager, multiboot2_info_t* multiboot_struct) {
-    system_info_manager->memory_size = 0;
+    extern pmem_info_t global_pmem_info;
 
-    // TODO @since 26/05/2026 -- 20:10
-    // replace this with the pmem_info struct
-
-    for (auto mm_entry = mb2_get_first_entry((multiboot2_info_t*)multiboot_struct); mm_entry; mm_entry = mb2_get_next_entry((multiboot2_info_t*)multiboot_struct, mm_entry))
-        if (mm_entry->type == (u32)memory_map_type_t::USABLE)
-            system_info_manager->memory_size += mm_entry->len;
+    system_info_manager->memory_size = global_pmem_info.memory_size;
 }
 
 bool system_info_dump(smbios_entry_header_t* entry, void* system_info_manager) {
