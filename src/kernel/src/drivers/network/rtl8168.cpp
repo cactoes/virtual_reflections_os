@@ -33,7 +33,7 @@ void rtl8168_write_reg16(rtl8168_t* device, u32 offset, u16 value) {
     *((volatile u16*)((u8*)device->mmio_region + offset)) = value;
 }
 
-u16 rtl8168_read_reg16(rtl8168_t* device, u16 offset) {
+u16 rtl8168_read_reg16(rtl8168_t* device, u32 offset) {
     return *((volatile u16*)((u8*)device->mmio_region + offset));
 }
 
@@ -163,20 +163,48 @@ bool rtl8168_init_device(const pci_device_t* pcie_device, rtl8168_t* network_dev
     auto cmd = pci_config_read(pcie_device, PCI_COMMAND);
     cmd |= PCI_CMD_MMIO | PCI_CMD_BUS_MASTERING;
     pci_config_write(pcie_device, PCI_COMMAND, cmd);
-    pci_config_read(pcie_device, PCI_COMMAND);
 
-    if (pci_read_bar(pcie_device, 1) & PCI_BAR_IO_REGION)
-        return false;
+    u32 bar2_low = pci_config_read(pcie_device, PCI_GET_BAR_OFFSET(2));
+    u64 physical_mmio_base = bar2_low & 0xFFFFFFF0;
+    
+    int is_64_bit = ((bar2_low & 0x6) == 0x4);
+    u32 bar3_high = 0;
+
+    if (is_64_bit) {
+        bar3_high = pci_config_read(pcie_device, PCI_GET_BAR_OFFSET(3));
+        physical_mmio_base |= ((u64)bar3_high << 32);
+    }
+
+    pci_config_write(pcie_device, PCI_GET_BAR_OFFSET(2), 0xFFFFFFFF);
+    u32 size_mask_low = pci_config_read(pcie_device, PCI_GET_BAR_OFFSET(2));
+    
+    pci_config_write(pcie_device, PCI_GET_BAR_OFFSET(2), bar2_low);
+
+    u64 size_mask = size_mask_low & 0xFFFFFFF0;
+
+    if (is_64_bit) {
+        pci_config_write(pcie_device, PCI_GET_BAR_OFFSET(3), 0xFFFFFFFF);
+        u32 size_mask_high = pci_config_read(pcie_device, PCI_GET_BAR_OFFSET(3));
+        pci_config_write(pcie_device, PCI_GET_BAR_OFFSET(3), bar3_high);
+        
+        size_mask |= ((u64)size_mask_high << 32);
+    } else {
+        size_mask |= 0xFFFFFFFF00000000ULL; 
+    }
+
+    u64 bar_size = ~size_mask + 1;
+
+    printf("[ rtl8168 ] device mmio is located at physical address: 0x%uh\n", physical_mmio_base);
+    printf("[ rtl8168 ] device mmio size: %uh bytes\n", bar_size);
 
     amd64_mem_barier();
 
-    network_device->dma_heap = dma_heap_manager_create_heap(get_global_dma_heap_manager(), PAGE_SIZE_LARGE);
-    if (!network_device->dma_heap)
+    network_device->mmio_region = vmem_map_mmio_region((void*)physical_mmio_base);
+    if (!network_device->mmio_region)
         return false;
 
-    u64 mmio_address_physical = pci_read_bar(pcie_device, 1) & ~0xF;
-    network_device->mmio_region = vmem_map_mmio_region((void*)mmio_address_physical);
-    if (!network_device->mmio_region)
+    network_device->dma_heap = dma_heap_manager_create_heap(get_global_dma_heap_manager(), PAGE_SIZE_LARGE);
+    if (!network_device->dma_heap)
         return false;
 
     // enable the device
@@ -186,18 +214,26 @@ bool rtl8168_init_device(const pci_device_t* pcie_device, rtl8168_t* network_dev
     if (!rtl8168_load_mac(network_device))
         return false;
 
+    printf("[ rtl8168 ] loaded MAC: %uh:%uh:%uh:%uh:%uh:%uh\n", network_device->mac[0], network_device->mac[1], network_device->mac[2], network_device->mac[3], network_device->mac[4], network_device->mac[5]);
+
     // reset device
     rtl8168_write_reg8(network_device, RTL8168_CMD, RTL8168_CMD_RST);
     while (rtl8168_read_reg8(network_device, RTL8168_CMD) & RTL8168_CMD_RST)
         vthread_sleep(1);
+
+    printf("[ rtl8168 ] device reset succesfull\n" );
 
     rtl8168_write_reg8(network_device, RTL8168_CFG9346, RTL8168_CFG9346_UNLOCK);
 
     if (!rtl8168_receive_init(network_device))
         return false;
 
+    printf("[ rtl8168 ] initialized RX\n" );
+
     if (!rtl8168_transmit_init(network_device))
         return false;
+
+    printf("[ rtl8168 ] initialized TX\n" );
 
     rtl8168_write_reg16(network_device, RTL8168_IMR, 0x003F);
 
@@ -205,13 +241,20 @@ bool rtl8168_init_device(const pci_device_t* pcie_device, rtl8168_t* network_dev
 
     rtl8168_write_reg8(network_device, RTL8168_CFG9346, RTL8168_CFG9346_LOCK);
 
-#if CPU_ARCHITECTURE == ARCH_AMD64
-    const u32 irq = pci_config_read(pcie_device, PCI_CONFIG_IRQ_LINE) & MAX_UINT8;
-    if (!hook_interrupt(amd64_convert_to_interrupt(irq + 0x20), amd64_rtl8168_handle_interrupt, (void*)network_device))
-        return false;
-#else
-#error CPU_ARCH_NOT_SUPPORTED
-#endif
+    // TODO @since 03/06/2026 -- 21:58
+    // bind MSI
+
+// #if CPU_ARCHITECTURE == ARCH_AMD64
+//     const u32 irq = pci_config_read(pcie_device, PCI_CONFIG_IRQ_LINE) & MAX_UINT16;
+//     printf("[ rtl8168 ] irq line %u\n", irq);
+//     if (!hook_interrupt(amd64_convert_to_interrupt(irq + 0x20), amd64_rtl8168_handle_interrupt, (void*)network_device))
+//         return false;
+// #else
+// #error CPU_ARCH_NOT_SUPPORTED
+// #endif
+
+    printf("[ rtl8168 ] finished initialization\n" );
+
     return true;
 }
 

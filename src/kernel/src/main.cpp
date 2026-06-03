@@ -134,7 +134,7 @@ void system_log_error(const char* message) {
     system_log("ERROR", "\033[94m", message); 
 }
 
-static
+//static
 void system_log_info(const char* system, const char* message) { 
     system_log(system, "\033[0m", message);
 }
