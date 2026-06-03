@@ -131,8 +131,10 @@ network_interface_t* nic_get_interface_from_device(network_interface_controller_
 int nic_thread() {
     network_interface_controller_t* nic = get_global_nic();
     while (true) {
-        if (!nic)
+        if (!nic) {
+            nic = get_global_nic();
             continue;
+        }
 
         nic_process_packet(nic);
     }
