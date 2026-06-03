@@ -229,6 +229,9 @@ int e1000_init_device(const pci_device_t* p_pcie_device, e1000_t* p_network_devi
     e1000_enable_interrupts(p_network_device);
 
 #if CPU_ARCHITECTURE == ARCH_AMD64
+    // TODO @since 04/06/2026 -- 00:40
+    // MSI
+
     const u32 irq = pci_config_read(p_pcie_device, PCI_CONFIG_IRQ_LINE) & MAX_UINT8;
     if (!hook_interrupt(amd64_convert_to_interrupt(irq + 0x20), amd64_e1000_handle_interrupt, (void*)p_network_device))
         return 9;

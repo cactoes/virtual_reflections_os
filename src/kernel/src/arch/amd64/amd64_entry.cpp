@@ -9,6 +9,7 @@
 #include "arch/amd64/idt.hpp"
 #include "arch/amd64/cpu.hpp"
 #include "arch/amd64/port.hpp"
+#include "arch/amd64/apic.hpp"
 #include "arch/arch_selector.hpp"
 #include "memory/vmem.hpp"
 #include "memory/paging.hpp"
@@ -198,6 +199,8 @@ interrupt_t amd64_convert_to_interrupt(u64 code) {
     return interrupt_t::UNKOWN;
 }
 
+extern void* global_lapic;
+
 extern "C"
 __attribute__((section(".text")))
 interrupt_regs_t* amd64_interrupt_dispatch(u64 code, interrupt_regs_t* stack) {
@@ -213,8 +216,12 @@ interrupt_regs_t* amd64_interrupt_dispatch(u64 code, interrupt_regs_t* stack) {
 
     interrupt_regs_t* result_stack = (interrupt_regs_t*)interrupt_manager_dispatch(interrupt, (void*)stack);
 
-    if (code >= 32 && code <= 47)
-        amd64_interrupt_send_eoi(code - 0x20);
+    if (code >= 32 && code <= 47) {
+        if (global_lapic)
+            *((volatile u32*)((u8*)global_lapic + AMD64_APIC_EOI)) = 0;
+        else
+            amd64_interrupt_send_eoi(code - 0x20);
+    }
 
     global_is_in_interupt = false;
     return result_stack;

@@ -11,6 +11,8 @@
 
 #if CPU_ARCHITECTURE == ARCH_AMD64
 
+#define AMD64_MSR_LAPIC_BASE      0x1B
+
 #define AMD64_MSR_EFER            0xC0000080
 #define AMD64_MSR_STAR            0xC0000081
 #define AMD64_MSR_LSTAR           0xC0000082
@@ -24,6 +26,8 @@
 #define AMD64_EFER_LME            (1 << 8)
 #define AMD64_EFER_LMA            (1 << 10)
 #define AMD64_EFER_NXE            (1 << 11)
+
+#define AMD64_MSR_LAPIC_ENABLE    (1 << 11)
 
 #include "common.hpp"
 

@@ -60,6 +60,9 @@
 #include "network/dns.hpp"
 #include "network/ip.hpp"
 
+#include "arch/arch_selector.hpp"
+#include "arch/amd64/apic.hpp"
+
 #define HEAP_START_SIZE 0x100000 * 32 // 32 mb
 #define PIT_TIMER_INTERVAL 1000 // times per second
 
@@ -189,6 +192,10 @@ void* crash_handler_callback(void* stack, void* data) {
 
 static
 void init_interrupts() {
+    // TODO @since 03/06/2026 -- 22:07
+    // if amd64
+    amd64_init_apic();
+
     const interrupt_t exception_interrupts[] = {
         interrupt_t::EXCEPTION_DIVISION_BY_ZERO,
         interrupt_t::EXCEPTION_SINGLE_STEP_INTERRUPT,
@@ -223,6 +230,8 @@ void init_interrupts() {
 
     hook_interrupt(interrupt_t::SOFTWARE_SCHEDULER, vthread_handle_interrupt, nullptr);
 
+    // TODO @since 04/06/2026 -- 00:48
+    // replace with LAPIC timer
     pit_init(PIT_TIMER_INTERVAL);
 
     initialized_kernel_components.interrupts = true;
