@@ -88,108 +88,6 @@
 //     while (true) {}
 // }
 
-void init_pci_devices(const pci_device_t* device) {
-    // const char* cd = pci_get_class_description(device);
-    // printf("[PCIe] %s: (%u:%u.%u) 0x%uh:0x%uh\n", cd, device->bus, device->device, device->function, device->vendor_device_id.vendor_id, device->vendor_device_id.device_id);
-
-    if (is_e1000_device(device)) {
-        e1000_t* e1000 = (e1000_t*)malloc(sizeof(e1000_t));
-        memzero(e1000, sizeof(e1000_t));
-        if (e1000_init_device(device, e1000) == 0) {
-            network_interface_t* e1000_network_interface = (network_interface_t*)malloc(sizeof(network_interface_t));
-            memzero(e1000_network_interface, sizeof(network_interface_t));
-
-            e1000_network_interface->device = e1000;
-            e1000_network_interface->device_type = network_interface_device_type_t::E1000;
-            e1000_network_interface->is_configured = true;
-
-            memcpy(e1000_network_interface->mac, e1000->mac, 6);
-
-            const char* device_name = "Intel E1000";
-            strncpy(e1000_network_interface->device_name, device_name, sizeof(e1000_network_interface->device_name));
-
-            nic_register_interface(get_global_nic(), e1000_network_interface);
-
-            network_manager_configre_interface(get_global_network_manager(), e1000_network_interface);
-        }
-
-        // valid device so we can continue to the next device
-        return;
-    }
-
-    if (is_rtl8168_device(device)) {
-        rtl8168_t* rtl8168 = (rtl8168_t*)malloc(sizeof(rtl8168_t));
-        memzero(rtl8168, sizeof(rtl8168_t));
-
-        if (rtl8168_init_device(device, rtl8168)) {
-            network_interface_t* rtl8168_network_interface = (network_interface_t*)malloc(sizeof(network_interface_t));
-            memzero(rtl8168_network_interface, sizeof(network_interface_t));
-
-            rtl8168_network_interface->device = rtl8168;
-            rtl8168_network_interface->device_type = network_interface_device_type_t::RTL8168;
-            rtl8168_network_interface->is_configured = true;
-
-            memcpy(rtl8168_network_interface->mac, rtl8168->mac, 6);
-
-            const char* device_name = "Realtek RTL8168";
-            strncpy(rtl8168_network_interface->device_name, device_name, sizeof(rtl8168_network_interface->device_name));
-
-            nic_register_interface(get_global_nic(), rtl8168_network_interface);
-
-            // network_manager_configre_interface(get_global_network_manager(), rtl8168_network_interface);
-
-            printf("[PCIe] initialized rtl8168 device\n");
-        } else {
-            printf("[PCIe] failed to initialize rtl8168 device\n");
-        }
-
-        return;
-    }
-
-    if (is_ide_device(device)) {
-        auto& ide_devices = get_global_storage_manager()->ide.devices;
-        if (ide_init(device, &ide_devices)) {
-            size_t ide_device_index = 0;
-            for (auto& device : ide_devices) {
-                char name[18];
-                sprintf(name, sizeof(name), "harddisk%i", ide_device_index++);
-                if (!vfs_mount_device(get_global_vfs(), &device, block_device_type_t::IDE, name)) {
-                    printf("[IDE] failed to mount drive: %s\n", name);
-                } else {
-                    printf("[IDE] mounted: %s\n", name);
-                }
-            }
-        } else {
-            printf("[IDE] driver failed to init\n");
-        }
-
-        // valid device so we can continue to the next device
-        return;
-    }
-
-    if (is_ahci_device(device)) {
-        auto& ahci_driver_ctx = get_global_storage_manager()->ahci.driver_ctx;
-        auto& ahci_devices = get_global_storage_manager()->ahci.devices;
-        if (ahci_init(device, &ahci_driver_ctx, &ahci_devices)) {
-            size_t ahci_device_index = 0;
-            for (auto& device : ahci_devices) {
-                char name[18];
-                sprintf(name, sizeof(name), "drive%i", ahci_device_index++);
-                if (!vfs_mount_device(get_global_vfs(), &device, block_device_type_t::AHCI, name)) {
-                    printf("failed to mount drive: %s\n", name);
-                } else {
-                    printf("[AHCI] mounted: %s\n", name);
-                }
-            }
-        } else {
-            printf("[AHCI] driver failed to init\n");
-        }
-
-        // valid device so we can continue to the next device
-        return;
-    }
-};
-
 union kernel_components_t {
     u64 raw;
     struct {
@@ -201,8 +99,24 @@ union kernel_components_t {
         u64 virtual_threading   : 1;
         u64 virtual_filesystem  : 1;
         u64 nic                 : 1;
+        u64 pcie                : 1;
+        u64 networking          : 1;
+        u64 storage             : 1;
+        u64 driver_manager      : 1;
     };
 };
+
+static kernel_components_t initialized_kernel_components {};
+static heap_t kernel_heap {};
+static dma_heap_manager_t kernel_dma_allocator {};
+static graphics_driver_t kernel_graphics_driver {};
+static vfs_t kernel_vfs {};
+static network_interface_controller_t kernel_nic {};
+static system_info_manager_t kernel_sim {};
+static pcie_device_manager_t kernel_pciedm {};
+static network_manager_t kernel_network_manager {};
+static storage_manager_t kernel_storage_manager {};
+static driver_manager_t kernel_driver_manager {};
 
 static
 void system_log(const char* level, const char* color, const char* message) {
@@ -217,21 +131,13 @@ void system_log_ok(const char* message) {
 
 static
 void system_log_error(const char* message) { 
-    system_log("ERROR", "\033[91m", message); 
+    system_log("ERROR", "\033[94m", message); 
 }
 
 static
 void system_log_info(const char* system, const char* message) { 
-    system_log(system, "\033[96m", message);
+    system_log(system, "\033[0m", message);
 }
-
-static kernel_components_t initialized_kernel_components {};
-static heap_t kernel_heap {};
-static dma_heap_manager_t kernel_dma_allocator {};
-static graphics_driver_t kernel_graphics_driver {};
-static vfs_t kernel_vfs {};
-static network_interface_controller_t kernel_nic {};
-static system_info_manager_t kernel_sim {};
 
 static
 void init_memory() {
@@ -378,68 +284,185 @@ void init_network_interface_controller() {
     system_log_ok("initialized the network interface controller");
 }
 
-extern "C" NORETURN void virtual_kernel_entry(multiboot2_info_t* multiboot_struct) {
-    // initialze the debug out stream
-    debug_init();
+static
+void init_pcie() {
+    set_global_pcie_device_manager(&kernel_pciedm);
+
+    if (pci_enumerate_devices(&kernel_pciedm)) {
+        initialized_kernel_components.pcie = true;
     
-    // stage 1 -- core essentials
-    // TODO @since 02/06/2026 -- 13:20
-    // init com port / debug port
-    init_memory();
-    init_graphics(multiboot_struct);
-    init_interrupts();
-    init_system_info(multiboot_struct);
+        system_log_ok("enumerated pci(e) devices");
+    } else {
+        system_log_error("failed to enumerate pci(e) devices");
+    }
+}
 
-    // stage 2 -- core functionality
-    init_virtual_threading();
-    init_virtual_filesystem();
-    init_network_interface_controller();
-    // pci
+static
+void network_pci_loop(const pci_device_t* device) {
+    if (is_e1000_device(device)) {
+        e1000_t* e1000 = (e1000_t*)malloc(sizeof(e1000_t));
+        memzero(e1000, sizeof(e1000_t));
+        if (e1000_init_device(device, e1000) == 0) {
+            network_interface_t* e1000_network_interface = (network_interface_t*)malloc(sizeof(network_interface_t));
+            memzero(e1000_network_interface, sizeof(network_interface_t));
 
-    // stage 3 -- hardware
+            e1000_network_interface->device = e1000;
+            e1000_network_interface->device_type = network_interface_device_type_t::E1000;
+            e1000_network_interface->is_configured = true;
 
-    // pci(e)
-    // ps2
-    // usb
-    // etc...
+            memcpy(e1000_network_interface->mac, e1000->mac, 6);
 
-    // drivers?
+            const char* device_name = "Intel E1000";
+            strncpy(e1000_network_interface->device_name, device_name, sizeof(e1000_network_interface->device_name));
 
+            nic_register_interface(get_global_nic(), e1000_network_interface);
 
+            network_manager_configre_interface(get_global_network_manager(), e1000_network_interface);
 
+            system_log_info("PCI(e)", "configured device 'Intel E1000'");
+        } else {
+            system_log_info("PCI(e)", "failed to configure device 'Intel E1000'");
+        }
+
+        return;
+    }
+
+    if (is_rtl8168_device(device)) {
+        rtl8168_t* rtl8168 = (rtl8168_t*)malloc(sizeof(rtl8168_t));
+        memzero(rtl8168, sizeof(rtl8168_t));
+
+        if (rtl8168_init_device(device, rtl8168)) {
+            network_interface_t* rtl8168_network_interface = (network_interface_t*)malloc(sizeof(network_interface_t));
+            memzero(rtl8168_network_interface, sizeof(network_interface_t));
+
+            rtl8168_network_interface->device = rtl8168;
+            rtl8168_network_interface->device_type = network_interface_device_type_t::RTL8168;
+            rtl8168_network_interface->is_configured = true;
+
+            memcpy(rtl8168_network_interface->mac, rtl8168->mac, 6);
+
+            const char* device_name = "Realtek RTL8168";
+            strncpy(rtl8168_network_interface->device_name, device_name, sizeof(rtl8168_network_interface->device_name));
+
+            nic_register_interface(get_global_nic(), rtl8168_network_interface);
+
+            // network_manager_configre_interface(get_global_network_manager(), rtl8168_network_interface);
+
+            system_log_info("PCI(e)", "configured device 'Realtek RTL8168'");
+        } else {
+            system_log_info("PCI(e)", "failed to configure device 'Realtek RTL8168'");
+        }
+
+        return;
+    }
+}
+
+static
+void init_networking() {
+    if (!network_manager_init(&kernel_network_manager)) {
+        system_log_error("failed to initialize network manager");
+        return;
+    }
+
+    set_global_network_manager(&kernel_network_manager);
+
+    if (network_manager_configure(&kernel_network_manager)) {
+        // initialze network devices
+        pci_loop_devices(get_global_pcie_device_manager(), network_pci_loop);
+    
+        initialized_kernel_components.networking = true;
+
+        system_log_ok("configured network manager");
+    } else {
+        system_log_error("failed to configure network manager");
+    }
+}
+
+static
+void storage_pci_loop(const pci_device_t* device) {
+    if (is_ide_device(device)) {
+        auto& ide_devices = get_global_storage_manager()->ide.devices;
+        if (ide_init(device, &ide_devices)) {
+            size_t ide_device_index = 0;
+            for (auto& device : ide_devices) {
+                char name[128];
+                sprintf(name, sizeof(name), "harddisk%i", ide_device_index++);
+
+                if (vfs_mount_device(get_global_vfs(), &device, block_device_type_t::IDE, name)) {
+                    char outstr[128];
+                    sprintf(outstr, sizeof(outstr), "mounted '%s'", name);
+                    system_log_info("IDE", outstr);
+                } else {
+                    char outstr[128];
+                    sprintf(outstr, sizeof(outstr), "failed to mount '%s'", name);
+                    system_log_info("IDE", outstr);
+                }
+            }
+        } else {
+            system_log_info("IDE", "driver failed to initialize");
+        }
+
+        return;
+    }
+
+    if (is_ahci_device(device)) {
+        auto& ahci_driver_ctx = get_global_storage_manager()->ahci.driver_ctx;
+        auto& ahci_devices = get_global_storage_manager()->ahci.devices;
+        if (ahci_init(device, &ahci_driver_ctx, &ahci_devices)) {
+            size_t ahci_device_index = 0;
+            for (auto& device : ahci_devices) {
+                char name[18];
+                sprintf(name, sizeof(name), "drive%i", ahci_device_index++);
+                if (vfs_mount_device(get_global_vfs(), &device, block_device_type_t::AHCI, name)) {
+                    char outstr[128];
+                    sprintf(outstr, sizeof(outstr), "mounted '%s'", name);
+                    system_log_info("AHCI", outstr);
+                } else {
+                    char outstr[128];
+                    sprintf(outstr, sizeof(outstr), "failed to mount '%s'", name);
+                    system_log_info("AHCI", outstr);
+                }
+            }
+        } else {
+            system_log_info("AHCI", "driver failed to initialize");
+        }
+
+        // valid device so we can continue to the next device
+        return;
+    }
+}
+
+static
+void init_storage() {
+    if (!storage_manager_init(&kernel_storage_manager)) {
+        system_log_error("failed to initialize storage manager");
+        return;
+    }
+
+    set_global_storage_manager(&kernel_storage_manager);
+
+    pci_loop_devices(get_global_pcie_device_manager(), storage_pci_loop);
+
+    initialized_kernel_components.storage = true;
+
+    system_log_ok("configured storage manager");
+}
+
+static
+void init_input_devices() {
     // TODO @since 06/02/2026 -- 10:34
     // proper ps2 startup etc
     keyboard_initialize();
     ps2_mouse_init();
+}
 
-    network_manager_t network_manager {};
-    network_manager_init(&network_manager);
-    set_global_network_manager(&network_manager);
-    if (network_manager_configure(&network_manager)) {
-        printf("[ \033[92mOK\033[0m ] configured network manager\n");
-    } else {
-        printf("[ \033[91mERROR\033[0m ] failed to configure network manager\n");
-    }
+static
+void init_drivers() {
+    initialized_kernel_components.driver_manager = true;
 
-    // BIT_SET(global_online_systems_flags, KERNEL_SYSTEM_NM_BIT);
+    set_global_driver_manager(&kernel_driver_manager);
 
-    storage_manager_t storage_manager {};
-    storage_manager_init(&storage_manager);
-    set_global_storage_manager(&storage_manager);
-
-    // BIT_SET(global_online_systems_flags, KERNEL_SYSTEM_SM_BIT);
-
-    pcie_device_manager_t pciedm {};
-    set_global_pcie_device_manager(&pciedm);
-    pci_enumerate_devices(get_global_pcie_device_manager());
-    pci_loop_devices(get_global_pcie_device_manager(), init_pci_devices);
-
-    // BIT_SET(global_online_systems_flags, KERNEL_SYSTEM_PCIE_BIT);
-
-    driver_manager_t driver_manager {};
-    set_global_driver_manager(&driver_manager);
-
-    // BIT_SET(global_online_systems_flags, KERNEL_SYSTEM_DM_BIT);
+    system_log_ok("configured driver manager");
 
     // std::dynamic_array<vfs_node_t> nodes {};
     // if (vfs_list_directory(&vfs, "/harddisk0", &nodes)) {
@@ -480,9 +503,30 @@ extern "C" NORETURN void virtual_kernel_entry(multiboot2_info_t* multiboot_struc
     //         }
     //     }
     // }
+}
+
+extern "C" NORETURN void virtual_kernel_entry(multiboot2_info_t* multiboot_struct) {
+    // stage 1 -- core essentials
+    debug_init();
+    init_memory();
+    init_graphics(multiboot_struct);
+    init_interrupts();
+    init_system_info(multiboot_struct);
+
+    // stage 2 -- core functionality
+    init_virtual_threading();
+    init_virtual_filesystem();
+    init_network_interface_controller();
+    init_pcie();
+    // usb controller?
+
+    // stage 3 -- hardware
+    init_networking();
+    init_storage();
+    init_input_devices();
+    init_drivers();
 
     // kernel finished
-    kprintf("[ KERNEL SETUP FINISHED ]\n");
 
     if (vthread_create_local(terminal_thread_main) == VTHREAD_HANDLE_INVALID)
         printf("[ \033[91mERROR\033[0m ] failed to start terminal\n");
