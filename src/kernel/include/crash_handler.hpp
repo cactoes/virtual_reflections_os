@@ -27,37 +27,4 @@ void kernel_fatal(u64 code, const char* message);
 NORETURN
 void kernel_crash_handler(u64 crash_code, const char* message, void* stack);
 
-// extern "C" NORETURN void kernel_fatal_internal(u64 code, const char* message, struct interrupt_regs_t* cpu_state = nullptr);
-
-// // NAKED
-// NORETURN inline void kernel_fatal(u64 code, const char* message) {
-//     // TODO @since 02/01/2026 -- 18:02
-//     // fix get cpu state
-//     kernel_fatal_internal(code, message, nullptr);
-
-//     // asm volatile (
-//     //     // reserve space for cpu_state_t
-//     //     "sub %[state_size], %%rsp\n"
-//     //     "and $-16, %%rsp\n"
-
-//     //     // dump the cpu state
-//     //     "mov %%rsp, %%rdi\n"
-//     //     "call x86_64_get_cpu_state\n"
-
-//     //     "mov %[code], %%rcx\n"
-//     //     "mov %[msg], %%r8\n"
-
-//     //     "mov %%rcx, %%rdi\n"
-//     //     "mov %%r8, %%rsi\n"
-//     //     "mov %%rsp, %%rdx\n"
-//     //     "call kernel_fatal_internal\n"
-
-//     //     :
-//     //     : [code] "r"(code),
-//     //       [msg] "r"(p_message),
-//     //       [state_size] "i"(sizeof(cpu_state_t))
-//     //     : "rcx", "r8", "rdi", "rsi", "rdx", "memory"
-//     // );
-// }
-
 #endif // __CRASH_HANDLER_HPP__
