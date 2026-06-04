@@ -214,7 +214,6 @@ check_long_mode:
 ;==========================================
 ; @function     init_boot_page_table
 ; @brief        identity maps the kernel (?)
-; @todo         switch to only id map the (c) bootloader
 ;==========================================
 init_boot_page_table:
     mov     ebx,    page_table.l4
