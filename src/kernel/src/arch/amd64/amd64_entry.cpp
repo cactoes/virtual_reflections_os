@@ -276,7 +276,7 @@ u64 amd64_syscall_dispatch(u64 syscall_num, syscall_regs_t* regs) {
 
 extern "C"
 __attribute__((section(".text")))
-void amd64_crash_handler(u64 crash_code, const char* message, interrupt_regs_t* stack) {
+void amd64_crash_dump(u64 crash_code, const char* message, interrupt_regs_t* stack) {
     kprintf("exception: ");
     switch (crash_code) {
         case 0x0: kprintf("DIVISION_BY_ZERO"); break;
@@ -298,7 +298,7 @@ void amd64_crash_handler(u64 crash_code, const char* message, interrupt_regs_t* 
                 bool is_external = stack->error_code & 0x1;
                 bool is_idt = stack->error_code & 0x2;
     
-                kprintf("GENERAL_PROTECTION_FAULT\n        extenal:%u\n        table:%s\n        segment index: 0x%uh", is_external, is_idt ? "idt/ldt" : "gdt", seg_index);
+                kprintf("GENERAL_PROTECTION_FAULT\n    extenal: %u\n    table: %s\n    segment index: 0x%uh", is_external, is_idt ? "idt/ldt" : "gdt", seg_index);
             } else {
                 kprintf("GENERAL_PROTECTION_FAULT");
             }
@@ -310,7 +310,7 @@ void amd64_crash_handler(u64 crash_code, const char* message, interrupt_regs_t* 
                 bool is_operation_write = (stack->error_code & 0x2);
                 bool is_mode_user = (stack->error_code & 0x4);
     
-                kprintf("PAGE_FAULT\n        address: 0x%p\n        reason:%s\n        operation:%s\n        mode:%s",
+                kprintf("PAGE_FAULT\n    address: 0x%uh\n    reason: %s\n    operation: %s\n    mode:%s",
                     amd64_read_cr2(),
                     is_reason_protection ? "protection violation" : "non-present page",
                     is_operation_write ? "write" : "read",
@@ -328,13 +328,6 @@ void amd64_crash_handler(u64 crash_code, const char* message, interrupt_regs_t* 
         case 0x13: kprintf("SIMD_FP_EXCEPTION"); break;
         case 0x14: kprintf("VIRTUALIZATION_EXCEPTION"); break;
         case 0x15: kprintf("CONTROL_PROTECTION_EXCEPTION"); break;
-        case KERNEL_FATAL_KERNEL_EXITED: kprintf("KERNEL_FATAL_KERNEL_EXITED"); break;
-        case KERNEL_FATAL_CRITICAL_THREAD_DIED: kprintf("KERNEL_FATAL_CRITICAL_THREAD_DIED"); break;
-        case KERNEL_FATAL_MULTIBOOT_MAGIC_VALIDATE: kprintf("KERNEL_FATAL_MULTIBOOT_MAGIC_VALIDATE"); break;
-        case KERNEL_FATAL_VMEM_INIT: kprintf("KERNEL_FATAL_VMEM_INIT"); break;
-        case KERNEL_FATAL_HEAP_INIT: kprintf("KERNEL_FATAL_HEAP_INIT"); break;
-        case KERNEL_FATAL_VTHREAD_INIT: kprintf("KERNEL_FATAL_VTHREAD_INIT"); break;
-        case KERNEL_FATAL_VTHREAD_STACK_PROTECTION: kprintf("KERNEL_FATAL_VTHREAD_STACK_PROTECTION"); break;
         default: kprintf("UNKOWN"); break;
     }
 

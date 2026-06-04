@@ -5,26 +5,73 @@
 // #include "io.hpp"
 // #include "utils/mutex.hpp"
 // #include "arch/amd64/cpu.hpp"
-// #include "drivers/graphics/graphics_driver.hpp"
 
 #include "io.hpp"
 #include "interrupt_manager.hpp"
 #include "virtual_thread.hpp"
 #include "arch/arch_selector.hpp"
 #include "utils/debug.hpp"
+#include "drivers/graphics/graphics_driver.hpp"
 
 #if CPU_ARCHITECTURE == ARCH_AMD64
-extern "C" void amd64_crash_handler(u64 code, const char* message, struct interrupt_regs_t* stack);
+extern "C" void amd64_crash_dump(u64 code, const char* message, struct interrupt_regs_t* stack);
 #endif
 
 void kernel_fatal(u64 code, const char* message) {
+    kprintf("kernel encountered an unhandleable situation (0x%uh): \"%s\"\n    ", code, message);
 
+    switch (code) {
+        case KERNEL_FATAL_KERNEL_EXITED: kprintf("KERNEL_FATAL_KERNEL_EXITED"); break;
+        case KERNEL_FATAL_CRITICAL_THREAD_DIED: kprintf("KERNEL_FATAL_CRITICAL_THREAD_DIED"); break;
+        case KERNEL_FATAL_MULTIBOOT_MAGIC_VALIDATE: kprintf("KERNEL_FATAL_MULTIBOOT_MAGIC_VALIDATE"); break;
+        case KERNEL_FATAL_VMEM_INIT: kprintf("KERNEL_FATAL_VMEM_INIT"); break;
+        case KERNEL_FATAL_HEAP_INIT: kprintf("KERNEL_FATAL_HEAP_INIT"); break;
+        case KERNEL_FATAL_VTHREAD_INIT: kprintf("KERNEL_FATAL_VTHREAD_INIT"); break;
+        case KERNEL_FATAL_VTHREAD_STACK_PROTECTION: kprintf("KERNEL_FATAL_VTHREAD_STACK_PROTECTION"); break;
+        default: kprintf("KERNEL_FATAL_UNKNOWN"); break;
+    }
+
+    kprintf("\n");
+
+    graphics_driver_t* gd = get_global_graphics_driver();
+
+    size_t w, h;
+    graphics_driver_get_size(gd, &w, &h);
+    graphics_driver_draw_square(gd, 0, 0, w, h, { 0, 0, 0 });
+
+    size_t w2, h2;
+    graphics_driver_get_text_size(gd, " Unrecoverable Exception ", &w2, &h2);
+    graphics_driver_draw_text(gd, w / 2 - w2 / 2, 100, " Unrecoverable Exception ", { 0, 0, 0 }, { 255, 255, 255 });
+    
+    // we take this since its the longes piece of text
+    graphics_driver_get_text_size(gd, "The system encounterd an unhandleable situation", &w2, &h2);
+
+    graphics_driver_draw_text(gd, w / 2 - w2 / 2, 100 + h2 * 2, "The system encounterd an unhandleable situation", { 255, 255, 255 });
+    graphics_driver_draw_text(gd, w / 2 - w2 / 2, 100 + h2 * 3, "Recovery is not possible.", { 255, 255, 255 });
+    graphics_driver_draw_text(gd, w / 2 - w2 / 2, 100 + h2 * 6, "A system reboot is required.", { 255, 255, 255 });
+
+    char buffer[256] {};
+    sprintf(buffer, 256, "Stop code: 0x%uh", code);
+    graphics_driver_draw_text(gd, w / 2 - w2 / 2, 100 + h2 * 8, buffer, { 255, 255, 255 });
+
+    graphics_driver_render(gd);
+
+    // reboot here?
+
+    while (true)
+        debug_trap("kernel fatal");
 }
 
 void kernel_crash_handler(u64 crash_code, const char* message, void* stack) {
     disable_interrupts();
 
-    kprintf("kernel crash handler triggered (0x%uh): \"%s\"", crash_code, message);
+    kprintf("kernel crash handler triggered (0x%uh): \"%s\"\n", crash_code, message);
+
+#if CPU_ARCHITECTURE == ARCH_AMD64
+    amd64_crash_dump(crash_code, message, (struct interrupt_regs_t*)stack);
+#else
+#error CPU_ARCH_NOT_SUPPORTED
+#endif
 
     // if not main thread just terminate the thread not the system
     // & if a valid tls is setup
@@ -35,55 +82,40 @@ void kernel_crash_handler(u64 crash_code, const char* message, void* stack) {
         // to prevent crash looping
         if (vthread_get_state() != vthread_state_t::STOPPING)
             vthread_terminate();
+
+        while (true)
+            ;
     }
 
-#if CPU_ARCHITECTURE == ARCH_AMD64
-    amd64_crash_handler(crash_code, message, (struct interrupt_regs_t*)stack);
-#else
-#error CPU_ARCH_NOT_SUPPORTED
-#endif
+    graphics_driver_t* gd = get_global_graphics_driver();
+
+    size_t w, h;
+    graphics_driver_get_size(gd, &w, &h);
+    graphics_driver_draw_square(gd, 0, 0, w, h, { 0, 0, 0 });
+
+    size_t w2, h2;
+    graphics_driver_get_text_size(gd, " Corrupted Beyond Repair ", &w2, &h2);
+    graphics_driver_draw_text(gd, w / 2 - w2 / 2, 100, " Corrupted Beyond Repair ", { 0, 0, 0 }, { 255, 255, 255 });
+    
+    // we take this since its the longes piece of text
+    graphics_driver_get_text_size(gd, "Additional diagnostic information generated (if available).", &w2, &h2);
+
+    graphics_driver_draw_text(gd, w / 2 - w2 / 2, 100 + h2 * 2, "The system encounterd a critical error.", { 255, 255, 255 });
+    graphics_driver_draw_text(gd, w / 2 - w2 / 2, 100 + h2 * 3, "Immediate recovery is not possible.", { 255, 255, 255 });
+    graphics_driver_draw_text(gd, w / 2 - w2 / 2, 100 + h2 * 5, "Additional diagnostic information generated (if available).", { 255, 255, 255 });
+    graphics_driver_draw_text(gd, w / 2 - w2 / 2, 100 + h2 * 6, "A system reboot is required.", { 255, 255, 255 });
+
+    char buffer[256] {};
+    sprintf(buffer, 256, "Stop code: 0x%uh", crash_code);
+    graphics_driver_draw_text(gd, w / 2 - w2 / 2, 100 + h2 * 8, buffer, { 255, 255, 255 });
+
+    graphics_driver_render(gd);
+
+    // reboot after key press?
 
     while (true)
-        debug_trap("kernel fatal");
+        debug_trap("kernel crash");
 }
-
-// volatile u64 global_online_systems_flags = 0;
-
-// void kernel_fatal_internal(u64 code, const char* message, interrupt_regs_t* cpu_state) {
-//     auto temp_handle = __thread_tls ? __thread_tls->handle : VTHREAD_HANDLE_INVALID;
-
-//     // if not main thread just terminate the thread not the system
-//     // & if a valid tls is setup
-//     if (__thread_tls && __thread_tls->handle != VTHREAD_MAIN_THREAD_HANDLE && __thread_tls->handle != VTHREAD_HANDLE_INVALID) {
-//         kprintf("[thread %ul]: terminated (crashed or forcefully stopped). code: 0x%uh (%s).\n", __thread_tls->handle, code, message);
-//         mutex_clear_all_thread_references_and_release(__thread_tls->handle);
-
-//         // to prevent crash looping
-//         if (vthread_get_state() != vthread_state_t::STOPPING)
-//             vthread_terminate();
-//     }
-
-//     graphics_driver_t* gd = get_global_graphics_driver();
-
-//     size_t w, h;
-//     graphics_driver_get_size(gd, &w, &h);
-//     graphics_driver_draw_square(gd, 0, 0, w, h, { 0, 0, 0 });
-
-//     size_t w2, h2;
-//     graphics_driver_get_text_size(gd, " Corrupted Beyond Repair ", &w2, &h2);
-//     graphics_driver_draw_text(gd, w / 2 - w2 / 2, 100, " Corrupted Beyond Repair ", { 0, 0, 0 }, { 255, 255, 255 });
-    
-//     // we take this since its the longes piece of text
-//     graphics_driver_get_text_size(gd, "Additional diagnostic information generated (if available).", &w2, &h2);
-
-//     graphics_driver_draw_text(gd, w / 2 - w2 / 2, 100 + h2 * 2, "The system encounterd a critical error.", { 255, 255, 255 });
-//     graphics_driver_draw_text(gd, w / 2 - w2 / 2, 100 + h2 * 3, "Immediate recovery is not possible.", { 255, 255, 255 });
-//     graphics_driver_draw_text(gd, w / 2 - w2 / 2, 100 + h2 * 5, "Additional diagnostic information generated (if available).", { 255, 255, 255 });
-//     graphics_driver_draw_text(gd, w / 2 - w2 / 2, 100 + h2 * 6, "A system reboot is required.", { 255, 255, 255 });
-
-//     char buffer[256] {};
-//     sprintf(buffer, 256, "Stop code: 0x%uh. Systems initialized: %ul", code, global_online_systems_flags);
-//     graphics_driver_draw_text(gd, w / 2 - w2 / 2, 100 + h2 * 8, buffer, { 255, 255, 255 });
 
 //     if (code == 0xe) {
 //         bool is_reason_protection = (cpu_state->error_code & 0x1);
@@ -122,10 +154,3 @@ void kernel_crash_handler(u64 crash_code, const char* message, void* stack) {
 //         sprintf(buffer, 256, "handle: %ul", temp_handle);
 //         graphics_driver_draw_text(gd, w / 2 - w2 / 2, 100 + h2 * 14, buffer, { 255, 255, 255 });
 //     }
-
-//     graphics_driver_render(gd);
-
-//     // reboot?
-
-//     kernel_fatal_end();
-// }

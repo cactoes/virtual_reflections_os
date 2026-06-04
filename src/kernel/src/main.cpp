@@ -183,10 +183,7 @@ void init_graphics(multiboot2_info_t* multiboot_struct) {
 }
 
 void* crash_handler_callback(void* stack, void* data) {
-    // TODO @since 19/05/2026 -- 16:09
-    // this is still heavily based on architecture
-    // so we need to find some alternative for this
-    kernel_fatal_internal((u64)data, "critical interrupt triggerd!", (struct interrupt_regs_t*)stack);
+    kernel_crash_handler((u64)data, "critical exception", stack);
     return stack;
 }
 
@@ -543,6 +540,5 @@ extern "C" NORETURN void virtual_kernel_entry(multiboot2_info_t* multiboot_struc
     // we shoudn t reach this point since the kernel should never stop
     // incase we do just hang here so we dont break anything
     while (true)
-        // amd64_halt();
         vthread_yield();
 }
