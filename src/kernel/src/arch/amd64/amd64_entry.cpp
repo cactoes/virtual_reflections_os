@@ -16,6 +16,8 @@
 #include "interrupt_manager.hpp"
 #include "syscall_handler.hpp"
 #include "common.hpp"
+#include "crash_handler.hpp"
+#include "io.hpp"
 
 #if CPU_ARCHITECTURE == ARCH_AMD64
 
@@ -27,8 +29,8 @@
 #define KERNEL_VIRTUAL_BASE_ADDRESS 0xFFFFF80000000000
 
 /// @brief  generic types
-//
 
+/// @brief  extern functions
 extern "C" void virtual_kernel_entry(struct multiboot_t*);
 extern "C" void amd64_syscall_stub();
 
@@ -199,6 +201,8 @@ interrupt_t amd64_convert_to_interrupt(u64 code) {
     return interrupt_t::UNKOWN;
 }
 
+// TODO @since 04/06/2026 -- 08:19
+// replace with actual getter
 extern void* global_lapic;
 
 extern "C"
@@ -268,6 +272,98 @@ u64 amd64_syscall_dispatch(u64 syscall_num, syscall_regs_t* regs) {
         (void*)regs->r10,
         (void*)regs->r8,
         (void*)regs->r9);
+}
+
+extern "C"
+__attribute__((section(".text")))
+void amd64_crash_handler(u64 crash_code, const char* message, interrupt_regs_t* stack) {
+    kprintf("exception: ");
+    switch (crash_code) {
+        case 0x0: kprintf("DIVISION_BY_ZERO"); break;
+        case 0x1: kprintf("SINGLE_STEP_INTERRUPT"); break;
+        case 0x2: kprintf("NMI"); break;
+        case 0x3: kprintf("BREAKPOINT"); break;
+        case 0x4: kprintf("OVERFLOW"); break;
+        case 0x5: kprintf("BOUND_RANGE_EXCEEDED"); break;
+        case 0x6: kprintf("INVALID_OPCODE"); break;
+        case 0x7: kprintf("COPROCESSOR_NOT_AVAILABLE"); break;
+        case 0x8: kprintf("DOUBLE_FAULT"); break;
+        case 0x9: kprintf("COPROCESSOR_SEGMENT_OVERRUN"); break;
+        case 0xA: kprintf("INVALID_TSS"); break;
+        case 0xB: kprintf("SEGMENT_NOT_PRESENT"); break;
+        case 0xC: kprintf("STACK_SEGMENT_FAULT"); break;
+        case 0xD: {
+            if (stack) {
+                u16 seg_index = stack->error_code >> 3;
+                bool is_external = stack->error_code & 0x1;
+                bool is_idt = stack->error_code & 0x2;
+    
+                kprintf("GENERAL_PROTECTION_FAULT\n        extenal:%u\n        table:%s\n        segment index: 0x%uh", is_external, is_idt ? "idt/ldt" : "gdt", seg_index);
+            } else {
+                kprintf("GENERAL_PROTECTION_FAULT");
+            }
+            break;
+        }
+        case 0xE:{
+            if (stack) {
+                bool is_reason_protection = (stack->error_code & 0x1);
+                bool is_operation_write = (stack->error_code & 0x2);
+                bool is_mode_user = (stack->error_code & 0x4);
+    
+                kprintf("PAGE_FAULT\n        address: 0x%p\n        reason:%s\n        operation:%s\n        mode:%s",
+                    amd64_read_cr2(),
+                    is_reason_protection ? "protection violation" : "non-present page",
+                    is_operation_write ? "write" : "read",
+                    is_mode_user ? "user" : "kernel");
+            } else {
+                kprintf("PAGE_FAULT");
+            }
+
+            break;
+        }
+        case 0xF: kprintf("RESERVED"); break;
+        case 0x10: kprintf("X87_FLOATING_POINT_EXCEPTION"); break;
+        case 0x11: kprintf("ALIGNMENT_CHECK"); break;
+        case 0x12: kprintf("MACHINE_CHECK"); break;
+        case 0x13: kprintf("SIMD_FP_EXCEPTION"); break;
+        case 0x14: kprintf("VIRTUALIZATION_EXCEPTION"); break;
+        case 0x15: kprintf("CONTROL_PROTECTION_EXCEPTION"); break;
+        case KERNEL_FATAL_KERNEL_EXITED: kprintf("KERNEL_FATAL_KERNEL_EXITED"); break;
+        case KERNEL_FATAL_CRITICAL_THREAD_DIED: kprintf("KERNEL_FATAL_CRITICAL_THREAD_DIED"); break;
+        case KERNEL_FATAL_MULTIBOOT_MAGIC_VALIDATE: kprintf("KERNEL_FATAL_MULTIBOOT_MAGIC_VALIDATE"); break;
+        case KERNEL_FATAL_VMEM_INIT: kprintf("KERNEL_FATAL_VMEM_INIT"); break;
+        case KERNEL_FATAL_HEAP_INIT: kprintf("KERNEL_FATAL_HEAP_INIT"); break;
+        case KERNEL_FATAL_VTHREAD_INIT: kprintf("KERNEL_FATAL_VTHREAD_INIT"); break;
+        case KERNEL_FATAL_VTHREAD_STACK_PROTECTION: kprintf("KERNEL_FATAL_VTHREAD_STACK_PROTECTION"); break;
+        default: kprintf("UNKOWN"); break;
+    }
+
+    kprintf("\n");
+
+    kprintf("cpu dump:\n");
+    kprintf("    cr2:        0x%uh\n", amd64_read_cr2());
+    if (stack) {
+        kprintf("    rflags:     0x%uh\n", stack->rflags);
+        kprintf("    error code: 0x%uh\n", stack->error_code);
+    
+        kprintf("    registers:\n");
+        kprintf("        r8:  0x%uh\n", stack->r8);
+        kprintf("        r9:  0x%uh\n", stack->r9);
+        kprintf("        r10: 0x%uh\n", stack->r10);
+        kprintf("        r11: 0x%uh\n", stack->r11);
+        kprintf("        r12: 0x%uh\n", stack->r12);
+        kprintf("        r13: 0x%uh\n", stack->r13);
+        kprintf("        r14: 0x%uh\n", stack->r14);
+        kprintf("        r15: 0x%uh\n", stack->r15);
+        kprintf("        rax: 0x%uh\n", stack->rax);
+        kprintf("        rcx: 0x%uh\n", stack->rcx);
+        kprintf("        rdx: 0x%uh\n", stack->rdx);
+        kprintf("        rbp: 0x%uh\n", stack->rbp);
+        kprintf("        rsi: 0x%uh\n", stack->rsi);
+        kprintf("        rdi: 0x%uh\n", stack->rdi);
+        kprintf("        rip: 0x%uh\n", stack->rip);
+        kprintf("        rsp: 0x%uh\n", stack->rsp);
+    }
 }
 
 [[noreturn]]

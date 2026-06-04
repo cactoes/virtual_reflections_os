@@ -19,55 +19,45 @@
 #define KERNEL_FATAL_VTHREAD_STACK_PROTECTION       0xF0000005
 #define KERNEL_FATAL_CRITICAL_SECTION_FAILED        0xF0000006
 
-#define KERNEL_SYSTEM_HEAP_BIT      0
-#define KERNEL_SYSTEM_GD_BIT        1
-#define KERNEL_SYSTEM_PIT_BIT       2
-#define KERNEL_SYSTEM_DMA_BIT       3
-#define KERNEL_SYSTEM_VTHREAD_BIT   4
-#define KERNEL_SYSTEM_SIM_BIT       5
-#define KERNEL_SYSTEM_NIC_BIT       6
-#define KERNEL_SYSTEM_NM_BIT        7
-#define KERNEL_SYSTEM_VFS_BIT       8
-#define KERNEL_SYSTEM_SM_BIT        9
-#define KERNEL_SYSTEM_PCIE_BIT      10
-#define KERNEL_SYSTEM_DM_BIT        11
-
 #include "common.hpp"
 
-// TODO @since 01/06/2026 -- 23:09
-// rework this crash handler
+NORETURN
+void kernel_fatal(u64 code, const char* message);
 
-extern "C" NORETURN void kernel_fatal_internal(u64 code, const char* message, struct interrupt_regs_t* cpu_state = nullptr);
+NORETURN
+void kernel_crash_handler(u64 crash_code, const char* message, void* stack);
 
-// NAKED
-NORETURN inline void kernel_fatal(u64 code, const char* message) {
-    // TODO @since 02/01/2026 -- 18:02
-    // fix get cpu state
-    kernel_fatal_internal(code, message, nullptr);
+// extern "C" NORETURN void kernel_fatal_internal(u64 code, const char* message, struct interrupt_regs_t* cpu_state = nullptr);
 
-    // asm volatile (
-    //     // reserve space for cpu_state_t
-    //     "sub %[state_size], %%rsp\n"
-    //     "and $-16, %%rsp\n"
+// // NAKED
+// NORETURN inline void kernel_fatal(u64 code, const char* message) {
+//     // TODO @since 02/01/2026 -- 18:02
+//     // fix get cpu state
+//     kernel_fatal_internal(code, message, nullptr);
 
-    //     // dump the cpu state
-    //     "mov %%rsp, %%rdi\n"
-    //     "call x86_64_get_cpu_state\n"
+//     // asm volatile (
+//     //     // reserve space for cpu_state_t
+//     //     "sub %[state_size], %%rsp\n"
+//     //     "and $-16, %%rsp\n"
 
-    //     "mov %[code], %%rcx\n"
-    //     "mov %[msg], %%r8\n"
+//     //     // dump the cpu state
+//     //     "mov %%rsp, %%rdi\n"
+//     //     "call x86_64_get_cpu_state\n"
 
-    //     "mov %%rcx, %%rdi\n"
-    //     "mov %%r8, %%rsi\n"
-    //     "mov %%rsp, %%rdx\n"
-    //     "call kernel_fatal_internal\n"
+//     //     "mov %[code], %%rcx\n"
+//     //     "mov %[msg], %%r8\n"
 
-    //     :
-    //     : [code] "r"(code),
-    //       [msg] "r"(p_message),
-    //       [state_size] "i"(sizeof(cpu_state_t))
-    //     : "rcx", "r8", "rdi", "rsi", "rdx", "memory"
-    // );
-}
+//     //     "mov %%rcx, %%rdi\n"
+//     //     "mov %%r8, %%rsi\n"
+//     //     "mov %%rsp, %%rdx\n"
+//     //     "call kernel_fatal_internal\n"
+
+//     //     :
+//     //     : [code] "r"(code),
+//     //       [msg] "r"(p_message),
+//     //       [state_size] "i"(sizeof(cpu_state_t))
+//     //     : "rcx", "r8", "rdi", "rsi", "rdx", "memory"
+//     // );
+// }
 
 #endif // __CRASH_HANDLER_HPP__
