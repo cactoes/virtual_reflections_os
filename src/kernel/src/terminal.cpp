@@ -312,10 +312,10 @@ int terminal_thread_main() {
     printf("Copyright (C) Blackline Technologies Ltd. System booted succesfully.\n");
     printf("Type 'help' for a list of commands.\n");
 
-    if (!ps2_port_test_device(ps2_device_type_t::KEYBOARD)) {
-        printf("\nNo keyboard found, exiting ...\n");
-        return 1;
-    }
+    // if (!ps2_port_test_device(ps2_device_type_t::KEYBOARD)) {
+    //     printf("\nNo keyboard found, exiting ...\n");
+    //     return 1;
+    // }
 
     printf("\n> ");
 

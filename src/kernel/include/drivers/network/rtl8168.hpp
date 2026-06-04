@@ -58,10 +58,10 @@
 #include "common.hpp"
 
 struct rtl8168_desc_t {
-    u32 command;
-    u32 vlan;
-    u32 address_low;
-    u32 address_high;
+    volatile u32 command;
+    volatile u32 vlan;
+    volatile u32 address_low;
+    volatile u32 address_high;
 } PACKED;
 
 struct rtl8168_t {

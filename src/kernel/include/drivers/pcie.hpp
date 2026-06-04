@@ -8,8 +8,10 @@
 #ifndef __DRIVERS_PCIE_HPP__
 #define __DRIVERS_PCIE_HPP__
 
+#define PCI_CONFIG_STATUS       0x06
 #define PCI_CONFIG_ADDRESS      0xCF8
 #define PCI_CONFIG_DATA         0xCFC
+#define PCI_CONFIG_CAP_BASE     0x34
 #define PCI_CONFIG_IRQ_LINE     0x3C
 
 #define PCI_CREATE_CONFIG_ADDRESS(bus, dev, func, off) ((1 << 31) | ((bus) << 16) | ((dev) << 11) | ((func) << 8) | ((off) & 0xFC))

@@ -220,7 +220,8 @@ interrupt_regs_t* amd64_interrupt_dispatch(u64 code, interrupt_regs_t* stack) {
 
     interrupt_regs_t* result_stack = (interrupt_regs_t*)interrupt_manager_dispatch(interrupt, (void*)stack);
 
-    if (code >= 32 && code <= 47) {
+    if (code >= 0x20 &&
+        interrupt != interrupt_t::SOFTWARE_SCHEDULER) {
         if (global_lapic)
             *((volatile u32*)((u8*)global_lapic + AMD64_APIC_EOI)) = 0;
         else

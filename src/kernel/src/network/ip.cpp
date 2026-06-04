@@ -29,8 +29,10 @@ u32 get_next_hop_ip(network_interface_t* interface, u32 target_ip) {
 void ip_receive(network_interface_t* interface, u8* packet, size_t size, u8 src_mac[6]) {
     ip_header_t* ip = (ip_header_t*)packet;
 
-    if (bswap32(ip->dst_addr) != interface->ip.raw && bswap32(ip->dst_addr) != 0xFFFFFFFF)
+    if (bswap32(ip->dst_addr) != interface->ip.raw && bswap32(ip->dst_addr) != 0xFFFFFFFF) {
+        printf("[ IP ] dropped packet from: %u:%u:%u:%u:%u:%u\n", src_mac[0], src_mac[1], src_mac[2], src_mac[3], src_mac[4], src_mac[5]);
         return;
+    }
 
     u16 ip_len = bswap16(ip->total_length);
     u8* payload = packet + (ip->version_ihl & 0x0F) * 4;

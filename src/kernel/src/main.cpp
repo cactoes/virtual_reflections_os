@@ -348,7 +348,8 @@ void network_pci_loop(const pci_device_t* device) {
             memcpy(rtl8168_network_interface->mac, rtl8168->mac, 6);
 
             const char* device_name = "Realtek RTL8168";
-            strncpy(rtl8168_network_interface->device_name, device_name, sizeof(rtl8168_network_interface->device_name));
+            memzero(rtl8168_network_interface->device_name, sizeof(rtl8168_network_interface->device_name));
+            strncpy(rtl8168_network_interface->device_name, device_name, sizeof(rtl8168_network_interface->device_name) - 1);
 
             nic_register_interface(get_global_nic(), rtl8168_network_interface);
 

@@ -1,12 +1,15 @@
 #include "drivers/network/rtl8168.hpp"
 #include "memory/vmem.hpp"
 #include "arch/amd64/cpu.hpp"
+#include "arch/amd64/apic.hpp"
 #include "io.hpp"
 #include "virtual_thread.hpp"
 #include "interrupt_manager.hpp"
 #include "network/nidm.hpp"
 
 #include "arch/arch_selector.hpp"
+
+volatile bool link_sttatus_up = false;
 
 #if CPU_ARCHITECTURE == ARCH_AMD64
 
@@ -72,13 +75,13 @@ bool rtl8168_receive_init(rtl8168_t* network_device) {
 
     network_device->rx_current = 0;
 
-    network_device->rdesc_array = (rtl8168_desc_t*)dma_heap_alloc(network_device->dma_heap, sizeof(rtl8168_desc_t) * NUM_RX_DESC, 16);
+    network_device->rdesc_array = (rtl8168_desc_t*)dma_heap_alloc(network_device->dma_heap, sizeof(rtl8168_desc_t) * NUM_RX_DESC, 256);
     if (!network_device->rdesc_array)
         return false;
 
     memzero(network_device->rdesc_array, sizeof(rtl8168_desc_t) * NUM_RX_DESC);
 
-    network_device->rx_buffer_array = (void*)dma_heap_alloc(network_device->dma_heap, RX_BUF_SIZE * NUM_RX_DESC, 16);
+    network_device->rx_buffer_array = (void*)dma_heap_alloc(network_device->dma_heap, RX_BUF_SIZE * NUM_RX_DESC, 256);
     if (!network_device->rx_buffer_array)
         return false;
 
@@ -120,13 +123,13 @@ bool rtl8168_transmit_init(rtl8168_t* network_device) {
 
     network_device->tx_current = 0;
 
-    network_device->tdesc_array = (rtl8168_desc_t*)dma_heap_alloc(network_device->dma_heap, sizeof(rtl8168_desc_t) * NUM_TX_DESC, 16);
+    network_device->tdesc_array = (rtl8168_desc_t*)dma_heap_alloc(network_device->dma_heap, sizeof(rtl8168_desc_t) * NUM_TX_DESC, 256);
     if (!network_device->tdesc_array)
         return false;
 
     memzero(network_device->tdesc_array, sizeof(rtl8168_desc_t) * NUM_TX_DESC);
 
-    network_device->tx_buffer_array = (void*)dma_heap_alloc(network_device->dma_heap, TX_BUF_SIZE * NUM_TX_DESC, 16);
+    network_device->tx_buffer_array = (void*)dma_heap_alloc(network_device->dma_heap, TX_BUF_SIZE * NUM_TX_DESC, 256);
     if (!network_device->tx_buffer_array)
         return false;
 
@@ -160,9 +163,17 @@ bool rtl8168_transmit_init(rtl8168_t* network_device) {
 }
 
 bool rtl8168_init_device(const pci_device_t* pcie_device, rtl8168_t* network_device) {
+    // SECTION 1 -- TODO @since 04/06/2026 -- 12:19
+    // rewrite into generic PCI enable MMIO
+
     auto cmd = pci_config_read(pcie_device, PCI_COMMAND);
     cmd |= PCI_CMD_MMIO | PCI_CMD_BUS_MASTERING;
     pci_config_write(pcie_device, PCI_COMMAND, cmd);
+
+    // END SECTION 1
+
+    // SECTION 2 -- TODO @since 04/06/2026 -- 12:19
+    // rewrite into generic MMIO address getter
 
     u32 bar2_low = pci_config_read(pcie_device, PCI_GET_BAR_OFFSET(2));
     u64 physical_mmio_base = bar2_low & 0xFFFFFFF0;
@@ -193,6 +204,8 @@ bool rtl8168_init_device(const pci_device_t* pcie_device, rtl8168_t* network_dev
     }
 
     u64 bar_size = ~size_mask + 1;
+
+    // END SECTION 2
 
     printf("[ rtl8168 ] device mmio is located at physical address: 0x%uh\n", physical_mmio_base);
     printf("[ rtl8168 ] device mmio size: %uh bytes\n", bar_size);
@@ -244,16 +257,89 @@ bool rtl8168_init_device(const pci_device_t* pcie_device, rtl8168_t* network_dev
     // TODO @since 03/06/2026 -- 21:58
     // bind MSI
 
-// #if CPU_ARCHITECTURE == ARCH_AMD64
-//     const u32 irq = pci_config_read(pcie_device, PCI_CONFIG_IRQ_LINE) & MAX_UINT16;
-//     printf("[ rtl8168 ] irq line %u\n", irq);
-//     if (!hook_interrupt(amd64_convert_to_interrupt(irq + 0x20), amd64_rtl8168_handle_interrupt, (void*)network_device))
-//         return false;
-// #else
-// #error CPU_ARCH_NOT_SUPPORTED
-// #endif
+#if CPU_ARCHITECTURE == ARCH_AMD64
+    // SECTION 3 -- TODO @since 04/06/2026 -- 12:19
+    // rewrite into generic PIC interrupt binding
+
+    const u8 irq = pci_config_read(pcie_device, PCI_CONFIG_IRQ_LINE) & MAX_UINT8;
+    u8 interrupt_vector = 0;
+
+    if (irq != MAX_UINT8) {
+        interrupt_vector = irq + 0x20;
+    } else {
+        u16 pci_status = (pci_config_read(pcie_device, PCI_CONFIG_STATUS) >> 16) & 0xFFFF;
+        if (!(pci_status & (1 << 4))) {
+            printf("[ rtl8168 ] no PCI capabilities list\n");
+            return false;
+        }
+
+        u8 cap_ptr = pci_config_read(pcie_device, PCI_CONFIG_CAP_BASE) & MAX_UINT8;
+        u8 msi_cap = 0;
+
+        while (cap_ptr) {
+            u8 cap_id = pci_config_read(pcie_device, cap_ptr) & 0xFF;
+            printf("[ rtl8168 ] PCI cap 0x%uh at offset 0x%uh\n", (u64)cap_id, (u64)cap_ptr);
+            if (cap_id == 0x05) {
+                msi_cap = cap_ptr;
+                break;
+            }
+            cap_ptr = (pci_config_read(pcie_device, cap_ptr) >> 8) & MAX_UINT8;
+        }
+
+        if (!msi_cap) {
+            printf("[ rtl8168 ] no MSI capability found\n");
+            return false;
+        }
+
+        printf("[ rtl8168 ] MSI cap at offset 0x%uh\n", (u64)msi_cap);
+
+        // FOR NOW BIND ON HARDWARE_FFP_SSCI_NIC2 - same a default e1000 irq line
+        const u8 msi_vector = 11 + 0x20;
+
+        u16 msi_control = (pci_config_read(pcie_device, msi_cap) >> 16) & 0xFFFF;
+        bool is_64bit = msi_control & (1 << 7);
+        printf("[ rtl8168 ] MSI control = 0x%uh, 64bit = %u\n", (u64)msi_control, (u64)is_64bit);
+
+        interrupt_vector = msi_vector;
+
+        // LAPIC address
+        pci_config_write(pcie_device, msi_cap + 0x4, (u32)0xFEE00000);
+
+        if (is_64bit) {
+            pci_config_write(pcie_device, msi_cap + 0x8, 0);             // high address = 0
+            pci_config_write(pcie_device, msi_cap + 0xC, msi_vector);    // data at +0xC
+        } else {
+            pci_config_write(pcie_device, msi_cap + 0x8, msi_vector);    // data at +0x8
+        }
+
+        u32 ctrl_word = pci_config_read(pcie_device, msi_cap);
+        ctrl_word &= 0x0000FFFF;                    // keep cap ID + next ptr
+        ctrl_word |= ((u32)(msi_control | 1) << 16); // set enable bit
+        pci_config_write(pcie_device, msi_cap, ctrl_word);
+
+        // BIND on msi
+    }
+
+    printf("[ rtl8168 ] irq line %u\n", interrupt_vector);
+    if (!hook_interrupt(amd64_convert_to_interrupt(interrupt_vector), amd64_rtl8168_handle_interrupt, (void*)network_device))
+        return false;
+
+    // END SECTION 3
+
+#else
+#error CPU_ARCH_NOT_SUPPORTED
+#endif
 
     printf("[ rtl8168 ] finished initialization\n" );
+
+    u8 status = rtl8168_read_reg8(network_device, 0x6C);
+    link_sttatus_up = (status & (1 << 1)) != 0;
+
+    if (link_sttatus_up) {
+        printf("[ rtl8168 ] initial link state: UP\n");
+    } else {
+        printf("[ rtl8168 ] initial link state: DOWN (Waiting for auto-negotiation)\n");
+    }
 
     return true;
 }
@@ -262,7 +348,12 @@ bool rtl8168_send_packet(rtl8168_t* device, const void* data, u64 size) {
     if (!device || !data || size > TX_BUF_SIZE)
         return false;
 
+    while (!link_sttatus_up)
+        asm volatile ("pause");
+
     u64 index = device->tx_current;
+
+    printf("[ rtl8168 ] sending packet ...\n");
 
     // last packet still busy
     if (device->tdesc_array[index].command & RTL8168_DESC_OWN)
@@ -279,11 +370,27 @@ bool rtl8168_send_packet(rtl8168_t* device, const void* data, u64 size) {
 
     device->tdesc_array[index].command = cmd;
 
+    amd64_mem_barier();
+
     rtl8168_write_reg8(device, RTL8168_TPPOLL, (1 << 6));
 
-    device->tx_current = (index + 1) % NUM_TX_DESC;
+    for (int i = 0; i < 10000; i++) {
+        asm volatile("pause"); 
 
-    return true;
+        u32 cmd_back = *(volatile u32*)&device->tdesc_array[index].command;
+        if (!(cmd_back & RTL8168_DESC_OWN)) {
+            printf("[ rtl8168 ] tx: NIC transmitted after %i iterations, cmd = %u\n", i, cmd_back);
+            if (cmd_back & (1 << 23))
+                printf("[ rtl8168 ] tx: ERROR bit set! cmd = %u\n", cmd_back);
+            device->tx_current = (index + 1) % NUM_TX_DESC;
+            printf("[ rtl8168 ] sent packet!\n");
+            return true;
+        }
+    }
+
+    printf("[ rtl8168 ] tx: NIC never cleared OWN bit - not transmitting!\n");
+    device->tx_current = (index + 1) % NUM_TX_DESC;
+    return false;
 }
 
 DISABLE_SSE void rtl8168_receive_packet(rtl8168_t* device) {
@@ -322,7 +429,8 @@ void rtl8168_generic_handle_interrupt(rtl8168_t* device) {
     rtl8168_write_reg16(device, RTL8168_ISR, status);
 
     if (status & RTL8168_ISR_LINKCHG) {
-        // TODO @since 03/06/2026 -- 15:14
+        u8 status = rtl8168_read_reg8(device, 0x6C);
+        link_sttatus_up = (status & (1 << 1)) != 0;
     }
 
     if (status & RTL8168_ISR_ROK)
@@ -332,7 +440,6 @@ void rtl8168_generic_handle_interrupt(rtl8168_t* device) {
         // TODO @since 03/06/2026 -- 15:15
         // packet transmit OK
     }
-
 }
 
 bool is_rtl8168_device(const pci_device_t* device) {

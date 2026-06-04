@@ -22,6 +22,8 @@ void ethernet_send(network_interface_t* interface, u8 dst_mac[6], u16 type, cons
     nic_dispatch_packet(get_global_nic(), network_packet);
 }
 
+#include "io.hpp"
+
 int ethernet_receive(network_interface_t* interface, u8* frame, size_t size) {
     if (size < sizeof(ethernet_header_t))
         return 1;
@@ -29,6 +31,8 @@ int ethernet_receive(network_interface_t* interface, u8* frame, size_t size) {
     ethernet_header_t* header = (ethernet_header_t*)frame;
     u8* payload = frame + sizeof(ethernet_header_t);
     const size_t payload_size = size - sizeof(ethernet_header_t);
+
+    printf("[ ETTH ] got packet from: %u:%u:%u:%u:%u:%u\n", header->src_mac[0], header->src_mac[1], header->src_mac[2], header->src_mac[3], header->src_mac[4], header->src_mac[5]);
 
     u16 ethertype = bswap16(header->ethernet_type);
     switch (ethertype) {

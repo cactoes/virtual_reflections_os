@@ -28,22 +28,30 @@ bool network_manager_init(network_manager_t* network_manager) {
 }
 
 void network_manager_dhcp_callback(socket_t* socket, u32 ip, u16 port, const u8* data, size_t size) {
-    if (size > sizeof(dhcp_packet_t))
+    if (size > sizeof(dhcp_packet_t)) {
+        printf("[ network manager -> DHCP ] packet too big\n");
         return;
+    }
 
     network_manager_t* network_manager = get_global_network_manager();
-    if (!network_manager)
+    if (!network_manager) {
+        printf("[ network manager -> DHCP] no network_manager setup\n");
         return;
+    }
 
     dhcp_packet_t* packet = (dhcp_packet_t*)data;
 
     dhcp_client_t::session_t& session = network_manager->dhcp_client->session;
-    if (packet->xid != session.xid)
+    if (packet->xid != session.xid) {
+         printf("[ network manager -> DHCP ] invalid XID\n");
         return;
+    }
 
     dhcp_option_t<1>* option_message_type = (dhcp_option_t<1>*)dhcp_option_get(packet, DHCP_OPTION_DHCP_MESSAGE_TYPE);
-    if (!option_message_type)
+    if (!option_message_type) {
+        printf("[ network manager -> DHCP ] no option 'message type'\n");
         return;
+    }
 
     dhcp_option_t<4>* option_dhcp_server_id = (dhcp_option_t<4>*)dhcp_option_get(packet, DHCP_OPTION_DHCP_SERVER_ID);
     dhcp_option_t<4>* option_router = (dhcp_option_t<4>*)dhcp_option_get(packet, DHCP_OPTION_ROUTER);
@@ -51,8 +59,10 @@ void network_manager_dhcp_callback(socket_t* socket, u32 ip, u16 port, const u8*
     dhcp_option_t<4>* option_subnet_mask = (dhcp_option_t<4>*)dhcp_option_get(packet, DHCP_OPTION_SUBNET_MASK);
 
     if (option_message_type->value[0] == DHCP_MESSAGE_TYPE_DHCPOFFER) {
-        if (!option_dhcp_server_id || !option_lease_time_s)
+        if (!option_dhcp_server_id || !option_lease_time_s) {
+            printf("[ network manager -> DHCP ] missing server id & lease time\n");
             return;
+        }
 
         session.ip = { .raw = bswap32(packet->your_ip_addr) };
         session.dhcp_ip = { .raw = TO_IP(option_dhcp_server_id->value[0], option_dhcp_server_id->value[1], option_dhcp_server_id->value[2], option_dhcp_server_id->value[3]) };
@@ -76,6 +86,7 @@ void network_manager_dhcp_callback(socket_t* socket, u32 ip, u16 port, const u8*
         session.interface->is_active = true;
 
         kprintf("[DHCP] configured ip for '%s' - %u.%u.%u.%u\n", session.interface->device_name, (u32)session.ip.byte3, (u32)session.ip.byte2, (u32)session.ip.byte1, (u32)session.ip.byte0);
+        printf("[ DHCP ] configured ip for '%s' - %u.%u.%u.%u\n", session.interface->device_name, (u32)session.ip.byte3, (u32)session.ip.byte2, (u32)session.ip.byte1, (u32)session.ip.byte0);
     }
 }
 
@@ -97,6 +108,7 @@ bool network_manager_configre_interface(network_manager_t* network_manager, netw
 
     network_manager->dhcp_client->session = dhcp_client_create_session(interface);
 
+    printf("[ DHCP ] sending discover packet '%s'\n", interface->device_name);
     return network_manager_dhcp_send_discover(network_manager);
 }
 
