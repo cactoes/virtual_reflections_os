@@ -10,9 +10,6 @@
 
 #include "common.hpp"
 
-// TODO @since 21/05/2026 -- 13:43
-// check if we need to update for architecture
-
 struct cpu_t {
     u64 kernel_rsp;
     u64 user_rsp;
