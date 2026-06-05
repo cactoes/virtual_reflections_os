@@ -112,7 +112,7 @@ bool rtl8168_receive_init(rtl8168_t* network_device) {
     rtl8168_write_reg16(network_device, RTL8168_RX_MAX_SIZE, RX_BUF_SIZE);
 
     // upload settings
-    rtl8168_write_reg32(network_device, RTL8168_RX_CONFIG, 0x0000e70f);
+    rtl8168_write_reg32(network_device, RTL8168_RX_CONFIG, 0x0000e73f);
 
     return true;
 }

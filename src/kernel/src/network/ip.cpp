@@ -30,7 +30,7 @@ void ip_receive(network_interface_t* interface, u8* packet, size_t size, u8 src_
     ip_header_t* ip = (ip_header_t*)packet;
 
     if (bswap32(ip->dst_addr) != interface->ip.raw && bswap32(ip->dst_addr) != 0xFFFFFFFF) {
-        printf("[ IP ] dropped packet from: %u:%u:%u:%u:%u:%u\n", src_mac[0], src_mac[1], src_mac[2], src_mac[3], src_mac[4], src_mac[5]);
+        // printf("[ IP ] dropped packet from: %u:%u:%u:%u:%u:%u\n", src_mac[0], src_mac[1], src_mac[2], src_mac[3], src_mac[4], src_mac[5]);
         return;
     }
 
