@@ -163,19 +163,12 @@ bool rtl8168_transmit_init(rtl8168_t* network_device) {
 }
 
 bool rtl8168_init_device(const pci_device_t* pcie_device, rtl8168_t* network_device) {
-    // SECTION 1 -- TODO @since 04/06/2026 -- 12:19
-    // rewrite into generic PCI enable MMIO
-
-    auto cmd = pci_config_read(pcie_device, PCI_COMMAND);
-    cmd |= PCI_CMD_MMIO | PCI_CMD_BUS_MASTERING;
-    pci_config_write(pcie_device, PCI_COMMAND, cmd);
-
-    // END SECTION 1
+    pci_cmd_enable(pcie_device, PCI_CMD_MMIO | PCI_CMD_BUS_MASTERING);
 
     // SECTION 2 -- TODO @since 04/06/2026 -- 12:19
     // rewrite into generic MMIO address getter
 
-    u32 bar2_low = pci_config_read(pcie_device, PCI_GET_BAR_OFFSET(2));
+    u32 bar2_low = pci_read_bar(pcie_device, 2);
     u64 physical_mmio_base = bar2_low & 0xFFFFFFF0;
     
     int is_64_bit = ((bar2_low & 0x6) == 0x4);
@@ -186,17 +179,17 @@ bool rtl8168_init_device(const pci_device_t* pcie_device, rtl8168_t* network_dev
         physical_mmio_base |= ((u64)bar3_high << 32);
     }
 
-    pci_config_write(pcie_device, PCI_GET_BAR_OFFSET(2), 0xFFFFFFFF);
-    u32 size_mask_low = pci_config_read(pcie_device, PCI_GET_BAR_OFFSET(2));
+    pci_write_bar(pcie_device, 2, 0xFFFFFFFF);
+    u32 size_mask_low = pci_read_bar(pcie_device, 2);
     
-    pci_config_write(pcie_device, PCI_GET_BAR_OFFSET(2), bar2_low);
+    pci_write_bar(pcie_device, 2, bar2_low);
 
     u64 size_mask = size_mask_low & 0xFFFFFFF0;
 
     if (is_64_bit) {
-        pci_config_write(pcie_device, PCI_GET_BAR_OFFSET(3), 0xFFFFFFFF);
-        u32 size_mask_high = pci_config_read(pcie_device, PCI_GET_BAR_OFFSET(3));
-        pci_config_write(pcie_device, PCI_GET_BAR_OFFSET(3), bar3_high);
+        pci_write_bar(pcie_device, 3, 0xFFFFFFFF);
+        u32 size_mask_high = pci_read_bar(pcie_device, 3);
+        pci_write_bar(pcie_device, 3, bar3_high);
         
         size_mask |= ((u64)size_mask_high << 32);
     } else {
