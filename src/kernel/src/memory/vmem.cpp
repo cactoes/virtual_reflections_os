@@ -8,7 +8,6 @@
 #include "interrupt_manager.hpp"
 #include "process.hpp"
 #include "arch/amd64/vmem.hpp"
-#include "arch/arch_selector.hpp"
 
 // 2 * 64 = 128
 // 128 2mb regions
@@ -96,22 +95,25 @@ bool vmem_map_2mb(const void* vaddr, const void* paddr, u64 flags) {
 #endif
 }
 
-bool v2_vmem_map_2mb_remote(struct process_t* process, const void* vaddr, const void* paddr, u64 flags) {
-    // if amd64 ->
+bool vmem_map_2mb_remote(struct process_t* process, const void* vaddr, const void* paddr, u64 flags) {
+    disable_interrupts();
 
-    // disable_interrupts();
-    // void* prev_page_table = get_pml4();
-    // set_pml4(process->page_table);
+#if CPU_ARCHITECTURE == ARCH_AMD64
+    void* current_page_table_p = amd64_get_page_table();
+    amd64_set_page_table(process->page_table);
 
-    // bool result = vmem_map_2mb(vaddr, paddr, flags);
+    bool is_kernel = BIT_CHECK(flags, VMEM_BIT_USER_KERNEL);
+    bool is_readwrite = BIT_CHECK(flags, VMEM_BIT_READWRITE);
+    bool is_executable = BIT_CHECK(flags, VMEM_BIT_EXECUTE);
 
-    // set_pml4(prev_page_table);
-    // enable_interrupts();
+    bool result = vmem_map_2mb(vaddr, paddr, flags);
 
-    // return result;
+    amd64_set_page_table(current_page_table_p);
 
-    // else ->
-    // error
+#else
+#error CPU_ARCH_NOT_SUPPORTED
+#endif
 
-    return false;
+    enable_interrupts();
+    return result;
 }

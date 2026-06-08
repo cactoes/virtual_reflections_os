@@ -55,4 +55,6 @@ void* vmem_virtual_to_physical(void* vaddr);
 /// @return                     success status
 bool vmem_unmap_2mb(void* vaddr);
 
+bool vmem_map_2mb_remote(struct process_t* process, const void* vaddr, const void* paddr, u64 flags);
+
 #endif // __MEMORY_VMEM_HPP__
