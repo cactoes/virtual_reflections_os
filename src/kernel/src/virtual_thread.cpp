@@ -12,6 +12,7 @@
 #include "io.hpp"
 #include "arch/amd64/vthread.hpp"
 #include "arch/amd64/idt.hpp"
+#include "process.hpp"
 
 // TODO @since 23/10/2025 -- 19:06
 // change into 1 "bigger" thread handler

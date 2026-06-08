@@ -19,6 +19,7 @@
 #include "filesystems/vfs.hpp"
 #include "drivers/vga.hpp"
 #include "network/network_manager.hpp"
+#include "process.hpp"
 
 static std::dynamic_array<char> terminal_current_input {};
 bool keep_terminal_alive = true;

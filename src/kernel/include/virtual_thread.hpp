@@ -20,7 +20,6 @@
 #include "common.hpp"
 #include "filesystems/vfs.hpp"
 #include "std/pointer.hpp"
-#include "process.hpp"
 #include "arch/arch_selector.hpp"
 
 typedef u64 vthread_handle_t;
@@ -50,7 +49,7 @@ struct vthread_t {
     vthread_handle_t handle;
 
     // handle to parent process
-    process_t* parent;
+    struct process_t* parent;
     
     // state of thread
     vthread_state_t vt_state;

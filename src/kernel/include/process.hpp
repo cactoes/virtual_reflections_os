@@ -10,13 +10,22 @@
 
 #include "common.hpp"
 #include "memory/heap.hpp"
+#include "virtual_thread.hpp"
+#include "arch/arch_selector.hpp"
 
-typedef u64 vthread_handle_t;
+typedef u64 process_id_t;
 
 struct process_t {
+    process_id_t pid;
+
     heap_t heap;
-    void* page_table;
     vthread_handle_t main_thread;
+
+    // i think this is correct for multiple cpu architectures
+    void* page_table;
+
+    // handles
+    // idk[]
 
     u8* data;
     size_t data_size;

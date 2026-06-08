@@ -114,6 +114,9 @@ bool create_process(process_t* process, const char* path) {
 
     // we dont want to accidentaly map into wrong address space
     // maybe find out how we can allways map into a remote page table safely?
+
+    // map remote is too expensive -- imagine swapping page table ~700 (* 2) times
+
     disable_interrupts();
     amd64_set_page_table(new_page_table_p);
 

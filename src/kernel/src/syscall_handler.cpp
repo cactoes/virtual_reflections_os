@@ -1,6 +1,7 @@
 #include "syscall_handler.hpp"
 #include "io.hpp"
 #include "virtual_thread.hpp"
+#include "process.hpp"
 
 u64 syscall_dispatch(u64 syscall_num, void* a1, void* a2, void* a3, void* a4, void* a5, void* a6) {
     switch (syscall_num) {
