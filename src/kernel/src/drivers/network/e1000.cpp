@@ -9,10 +9,6 @@
 
 extern "C" interrupt_t amd64_convert_to_interrupt(u64 code);
 
-// TODO @since 28/05/2026 -- 09:44
-// move to local e1000 device
-static heap_t* g_e1000_dma_heap = nullptr;
-
 #if CPU_ARCHITECTURE == ARCH_AMD64
 
 void* amd64_e1000_handle_interrupt(void* stack, void* data) {
@@ -53,20 +49,20 @@ bool e1000_load_mac(e1000_t* p_device) {
 }
 
 int e1000_receive_init(e1000_t* p_device) {
-    p_device->rdesc_array = (e1000_rdesc_t*)dma_heap_alloc(g_e1000_dma_heap, E1000_RECEIVE_DESC_COUNT * sizeof(e1000_rdesc_t), 16);
+    p_device->rdesc_array = (e1000_rdesc_t*)dma_heap_alloc(p_device->dma_heap, E1000_RECEIVE_DESC_COUNT * sizeof(e1000_rdesc_t), 16);
     if (!p_device->rdesc_array)
         return 1;
 
-    p_device->rdesc_buffer_array = (u8*)dma_heap_alloc(g_e1000_dma_heap, E1000_RECEIVE_DESC_COUNT * E1000_BUFFER_SIZE, 16);
+    p_device->rdesc_buffer_array = (u8*)dma_heap_alloc(p_device->dma_heap, E1000_RECEIVE_DESC_COUNT * E1000_BUFFER_SIZE, 16);
     if (!p_device->rdesc_buffer_array)
         return 2;
 
     for (int i = 0; i < E1000_RECEIVE_DESC_COUNT; i++) {
         memzero(&p_device->rdesc_array[i], sizeof(e1000_rdesc_t));
-        p_device->rdesc_array[i].buffer_addr = dma_get_physical(g_e1000_dma_heap, (p_device->rdesc_buffer_array + i * E1000_BUFFER_SIZE));
+        p_device->rdesc_array[i].buffer_addr = dma_get_physical(p_device->dma_heap, (p_device->rdesc_buffer_array + i * E1000_BUFFER_SIZE));
     }
 
-    u64 physical = (u64)dma_get_physical(g_e1000_dma_heap, p_device->rdesc_array);
+    u64 physical = (u64)dma_get_physical(p_device->dma_heap, p_device->rdesc_array);
     if (physical == 0)
         return 3;
 
@@ -85,20 +81,20 @@ int e1000_receive_init(e1000_t* p_device) {
 }
 
 int e1000_transmit_init(e1000_t* p_device) {
-    p_device->tdesc_array = (e1000_tdesc_t*)dma_heap_alloc(g_e1000_dma_heap, E1000_TRANSMIT_DESC_COUNT * sizeof(e1000_tdesc_t), 16);
+    p_device->tdesc_array = (e1000_tdesc_t*)dma_heap_alloc(p_device->dma_heap, E1000_TRANSMIT_DESC_COUNT * sizeof(e1000_tdesc_t), 16);
     if (!p_device->tdesc_array)
         return 1;
 
-    p_device->tdesc_buffer_array = (u8*)dma_heap_alloc(g_e1000_dma_heap, E1000_TRANSMIT_DESC_COUNT * E1000_BUFFER_SIZE, 16);
+    p_device->tdesc_buffer_array = (u8*)dma_heap_alloc(p_device->dma_heap, E1000_TRANSMIT_DESC_COUNT * E1000_BUFFER_SIZE, 16);
     if (!p_device->tdesc_buffer_array)
         return 2;
     
     for (int i = 0; i < E1000_TRANSMIT_DESC_COUNT; i++) {
         memzero(&p_device->tdesc_array[i], sizeof(e1000_tdesc_t));
-        p_device->tdesc_array[i].buffer_addr = dma_get_physical(g_e1000_dma_heap, (p_device->tdesc_buffer_array + i * E1000_BUFFER_SIZE));
+        p_device->tdesc_array[i].buffer_addr = dma_get_physical(p_device->dma_heap, (p_device->tdesc_buffer_array + i * E1000_BUFFER_SIZE));
     }
 
-    u64 physical = (u64)dma_get_physical(g_e1000_dma_heap, p_device->tdesc_array);
+    u64 physical = (u64)dma_get_physical(p_device->dma_heap, p_device->tdesc_array);
     if (physical == 0)
         return 3;
 
@@ -118,17 +114,17 @@ int e1000_transmit_init(e1000_t* p_device) {
 
 // BUG @since 13/05/2026 -- 20:14
 // DISABLE_SSE is a temp fix for some sse2 bug
-DISABLE_SSE void e1000_recieve_packet(e1000_t* p_device) {
+DISABLE_SSE void e1000_recieve_packet(e1000_t* device) {
     // get current desc
-    e1000_rdesc_t* desc = &p_device->rdesc_array[p_device->rx_tail];
+    e1000_rdesc_t* desc = &device->rdesc_array[device->rx_tail];
 
     // check if packet is ready
     while (desc->status & E1000_RDESC_STATUS_DONE) {
-        u8* packet = p_device->rdesc_buffer_array + (p_device->rx_tail * E1000_BUFFER_SIZE);
+        u8* packet = device->rdesc_buffer_array + (device->rx_tail * E1000_BUFFER_SIZE);
         size_t length = desc->length;
-        
+
         network_packet_t network_packet {};
-        network_packet.interface = nic_get_interface_from_device(get_global_nic(), p_device);
+        network_packet.interface = nic_get_interface_from_device(get_global_nic(), device);
         network_packet.data = (u8*)malloc(length);
         memcpy(network_packet.data, packet, length);
         network_packet.size = length;
@@ -138,13 +134,13 @@ DISABLE_SSE void e1000_recieve_packet(e1000_t* p_device) {
         desc->length = 0;
         desc->checksum = 0;
         desc->errors = 0;
-        
-        p_device->rx_tail = (p_device->rx_tail + 1) % E1000_RECEIVE_DESC_COUNT;
-        desc = &p_device->rdesc_array[p_device->rx_tail];
+
+        device->rx_tail = (device->rx_tail + 1) % E1000_RECEIVE_DESC_COUNT;
+        desc = &device->rdesc_array[device->rx_tail];
     }
     
-    u16 rdt_value = (p_device->rx_tail + E1000_RECEIVE_DESC_COUNT - 1) % E1000_RECEIVE_DESC_COUNT;
-    e1000_write_reg(p_device, E1000_RDT, rdt_value);
+    u16 rdt_value = (device->rx_tail + E1000_RECEIVE_DESC_COUNT - 1) % E1000_RECEIVE_DESC_COUNT;
+    e1000_write_reg(device, E1000_RDT, rdt_value);
 }
 
 void e1000_generic_handle_interrupt(e1000_t* device) {
@@ -165,98 +161,95 @@ void e1000_generic_handle_interrupt(e1000_t* device) {
     }
 }
 
-void e1000_enable_interrupts(e1000_t* p_device) {
+void e1000_enable_interrupts(e1000_t* device) {
     // clear interrupts
-    e1000_read_reg(p_device, E1000_ICR);
+    e1000_read_reg(device, E1000_ICR);
 
     // enable interrupts
     u32 interrupt_mask = E1000_IMS_RXT0 | E1000_IMS_RXDMT0 | E1000_IMS_RXSEQ | E1000_IMS_LSC;
-    e1000_write_reg(p_device, E1000_IMS, interrupt_mask);
+    e1000_write_reg(device, E1000_IMS, interrupt_mask);
 }
 
-int e1000_init_device(const pci_device_t* p_pcie_device, e1000_t* p_network_device) {
-    // enable dma
-    auto cmd = pci_config_read(p_pcie_device, PCI_COMMAND);
-    cmd |= PCI_CMD_MMIO | PCI_CMD_BUS_MASTERING;
-    pci_config_write(p_pcie_device, PCI_COMMAND, cmd);
+bool e1000_init_device(const pci_device_t* pcie_device, e1000_t* network_device) {
+    pci_cmd_enable(pcie_device, PCI_CMD_MMIO | PCI_CMD_BUS_MASTERING);
 
-    if (pci_read_bar(p_pcie_device, 0) & PCI_BAR_IO_REGION)
-        return 1;
+    if (pci_read_bar(pcie_device, 0) & PCI_BAR_IO_REGION)
+        return false;
 
-    g_e1000_dma_heap = dma_heap_manager_create_heap(get_global_dma_heap_manager(), PAGE_SIZE_LARGE);
-    if (!g_e1000_dma_heap)
-        return 2;
+    network_device->dma_heap = dma_heap_manager_create_heap(get_global_dma_heap_manager(), PAGE_SIZE_LARGE);
+    if (!network_device->dma_heap)
+        return false;
 
-    u64 bar_addr_physical = pci_read_bar(p_pcie_device, 0) & ~0xF;
-    p_network_device->mmio_region = vmem_map_mmio_region((void*)bar_addr_physical);
+    u64 bar_addr_physical = pci_read_bar(pcie_device, 0) & ~0xF;
+    network_device->mmio_region = vmem_map_mmio_region((void*)bar_addr_physical);
 
     // TODO @since 28/10/2025 -- 01:02
     // free the dma heap
-    if (!p_network_device->mmio_region)
-        return 3;
+    if (!network_device->mmio_region)
+        return false;
 
-    p_network_device->rx_tail = 0;
-    p_network_device->tx_tail = 0;
+    network_device->rx_tail = 0;
+    network_device->tx_tail = 0;
 
     // check status
-    const auto status = e1000_read_reg(p_network_device, E1000_STATUS);
+    const auto status = e1000_read_reg(network_device, E1000_STATUS);
     if ((status == MAX_UINT32) || (status == 0))
-        return 4;
+        return false;
 
     if (!(status & E1000_STATUS_EEPROM_PRESENT))
-        return 5;
+        return false;
 
     // reset device
-    e1000_write_reg(p_network_device, E1000_CTRL, E1000_CTRL_RST);
-    while (e1000_read_reg(p_network_device, E1000_CTRL) & E1000_CTRL_RST);
+    e1000_write_reg(network_device, E1000_CTRL, E1000_CTRL_RST);
+    while (e1000_read_reg(network_device, E1000_CTRL) & E1000_CTRL_RST);
 
-    if (!e1000_load_mac(p_network_device))
-        return 6;
+    if (!e1000_load_mac(network_device))
+        return false;
 
     // clear & disable interrupts
-    e1000_write_reg(p_network_device, E1000_IMC, MAX_UINT32);
-    e1000_read_reg(p_network_device, E1000_ICR);
+    e1000_write_reg(network_device, E1000_IMC, MAX_UINT32);
+    e1000_read_reg(network_device, E1000_ICR);
 
     // init receiving packets
-    if (e1000_receive_init(p_network_device) != 0)
-        return 7;
+    if (e1000_receive_init(network_device) != 0)
+        return false;
 
     // init transmiting packts
-    if (e1000_transmit_init(p_network_device) != 0)
-        return 8;
+    if (e1000_transmit_init(network_device) != 0)
+        return false;
 
     // re-enable specific interrupts
-    e1000_enable_interrupts(p_network_device);
+    e1000_enable_interrupts(network_device);
 
 #if CPU_ARCHITECTURE == ARCH_AMD64
     // TODO @since 04/06/2026 -- 00:40
     // MSI
 
-    const u32 irq = pci_config_read(p_pcie_device, PCI_CONFIG_IRQ_LINE) & MAX_UINT8;
-    if (!hook_interrupt(amd64_convert_to_interrupt(irq + 0x20), amd64_e1000_handle_interrupt, (void*)p_network_device))
-        return 9;
+    const u32 irq = pci_config_read(pcie_device, PCI_CONFIG_IRQ_LINE) & MAX_UINT8;
+    if (!hook_interrupt(amd64_convert_to_interrupt(irq + 0x20), amd64_e1000_handle_interrupt, (void*)network_device))
+        return false;
 #else
 #error CPU_ARCH_NOT_SUPPORTED
 #endif
 
     // done
-    return 0;
+    return true;
 }
 
-int e1000_send_packet(e1000_t* p_device, const void* data, size_t size) {
+bool e1000_send_packet(e1000_t* device, const void* data, size_t size) {
     if (size > E1000_BUFFER_SIZE)
-        return 1;
+        return false;
 
-    const u32 next_tail = (p_device->tx_tail + 1) % E1000_TRANSMIT_DESC_COUNT;
-    const u32 head = e1000_read_reg(p_device, E1000_TDH);
+    const u32 next_tail = (device->tx_tail + 1) % E1000_TRANSMIT_DESC_COUNT;
+    const u32 head = e1000_read_reg(device, E1000_TDH);
     
     if (next_tail == head)
-        return 2;
+        return false;
 
-    u8* buffer = p_device->tdesc_buffer_array + (p_device->tx_tail * E1000_BUFFER_SIZE);
+    u8* buffer = device->tdesc_buffer_array + (device->tx_tail * E1000_BUFFER_SIZE);
     memcpy(buffer, data, size);
         
-    e1000_tdesc_t* desc = &p_device->tdesc_array[p_device->tx_tail];
+    e1000_tdesc_t* desc = &device->tdesc_array[device->tx_tail];
     desc->length = size;
     desc->cso = 0;
     desc->cmd = E1000_CMD_EOP | E1000_CMD_IFCS | E1000_CMD_RS;
@@ -264,10 +257,10 @@ int e1000_send_packet(e1000_t* p_device, const void* data, size_t size) {
     desc->css = 0;
     desc->special = 0;
 
-    p_device->tx_tail = next_tail;
-    e1000_write_reg(p_device, E1000_TDT, p_device->tx_tail);
+    device->tx_tail = next_tail;
+    e1000_write_reg(device, E1000_TDT, device->tx_tail);
 
-    return 0;
+    return true;
 }
 
 bool is_e1000_device(const pci_device_t* device) {
