@@ -26,7 +26,7 @@ LINKER                      := x86_64-elf-ld
 # compiler flags
 COMPILER_FLAGS 				:= -nostdlib -mno-sse2 -m64 -mno-red-zone -fno-rtti -fno-exceptions -Werror -Wunused-result -fno-use-cxa-atexit -ffreestanding -I$(HEADER_FILES_PATH) -I$(KERNEL_API) -I$(SHARED_FILES)/include -g
 NASM_FLAGS                  := -f elf64
-LINKER_FLAGS                := -z max-page-size=0x1000 -T $(LINKER_SCRIPT) -static --unresolved-symbols=ignore-all
+LINKER_FLAGS                := -z max-page-size=0x1000 -T $(LINKER_SCRIPT) -static
 
 # file sources & targets
 source_files                := $(shell find $(SOURCE_FILES_PATH) -name "*.cpp")
