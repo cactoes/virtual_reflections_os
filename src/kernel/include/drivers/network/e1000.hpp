@@ -94,6 +94,8 @@ struct e1000_t {
     void* mmio_region;
     u8 mac[6];
 
+    heap_t* dma_heap;
+
     e1000_rdesc_t* rdesc_array;
     u8* rdesc_buffer_array;
     size_t rx_tail;
@@ -103,8 +105,8 @@ struct e1000_t {
     size_t tx_tail;
 };
 
-int e1000_init_device(const pci_device_t* p_pcie_device, e1000_t* p_network_device);
-int e1000_send_packet(e1000_t* p_device, const void* data, size_t size);
+bool e1000_init_device(const pci_device_t* p_pcie_device, e1000_t* p_network_device);
+bool e1000_send_packet(e1000_t* p_device, const void* data, size_t size);
 void e1000_generic_handle_interrupt(e1000_t* device);
 
 bool is_e1000_device(const pci_device_t* device);

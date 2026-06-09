@@ -71,11 +71,14 @@ void pci_config_write(const pci_device_t* p_device, u32 offset, u32 value);
 const char* pci_get_class_description(const pci_device_t* p_device);
 
 u32 pci_read_bar(const pci_device_t* p_device, u32 bar);
+bool pci_write_bar(const pci_device_t* device, u32 bar, u32 value);
 
 bool pci_enumerate_devices(pcie_device_manager_t* device_manager);
 pci_device_t* pci_find_device(pcie_device_manager_t* device_manager, const pci_vendor_device_id_t* p_vendor_device_id_target);
 pci_device_t* pci_find_device(pcie_device_manager_t* device_manager, const pci_class_info_t* p_class_info_target);
 
 void pci_loop_devices(pcie_device_manager_t* device_manager, void(*callback)(const pci_device_t*));
+
+bool pci_cmd_enable(const pci_device_t* pcie_device, u32 flags);
 
 #endif // __DRIVERS_PCIE_HPP__

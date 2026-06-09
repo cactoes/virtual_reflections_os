@@ -84,6 +84,15 @@ u32 pci_read_bar(const pci_device_t* p_device, u32 bar) {
     return pci_config_read(p_device, PCI_GET_BAR_OFFSET(bar));
 }
 
+bool pci_write_bar(const pci_device_t* device, u32 bar, u32 value) {
+    if (bar > 5)
+        return false;
+
+    pci_config_write(device, PCI_GET_BAR_OFFSET(bar), value);
+
+    return true;
+}
+
 bool pci_enumerate_devices(pcie_device_manager_t* device_manager) {
         for (u32 bus = 0; bus < 256; bus++) {
         for (u32 device = 0; device < 32; device++) {
@@ -143,4 +152,15 @@ void pci_loop_devices(pcie_device_manager_t* device_manager, void(*callback)(con
 
     for (const auto& device : device_manager->devices)
         callback(&device);
+}
+
+bool pci_cmd_enable(const pci_device_t* pcie_device, u32 flags) {
+    if (!pcie_device)
+        return false;
+
+    u32 cmd = pci_config_read(pcie_device, PCI_COMMAND);
+    cmd |= flags;
+    pci_config_write(pcie_device, PCI_COMMAND, cmd);
+
+    return true;
 }

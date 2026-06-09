@@ -308,7 +308,7 @@ void network_pci_loop(const pci_device_t* device) {
     if (is_e1000_device(device)) {
         e1000_t* e1000 = (e1000_t*)malloc(sizeof(e1000_t));
         memzero(e1000, sizeof(e1000_t));
-        if (e1000_init_device(device, e1000) == 0) {
+        if (e1000_init_device(device, e1000)) {
             network_interface_t* e1000_network_interface = (network_interface_t*)malloc(sizeof(network_interface_t));
             memzero(e1000_network_interface, sizeof(network_interface_t));
 
