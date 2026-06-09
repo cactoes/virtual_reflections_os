@@ -16,7 +16,7 @@ ROOT_PATH                   := ../..
 BUILD_PATH                  := $(ROOT_PATH)/build/$(TARGET_NAME)
 LINKER_SCRIPT               := $(PROJECT_PATH)/linker.ld
 KERNEL_API                  := $(ROOT_PATH)/src/kernel/include/kernel_include
-SHARED_HEADERS              := $(ROOT_PATH)/src/shared_headers/
+SHARED_FILES                := $(ROOT_PATH)/src/shared
 
 # compilers
 COMPILER                    := x86_64-elf-g++
@@ -24,13 +24,17 @@ ASSEMBLER                   := nasm
 LINKER                      := x86_64-elf-ld
 
 # compiler flags
-COMPILER_FLAGS 				:= -nostdlib -mno-sse2 -m64 -mno-red-zone -fno-rtti -fno-exceptions -Werror -Wunused-result -fno-use-cxa-atexit -ffreestanding -I$(HEADER_FILES_PATH) -I$(KERNEL_API) -I$(SHARED_HEADERS) -g
+COMPILER_FLAGS 				:= -nostdlib -mno-sse2 -m64 -mno-red-zone -fno-rtti -fno-exceptions -Werror -Wunused-result -fno-use-cxa-atexit -ffreestanding -I$(HEADER_FILES_PATH) -I$(KERNEL_API) -I$(SHARED_FILES)/include -g
 NASM_FLAGS                  := -f elf64
 LINKER_FLAGS                := -z max-page-size=0x1000 -T $(LINKER_SCRIPT) -static --unresolved-symbols=ignore-all
 
 # file sources & targets
 source_files                := $(shell find $(SOURCE_FILES_PATH) -name "*.cpp")
 object_files                := $(patsubst $(SOURCE_FILES_PATH)/%.cpp, $(BUILD_PATH)/objects/%.o, $(source_files))
+
+shared_files                := $(shell find $(SHARED_FILES)/src -name "*.cpp")
+shared_object_files         := $(patsubst $(SHARED_FILES)/src/%.cpp, $(BUILD_PATH)/objects/%.o, $(shared_files))
+
 asm_files                   := $(shell find $(ASSEMBLY_FILES_PATH) -name "*.asm")
 asm_object_files            := $(patsubst $(ASSEMBLY_FILES_PATH)/%.asm, $(BUILD_PATH)/objects/%.o, $(asm_files))
 
@@ -46,10 +50,15 @@ $(ROOT_PATH)/iso/$(TARGET_NAME).exe: $(BUILD_PATH)/$(TARGET_NAME).exe
 > @mkdir -p $(dir $@)
 > @cp $< $@
 
-$(BUILD_PATH)/$(TARGET_NAME).exe: $(asm_object_files) $(object_files) $(LINKER_SCRIPT)
+$(BUILD_PATH)/$(TARGET_NAME).exe: $(asm_object_files) $(object_files) $(shared_object_files) $(LINKER_SCRIPT)
 > @echo "linking $(TARGET_NAME) binary"
 > @mkdir -p $(dir $@)
-> $(SILENT_MODE)$(LINKER) $(LINKER_FLAGS) -o $@ $(asm_object_files) $(object_files)
+> $(SILENT_MODE)$(LINKER) $(LINKER_FLAGS) -o $@ $(asm_object_files) $(object_files) $(shared_object_files)
+
+$(BUILD_PATH)/objects/%.o: $(SHARED_FILES)/src/%.cpp
+> @echo "compiling: $<"
+> @mkdir -p $(dir $@)
+> $(SILENT_MODE)$(COMPILER) $(COMPILER_FLAGS) -c $< -o $@
 
 $(BUILD_PATH)/objects/%.o: $(SOURCE_FILES_PATH)/%.cpp
 > @echo "compiling: $<"

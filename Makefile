@@ -16,7 +16,7 @@ BUILD_PATH                  := $(ROOT_PATH)/build
 ISO_PATH                    := $(ROOT_PATH)/iso
 LINKER_SCRIPT               := $(PROJECT_PATH)/linker.ld
 TARGET_NAME                 := VirtualReflectionsOS
-SHARED_HEADERS              := $(ROOT_PATH)/src/shared_headers/
+SHARED_FILES                := $(ROOT_PATH)/src/shared/
 DRIVER_FILES                := $(wildcard $(ROOT_PATH)/build/**/*.sys)
 PROGRAM_FILES               := $(wildcard $(ROOT_PATH)/build/**/*.exe)
 INETDRIVERS_INCLUDES        := $(ROOT_PATH)/src/network_drivers/include
@@ -30,7 +30,7 @@ LINKER                      := x86_64-elf-ld
 GRUB_MKRESCUE               := grub-mkrescue
 
 # compiler flags
-COMPILER_FLAGS              := -mcmodel=large -nostdlib -m64 -msse -msse2 -mno-red-zone -fno-rtti -fno-exceptions -Werror -Wunused-result -fno-use-cxa-atexit -ffreestanding -I$(HEADER_FILES_PATH) -I$(SHARED_HEADERS) -I$(INETDRIVERS_INCLUDES) -g
+COMPILER_FLAGS              := -mcmodel=large -nostdlib -m64 -msse -msse2 -mno-red-zone -fno-rtti -fno-exceptions -Werror -Wunused-result -fno-use-cxa-atexit -ffreestanding -I$(HEADER_FILES_PATH) -I$(SHARED_FILES)/include -I$(INETDRIVERS_INCLUDES) -g
 NASM_FLAGS                  := -f elf64
 LINKER_FLAGS                := -z max-page-size=0x1000 -n -T $(LINKER_SCRIPT)
 

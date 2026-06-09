@@ -16,7 +16,7 @@ ROOT_PATH                   := ../..
 BUILD_PATH                  := $(ROOT_PATH)/build/$(TARGET_NAME)
 LINKER_SCRIPT               := $(PROJECT_PATH)/linker.ld
 KERNEL_API                  := $(ROOT_PATH)/src/kernel/include/kernel_include
-SHARED_HEADERS              := $(ROOT_PATH)/src/shared_headers/
+SHARED_FILES                := $(ROOT_PATH)/src/shared
 
 # compilers
 COMPILER                    := x86_64-elf-g++
@@ -24,7 +24,7 @@ ASSEMBLER                   := nasm
 LINKER                      := x86_64-elf-ld
 
 # compiler flags
-COMPILER_FLAGS 				:= -nostdlib -mno-sse2 -m64 -mcmodel=large -mno-red-zone -fno-rtti -fno-exceptions -Werror -Wunused-result -fno-use-cxa-atexit -ffreestanding -I$(HEADER_FILES_PATH) -I$(KERNEL_API) -I$(SHARED_HEADERS) -g
+COMPILER_FLAGS 				:= -nostdlib -mno-sse2 -m64 -mcmodel=large -mno-red-zone -fno-rtti -fno-exceptions -Werror -Wunused-result -fno-use-cxa-atexit -ffreestanding -I$(HEADER_FILES_PATH) -I$(KERNEL_API) -I$(SHARED_FILES)/include -g
 NASM_FLAGS                  := -f elf64
 LINKER_FLAGS                := -shared -z max-page-size=0x1000 -T $(LINKER_SCRIPT) -static --unresolved-symbols=ignore-all
 
