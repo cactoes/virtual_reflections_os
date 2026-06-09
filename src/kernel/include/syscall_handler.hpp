@@ -32,6 +32,6 @@ u64 syscall_dispatch(u64 syscall_num, void* a1, void* a2, void* a3, void* a4, vo
 u64 syscall_terminate_current_process();
 u64 syscall_heap_alloc(size_t size);
 u64 syscall_heap_free(void* ptr);
-u64 syscall_create_window(u64 width, u64 height, void* buffer);
+u64 syscall_create_window(u64 width, u64 height);
 
 #endif // __SYSCALL_HANDLER_HPP__

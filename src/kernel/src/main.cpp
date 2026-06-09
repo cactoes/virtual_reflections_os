@@ -547,17 +547,17 @@ window_t create_window(int w, int h, int x, int y) {
     window_t win {};
     win.width = w;
     win.height = h;
-    // win.buffer = (void*)malloc((w + h) * sizeof(u32));
     win.x = x;
     win.y = y;
     return win;
 }
 
-void allocate_window(int w, int h, void* buffer) {
+void* allocate_window(int w, int h) {
     auto win = create_window(w, h, 10, 10);
     win.parent_process = get_current_process();
-    win.buffer = buffer;
+    win.buffer = heap_alloc(&win.parent_process->heap, (w * h) * sizeof(u32));
     windows.insert_back(win);
+    return win.buffer;
 }
 
 void kdc_handle_mouse_event(int x, int y, kdc_action_t action) {
@@ -640,7 +640,6 @@ extern "C" NORETURN void virtual_kernel_entry(multiboot2_info_t* multiboot_struc
     // create & init display driver service
     io_term_disable();
     // void* b = graphics_driver_create_buffer(get_global_graphics_driver());
-    // dd_set_active_buffer(b);
 
     // kernel display driver
     vthread_create_local([]() { dd_buffer_render_loop(); return 0; }, "_ZN7kthread3kddEv");
@@ -695,9 +694,6 @@ extern "C" NORETURN void virtual_kernel_entry(multiboot2_info_t* multiboot_struc
         
         return 0;
     }, "_ZN7kthread3kdcEv");
-
-    // windows.insert_back(create_window(400, 400, 0, 0));
-    // windows.insert_back(create_window(400, 200, 500, 500));
 
     // ASSUME PS/2 MOUSE FOR NOW -- abstract later :)
 
