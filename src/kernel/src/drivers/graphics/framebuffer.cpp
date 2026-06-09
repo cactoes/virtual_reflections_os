@@ -36,6 +36,13 @@ bool framebuffer_init(framebuffer_t* framebuffer, framebuffer_color_format_t for
     return true;
 }
 
+void* framebuffer_create_buffer(framebuffer_t* framebuffer) {
+    if (!framebuffer)
+        return nullptr;
+
+    return (u32*)malloc(framebuffer->size);
+}
+
 bool framebuffer_write_pixel(framebuffer_t* framebuffer, size_t x, size_t y, u8 r, u8 g, u8 b, u8 a) {
     return framebuffer_write_pixel(framebuffer, x, y, framebuffer_format_color(framebuffer, r, g, b, a));
 }
@@ -156,6 +163,42 @@ bool framebuffer_move_square(framebuffer_t* framebuffer, size_t x, size_t y, siz
     }
 
     free(temp);
+    return true;
+}
+
+bool framebuffer_copy_remote_square(framebuffer_t* framebuffer, void* buffer, u64 tx, u64 ty, u64 w, u64 h, u64 sx, u64 sy) {
+    if (!framebuffer || !framebuffer->back_buffer)
+        return false;
+
+    u8* src = (u8*)buffer;
+
+    for (size_t row = 0; row < h; row++) {
+        memcpy(
+            &framebuffer->back_buffer[(ty + row) * framebuffer->caluclated_pitch + tx],
+            &src[(sy + row) * w * sizeof(u32) + sx * sizeof(u32)],
+            w * sizeof(u32)
+        );
+    }
+
+    return true;
+}
+
+bool framebuffer_swap_buffer(framebuffer_t* framebuffer, void** old_buffer, void* new_buffer) {
+    if (!framebuffer || !old_buffer || !new_buffer)
+        return false;
+
+    *old_buffer = framebuffer->back_buffer;
+    framebuffer->back_buffer = (u32*)new_buffer;
+
+    return true;
+}
+
+bool framebuffer_copy_buffer(framebuffer_t* framebuffer, void* buffer) {
+    if (!framebuffer || !buffer)
+        return false;
+
+    memcpy(framebuffer->back_buffer, buffer, framebuffer->size);
+
     return true;
 }
 

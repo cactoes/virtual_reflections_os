@@ -213,6 +213,22 @@ bool graphics_driver_init(graphics_driver_t* graphics_driver, multiboot2_info_t*
     return false;
 }
 
+void* graphics_driver_create_buffer(graphics_driver_t* graphics_driver) {
+    if (!graphics_driver)
+        return nullptr;
+
+    switch (graphics_driver->type) {
+        case graphics_driver_type_t::FRAMEBUFFER:
+            return framebuffer_create_buffer(graphics_driver->framebuffer);
+        // case graphics_driver_type_t::VGA: 
+        //     return vga_gm_draw::linev(graphics_driver->vgabuffer, x, y, len, rgb_to_vga(color));
+        default:
+            return nullptr;
+    }
+
+    return nullptr;
+}
+
 vga_gm_color_index_t rgb_to_vga(const color_t& c) {
     // *taken from the internet
 
@@ -364,6 +380,32 @@ bool graphics_driver_move_square(graphics_driver_t* graphics_driver, size_t x, s
             return framebuffer_move_square(graphics_driver->framebuffer, x, y, w, h, nx, ny);
         case graphics_driver_type_t::VGA: 
             return vga_gm_draw::move_square(graphics_driver->vgabuffer, x, y, w, h, nx, ny);
+        default:
+            return false;
+    }
+
+    return false;
+}
+
+bool graphics_driver_swap_buffer(graphics_driver_t* graphics_driver, void** old_buffer, void* new_buffer) {
+    switch (graphics_driver->type) {
+        case graphics_driver_type_t::FRAMEBUFFER:
+            return framebuffer_swap_buffer(graphics_driver->framebuffer, old_buffer, new_buffer);
+        case graphics_driver_type_t::VGA: 
+            return vga_gm_swap_buffer(graphics_driver->vgabuffer, old_buffer, new_buffer);
+        default:
+            return false;
+    }
+
+    return false;
+}
+
+bool graphics_driver_copy_buffer(graphics_driver_t* graphics_driver, void* buffer) {
+    switch (graphics_driver->type) {
+        case graphics_driver_type_t::FRAMEBUFFER:
+            return framebuffer_copy_buffer(graphics_driver->framebuffer, buffer);
+        // case graphics_driver_type_t::VGA: 
+        //     return vga_gm_swap_buffer(graphics_driver->vgabuffer, old_buffer, new_buffer);
         default:
             return false;
     }

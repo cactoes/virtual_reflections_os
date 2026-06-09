@@ -43,6 +43,8 @@ framebuffer_color_format_t get_framebuffer_format(multiboot2_tag_framebuffer_t* 
 
 bool graphics_driver_init(graphics_driver_t* graphics_driver, multiboot2_info_t* multiboot_struct);
 
+void* graphics_driver_create_buffer(graphics_driver_t* graphics_driver);
+
 bool graphics_driver_draw_pixel(graphics_driver_t* graphics_driver, size_t x, size_t y, const color_t& color);
 void graphics_driver_draw_pixel_raw(graphics_driver_t* graphics_driver, size_t x, size_t y, const color_t& color);
 bool graphics_driver_draw_lineh(graphics_driver_t* graphics_driver, size_t x, size_t y, size_t len, const color_t& color);
@@ -52,6 +54,8 @@ bool graphics_driver_draw_character(graphics_driver_t* graphics_driver, size_t x
 bool graphics_driver_draw_text(graphics_driver_t* graphics_driver, size_t x, size_t y, const char* text, const color_t& color, const color_t& color_bg = { 0, 0, 0 }, float scale = 1.f);
 bool graphics_driver_get_text_size(graphics_driver_t* graphics_driver, const char* text, size_t* w, size_t* h);
 bool graphics_driver_move_square(graphics_driver_t* graphics_driver, size_t x, size_t y, size_t w, size_t h, size_t nx, size_t ny);
+bool graphics_driver_swap_buffer(graphics_driver_t* graphics_driver, void** old_buffer, void* new_buffer);
+bool graphics_driver_copy_buffer(graphics_driver_t* graphics_driver, void* buffer);
 
 bool graphics_driver_get_size(graphics_driver_t* graphics_driver, size_t* x, size_t* y);
 

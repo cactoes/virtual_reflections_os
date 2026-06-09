@@ -273,6 +273,16 @@ bool vga_gm_swap_back_buffer(vga_buffer_t** p_back_buffer_new, vga_buffer_t** p_
     return true;
 }
 
+bool vga_gm_swap_buffer(vga_buffer_t* buffer, void** old_buffer, void* new_buffer) {
+    if (!buffer || !old_buffer || !new_buffer)
+        return false;
+
+    *old_buffer = buffer->buffer;
+    buffer->buffer = (u8*)new_buffer;
+
+    return true;
+}
+
 bool vga_gm_draw::pixel(vga_buffer_t* p_back_buffer, u64 x, u64 y, vga_gm_color_index_t color_index) {
     if (!IS_VALID_BUFFER(p_back_buffer))
         return false;

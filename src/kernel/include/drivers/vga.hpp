@@ -116,6 +116,7 @@ bool vga_gm_buffer_create(vga_buffer_t* p_back_buffer);
 void vga_gm_buffer_destroy(vga_buffer_t* p_back_buffer);
 bool vga_gm_render();
 bool vga_gm_swap_back_buffer(vga_buffer_t** p_back_buffer_new, vga_buffer_t** p_back_buffer_old);
+bool vga_gm_swap_buffer(vga_buffer_t* buffer, void** old_buffer, void* new_buffer);
 
 namespace vga_gm_draw {
     bool pixel(vga_buffer_t* p_back_buffer, u64 x, u64 y, vga_gm_color_index_t color_index);

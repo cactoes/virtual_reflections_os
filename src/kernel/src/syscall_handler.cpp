@@ -11,6 +11,8 @@ u64 syscall_dispatch(u64 syscall_num, void* a1, void* a2, void* a3, void* a4, vo
             return syscall_heap_alloc((size_t)a1);
         case SYSCALL_HEAP_FREE:
             return syscall_heap_free(a1);
+        case SYSCALL_CREATE_WINDOW:
+            return syscall_create_window((u64)a1, (u64)a2, a3);
         default:
             break;
     }
@@ -43,5 +45,22 @@ u64 syscall_heap_free(void* ptr) {
         return SYSCALL_RESULT_OK;
 
     heap_free(&current_process->heap, ptr);
+    return SYSCALL_RESULT_OK;
+}
+
+extern void allocate_window(int w, int h, void* buffer);
+
+u64 syscall_create_window(u64 width, u64 height, void* buffer) {
+    process_t* current_process = get_current_process();
+    if (!current_process)
+        return SYSCALL_RESULT_OK;
+
+    // if (current_process->window)
+    //     return SYSCALL_RESULT_OK;
+
+    // TODO @since 09/06/2026 -- 18:22
+    // window handle etc
+    allocate_window(width, height, buffer);
+
     return SYSCALL_RESULT_OK;
 }

@@ -37,6 +37,9 @@ struct framebuffer_t {
 u32 framebuffer_format_color(framebuffer_t* framebuffer, u8 r, u8 g, u8 b, u8 a);
 
 bool framebuffer_init(framebuffer_t* framebuffer, framebuffer_color_format_t format, u32* address, size_t size, size_t width, size_t height, size_t pitch);
+void* framebuffer_create_buffer(framebuffer_t* framebuffer);
+bool framebuffer_copy_remote_square(framebuffer_t* framebuffer, void* buffer, u64 tx, u64 ty, u64 w, u64 h, u64 sx, u64 sy);
+
 bool framebuffer_write_pixel(framebuffer_t* framebuffer, size_t x, size_t y, u8 r, u8 g, u8 b, u8 a = 255);
 bool framebuffer_write_pixel(framebuffer_t* framebuffer, size_t x, size_t y, u32 color);
 void framebuffer_write_pixel_raw(framebuffer_t* framebuffer, size_t x, size_t y, u32 color);
@@ -51,6 +54,9 @@ bool framebuffer_write_square(framebuffer_t* framebuffer, size_t x, size_t y, si
 bool framebuffer_write_square(framebuffer_t* framebuffer, size_t x, size_t y, size_t w, size_t h, u32 color);
 
 bool framebuffer_move_square(framebuffer_t* framebuffer, size_t x, size_t y, size_t w, size_t h, size_t nx, size_t ny);
+
+bool framebuffer_copy_buffer(framebuffer_t* framebuffer, void* buffer);
+bool framebuffer_swap_buffer(framebuffer_t* framebuffer, void** old_buffer, void* new_buffer);
 
 bool framebuffer_render(framebuffer_t* framebuffer);
 

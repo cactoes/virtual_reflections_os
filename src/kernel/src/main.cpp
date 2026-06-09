@@ -63,6 +63,9 @@
 #include "arch/arch_selector.hpp"
 #include "arch/amd64/apic.hpp"
 
+#include "gui/display_driver.hpp"
+#include "process.hpp"
+
 #define HEAP_START_SIZE 0x100000 * 32 // 32 mb
 #define PIT_TIMER_INTERVAL 1000 // times per second
 
@@ -512,6 +515,105 @@ void init_drivers() {
     // }
 }
 
+extern void io_term_disable();
+
+struct window_t {
+    int width, height;
+    int x, y;
+    void* buffer;
+
+    bool is_dragging;
+
+    process_t* parent_process;
+};
+
+struct cursor_t {
+    u64 x, y;
+    bool should_update;
+};
+
+enum class kdc_action_t {
+    MMOVE = 0,
+    MDOWNL,
+    MUPL
+};
+
+bool should_render = true;
+
+std::dynamic_array<window_t> windows {};
+cursor_t cursor {};
+
+window_t create_window(int w, int h, int x, int y) {
+    window_t win {};
+    win.width = w;
+    win.height = h;
+    // win.buffer = (void*)malloc((w + h) * sizeof(u32));
+    win.x = x;
+    win.y = y;
+    return win;
+}
+
+void allocate_window(int w, int h, void* buffer) {
+    auto win = create_window(w, h, 10, 10);
+    win.parent_process = get_current_process();
+    win.buffer = buffer;
+    windows.insert_back(win);
+}
+
+void kdc_handle_mouse_event(int x, int y, kdc_action_t action) {
+    size_t max_x, max_y;
+    graphics_driver_get_size(get_global_graphics_driver(), &max_x, &max_y);
+
+    switch (action) {
+        case kdc_action_t::MMOVE: {
+            if (x == 0 && y == 0)
+                break;
+
+            for (auto& window : windows) {
+                if (window.is_dragging) {
+                    window.x += x;
+                    window.y += y;
+                    break;
+                }
+            }
+
+            cursor.x += x;
+            cursor.y += y;
+            should_render = true;
+            break;
+        }
+        case kdc_action_t::MDOWNL: {
+            for (auto& window : windows) {
+                if (cursor.x > window.x && cursor.x < window.x + window.width &&
+                    cursor.y > window.y && cursor.y < window.y + window.height) {
+                    window.is_dragging = true;
+                    break;
+                }
+            }
+            break;
+        }
+        case kdc_action_t::MUPL: {
+            for (auto& window : windows)
+                window.is_dragging = false;
+            break;
+        }
+        default:
+            break;
+    }
+}
+
+void kdc_mouse_handler(const ps2_mouse_state_t* state) {
+    if (state->dx != 0 || state->dy != 0)
+        kdc_handle_mouse_event(state->dx, state->dy, kdc_action_t::MMOVE);
+
+    if (static bool s_lmb_last = false; s_lmb_last != state->buttons.left) {
+        kdc_handle_mouse_event(0, 0, state->buttons.left ? kdc_action_t::MDOWNL : kdc_action_t::MUPL);
+        s_lmb_last = state->buttons.left;
+    }
+}
+
+#include "arch/amd64/vmem.hpp"
+
 extern "C" NORETURN void virtual_kernel_entry(multiboot2_info_t* multiboot_struct) {
     // stage 1 -- core essentials
     debug_init();
@@ -535,8 +637,73 @@ extern "C" NORETURN void virtual_kernel_entry(multiboot2_info_t* multiboot_struc
 
     // kernel finished
 
-    if (vthread_create_local(terminal_thread_main) == VTHREAD_HANDLE_INVALID)
-        printf("[ \033[91mERROR\033[0m ] failed to start terminal\n");
+    // create & init display driver service
+    io_term_disable();
+    // void* b = graphics_driver_create_buffer(get_global_graphics_driver());
+    // dd_set_active_buffer(b);
+
+    // kernel display driver
+    vthread_create_local([]() { dd_buffer_render_loop(); return 0; }, "_ZN7kthread3kddEv");
+    
+    // kernel display compositor
+    vthread_create_local([]() {
+        while (true) {
+            if (!should_render)
+                vthread_yield();
+            
+            should_render = false;
+
+            disable_interrupts();
+
+            graphics_driver_t* __gd = get_global_graphics_driver();
+
+            graphics_driver_draw_square(__gd, 0, 0, 1280, 800, { 0, 0, 0 });
+
+            for (const auto& w : windows) {
+                graphics_driver_draw_square(__gd, w.x - 1, w.y - 1, w.width + 2, w.height + 2, { 255, 255, 255 });
+                void* page_table_current = amd64_get_page_table();
+                amd64_set_page_table(vmem_virtual_to_physical(w.parent_process->page_table));
+                framebuffer_copy_remote_square(__gd->framebuffer, w.buffer, w.x, w.y, w.width, w.height, 0, 0);
+                amd64_set_page_table(page_table_current);
+            }
+
+            graphics_driver_draw_linev(__gd, cursor.x, cursor.y, 10, { 0, 0, 0 });
+            graphics_driver_draw_pixel(__gd, cursor.x + 1, cursor.y + 1, { 0, 0, 0 });
+            graphics_driver_draw_pixel(__gd, cursor.x + 2, cursor.y + 2, { 0, 0, 0 });
+            graphics_driver_draw_pixel(__gd, cursor.x + 3, cursor.y + 3, { 0, 0, 0 });
+            graphics_driver_draw_pixel(__gd, cursor.x + 4, cursor.y + 4, { 0, 0, 0 });
+            graphics_driver_draw_pixel(__gd, cursor.x + 5, cursor.y + 5, { 0, 0, 0 });
+            graphics_driver_draw_pixel(__gd, cursor.x + 6, cursor.y + 6, { 0, 0, 0 });
+            graphics_driver_draw_lineh(__gd, cursor.x + 4, cursor.y + 7, 3, { 0, 0, 0 });
+            graphics_driver_draw_pixel(__gd, cursor.x + 1, cursor.y + 9, { 0, 0, 0 });
+            graphics_driver_draw_pixel(__gd, cursor.x + 2, cursor.y + 8, { 0, 0, 0 });
+            graphics_driver_draw_pixel(__gd, cursor.x + 3, cursor.y + 7, { 0, 0, 0 });
+
+            // inline
+            graphics_driver_draw_linev(__gd, cursor.x + 1, cursor.y + 2, 7, { 255, 255, 255 });
+            graphics_driver_draw_linev(__gd, cursor.x + 2, cursor.y + 3, 5, { 255, 255, 255 });
+            graphics_driver_draw_linev(__gd, cursor.x + 3, cursor.y + 4, 3, { 255, 255, 255 });
+            graphics_driver_draw_linev(__gd, cursor.x + 4, cursor.y + 5, 2, { 255, 255, 255 });
+            graphics_driver_draw_linev(__gd, cursor.x + 5, cursor.y + 6, 1, { 255, 255, 255 });
+
+            enable_interrupts();
+        }
+        
+        return 0;
+    }, "_ZN7kthread3kdcEv");
+
+    // windows.insert_back(create_window(400, 400, 0, 0));
+    // windows.insert_back(create_window(400, 200, 500, 500));
+
+    // ASSUME PS/2 MOUSE FOR NOW -- abstract later :)
+
+    ps2_mouse_event_subscribe(kdc_mouse_handler);
+
+    process_t p {};
+    create_process(&p, "harddisk0/TestProgram.exe");
+
+    // if (vthread_create_local(terminal_thread_main) == VTHREAD_HANDLE_INVALID)
+    //     printf("[ \033[91mERROR\033[0m ] failed to start terminal\n");
 
     // we shoudn t reach this point since the kernel should never stop
     // incase we do just hang here so we dont break anything
