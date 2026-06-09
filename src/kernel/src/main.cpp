@@ -657,7 +657,11 @@ extern "C" NORETURN void virtual_kernel_entry(multiboot2_info_t* multiboot_struc
 
             graphics_driver_t* __gd = get_global_graphics_driver();
 
-            graphics_driver_draw_square(__gd, 0, 0, 1280, 800, { 0, 0, 0 });
+            size_t max_x, max_y;
+            graphics_driver_get_size(__gd, &max_x, &max_y);
+
+            // graphics_driver_draw_square(__gd, 0, 0, max_x, max_y, { 0, 0, 0 });
+            memset(__gd->framebuffer->back_buffer, 0, __gd->framebuffer->size);
 
             for (const auto& w : windows) {
                 graphics_driver_draw_square(__gd, w.x - 1, w.y - 1, w.width + 2, w.height + 2, { 255, 255, 255 });

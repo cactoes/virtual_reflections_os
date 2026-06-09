@@ -27,12 +27,12 @@ int main() {
     // window management
     // syscall_free();
 
-    u64 window_width = 200;
-    u64 window_height = 200;
+    u64 window_width = 400;
+    u64 window_height = 400;
 
     void* buffer = syscall_malloc((window_width * window_height) * sizeof(u32));
     memzero(buffer, (window_width * window_height) * sizeof(u32));
-    syscall_create_window(200, 200, buffer);
+    syscall_create_window(window_width, window_height, buffer);
 
     while (true)
         ;
