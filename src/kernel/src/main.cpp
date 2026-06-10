@@ -517,19 +517,28 @@ void init_drivers() {
 
 extern void io_term_disable();
 
+#define WINDOW_HANDLE_INVALID MAX_UINT64
+
+#include "vrosapi/window.hpp"
+#include "arch/amd64/vmem.hpp"
+
+typedef u64 window_handle_t;
+window_handle_t last_handle = 0;
+
 struct window_t {
     int width, height;
     int x, y;
     void* buffer;
-
     bool is_dragging;
-
     process_t* parent_process;
+    window_handle_t handle;
+
+    event_hook_t event_hook;
+    std::ring_buffer<8, window_event_t> event_queue;
 };
 
 struct cursor_t {
     u64 x, y;
-    bool should_update;
 };
 
 enum class kdc_action_t {
@@ -538,26 +547,48 @@ enum class kdc_action_t {
     MUPL
 };
 
-bool should_render = true;
-
-std::dynamic_array<window_t> windows {};
+volatile bool should_render = true;
+std::dynamic_array<window_t*> windows {};
 cursor_t cursor {};
 
-window_t create_window(int w, int h, int x, int y) {
-    window_t win {};
-    win.width = w;
-    win.height = h;
-    win.x = x;
-    win.y = y;
+window_t* create_window(int w, int h, int x, int y) {
+    window_t* win = new window_t {};
+    win->width = w;
+    win->height = h;
+    win->x = x;
+    win->y = y;
+    win->handle = last_handle++;
     return win;
 }
 
-void* allocate_window(int w, int h) {
+u64 allocate_window(int w, int h, event_hook_t hook) {
     auto win = create_window(w, h, 10, 10);
-    win.parent_process = get_current_process();
-    win.buffer = heap_alloc(&win.parent_process->heap, (w * h) * sizeof(u32));
+    win->parent_process = get_current_process();
+    win->buffer = heap_alloc(&win->parent_process->heap, (w * h) * sizeof(u32));
+    win->event_hook = hook;
     windows.insert_back(win);
-    return win.buffer;
+    return win->handle;
+}
+
+void* window_get_buffer(window_handle_t handle) {
+    for (auto& w : windows)
+        if (w->handle == handle)
+            return w->buffer;
+
+    return nullptr;
+}
+
+bool window_poll_event(window_handle_t handle, window_event_t* event, event_hook_t* hook) {
+    for (auto& w : windows) {
+        if (w->handle == handle) {
+            if (hook)
+                *hook = w->event_hook;
+
+            return w->event_queue.get(*event);
+        }
+    }
+
+    return false;
 }
 
 void kdc_handle_mouse_event(int x, int y, kdc_action_t action) {
@@ -570,9 +601,9 @@ void kdc_handle_mouse_event(int x, int y, kdc_action_t action) {
                 break;
 
             for (auto& window : windows) {
-                if (window.is_dragging) {
-                    window.x += x;
-                    window.y += y;
+                if (window->is_dragging) {
+                    window->x += x;
+                    window->y += y;
                     break;
                 }
             }
@@ -584,17 +615,39 @@ void kdc_handle_mouse_event(int x, int y, kdc_action_t action) {
         }
         case kdc_action_t::MDOWNL: {
             for (auto& window : windows) {
-                if (cursor.x > window.x && cursor.x < window.x + window.width &&
-                    cursor.y > window.y && cursor.y < window.y + window.height) {
-                    window.is_dragging = true;
+                if (cursor.x > window->x && cursor.x < window->x + window->width &&
+                    cursor.y > window->y && cursor.y < window->y + window->height) {
+                    window->is_dragging = true;
+                    window->event_queue.insert(window_event_t { .type = WE_MBL_DOWN });
+
+                    // if (window.event_hook) {
+                    //     void* page_table_current = amd64_get_page_table();
+                    //     amd64_set_page_table(vmem_virtual_to_physical(window.parent_process->page_table));
+                    //     window.event_hook(window.handle, window_event_t { .type = WE_MBL_DOWN });
+                    //     amd64_set_page_table(page_table_current);
+                    // }
+
                     break;
                 }
             }
             break;
         }
         case kdc_action_t::MUPL: {
-            for (auto& window : windows)
-                window.is_dragging = false;
+            for (auto& window : windows) {
+                if (cursor.x > window->x && cursor.x < window->x + window->width &&
+                    cursor.y > window->y && cursor.y < window->y + window->height) {
+                    window->is_dragging = false;
+                    window->event_queue.insert(window_event_t { .type = WE_MBL_UP });
+                    // if (window.event_hook) {
+                    //     void* page_table_current = amd64_get_page_table();
+                    //     amd64_set_page_table(vmem_virtual_to_physical(window.parent_process->page_table));
+                    //     window.event_hook(window.handle, window_event_t { .type = WE_MBL_UP });
+                    //     amd64_set_page_table(page_table_current);
+                    // }
+
+                    break;
+                }
+            }
             break;
         }
         default:
@@ -611,8 +664,6 @@ void kdc_mouse_handler(const ps2_mouse_state_t* state) {
         s_lmb_last = state->buttons.left;
     }
 }
-
-#include "arch/amd64/vmem.hpp"
 
 extern "C" NORETURN void virtual_kernel_entry(multiboot2_info_t* multiboot_struct) {
     // stage 1 -- core essentials
@@ -643,13 +694,13 @@ extern "C" NORETURN void virtual_kernel_entry(multiboot2_info_t* multiboot_struc
 
     // kernel display driver
     vthread_create_local([]() { dd_buffer_render_loop(); return 0; }, "_ZN7kthread3kddEv");
-    
+
     // kernel display compositor
     vthread_create_local([]() {
         while (true) {
             if (!should_render)
                 vthread_yield();
-            
+
             should_render = false;
 
             disable_interrupts();
@@ -663,10 +714,10 @@ extern "C" NORETURN void virtual_kernel_entry(multiboot2_info_t* multiboot_struc
             memset(__gd->framebuffer->back_buffer, 0, __gd->framebuffer->size);
 
             for (const auto& w : windows) {
-                graphics_driver_draw_square(__gd, w.x - 1, w.y - 1, w.width + 2, w.height + 2, { 255, 255, 255 });
+                graphics_driver_draw_square(__gd, w->x - 1, w->y - 1, w->width + 2, w->height + 2, { 255, 255, 255 });
                 void* page_table_current = amd64_get_page_table();
-                amd64_set_page_table(vmem_virtual_to_physical(w.parent_process->page_table));
-                framebuffer_copy_remote_square(__gd->framebuffer, w.buffer, w.x, w.y, w.width, w.height, 0, 0);
+                amd64_set_page_table(vmem_virtual_to_physical(w->parent_process->page_table));
+                framebuffer_copy_remote_square(__gd->framebuffer, w->buffer, w->x, w->y, w->width, w->height, 0, 0);
                 amd64_set_page_table(page_table_current);
             }
 

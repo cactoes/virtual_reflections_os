@@ -23,15 +23,22 @@
 #define SYSCALL_HEAP_ALLOC          1
 #define SYSCALL_HEAP_FREE           2
 #define SYSCALL_CREATE_WINDOW       3
+#define SYSCALL_GET_WINDOW_BUFFER   4
+#define SYSCALL_RENDER_WINDOW       5
+#define SYSCALL_POLL_EVENT          6
 
 #include "common.hpp"
 #include "cpu.hpp"
+#include "vrosapi/window.hpp"
 
 u64 syscall_dispatch(u64 syscall_num, void* a1, void* a2, void* a3, void* a4, void* a5, void* a6);
 
 u64 syscall_terminate_current_process();
 u64 syscall_heap_alloc(size_t size);
 u64 syscall_heap_free(void* ptr);
-u64 syscall_create_window(u64 width, u64 height);
+u64 syscall_handler_create_window(window_desc_t* wnd_desc);
+u64 syscall_handler_get_window_buffer(window_handle_t handle);
+u64 syscall_handler_render_window(window_handle_t handle);
+u64 syscall_handler_poll_event(window_handle_t handle, window_event_t* event, event_hook_t* hook);
 
 #endif // __SYSCALL_HANDLER_HPP__

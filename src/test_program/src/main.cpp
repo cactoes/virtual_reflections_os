@@ -1,21 +1,17 @@
 #include "common.hpp"
 #include "vrosapi/memory.hpp"
+#include "vrosapi/window.hpp"
 
-void* syscall_create_window(u64 w, u64 h) {
-    u64 framebuffer;
-
-    asm volatile (
-        "mov $3, %%rax\n\t"
-        "mov %1, %%rdi\n\t"
-        "mov %2, %%rsi\n\t"
-        "syscall\n\t"
-        "mov %%rax, %0\n\t"
-        : "=r" (framebuffer)
-        : "r" (w), "r" (h)
-        : "rax", "rdi", "rcx", "r11", "memory"
-    );
-
-    return (void*)framebuffer;
+void event_hook(window_handle_t handle, window_event_t event) {
+    switch (event.type) {
+        case WE_MBL_DOWN:
+            syscall_malloc(sizeof(i64));
+            break;
+        case WE_MBL_UP:
+            break;
+        default:
+            break;
+    }
 }
 
 int main() {
@@ -24,16 +20,27 @@ int main() {
     // render dekstop
     // handle mouse events
     // window management
-    // syscall_free();
 
     u64 window_width = 400;
     u64 window_height = 400;
 
-    void* buffer = syscall_create_window(window_width, window_height);
+    window_desc_t wnd_desc {};
+    memzero(&wnd_desc, sizeof(window_desc_t));
+    wnd_desc.rect.h = window_height;
+    wnd_desc.rect.w = window_width;
+    wnd_desc.event_hook = event_hook;
+
+    u64 handle = syscall_create_window(&wnd_desc);
+    void* buffer = syscall_get_window_buffer(handle);
     memzero(buffer, (window_width * window_height) * sizeof(u32));
 
-    while (true)
-        ;
+    syscall_render_window(handle);
+
+    while (true) {
+        window_event_t event {};
+        if (syscall_poll_event(handle, &event, nullptr))
+            event_hook(handle, event);
+    }
 
     return 0;
 }
