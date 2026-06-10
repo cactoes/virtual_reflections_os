@@ -618,7 +618,7 @@ void kdc_handle_mouse_event(int x, int y, kdc_action_t action) {
                 if (cursor.x > window->x && cursor.x < window->x + window->width &&
                     cursor.y > window->y && cursor.y < window->y + window->height) {
                     window->is_dragging = true;
-                    window->event_queue.insert(window_event_t { .type = WE_MBL_DOWN });
+                    window->event_queue.insert(window_event_t { .type = WE_MBL_DOWN, .mouse = { .x = (i32)(cursor.y - window->y), .y = (i32)(cursor.x - window->x) } });
 
                     // if (window.event_hook) {
                     //     void* page_table_current = amd64_get_page_table();
@@ -637,7 +637,7 @@ void kdc_handle_mouse_event(int x, int y, kdc_action_t action) {
                 if (cursor.x > window->x && cursor.x < window->x + window->width &&
                     cursor.y > window->y && cursor.y < window->y + window->height) {
                     window->is_dragging = false;
-                    window->event_queue.insert(window_event_t { .type = WE_MBL_UP });
+                    window->event_queue.insert(window_event_t { .type = WE_MBL_UP, .mouse = { .x = (i32)(cursor.y - window->y), .y = (i32)(cursor.x - window->x) } });
                     // if (window.event_hook) {
                     //     void* page_table_current = amd64_get_page_table();
                     //     amd64_set_page_table(vmem_virtual_to_physical(window.parent_process->page_table));

@@ -5,7 +5,6 @@
 void event_hook(window_handle_t handle, window_event_t event) {
     switch (event.type) {
         case WE_MBL_DOWN:
-            syscall_malloc(sizeof(i64));
             break;
         case WE_MBL_UP:
             break;
@@ -15,12 +14,6 @@ void event_hook(window_handle_t handle, window_event_t event) {
 }
 
 int main() {
-    // create inter process memory space
-    // register screen buffer to kernel
-    // render dekstop
-    // handle mouse events
-    // window management
-
     u64 window_width = 400;
     u64 window_height = 400;
 
@@ -38,7 +31,7 @@ int main() {
 
     while (true) {
         window_event_t event {};
-        if (syscall_poll_event(handle, &event, nullptr))
+        while (syscall_poll_event(handle, &event, nullptr))
             event_hook(handle, event);
     }
 

@@ -18,6 +18,9 @@ enum window_event_type_t {
 
 struct window_event_t {
     window_event_type_t type;
+    union {
+        struct { i32 x, y; } mouse;
+    };
 };
 
 typedef void(*event_hook_t)(window_handle_t handle, window_event_t event);

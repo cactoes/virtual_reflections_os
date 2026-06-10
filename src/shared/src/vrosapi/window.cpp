@@ -52,7 +52,7 @@ bool syscall_poll_event(window_handle_t handle, window_event_t* event, event_hoo
     u64 result;
 
     asm volatile (
-        "mov $5, %%rax\n\t"
+        "mov $6, %%rax\n\t"
         "mov %1, %%rdi\n\t"
         "mov %2, %%rsi\n\t"
         "mov %3, %%rdx\n\t"
@@ -63,5 +63,5 @@ bool syscall_poll_event(window_handle_t handle, window_event_t* event, event_hoo
         : "rax", "rdi", "rcx", "r11", "memory"
     );
 
-    return result == 0;
+    return result == 1;
 }
