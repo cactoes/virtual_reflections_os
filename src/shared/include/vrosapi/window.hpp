@@ -14,6 +14,8 @@ struct rect_t {
 enum window_event_type_t {
     WE_MBL_DOWN = 0,
     WE_MBL_UP,
+    WE_MBR_DOWN,
+    WE_MBR_UP,
 };
 
 struct window_event_t {
