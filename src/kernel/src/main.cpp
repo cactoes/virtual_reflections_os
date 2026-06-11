@@ -544,7 +544,9 @@ struct cursor_t {
 enum class kdc_action_t {
     MMOVE = 0,
     MDOWNL,
-    MUPL
+    MUPL,
+    MDOWNR,
+    MUPR
 };
 
 volatile bool should_render = true;
@@ -619,14 +621,6 @@ void kdc_handle_mouse_event(int x, int y, kdc_action_t action) {
                     cursor.y > window->y && cursor.y < window->y + window->height) {
                     window->is_dragging = true;
                     window->event_queue.insert(window_event_t { .type = WE_MBL_DOWN, .mouse = { .x = (i32)(cursor.y - window->y), .y = (i32)(cursor.x - window->x) } });
-
-                    // if (window.event_hook) {
-                    //     void* page_table_current = amd64_get_page_table();
-                    //     amd64_set_page_table(vmem_virtual_to_physical(window.parent_process->page_table));
-                    //     window.event_hook(window.handle, window_event_t { .type = WE_MBL_DOWN });
-                    //     amd64_set_page_table(page_table_current);
-                    // }
-
                     break;
                 }
             }
@@ -638,13 +632,26 @@ void kdc_handle_mouse_event(int x, int y, kdc_action_t action) {
                     cursor.y > window->y && cursor.y < window->y + window->height) {
                     window->is_dragging = false;
                     window->event_queue.insert(window_event_t { .type = WE_MBL_UP, .mouse = { .x = (i32)(cursor.y - window->y), .y = (i32)(cursor.x - window->x) } });
-                    // if (window.event_hook) {
-                    //     void* page_table_current = amd64_get_page_table();
-                    //     amd64_set_page_table(vmem_virtual_to_physical(window.parent_process->page_table));
-                    //     window.event_hook(window.handle, window_event_t { .type = WE_MBL_UP });
-                    //     amd64_set_page_table(page_table_current);
-                    // }
-
+                    break;
+                }
+            }
+            break;
+        }
+        case kdc_action_t::MDOWNR: {
+            for (auto& window : windows) {
+                if (cursor.x > window->x && cursor.x < window->x + window->width &&
+                    cursor.y > window->y && cursor.y < window->y + window->height) {
+                    window->event_queue.insert(window_event_t { .type = WE_MBR_DOWN, .mouse = { .x = (i32)(cursor.y - window->y), .y = (i32)(cursor.x - window->x) } });
+                    break;
+                }
+            }
+            break;
+        }
+        case kdc_action_t::MUPR: {
+            for (auto& window : windows) {
+                if (cursor.x > window->x && cursor.x < window->x + window->width &&
+                    cursor.y > window->y && cursor.y < window->y + window->height) {
+                    window->event_queue.insert(window_event_t { .type = WE_MBR_UP, .mouse = { .x = (i32)(cursor.y - window->y), .y = (i32)(cursor.x - window->x) } });
                     break;
                 }
             }
@@ -662,6 +669,11 @@ void kdc_mouse_handler(const ps2_mouse_state_t* state) {
     if (static bool s_lmb_last = false; s_lmb_last != state->buttons.left) {
         kdc_handle_mouse_event(0, 0, state->buttons.left ? kdc_action_t::MDOWNL : kdc_action_t::MUPL);
         s_lmb_last = state->buttons.left;
+    }
+
+    if (static bool rmb_last = false; rmb_last != state->buttons.right) {
+        kdc_handle_mouse_event(0, 0, state->buttons.left ? kdc_action_t::MDOWNR : kdc_action_t::MUPR);
+        rmb_last = state->buttons.right;
     }
 }
 
