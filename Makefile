@@ -42,6 +42,10 @@ COMPILER_FLAGS += -DCPU_ARCHITECTURE=1
 # file sources & targets
 source_files                := $(shell find $(SOURCE_FILES_PATH) -name "*.cpp")
 object_files                := $(patsubst $(SOURCE_FILES_PATH)/%.cpp, $(BUILD_PATH)/objects/%.o, $(source_files))
+
+shared_files                := $(shell find $(SHARED_FILES)/src -name "*.cpp" -not -path "*/vrosapi/*")
+shared_object_files         := $(patsubst $(SHARED_FILES)/src/%.cpp, $(BUILD_PATH)/objects/%.o, $(shared_files))
+
 asm_files                   := $(shell find $(ASSEMBLY_FILES_PATH) -name "*.asm")
 asm_object_files            := $(patsubst $(ASSEMBLY_FILES_PATH)/%.asm, $(BUILD_PATH)/objects/%.o, $(asm_files))
 
@@ -52,10 +56,10 @@ SILENT_MODE = @
 
 build: $(BUILD_PATH)/$(TARGET_NAME).iso
 
-$(BUILD_PATH)/$(TARGET_NAME).bin: $(object_files) $(asm_object_files) $(LINKER_SCRIPT)
+$(BUILD_PATH)/$(TARGET_NAME).bin: $(object_files) $(asm_object_files) $(shared_object_files) $(LINKER_SCRIPT)
 > @echo "linking kernel binary"
 > @mkdir -p $(dir $@)
-> $(SILENT_MODE)$(LINKER) $(LINKER_FLAGS) -o $@ $(object_files) $(asm_object_files)
+> $(SILENT_MODE)$(LINKER) $(LINKER_FLAGS) -o $@ $(object_files) $(asm_object_files) $(shared_object_files)
 
 $(EFI_FILE): $(ISO_PATH)/boot/grub/grub.cfg
 > @echo "creating UEFI bootloader (BOOTX64.EFI)"
@@ -72,6 +76,11 @@ $(BUILD_PATH)/$(TARGET_NAME).iso: $(BUILD_PATH)/$(TARGET_NAME).bin $(DRIVER_FILE
 > @cp $< $(BUILD_PATH)/iso/boot/$(TARGET_NAME).bin
 > $(SILENT_MODE)$(GRUB_MKRESCUE) -o $@ $(BUILD_PATH)/iso
 # /usr/lib/grub/i386-pc
+
+$(BUILD_PATH)/objects/%.o: $(SHARED_FILES)/src/%.cpp
+> @echo "compiling: $<"
+> @mkdir -p $(dir $@)
+> $(SILENT_MODE)$(COMPILER) $(COMPILER_FLAGS) -c $< -o $@
 
 $(BUILD_PATH)/objects/%.o: $(SOURCE_FILES_PATH)/%.cpp
 > @echo "compiling: $<"
