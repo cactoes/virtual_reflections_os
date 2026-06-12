@@ -563,7 +563,7 @@ window_t* create_window(int w, int h, int x, int y) {
 }
 
 u64 allocate_window(int w, int h, event_hook_t hook) {
-    auto win = create_window(w, h, 10, 10);
+    auto win = create_window(w, h, 20, 20);
     win->parent_process = get_current_process();
     win->buffer = heap_alloc(&win->parent_process->heap, (w * h) * sizeof(u32));
     win->event_hook = hook;
@@ -641,7 +641,7 @@ void kdc_handle_mouse_event(int x, int y, kdc_action_t action) {
         case kdc_action_t::MDOWNL: {
             for (auto& window : windows) {
                 if (cursor.x > window->x && cursor.x < window->x + window->width &&
-                    cursor.y > window->y && cursor.y < window->y + window->height) {
+                    cursor.y > window->y - 15 && cursor.y < window->y) {
                     window->is_dragging = true;
                     window->event_queue.insert(window_event_t { .type = WE_MBL_DOWN, .mouse = { .x = (i32)(cursor.x - window->x), .y = (i32)(cursor.y - window->y) } });
                     break;
@@ -652,7 +652,7 @@ void kdc_handle_mouse_event(int x, int y, kdc_action_t action) {
         case kdc_action_t::MUPL: {
             for (auto& window : windows) {
                 if (cursor.x > window->x && cursor.x < window->x + window->width &&
-                    cursor.y > window->y && cursor.y < window->y + window->height) {
+                    cursor.y > window->y - 15 && cursor.y < window->y) {
                     window->is_dragging = false;
                     window->event_queue.insert(window_event_t { .type = WE_MBL_UP, .mouse = { .x = (i32)(cursor.x - window->x), .y = (i32)(cursor.y - window->y) } });
                     break;
@@ -749,7 +749,7 @@ extern "C" NORETURN void virtual_kernel_entry(multiboot2_info_t* multiboot_struc
             memset(__gd->framebuffer->back_buffer, 0, __gd->framebuffer->size);
 
             for (const auto& w : windows) {
-                graphics_driver_draw_square(__gd, w->x - 1, w->y - 1, w->width + 2, w->height + 2, { 255, 255, 255 });
+                graphics_driver_draw_square(__gd, w->x - 1, w->y - 15, w->width + 2, w->height + 2 + 15, { 255, 255, 255 });
                 void* page_table_current = amd64_get_page_table();
                 amd64_set_page_table(vmem_virtual_to_physical(w->parent_process->page_table));
                 framebuffer_copy_remote_square(__gd->framebuffer, w->buffer, w->x, w->y, w->width, w->height, 0, 0);
