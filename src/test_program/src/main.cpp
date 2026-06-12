@@ -37,7 +37,8 @@ struct game_t {
     tile_t* game_board;
     u64 window_handle;
 
-    sprite_t empty_tile;
+    sprite_t tile_unrevealed;
+    sprite_t tile_empty;
 };
 
 typedef void(*tile_loop_function_t)(game_t* game, tile_t* tile);
@@ -347,9 +348,14 @@ void render_gameboard(game_t* game) {
     bmp_image_t spritesheet {};
     bmp_load_image(data, size, &spritesheet);
 
-    bmp_load_sprite(&spritesheet, &game->empty_tile, tile_size, 17, 51);
+    bmp_load_sprite(&spritesheet, &game->tile_unrevealed, tile_size, 0, 51);
+    bmp_load_sprite(&spritesheet, &game->tile_empty, tile_size, 17, 51);
 
-    sprite_render(buffer, &game->empty_tile, 10, 10);
+    for (u32 x = 0; x < config.size.width; x++) {
+        for (u32 y = 0; y < config.size.height; y++) {
+            sprite_render(buffer, &game->tile_unrevealed, x * tile_size, y * tile_size);
+        }
+    }
 
     syscall_render_window(game->window_handle);
 }
