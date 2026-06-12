@@ -3,6 +3,7 @@
 #include "virtual_thread.hpp"
 #include "process.hpp"
 #include "filesystems/vfs.hpp"
+#include "time/clock.hpp"
 
 u64 syscall_dispatch(u64 syscall_num, void* a1, void* a2, void* a3, void* a4, void* a5, void* a6) {
     switch (syscall_num) {
@@ -24,6 +25,8 @@ u64 syscall_dispatch(u64 syscall_num, void* a1, void* a2, void* a3, void* a4, vo
             return syscall_handler_open_file((const char*)a1);
         case SYSCALL_READ_FILE:
             return syscall_handler_read_file((u64)a1, (u8**)a2, (u64*)a3);
+        case SYSCALL_TIME_SINCE_BOOT:
+            return syscall_handler_time_since_boot();
         default:
             break;
     }
@@ -137,4 +140,12 @@ u64 syscall_handler_read_file(u64 handle, u8** data, u64* size) {
     *size = file_size;
 
     return SYSCALL_RESULT_OK;
+}
+
+u64 syscall_handler_time_since_boot() {
+    process_t* current_process = get_current_process();
+    if (!current_process)
+        return SYSCALL_RESULT_OK;
+
+    return clock_get_time_since_boot();
 }
