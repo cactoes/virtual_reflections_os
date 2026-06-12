@@ -312,8 +312,8 @@ int main() {
     bmp_load_sprite(&spritesheet, &active_game->tile_empty, tile_size, 17, 51);
     bmp_load_sprite(&spritesheet, &active_game->smiley_happy, 26, 0, 24);
     bmp_load_sprite(&spritesheet, &active_game->smiley_happy_pressed, 26, 27, 24);
-    bmp_load_sprite(&spritesheet, &active_game->smiley_dead, 26, 81, 24);
-    bmp_load_sprite(&spritesheet, &active_game->smiley_cool, 26, 108, 24);
+    bmp_load_sprite(&spritesheet, &active_game->smiley_dead, 26, 108, 24);
+    bmp_load_sprite(&spritesheet, &active_game->smiley_cool, 26, 81, 24);
 
     active_game->smileyx = ((config.size.width * tile_size) / 2) - (active_game->smiley_happy.sprite_size / 2);
     active_game->smileyy = 15 - (active_game->smiley_happy.sprite_size / 2);
