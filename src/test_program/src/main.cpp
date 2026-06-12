@@ -7,7 +7,7 @@
 #include "bmp.hpp"
 #include "minesweeper.hpp"
 
-#define DEFAULT_GAME_CONFIG 0
+#define DEFAULT_GAME_CONFIG 1
 
 static u64 window_width;
 static u64 window_height;
@@ -60,6 +60,8 @@ void minesweeper_handle_lmb_up(i32 x, i32 y) {
 
             active_game->is_running = true;
 
+            active_game->has_won = false;
+
             render_gameboard(active_game);
         }
 
@@ -84,7 +86,7 @@ void minesweeper_handle_lmb_up(i32 x, i32 y) {
             total_unrevealed++;
 
     if (total_unrevealed == config.bomb_count)
-        minesweeper_end_game(active_game);
+        minesweeper_end_game(active_game, true);
 
     // remove peaking
     loop_game_board(active_game, [](game_t* game, tile_t* tile) {
@@ -240,6 +242,9 @@ bool render_box(game_t* game, void* buffer, u32 x, u32 y, u32 w, u32 h, u32 colo
 }
 
 void render_gameboard(game_t* game) {
+    // syscall free render until done?
+    // also add double buffering
+
     void* buffer = syscall_get_window_buffer(game->window_handle);
     memzero(buffer, (window_width * window_height) * sizeof(u32));
 
@@ -254,7 +259,11 @@ void render_gameboard(game_t* game) {
         }
     }
 
-    sprite_render(buffer, &game->smiley_happy, game->smileyx, game->smileyy);
+    if (game->is_running) {
+        sprite_render(buffer, &game->smiley_happy, game->smileyx, game->smileyy);
+    } else {
+        sprite_render(buffer, game->has_won ? &game->smiley_cool : &game->smiley_dead, game->smileyx, game->smileyy);
+    }
 
     syscall_render_window(game->window_handle);
 }

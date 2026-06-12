@@ -50,8 +50,9 @@ tile_t* get_tile_at(game_t* game, u32 x, u32 y) {
     return &game->game_board[x + config.size.width * y];
 }
 
-void minesweeper_end_game(game_t* game) {
+void minesweeper_end_game(game_t* game, bool won) {
     game->is_running = false;
+    game->has_won = won;
 
     loop_game_board(game, [](game_t* game, tile_t* tile) {
         if (tile->is_bomb && !tile->is_marked)
@@ -66,7 +67,7 @@ void tile_reveal(game_t* game, tile_t* tile) {
     tile->is_revealed = true;
 
     if (tile->is_bomb) {
-        minesweeper_end_game(game);
+        minesweeper_end_game(game, false);
         return;
     }
 

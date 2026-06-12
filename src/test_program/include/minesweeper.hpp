@@ -43,6 +43,7 @@ struct game_t {
     tile_t* game_board;
     u64 window_handle;
     bool is_running;
+    bool has_won;
 
     u32 board_offsetx;
     u32 board_offsety;
@@ -89,7 +90,7 @@ tile_t* get_tile_from_pos(game_t* game, int x, int y);
 
 tile_t* get_tile_at(game_t* game, u32 x, u32 y);
 
-void minesweeper_end_game(game_t* game);
+void minesweeper_end_game(game_t* game, bool won);
 
 void tile_reveal(game_t* game, tile_t* tile);
 
