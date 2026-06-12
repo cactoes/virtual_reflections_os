@@ -4,5 +4,6 @@
         "-I./src/kernel/include",
         "-I./src/network_drivers/include",
         "-I./src/shared/include"
+        "-I./src/test_program/include"
     ]
 }

@@ -275,44 +275,7 @@ void desktop_render_window(const desktop_render_target_t* target) {
 }
 
 #include "io.hpp"
-
-
-struct bmp_file_header_t {
-    u8 signature[2];
-    u32 file_size;
-    u16 unused[2];
-    u32 image_data_offset;
-} PACKED;
-
-struct bmp_info_header_t {
-    u32 header_size;
-    int width;
-    int height;
-    u16 planes;
-    u16 bits_per_pixel;
-    u32 compression;
-    u32 uncompressed_size;
-    int pixels_per_m_x;
-    int pixels_per_m_y;
-    u32 number_of_colors;
-    u32 number_of_importand_colors;
-} PACKED;
-
-struct bmp_color_t {
-    u8 r;
-    u8 g;
-    u8 b;
-} PACKED;
-
-bool is_bmp(u8* data, size_t size) {
-    if (!data)
-        return false;
-
-    if (size < sizeof(bmp_file_header_t) + sizeof(bmp_info_header_t) + sizeof(bmp_color_t))
-        return false;
-
-    return data[0] == 'B' && data[1] == 'M';
-}
+#include "bmp.hpp"
 
 void load_background() {
     fd_t fd = vfs_open_file(get_global_vfs(), "harddisk0/media/logo.bmp");
