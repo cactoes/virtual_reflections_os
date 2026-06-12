@@ -592,6 +592,30 @@ bool window_poll_event(window_handle_t handle, window_event_t* event, event_hook
     return false;
 }
 
+bool window_resize(window_handle_t handle, u32 width, u32 height) {
+    size_t x, y;
+    graphics_driver_get_size(get_global_graphics_driver(), &x, &y);
+
+    if (width > x || height > y)
+        return false;
+
+    for (auto& w : windows) {
+        if (w->handle == handle) {
+
+            heap_free(&w->parent_process->heap, w->buffer);
+            w->buffer = heap_alloc(&w->parent_process->heap, (width * height) * sizeof(u32));
+            if (!w->buffer)
+                return false;
+            w->width = width;
+            w->height = height;
+
+            return true;
+        }
+    }
+
+    return false;
+}
+
 void kdc_handle_mouse_event(int x, int y, kdc_action_t action) {
     size_t max_x, max_y;
     graphics_driver_get_size(get_global_graphics_driver(), &max_x, &max_y);
