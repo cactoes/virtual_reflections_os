@@ -1,5 +1,5 @@
 # virtual reflections e0
-A 64-bit custom made operating system, using grub as bootloader
+A 64-bit custom-made operating system, using GRUB as bootloader, Which can play Minesweeper in usermode!
 
 ## VirtualReflectionsOS Toolkit
 This is a simple helper powershell script for managing the build environment.
