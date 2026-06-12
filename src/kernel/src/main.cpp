@@ -37,7 +37,6 @@
 #include "time/clock.hpp"
 
 #include "gui/desktop.hpp"
-#include "gui/programs/minesweeper.hpp"
 
 #include "std/random.hpp"
 
@@ -620,7 +619,7 @@ void kdc_handle_mouse_event(int x, int y, kdc_action_t action) {
                 if (cursor.x > window->x && cursor.x < window->x + window->width &&
                     cursor.y > window->y && cursor.y < window->y + window->height) {
                     window->is_dragging = true;
-                    window->event_queue.insert(window_event_t { .type = WE_MBL_DOWN, .mouse = { .x = (i32)(cursor.y - window->y), .y = (i32)(cursor.x - window->x) } });
+                    window->event_queue.insert(window_event_t { .type = WE_MBL_DOWN, .mouse = { .x = (i32)(cursor.x - window->x), .y = (i32)(cursor.y - window->y) } });
                     break;
                 }
             }
@@ -631,7 +630,7 @@ void kdc_handle_mouse_event(int x, int y, kdc_action_t action) {
                 if (cursor.x > window->x && cursor.x < window->x + window->width &&
                     cursor.y > window->y && cursor.y < window->y + window->height) {
                     window->is_dragging = false;
-                    window->event_queue.insert(window_event_t { .type = WE_MBL_UP, .mouse = { .x = (i32)(cursor.y - window->y), .y = (i32)(cursor.x - window->x) } });
+                    window->event_queue.insert(window_event_t { .type = WE_MBL_UP, .mouse = { .x = (i32)(cursor.x - window->x), .y = (i32)(cursor.y - window->y) } });
                     break;
                 }
             }
@@ -641,7 +640,7 @@ void kdc_handle_mouse_event(int x, int y, kdc_action_t action) {
             for (auto& window : windows) {
                 if (cursor.x > window->x && cursor.x < window->x + window->width &&
                     cursor.y > window->y && cursor.y < window->y + window->height) {
-                    window->event_queue.insert(window_event_t { .type = WE_MBR_DOWN, .mouse = { .x = (i32)(cursor.y - window->y), .y = (i32)(cursor.x - window->x) } });
+                    window->event_queue.insert(window_event_t { .type = WE_MBR_DOWN, .mouse = { .x = (i32)(cursor.x - window->x), .y = (i32)(cursor.y - window->y) } });
                     break;
                 }
             }
@@ -651,7 +650,7 @@ void kdc_handle_mouse_event(int x, int y, kdc_action_t action) {
             for (auto& window : windows) {
                 if (cursor.x > window->x && cursor.x < window->x + window->width &&
                     cursor.y > window->y && cursor.y < window->y + window->height) {
-                    window->event_queue.insert(window_event_t { .type = WE_MBR_UP, .mouse = { .x = (i32)(cursor.y - window->y), .y = (i32)(cursor.x - window->x) } });
+                    window->event_queue.insert(window_event_t { .type = WE_MBR_UP, .mouse = { .x = (i32)(cursor.x - window->x), .y = (i32)(cursor.y - window->y) } });
                     break;
                 }
             }
@@ -672,7 +671,7 @@ void kdc_mouse_handler(const ps2_mouse_state_t* state) {
     }
 
     if (static bool rmb_last = false; rmb_last != state->buttons.right) {
-        kdc_handle_mouse_event(0, 0, state->buttons.left ? kdc_action_t::MDOWNR : kdc_action_t::MUPR);
+        kdc_handle_mouse_event(0, 0, state->buttons.right ? kdc_action_t::MDOWNR : kdc_action_t::MUPR);
         rmb_last = state->buttons.right;
     }
 }
