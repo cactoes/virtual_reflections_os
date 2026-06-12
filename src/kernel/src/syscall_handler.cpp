@@ -27,6 +27,8 @@ u64 syscall_dispatch(u64 syscall_num, void* a1, void* a2, void* a3, void* a4, vo
             return syscall_handler_read_file((u64)a1, (u8**)a2, (u64*)a3);
         case SYSCALL_TIME_SINCE_BOOT:
             return syscall_handler_time_since_boot();
+        case SYSCALL_WINDOW_RESIZE:
+            return syscall_handler_window_resize((window_handle_t)a1, (u64)a2, (u64)a3);
         default:
             break;
     }
@@ -65,6 +67,7 @@ u64 syscall_heap_free(void* ptr) {
 extern u64 allocate_window(int w, int h, event_hook_t hook);
 extern void* window_get_buffer(window_handle_t handle);
 extern bool window_poll_event(window_handle_t handle, window_event_t* event, event_hook_t* hook);
+extern bool window_resize(window_handle_t handle, u32 width, u32 height);
 
 u64 syscall_handler_create_window(window_desc_t* wnd_desc) {
     process_t* current_process = get_current_process();
@@ -148,4 +151,12 @@ u64 syscall_handler_time_since_boot() {
         return SYSCALL_RESULT_OK;
 
     return clock_get_time_since_boot();
+}
+
+u64 syscall_handler_window_resize(window_handle_t handle, u64 width, u64 height) {
+        process_t* current_process = get_current_process();
+    if (!current_process)
+        return SYSCALL_RESULT_OK;
+
+    return window_resize(handle, width, height);
 }

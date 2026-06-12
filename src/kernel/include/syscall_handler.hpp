@@ -30,6 +30,7 @@
 #define SYSCALL_OPEN_FILE           7
 #define SYSCALL_READ_FILE           8
 #define SYSCALL_TIME_SINCE_BOOT     9
+#define SYSCALL_WINDOW_RESIZE       10
 
 #include "common.hpp"
 #include "cpu.hpp"
@@ -47,5 +48,6 @@ u64 syscall_handler_poll_event(window_handle_t handle, window_event_t* event, ev
 u64 syscall_handler_open_file(const char* path);
 u64 syscall_handler_read_file(u64 handle, u8** data, u64* size);
 u64 syscall_handler_time_since_boot();
+u64 syscall_handler_window_resize(window_handle_t handle, u64 width, u64 height);
 
 #endif // __SYSCALL_HANDLER_HPP__

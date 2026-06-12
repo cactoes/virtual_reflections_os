@@ -38,5 +38,6 @@ window_handle_t syscall_create_window(window_desc_t* wnd_desc);
 void* syscall_get_window_buffer(window_handle_t handle);
 bool syscall_render_window(window_handle_t handle);
 bool syscall_poll_event(window_handle_t handle, window_event_t* event, event_hook_t* hook);
+bool syscall_window_resize(window_handle_t handle, u32 w, u32 h);
 
 #endif // VROS_WINDOW_HPP
