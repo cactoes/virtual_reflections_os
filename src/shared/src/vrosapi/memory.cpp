@@ -29,3 +29,43 @@ bool syscall_free(void* ptr) {
 
     return result == 0;
 }
+
+void* malloc(size_t size) noexcept {
+    return syscall_malloc(size);
+}
+
+void free(void* ptr) noexcept {
+    (void)syscall_free(ptr);
+}
+
+void* operator new(__SIZE_TYPE__ size) noexcept {
+    return syscall_malloc(size);
+}
+
+void* operator new(__SIZE_TYPE__ size, void* ptr) noexcept {
+    return ptr;
+}
+
+void* operator new[](__SIZE_TYPE__ size) noexcept {
+    return syscall_malloc(size);
+}
+
+void* operator new[](__SIZE_TYPE__ size, void* ptr) noexcept {
+    return ptr;
+}
+
+void operator delete(void* ptr) noexcept {
+    (void)syscall_free(ptr);
+}
+
+void operator delete(void* ptr, __SIZE_TYPE__) noexcept {
+    (void)syscall_free(ptr);
+}
+
+void operator delete[](void* ptr) noexcept {
+    (void)syscall_free(ptr);
+}
+
+void operator delete[](void* ptr, __SIZE_TYPE__) noexcept {
+    (void)syscall_free(ptr);
+}
