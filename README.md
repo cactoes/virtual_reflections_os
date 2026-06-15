@@ -1,4 +1,4 @@
-# virtual reflections e0
+# Virtual Reflections OS
 A 64-bit custom-made operating system, using GRUB as bootloader, Which can play Minesweeper in usermode!
 
 ## VirtualReflectionsOS Toolkit
@@ -20,6 +20,10 @@ PS> .\vrtlkt.ps1 -Tool run
 ## Diagrams for a quick overview
 ![](docs/svg/kernel%20diagram.svg)
 ![](docs/svg/storage%20diagram.svg)
+
+## Current active tasks
+- processes: process management
+- window manager: desktop environment
 
 ## TODO
 - [ ] redo subsystem manager
