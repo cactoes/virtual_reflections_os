@@ -101,6 +101,7 @@ union kernel_components_t {
         u64 graphics            : 1;
         u64 interrupts          : 1;
         u64 system_info         : 1;
+        u64 processes           : 1;
         u64 virtual_threading   : 1;
         u64 virtual_filesystem  : 1;
         u64 nic                 : 1;
@@ -122,6 +123,7 @@ static pcie_device_manager_t kernel_pciedm {};
 static network_manager_t kernel_network_manager {};
 static storage_manager_t kernel_storage_manager {};
 static driver_manager_t kernel_driver_manager {};
+static process_t kernel_process {};
 
 static
 void system_log(const char* level, const char* color, const char* message) {
@@ -252,6 +254,16 @@ void init_system_info(void* multiboot_struct) {
 }
 
 static
+void init_process() {
+    if (process_setup_kernel_process(&kernel_process, &kernel_heap) == PROCESS_ID_INVALID)
+        kernel_fatal(KERNEL_FATAL_PROCESS_INIT, "processes failed to intialize");
+
+    initialized_kernel_components.processes = true;
+
+    system_log_ok("initialized prcesses");
+}
+
+static
 void init_virtual_threading() {
     if (vthread_start_and_setup_main() == VTHREAD_HANDLE_INVALID)
         kernel_fatal(KERNEL_FATAL_VTHREAD_INIT, "virtual threads failed to intialize");
@@ -259,9 +271,9 @@ void init_virtual_threading() {
     // TODO @since 02/06/2026 -- 13:06
     // make all of these have their own dedicated thread function
     const vthread_handle_t critical_threads[] = {
-        vthread_create_local(nic_thread, "_ZN7kthread3nicEv"),
-        vthread_create_local([]() { while (true) ps2_mouse_process_packet(); return 1; }, "PS/2 Mouse"),
-        vthread_create_local([]() { while (true) ps2_keyboard_process_packet(); return 1; }, "PS/2 Keyboard")
+        vthread_create(nic_thread, "_ZN7kthread3nicEv"),
+        vthread_create([]() { while (true) ps2_mouse_process_packet(); return 1; }, "PS/2 Mouse"),
+        vthread_create([]() { while (true) ps2_keyboard_process_packet(); return 1; }, "PS/2 Keyboard")
     };
 
     for (const auto& thread : critical_threads)
@@ -709,6 +721,7 @@ extern "C" NORETURN void virtual_kernel_entry(multiboot2_info_t* multiboot_struc
     init_system_info(multiboot_struct);
 
     // stage 2 -- core functionality
+    init_process();
     init_virtual_threading();
     init_virtual_filesystem();
     init_network_interface_controller();
@@ -724,72 +737,72 @@ extern "C" NORETURN void virtual_kernel_entry(multiboot2_info_t* multiboot_struc
     // kernel finished
 
     // create & init display driver service
-    io_term_disable();
+    // io_term_disable();
     // void* b = graphics_driver_create_buffer(get_global_graphics_driver());
 
     // kernel display driver
-    vthread_create_local([]() { dd_buffer_render_loop(); return 0; }, "_ZN7kthread3kddEv");
+    // vthread_create([]() { dd_buffer_render_loop(); return 0; }, "_ZN7kthread3kddEv");
 
     // kernel display compositor
-    vthread_create_local([]() {
-        while (true) {
-            if (!should_render)
-                vthread_yield();
+    // vthread_create([]() {
+    //     while (true) {
+    //         if (!should_render)
+    //             vthread_yield();
 
-            should_render = false;
+    //         should_render = false;
 
-            disable_interrupts();
+    //         disable_interrupts();
 
-            graphics_driver_t* __gd = get_global_graphics_driver();
+    //         graphics_driver_t* __gd = get_global_graphics_driver();
 
-            size_t max_x, max_y;
-            graphics_driver_get_size(__gd, &max_x, &max_y);
+    //         size_t max_x, max_y;
+    //         graphics_driver_get_size(__gd, &max_x, &max_y);
 
-            // graphics_driver_draw_square(__gd, 0, 0, max_x, max_y, { 0, 0, 0 });
-            memset(__gd->framebuffer->back_buffer, 0, __gd->framebuffer->size);
+    //         // graphics_driver_draw_square(__gd, 0, 0, max_x, max_y, { 0, 0, 0 });
+    //         memset(__gd->framebuffer->back_buffer, 0, __gd->framebuffer->size);
 
-            for (const auto& w : windows) {
-                graphics_driver_draw_square(__gd, w->x - 1, w->y - 15, w->width + 2, w->height + 2 + 15, { 255, 255, 255 });
-                void* page_table_current = amd64_get_page_table();
-                amd64_set_page_table(vmem_virtual_to_physical(w->parent_process->page_table));
-                framebuffer_copy_remote_square(__gd->framebuffer, w->buffer, w->x, w->y, w->width, w->height, 0, 0);
-                amd64_set_page_table(page_table_current);
-            }
+    //         for (const auto& w : windows) {
+    //             graphics_driver_draw_square(__gd, w->x - 1, w->y - 15, w->width + 2, w->height + 2 + 15, { 255, 255, 255 });
+    //             void* page_table_current = amd64_get_page_table();
+    //             amd64_set_page_table(vmem_virtual_to_physical(w->parent_process->page_table));
+    //             framebuffer_copy_remote_square(__gd->framebuffer, w->buffer, w->x, w->y, w->width, w->height, 0, 0);
+    //             amd64_set_page_table(page_table_current);
+    //         }
 
-            graphics_driver_draw_linev(__gd, cursor.x, cursor.y, 10, { 0, 0, 0 });
-            graphics_driver_draw_pixel(__gd, cursor.x + 1, cursor.y + 1, { 0, 0, 0 });
-            graphics_driver_draw_pixel(__gd, cursor.x + 2, cursor.y + 2, { 0, 0, 0 });
-            graphics_driver_draw_pixel(__gd, cursor.x + 3, cursor.y + 3, { 0, 0, 0 });
-            graphics_driver_draw_pixel(__gd, cursor.x + 4, cursor.y + 4, { 0, 0, 0 });
-            graphics_driver_draw_pixel(__gd, cursor.x + 5, cursor.y + 5, { 0, 0, 0 });
-            graphics_driver_draw_pixel(__gd, cursor.x + 6, cursor.y + 6, { 0, 0, 0 });
-            graphics_driver_draw_lineh(__gd, cursor.x + 4, cursor.y + 7, 3, { 0, 0, 0 });
-            graphics_driver_draw_pixel(__gd, cursor.x + 1, cursor.y + 9, { 0, 0, 0 });
-            graphics_driver_draw_pixel(__gd, cursor.x + 2, cursor.y + 8, { 0, 0, 0 });
-            graphics_driver_draw_pixel(__gd, cursor.x + 3, cursor.y + 7, { 0, 0, 0 });
+    //         graphics_driver_draw_linev(__gd, cursor.x, cursor.y, 10, { 0, 0, 0 });
+    //         graphics_driver_draw_pixel(__gd, cursor.x + 1, cursor.y + 1, { 0, 0, 0 });
+    //         graphics_driver_draw_pixel(__gd, cursor.x + 2, cursor.y + 2, { 0, 0, 0 });
+    //         graphics_driver_draw_pixel(__gd, cursor.x + 3, cursor.y + 3, { 0, 0, 0 });
+    //         graphics_driver_draw_pixel(__gd, cursor.x + 4, cursor.y + 4, { 0, 0, 0 });
+    //         graphics_driver_draw_pixel(__gd, cursor.x + 5, cursor.y + 5, { 0, 0, 0 });
+    //         graphics_driver_draw_pixel(__gd, cursor.x + 6, cursor.y + 6, { 0, 0, 0 });
+    //         graphics_driver_draw_lineh(__gd, cursor.x + 4, cursor.y + 7, 3, { 0, 0, 0 });
+    //         graphics_driver_draw_pixel(__gd, cursor.x + 1, cursor.y + 9, { 0, 0, 0 });
+    //         graphics_driver_draw_pixel(__gd, cursor.x + 2, cursor.y + 8, { 0, 0, 0 });
+    //         graphics_driver_draw_pixel(__gd, cursor.x + 3, cursor.y + 7, { 0, 0, 0 });
 
-            // inline
-            graphics_driver_draw_linev(__gd, cursor.x + 1, cursor.y + 2, 7, { 255, 255, 255 });
-            graphics_driver_draw_linev(__gd, cursor.x + 2, cursor.y + 3, 5, { 255, 255, 255 });
-            graphics_driver_draw_linev(__gd, cursor.x + 3, cursor.y + 4, 3, { 255, 255, 255 });
-            graphics_driver_draw_linev(__gd, cursor.x + 4, cursor.y + 5, 2, { 255, 255, 255 });
-            graphics_driver_draw_linev(__gd, cursor.x + 5, cursor.y + 6, 1, { 255, 255, 255 });
+    //         // inline
+    //         graphics_driver_draw_linev(__gd, cursor.x + 1, cursor.y + 2, 7, { 255, 255, 255 });
+    //         graphics_driver_draw_linev(__gd, cursor.x + 2, cursor.y + 3, 5, { 255, 255, 255 });
+    //         graphics_driver_draw_linev(__gd, cursor.x + 3, cursor.y + 4, 3, { 255, 255, 255 });
+    //         graphics_driver_draw_linev(__gd, cursor.x + 4, cursor.y + 5, 2, { 255, 255, 255 });
+    //         graphics_driver_draw_linev(__gd, cursor.x + 5, cursor.y + 6, 1, { 255, 255, 255 });
 
-            enable_interrupts();
-        }
+    //         enable_interrupts();
+    //     }
         
-        return 0;
-    }, "_ZN7kthread3kdcEv");
+    //     return 0;
+    // }, "_ZN7kthread3kdcEv");
 
     // ASSUME PS/2 MOUSE FOR NOW -- abstract later :)
 
-    ps2_mouse_event_subscribe(kdc_mouse_handler);
+    // ps2_mouse_event_subscribe(kdc_mouse_handler);
 
-    process_t p {};
-    create_process(&p, "harddisk0/TestProgram.exe");
+    // process_t p {};
+    // create_process(&p, "harddisk0/TestProgram.exe");
 
-    // if (vthread_create_local(terminal_thread_main) == VTHREAD_HANDLE_INVALID)
-    //     printf("[ \033[91mERROR\033[0m ] failed to start terminal\n");
+    if (vthread_create(terminal_thread_main) == VTHREAD_HANDLE_INVALID)
+        printf("[ \033[91mERROR\033[0m ] failed to start terminal\n");
 
     // we shoudn t reach this point since the kernel should never stop
     // incase we do just hang here so we dont break anything

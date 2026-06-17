@@ -4,6 +4,7 @@
 #include "arch/amd64/vmem.hpp"
 #include "cpu.hpp"
 #include "virtual_thread.hpp"
+#include "process.hpp"
 
 // defined in amd64_entry.cpp
 extern amd64_tss_t* amd64_get_tss();
@@ -22,7 +23,7 @@ void amd64_vthread_load_context(vthread_t* target) {
 
     // this means that the thread is userspace
     // & needs a kernel stack when an interrupt happens
-    if (target->kstack) {
+    if (!target->parent->is_kernel_process) {
         auto kstack_top = (void*)((u64)target->kstack + VTHREAD_STACK_SIZE);
         amd64_tss_set_stack_pointer0(amd64_get_tss(), kstack_top);
         cpu_set_kernel_stack(get_current_cpu(), kstack_top);

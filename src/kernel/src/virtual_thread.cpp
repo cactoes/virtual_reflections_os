@@ -58,6 +58,8 @@ bool vthread_init_main_thread(vthread_t* thread) {
     thread->tls.handle = VTHREAD_MAIN_THREAD_HANDLE;
     thread->is_critical = true;
 
+    thread->parent = get_current_process();
+
     const char name[] = "_ZN7kthread4mainEPv";
     memcpy(thread->name, name, sizeof(name));
 
@@ -79,6 +81,7 @@ bool vthread_init(vthread_t* thread, void* thread_entry) {
     thread->handle = new_handle;
     thread->tls.handle = new_handle;
     thread->vt_state = vthread_state_t::RUNNING;
+    thread->parent = get_current_process();
 
 #if CPU_ARCHITECTURE == ARCH_AMD64
     return amd64_vthread_init(thread, thread_entry);
@@ -188,7 +191,7 @@ vthread_handle_t vthread_start_and_setup_main() {
     return vthread_add(move(p_vthread)) ? VTHREAD_MAIN_THREAD_HANDLE : VTHREAD_HANDLE_INVALID;
 }
 
-vthread_handle_t vthread_create_local(thread_entry_t p_thread_entry, const char name[VTHREAD_MAX_NAME_SIZE]) {
+vthread_handle_t vthread_create(thread_entry_t p_thread_entry, const char name[VTHREAD_MAX_NAME_SIZE]) {
     // TODO @since 22/05/2026 -- 18:25
     // remove this leaking smart pointer
     std::unique_ptr<vthread_t> p_vthread = std::make_unique<vthread_t>();

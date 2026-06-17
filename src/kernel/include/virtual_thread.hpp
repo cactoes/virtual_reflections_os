@@ -50,10 +50,10 @@ struct vthread_t {
 
     // handle to parent process
     struct process_t* parent;
-    
+
     // state of thread
     vthread_state_t vt_state;
-    
+
     // tls data
     thread_local_storage_t tls;
 
@@ -88,7 +88,7 @@ vthread_handle_t vthread_start_and_setup_main();
 /// @param[in] p_thread_entry   entry point function for the new thread
 /// @param[in] pml4             pointer to the pml4 for the thread address space
 /// @return                     handle to the created vthread
-vthread_handle_t vthread_create_local(thread_entry_t p_thread_entry, const char name[VTHREAD_MAX_NAME_SIZE] = nullptr);
+vthread_handle_t vthread_create(thread_entry_t p_thread_entry, const char name[VTHREAD_MAX_NAME_SIZE] = nullptr);
 
 /// @brief                      handles a vthread interrupt & updates cpu state
 /// @param[in] stack            pointer to last stack

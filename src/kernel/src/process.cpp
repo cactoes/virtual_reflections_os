@@ -134,7 +134,28 @@ bool create_process(process_t* process, const char* path) {
     amd64_set_page_table(current_page_table_p);
     enable_interrupts();
 
+    process->pid = global_pid_counter++;
+    process->main_thread = p_vthread->handle;
+    process->is_kernel_process = false;
+
     vthread_add(move(p_vthread));
+
+    return true;
+}
+
+bool process_setup_kernel_process(process_t* process, heap_t* heap) {
+    if (!process)
+        return false;
+    
+    memzero(process, sizeof(process_t));
+
+    process->pid = PROCESS_ID_KERNEL;
+    memcpy(&process->heap, heap, sizeof(heap_t));
+    process->main_thread = VTHREAD_MAIN_THREAD_HANDLE;
+    process->page_table = amd64_get_page_table();
+    process->is_kernel_process = true;
+
+    set_current_process(process);
 
     return true;
 }
