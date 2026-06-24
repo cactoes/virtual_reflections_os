@@ -4,6 +4,7 @@
 #include "process.hpp"
 #include "filesystems/vfs.hpp"
 #include "time/clock.hpp"
+#include "gui/display_driver.hpp"
 
 u64 syscall_dispatch(u64 syscall_num, void* a1, void* a2, void* a3, void* a4, void* a5, void* a6) {
     switch (syscall_num) {
@@ -64,11 +65,6 @@ u64 syscall_heap_free(void* ptr) {
     return SYSCALL_RESULT_OK;
 }
 
-extern u64 allocate_window(int w, int h, event_hook_t hook);
-extern void* window_get_buffer(window_handle_t handle);
-extern bool window_poll_event(window_handle_t handle, window_event_t* event, event_hook_t* hook);
-extern bool window_resize(window_handle_t handle, u32 width, u32 height);
-
 u64 syscall_handler_create_window(window_desc_t* wnd_desc) {
     process_t* current_process = get_current_process();
     if (!current_process)
@@ -77,7 +73,7 @@ u64 syscall_handler_create_window(window_desc_t* wnd_desc) {
     // if (current_process->window)
     //     return SYSCALL_RESULT_OK;
 
-    return allocate_window(wnd_desc->rect.w, wnd_desc->rect.h, wnd_desc->event_hook);
+    return wm_allocate_window(get_global_window_manager(), wnd_desc->rect.w, wnd_desc->rect.h, wnd_desc->event_hook);
 }
 
 u64 syscall_handler_get_window_buffer(window_handle_t handle) {
@@ -88,7 +84,7 @@ u64 syscall_handler_get_window_buffer(window_handle_t handle) {
     // if (current_process->window)
     //     return SYSCALL_RESULT_OK;
 
-    return (u64)window_get_buffer(handle);
+    return (u64)wm_window_get_buffer(get_global_window_manager(), handle);
 }
 
 u64 syscall_handler_render_window(window_handle_t handle) {
@@ -96,8 +92,7 @@ u64 syscall_handler_render_window(window_handle_t handle) {
     if (!current_process)
         return SYSCALL_RESULT_OK;
 
-    extern volatile bool should_render;
-    should_render = true;
+    get_global_window_manager()->should_render = true;
 
     return SYSCALL_RESULT_OK;
 }
@@ -110,7 +105,7 @@ u64 syscall_handler_poll_event(window_handle_t handle, window_event_t* event, ev
     if (!event)
         return SYSCALL_RESULT_OK;
 
-    return window_poll_event(handle, event, hook);
+    return wm_window_poll_event(get_global_window_manager(), handle, event, hook);
 }
 
 u64 syscall_handler_open_file(const char* path) {
@@ -158,5 +153,5 @@ u64 syscall_handler_window_resize(window_handle_t handle, u64 width, u64 height)
     if (!current_process)
         return SYSCALL_RESULT_OK;
 
-    return window_resize(handle, width, height);
+    return wm_window_resize(get_global_window_manager(), handle, width, height);
 }

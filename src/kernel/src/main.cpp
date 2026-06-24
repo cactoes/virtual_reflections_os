@@ -109,6 +109,7 @@ union kernel_components_t {
         u64 networking          : 1;
         u64 storage             : 1;
         u64 driver_manager      : 1;
+        u64 display_driver      : 1;
     };
 };
 
@@ -124,6 +125,7 @@ static network_manager_t kernel_network_manager {};
 static storage_manager_t kernel_storage_manager {};
 static driver_manager_t kernel_driver_manager {};
 static process_t kernel_process {};
+static window_manager_t kernel_window_manager {};
 
 static
 void system_log(const char* level, const char* color, const char* message) {
@@ -528,188 +530,37 @@ void init_drivers() {
 
 extern void io_term_disable();
 
-#define WINDOW_HANDLE_INVALID MAX_UINT64
-
-#include "vrosapi/window.hpp"
-#include "arch/amd64/vmem.hpp"
-
-typedef u64 window_handle_t;
-window_handle_t last_handle = 0;
-
-struct window_t {
-    int width, height;
-    int x, y;
-    void* buffer;
-    bool is_dragging;
-    process_t* parent_process;
-    window_handle_t handle;
-
-    event_hook_t event_hook;
-    std::ring_buffer<8, window_event_t> event_queue;
-};
-
-struct cursor_t {
-    u64 x, y;
-};
-
-enum class kdc_action_t {
-    MMOVE = 0,
-    MDOWNL,
-    MUPL,
-    MDOWNR,
-    MUPR
-};
-
-volatile bool should_render = true;
-std::dynamic_array<window_t*> windows {};
-cursor_t cursor {};
-
-window_t* create_window(int w, int h, int x, int y) {
-    window_t* win = new window_t {};
-    win->width = w;
-    win->height = h;
-    win->x = x;
-    win->y = y;
-    win->handle = last_handle++;
-    return win;
-}
-
-u64 allocate_window(int w, int h, event_hook_t hook) {
-    auto win = create_window(w, h, 20, 20);
-    win->parent_process = get_current_process();
-    win->buffer = heap_alloc(&win->parent_process->heap, (w * h) * sizeof(u32));
-    win->event_hook = hook;
-    windows.insert_back(win);
-    return win->handle;
-}
-
-void* window_get_buffer(window_handle_t handle) {
-    for (auto& w : windows)
-        if (w->handle == handle)
-            return w->buffer;
-
-    return nullptr;
-}
-
-bool window_poll_event(window_handle_t handle, window_event_t* event, event_hook_t* hook) {
-    for (auto& w : windows) {
-        if (w->handle == handle) {
-            if (hook)
-                *hook = w->event_hook;
-
-            return w->event_queue.get(*event);
-        }
-    }
-
-    return false;
-}
-
-bool window_resize(window_handle_t handle, u32 width, u32 height) {
-    size_t x, y;
-    graphics_driver_get_size(get_global_graphics_driver(), &x, &y);
-
-    if (width > x || height > y)
-        return false;
-
-    for (auto& w : windows) {
-        if (w->handle == handle) {
-
-            heap_free(&w->parent_process->heap, w->buffer);
-            w->buffer = heap_alloc(&w->parent_process->heap, (width * height) * sizeof(u32));
-            if (!w->buffer)
-                return false;
-            w->width = width;
-            w->height = height;
-
-            return true;
-        }
-    }
-
-    return false;
-}
-
-void kdc_handle_mouse_event(int x, int y, kdc_action_t action) {
-    size_t max_x, max_y;
-    graphics_driver_get_size(get_global_graphics_driver(), &max_x, &max_y);
-
-    switch (action) {
-        case kdc_action_t::MMOVE: {
-            if (x == 0 && y == 0)
-                break;
-
-            for (auto& window : windows) {
-                if (window->is_dragging) {
-                    window->x += x;
-                    window->y += y;
-                    break;
-                }
-            }
-
-            cursor.x += x;
-            cursor.y += y;
-            should_render = true;
-            break;
-        }
-        case kdc_action_t::MDOWNL: {
-            for (auto& window : windows) {
-                if (cursor.x > window->x && cursor.x < window->x + window->width &&
-                    cursor.y > window->y - 15 && cursor.y < window->y) {
-                    window->is_dragging = true;
-                    window->event_queue.insert(window_event_t { .type = WE_MBL_DOWN, .mouse = { .x = (i32)(cursor.x - window->x), .y = (i32)(cursor.y - window->y) } });
-                    break;
-                }
-            }
-            break;
-        }
-        case kdc_action_t::MUPL: {
-            for (auto& window : windows) {
-                if (cursor.x > window->x && cursor.x < window->x + window->width &&
-                    cursor.y > window->y - 15 && cursor.y < window->y) {
-                    window->is_dragging = false;
-                    window->event_queue.insert(window_event_t { .type = WE_MBL_UP, .mouse = { .x = (i32)(cursor.x - window->x), .y = (i32)(cursor.y - window->y) } });
-                    break;
-                }
-            }
-            break;
-        }
-        case kdc_action_t::MDOWNR: {
-            for (auto& window : windows) {
-                if (cursor.x > window->x && cursor.x < window->x + window->width &&
-                    cursor.y > window->y && cursor.y < window->y + window->height) {
-                    window->event_queue.insert(window_event_t { .type = WE_MBR_DOWN, .mouse = { .x = (i32)(cursor.x - window->x), .y = (i32)(cursor.y - window->y) } });
-                    break;
-                }
-            }
-            break;
-        }
-        case kdc_action_t::MUPR: {
-            for (auto& window : windows) {
-                if (cursor.x > window->x && cursor.x < window->x + window->width &&
-                    cursor.y > window->y && cursor.y < window->y + window->height) {
-                    window->event_queue.insert(window_event_t { .type = WE_MBR_UP, .mouse = { .x = (i32)(cursor.x - window->x), .y = (i32)(cursor.y - window->y) } });
-                    break;
-                }
-            }
-            break;
-        }
-        default:
-            break;
-    }
-}
-
 void kdc_mouse_handler(const ps2_mouse_state_t* state) {
     if (state->dx != 0 || state->dy != 0)
-        kdc_handle_mouse_event(state->dx, state->dy, kdc_action_t::MMOVE);
+        wm_handle_mouse_event(get_global_window_manager(), state->dx, state->dy, kdc_action_t::MMOVE);
 
     if (static bool s_lmb_last = false; s_lmb_last != state->buttons.left) {
-        kdc_handle_mouse_event(0, 0, state->buttons.left ? kdc_action_t::MDOWNL : kdc_action_t::MUPL);
+        wm_handle_mouse_event(get_global_window_manager(), 0, 0, state->buttons.left ? kdc_action_t::MDOWNL : kdc_action_t::MUPL);
         s_lmb_last = state->buttons.left;
     }
 
     if (static bool rmb_last = false; rmb_last != state->buttons.right) {
-        kdc_handle_mouse_event(0, 0, state->buttons.right ? kdc_action_t::MDOWNR : kdc_action_t::MUPR);
+        wm_handle_mouse_event(get_global_window_manager(), 0, 0, state->buttons.right ? kdc_action_t::MDOWNR : kdc_action_t::MUPR);
         rmb_last = state->buttons.right;
     }
+}
+
+void init_display_driver() {
+    wm_init(&kernel_window_manager);
+    set_global_window_manager(&kernel_window_manager);
+
+    // create & init display driver service
+    io_term_disable();
+
+    // kernel display driver
+    vthread_create(dd_buffer_render_loop, "_ZN7kthread3kddEv");
+
+    // kernel display compositor
+    vthread_create(wm_render_loop, "_ZN7kthread3kdcEv");
+
+    // ASSUME PS/2 MOUSE FOR NOW -- abstract later :)
+
+    ps2_mouse_event_subscribe(kdc_mouse_handler);
 }
 
 extern "C" NORETURN void virtual_kernel_entry(multiboot2_info_t* multiboot_struct) {
@@ -733,70 +584,9 @@ extern "C" NORETURN void virtual_kernel_entry(multiboot2_info_t* multiboot_struc
     init_storage();
     init_input_devices();
     init_drivers();
+    // init_display_driver();
 
     // kernel finished
-
-    // create & init display driver service
-    // io_term_disable();
-    // void* b = graphics_driver_create_buffer(get_global_graphics_driver());
-
-    // kernel display driver
-    // vthread_create([]() { dd_buffer_render_loop(); return 0; }, "_ZN7kthread3kddEv");
-
-    // kernel display compositor
-    // vthread_create([]() {
-    //     while (true) {
-    //         if (!should_render)
-    //             vthread_yield();
-
-    //         should_render = false;
-
-    //         disable_interrupts();
-
-    //         graphics_driver_t* __gd = get_global_graphics_driver();
-
-    //         size_t max_x, max_y;
-    //         graphics_driver_get_size(__gd, &max_x, &max_y);
-
-    //         // graphics_driver_draw_square(__gd, 0, 0, max_x, max_y, { 0, 0, 0 });
-    //         memset(__gd->framebuffer->back_buffer, 0, __gd->framebuffer->size);
-
-    //         for (const auto& w : windows) {
-    //             graphics_driver_draw_square(__gd, w->x - 1, w->y - 15, w->width + 2, w->height + 2 + 15, { 255, 255, 255 });
-    //             void* page_table_current = amd64_get_page_table();
-    //             amd64_set_page_table(vmem_virtual_to_physical(w->parent_process->page_table));
-    //             framebuffer_copy_remote_square(__gd->framebuffer, w->buffer, w->x, w->y, w->width, w->height, 0, 0);
-    //             amd64_set_page_table(page_table_current);
-    //         }
-
-    //         graphics_driver_draw_linev(__gd, cursor.x, cursor.y, 10, { 0, 0, 0 });
-    //         graphics_driver_draw_pixel(__gd, cursor.x + 1, cursor.y + 1, { 0, 0, 0 });
-    //         graphics_driver_draw_pixel(__gd, cursor.x + 2, cursor.y + 2, { 0, 0, 0 });
-    //         graphics_driver_draw_pixel(__gd, cursor.x + 3, cursor.y + 3, { 0, 0, 0 });
-    //         graphics_driver_draw_pixel(__gd, cursor.x + 4, cursor.y + 4, { 0, 0, 0 });
-    //         graphics_driver_draw_pixel(__gd, cursor.x + 5, cursor.y + 5, { 0, 0, 0 });
-    //         graphics_driver_draw_pixel(__gd, cursor.x + 6, cursor.y + 6, { 0, 0, 0 });
-    //         graphics_driver_draw_lineh(__gd, cursor.x + 4, cursor.y + 7, 3, { 0, 0, 0 });
-    //         graphics_driver_draw_pixel(__gd, cursor.x + 1, cursor.y + 9, { 0, 0, 0 });
-    //         graphics_driver_draw_pixel(__gd, cursor.x + 2, cursor.y + 8, { 0, 0, 0 });
-    //         graphics_driver_draw_pixel(__gd, cursor.x + 3, cursor.y + 7, { 0, 0, 0 });
-
-    //         // inline
-    //         graphics_driver_draw_linev(__gd, cursor.x + 1, cursor.y + 2, 7, { 255, 255, 255 });
-    //         graphics_driver_draw_linev(__gd, cursor.x + 2, cursor.y + 3, 5, { 255, 255, 255 });
-    //         graphics_driver_draw_linev(__gd, cursor.x + 3, cursor.y + 4, 3, { 255, 255, 255 });
-    //         graphics_driver_draw_linev(__gd, cursor.x + 4, cursor.y + 5, 2, { 255, 255, 255 });
-    //         graphics_driver_draw_linev(__gd, cursor.x + 5, cursor.y + 6, 1, { 255, 255, 255 });
-
-    //         enable_interrupts();
-    //     }
-        
-    //     return 0;
-    // }, "_ZN7kthread3kdcEv");
-
-    // ASSUME PS/2 MOUSE FOR NOW -- abstract later :)
-
-    // ps2_mouse_event_subscribe(kdc_mouse_handler);
 
     // process_t p {};
     // create_process(&p, "harddisk0/TestProgram.exe");
