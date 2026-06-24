@@ -561,6 +561,8 @@ void init_display_driver() {
     // ASSUME PS/2 MOUSE FOR NOW -- abstract later :)
 
     ps2_mouse_event_subscribe(kdc_mouse_handler);
+
+    initialized_kernel_components.display_driver = true;
 }
 
 extern "C" NORETURN void virtual_kernel_entry(multiboot2_info_t* multiboot_struct) {
