@@ -10,8 +10,8 @@ cd src/network_drivers
 make -j$(nproc) build
 cd ../..
 
-echo "Building test program ..."
-cd src/test_program
+echo "Building minesweeper ..."
+cd src/minesweeper
 make -j$(nproc) build
 cd ../..
 

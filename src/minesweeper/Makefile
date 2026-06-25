@@ -7,7 +7,7 @@
 .RECIPEPREFIX = >
 
 # directories & files
-TARGET_NAME                 := TestProgram
+TARGET_NAME                 := Minesweeper
 PROJECT_PATH                := .
 SOURCE_FILES_PATH           := $(PROJECT_PATH)/src
 HEADER_FILES_PATH           := $(PROJECT_PATH)/include
