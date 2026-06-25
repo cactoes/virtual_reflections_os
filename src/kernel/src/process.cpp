@@ -39,11 +39,11 @@ bool create_process(process_t* process, const char* path) {
     if (program_section_info.size == 0)
         return false;
 
-    void* base_address_v = malloc_aligned(align_up(program_section_info.size, PAGE_SIZE_LARGE), PAGE_SIZE_LARGE);
-    if (!base_address_v)
+    process->program_data_v = malloc_aligned(align_up(program_section_info.size, PAGE_SIZE_LARGE), PAGE_SIZE_LARGE);
+    if (!process->program_data_v)
         return false;
 
-    elf_load_program_sections(process->data, (u8*)base_address_v, &program_section_info);
+    elf_load_program_sections(process->data, (u8*)process->program_data_v, &program_section_info);
 
     auto tables = elf_get_tables(process->data);
     if (!tables.string_table || !tables.symbol_table)
@@ -109,7 +109,7 @@ bool create_process(process_t* process, const char* path) {
 
     // do this before the page table switch
     void* current_page_table_p = amd64_get_page_table();
-    void* base_address_p = vmem_virtual_to_physical(base_address_v);
+    void* base_address_p = vmem_virtual_to_physical(process->program_data_v);
     void* user_stack_p = vmem_virtual_to_physical(stack_kernel_v);
 
     // we dont want to accidentaly map into wrong address space
@@ -158,4 +158,17 @@ bool process_setup_kernel_process(process_t* process, heap_t* heap) {
     set_current_process(process);
 
     return true;
+}
+
+void delete_process(process_t* process) {
+    if (process->data) {
+        free(process->data);
+        process->data = nullptr;
+        process->data_size = 0;
+    }
+
+    if (process->program_data_v) {
+        free_aligned(process->program_data_v);
+        process->program_data_v = nullptr;
+    }
 }

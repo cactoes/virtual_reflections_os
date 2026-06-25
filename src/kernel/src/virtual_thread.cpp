@@ -45,8 +45,10 @@ void vthread_cleanup(vthread_t* thread) {
 
     // TODO @since 09/05/2026 -- 20:56
     // properly free parent process
-    if (thread->parent)
-        free(thread->parent);
+    if (thread->parent) {
+        // free(thread->parent);
+        delete_process(thread->parent);
+    }
 }
 
 /// @brief                  inits main thread context

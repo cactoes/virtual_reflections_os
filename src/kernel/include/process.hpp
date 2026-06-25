@@ -36,6 +36,8 @@ struct process_t {
     size_t data_size;
     void* start_address;
 
+    void* program_data_v;
+
     bool is_kernel_process;
 };
 
@@ -43,5 +45,6 @@ process_t* get_current_process();
 void set_current_process(process_t* p_process);
 bool create_process(process_t* process, const char* path);
 bool process_setup_kernel_process(process_t* process, heap_t* heap);
+void delete_process(process_t* process);
 
 #endif // __PROCESS_HPP__
