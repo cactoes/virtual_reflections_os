@@ -33,6 +33,7 @@
 #define DHCP_MESSAGE_TYPE_DHCPLEASEUNKNOWN      12
 #define DHCP_MESSAGE_TYPE_DHCPLEASEACTIVE       13
 
+#define DHCP_OPTION_PAD                         0
 #define DHCP_OPTION_SUBNET_MASK                 1
 #define DHCP_OPTION_ROUTER                      3
 #define DHCP_OPTION_DNS                         6
@@ -41,6 +42,7 @@
 #define DHCP_OPTION_IP_LEASE_TIME               51
 #define DHCP_OPTION_DHCP_MESSAGE_TYPE           53
 #define DHCP_OPTION_DHCP_SERVER_ID              54
+#define DHCP_OPTION_PARAMETER_REQUEST_LIST      55
 #define DHCP_OPTION_CLIENT_ID                   61
 #define DHCP_OPTION_END                         255
 

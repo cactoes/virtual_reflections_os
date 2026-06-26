@@ -69,21 +69,26 @@ void network_manager_dhcp_callback(socket_t* socket, u32 ip, u16 port, const u8*
         session.lease_time = dhcp_field_to_number(&option_lease_time_s->value[0], 4);
 
         dhcp_packet_t p = dhcp_create_request_packet(DEVICE_HOST_NAME, &session, session.ip.raw);
-        network_manager->dhcp_socket->remote_ip = session.dhcp_ip.raw;
         socket_send(network_manager->dhcp_socket, (const u8*)&p, sizeof(dhcp_packet_t));
     }
 
     if (option_message_type->value[0] == DHCP_MESSAGE_TYPE_DHCPACK) {
-        if (!option_subnet_mask || !option_router)
+        if (!option_subnet_mask || !option_router) {
+            printf("[ DHCP ] error: ack dropped because subnet or router options are missing\n");
             return;
+        }
 
-        if (bswap32(packet->your_ip_addr) != session.ip.raw)
+        if (bswap32(packet->your_ip_addr) != session.ip.raw) {
+            printf("[ DHCP ] error: ack dropped because ip mismatch\n");
             return;
+        }
 
         session.interface->subnet_mask = { .raw = TO_IP(option_subnet_mask->value[0], option_subnet_mask->value[1], option_subnet_mask->value[2], option_subnet_mask->value[3]) };
         session.interface->gateway = { .raw = TO_IP(option_router->value[0], option_router->value[1], option_router->value[2], option_router->value[3]) };
         session.interface->ip = session.ip;
         session.interface->is_active = true;
+
+        network_manager->dhcp_socket->remote_ip = session.dhcp_ip.raw;
 
         kprintf("[DHCP] configured ip for '%s' - %u.%u.%u.%u\n", session.interface->device_name, (u32)session.ip.byte3, (u32)session.ip.byte2, (u32)session.ip.byte1, (u32)session.ip.byte0);
         printf("[ DHCP ] configured ip for '%s' - %u.%u.%u.%u\n", session.interface->device_name, (u32)session.ip.byte3, (u32)session.ip.byte2, (u32)session.ip.byte1, (u32)session.ip.byte0);

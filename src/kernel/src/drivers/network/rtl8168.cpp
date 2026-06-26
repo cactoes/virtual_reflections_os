@@ -114,6 +114,9 @@ bool rtl8168_receive_init(rtl8168_t* network_device) {
     // upload settings
     rtl8168_write_reg32(network_device, RTL8168_RX_CONFIG, 0x0000e73f);
 
+    rtl8168_write_reg32(network_device, 0x08, 0xFFFFFFFF);
+    rtl8168_write_reg32(network_device, 0x0C, 0xFFFFFFFF);
+
     return true;
 }
 

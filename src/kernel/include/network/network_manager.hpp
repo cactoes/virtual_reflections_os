@@ -9,7 +9,7 @@
 #define __NETWORK_MANAGER_HPP__
 
 #define DNS_MAX_WAIT 1000 // miliseconds
-#define DEVICE_HOST_NAME "VirtualReflections Machine"
+#define DEVICE_HOST_NAME "VirtualReflections-Machine"
 #define DEFAULT_DNS_SERVER TO_IP(1, 1, 1, 1)
 
 #include "common.hpp"

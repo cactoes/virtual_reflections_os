@@ -45,6 +45,12 @@ u8* dhcp_option_get(dhcp_packet_t* packet, u8 type) {
         if (options[0] == DHCP_OPTION_END)
             return nullptr;
 
+        if (options[0] == DHCP_OPTION_PAD) {
+            options++;
+            ptr++;
+            continue;
+        }
+
         options += options[1] + 2;
         ptr += options[1] + 2;
     }
@@ -104,6 +110,9 @@ dhcp_packet_t dhcp_create_discover_packet(const char* hostname, dhcp_client_t::s
 
     dhcp_options_writer_add_option(&writer, DHCP_OPTION_HOSTNAME, (u8*)hostname, strlen(hostname));
 
+    u8 param_request_list[] { DHCP_OPTION_SUBNET_MASK, DHCP_OPTION_ROUTER, DHCP_OPTION_DNS };
+    dhcp_options_writer_add_option(&writer, DHCP_OPTION_PARAMETER_REQUEST_LIST, &param_request_list[0], sizeof(param_request_list));
+
     dhcp_options_writer_shutdown(&writer);
 
     return packet;
@@ -123,11 +132,11 @@ dhcp_packet_t dhcp_create_request_packet(const char* hostname, dhcp_client_t::se
 
     packet.xid = session->xid;
     packet.secs = bswap16(0);
-    packet.flags = bswap16(0);
+    packet.flags = bswap16(0x8000);
 
     packet.client_ip_addr = bswap32(0);
     packet.your_ip_addr = bswap32(0);
-    packet.server_ip_addr = bswap32(session->dhcp_ip.raw);
+    packet.server_ip_addr = bswap32(0);
     packet.gateway_ip_addr = bswap32(0);
 
     for (size_t i = 0; i < 6; i++)
@@ -141,10 +150,19 @@ dhcp_packet_t dhcp_create_request_packet(const char* hostname, dhcp_client_t::se
     u8 dhcp_message_type[] { DHCP_MESSAGE_TYPE_DHCPREQUEST };
     dhcp_options_writer_add_option(&writer, DHCP_OPTION_DHCP_MESSAGE_TYPE, &dhcp_message_type[0], sizeof(dhcp_message_type));
 
+    u8 client_id[] { DHCP_HTYPE_ETHERNET, session->interface->mac[0], session->interface->mac[1], session->interface->mac[2],session->interface-> mac[3], session->interface->mac[4], session->interface->mac[5] };
+    dhcp_options_writer_add_option(&writer, DHCP_OPTION_CLIENT_ID, &client_id[0], sizeof(client_id));
+
     u32 wanted_ip_swapped = bswap32(wanted_ip);
     dhcp_options_writer_add_option(&writer, DHCP_OPTION_REQUESTED_IP_ADDR, (u8*)&wanted_ip_swapped, sizeof(u32));
 
+    u32 server_id_swapped = bswap32(session->dhcp_ip.raw);
+    dhcp_options_writer_add_option(&writer, DHCP_OPTION_DHCP_SERVER_ID, (u8*)&server_id_swapped, sizeof(u32));
+
     dhcp_options_writer_add_option(&writer, DHCP_OPTION_HOSTNAME, (u8*)hostname, strlen(hostname));
+
+    u8 param_request_list[] { DHCP_OPTION_SUBNET_MASK, DHCP_OPTION_ROUTER, DHCP_OPTION_DNS };
+    dhcp_options_writer_add_option(&writer, DHCP_OPTION_PARAMETER_REQUEST_LIST, &param_request_list[0], sizeof(param_request_list));
 
     dhcp_options_writer_shutdown(&writer);
 
@@ -187,7 +205,7 @@ dhcp_packet_t dhcp_create_lease_extend_packet(const char* hostname, dhcp_client_
     dhcp_options_writer_add_option(&writer, DHCP_OPTION_REQUESTED_IP_ADDR, (u8*)&ip_to_extend_swapped, sizeof(u32));
 
     u32 dhcp_server_id_swapped = bswap32(session->dhcp_ip.raw);
-    dhcp_options_writer_add_option(&writer, DHCP_OPTION_REQUESTED_IP_ADDR, (u8*)&dhcp_server_id_swapped, sizeof(u32));
+    dhcp_options_writer_add_option(&writer, DHCP_OPTION_DHCP_SERVER_ID, (u8*)&dhcp_server_id_swapped, sizeof(u32));
 
     dhcp_options_writer_add_option(&writer, DHCP_OPTION_HOSTNAME, (u8*)hostname, strlen(hostname));
 
