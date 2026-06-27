@@ -1,5 +1,4 @@
 #include "gui/programs/webbrowser.hpp"
-#include "gui/desktop.hpp"
 #include "memory/heap.hpp"
 #include "network/tcp.hpp"
 #include "io.hpp"
@@ -15,14 +14,14 @@ void data_handler(const u8* data, size_t size) {
 }
 
 void webbrowser_init() {
-    desktop_render_target_t target {};
-    target.callback = webbrowser_render_target;
-    target.x = 1;
-    target.y = 1;
-    target.w = 200;
-    target.h = 150;
-    target.name = "Browser";
-    desktop_register_target(target);
+    // desktop_render_target_t target {};
+    // target.callback = webbrowser_render_target;
+    // target.x = 1;
+    // target.y = 1;
+    // target.w = 200;
+    // target.h = 150;
+    // target.name = "Browser";
+    // desktop_register_target(target);
 
     // const auto subsys_dns_client = subsys_get<subsys_dns_client_t>(SUBSYS_DNS_CLIENT);
     // u32 ip = subsys_dns_client->resolve("httpforever.com");

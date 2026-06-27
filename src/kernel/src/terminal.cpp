@@ -5,7 +5,6 @@
 #include "system_info.hpp"
 #include "virtual_thread.hpp"
 
-#include "gui/desktop.hpp"
 #include "time/clock.hpp"
 
 #include "filesystems/vfs.hpp"
@@ -183,17 +182,6 @@ void terminal_execute(const std::string& path, const std::dynamic_array<std::str
             printf("CPU:     %s\n", sysinfo->cpu_name.c_str());
             printf("Threads: %ul\n", vthread_get_count());
             printf("Uptime:  %s\n", time_format_to_string(clock_get_time_since_boot()).c_str());
-            break;
-        }
-        case hash_fnv1a_64("gui"): {
-            printf("Starting graphical environment ...\n");
-            io_term_disable();
-            if (vthread_create(desktop_init) == VTHREAD_HANDLE_INVALID)
-                printf("Failed start graphical environment\n");
-
-            // TODO @since 29/10/2025 -- 00:10
-            // terminal keyboard unsubscribe
-            // else the terminal keeps running during gui ...
             break;
         }
         case hash_fnv1a_64("dns"): {

@@ -36,8 +36,6 @@
 
 #include "time/clock.hpp"
 
-#include "gui/desktop.hpp"
-
 #include "std/random.hpp"
 
 #include "multiboot.hpp"
@@ -274,8 +272,8 @@ void init_virtual_threading() {
     // make all of these have their own dedicated thread function
     const vthread_handle_t critical_threads[] = {
         vthread_create(nic_thread, "_ZN7kthread3nicEv"),
-        vthread_create([]() { while (true) ps2_mouse_process_packet(); return 1; }, "PS/2 Mouse"),
-        vthread_create([]() { while (true) ps2_keyboard_process_packet(); return 1; }, "PS/2 Keyboard")
+        vthread_create([]() { while (true) ps2_mouse_process_packet(); return 1; }, "_ZN7kthread8ps2mouseEv"),
+        vthread_create([]() { while (true) ps2_keyboard_process_packet(); return 1; }, "_ZN7kthread11ps2keyboardEv")
     };
 
     for (const auto& thread : critical_threads)
