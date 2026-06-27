@@ -45,6 +45,13 @@ struct vfs_t {
     file_descriptor_t last_fd;
 };
 
+struct vfs_storage_info_t {
+    std::string serial;
+    std::string firmware;
+    std::string model;
+    u64 capacity;
+};
+
 vfs_t* get_global_vfs();
 void set_global_vfs(vfs_t* vfs);
 
@@ -59,5 +66,6 @@ bool vfs_list_directory(vfs_t* vfs, const char* path, std::dynamic_array<vfs_nod
 
 bool vfs_mount_block_device(vfs_t* vfs, std::unique_ptr<block_device_t> device, const char* name);
 bool vfs_mount_device(vfs_t* vfs, void* device, block_device_type_t type, const char* name);
+bool vfs_get_storage_info(vfs_t* vfs, const char* path, vfs_storage_info_t* storage_info);
 
 #endif // __VFS_HPP__

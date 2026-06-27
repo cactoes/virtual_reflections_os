@@ -308,3 +308,35 @@ bool vfs_mount_device(vfs_t* vfs, void* device, block_device_type_t type, const 
     free(buffer);
     return true;
 }
+
+bool vfs_get_storage_info(vfs_t* vfs, const char* path, vfs_storage_info_t* storage_info) {
+    if (!vfs || !path || !storage_info)
+        return false;
+    
+    const vfs_mount_point_t* mount_point = vfs_get_mount_point(vfs, path);
+    if (!mount_point)
+        return false;
+
+    const block_device_t* block_device = nullptr;
+
+    switch (mount_point->type) {
+        case fs_type_t::ISO9660:
+            block_device = iso9660_get_block_device((iso9660_fsdata_t*)mount_point->data.get());
+            break;
+        case fs_type_t::FAT32:
+            block_device = fat32_get_block_device((fat32_fsdata_t*)mount_point->data.get());
+            break;
+        default:
+            break;
+    }
+
+    if (!block_device)
+        return false;
+
+    storage_info->capacity = block_device_get_drive_capacity((block_device_t*)block_device);
+    storage_info->firmware = block_device_get_firmware((block_device_t*)block_device);
+    storage_info->serial = block_device_get_serial((block_device_t*)block_device);
+    storage_info->model = block_device_get_model((block_device_t*)block_device);
+
+    return true;
+}
