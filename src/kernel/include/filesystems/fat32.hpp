@@ -128,5 +128,6 @@ bool fat32_directory_exists(fat32_fsdata_t* fs_data, const char* path);
 bool fat32_file_exists(fat32_fsdata_t* fs_data, const char* path);
 bool fat32_read(fat32_fsdata_t* fs_data, const char* path, u8** out_data, size_t* out_size);
 bool fat32_list_directory(fat32_fsdata_t* fs_data, const char* path, std::dynamic_array<fat32_node_t>* out_nodes);
+const block_device_t* fat32_get_block_device(fat32_fsdata_t* fs_data);
 
 #endif // __FAT32_HPP__

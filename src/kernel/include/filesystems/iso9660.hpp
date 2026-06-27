@@ -136,5 +136,6 @@ bool iso9660_directory_exists(iso9660_fsdata_t* fs_data, const char* path);
 bool iso9660_file_exists(iso9660_fsdata_t* fs_data, const char* path);
 bool iso9660_read(iso9660_fsdata_t* fs_data, const char* path, u8** out_data, size_t* out_size);
 bool iso9660_list_directory(iso9660_fsdata_t* fs_data, const char* path, std::dynamic_array<iso9660_node_t>* out_nodes);
+const block_device_t* iso9660_get_block_device(iso9660_fsdata_t* fs_data);
 
 #endif // __ISO9660_HPP__
