@@ -32,13 +32,11 @@ PS> .\vrtlkt.ps1 -Tool run
 - [ ] rework keyboard controller -> move to io etc..
 - [ ] drive / disk manager
     - [ ] interfaceable
-    - [x] list of all disks
+    - [ ] list of all disks
 - [ ] work on vthreads
 - [ ] general cleanup / restructuring
     - [ ] interrupt manager
 - [ ] gui
-- [ ] rtl8169 driver (maybe rtl8168)
-    - [ ] fix DHCP packets not receiving
 - [ ] (simple) usb drivers
     - [ ] keyboard
     - [ ] usb storage device
