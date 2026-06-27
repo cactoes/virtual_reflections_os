@@ -21,5 +21,9 @@ struct block_device_t {
 
 bool block_read_sized(block_device_t* device, u64 lba, u8* buffer, size_t size);
 bool block_read(block_device_t* device, u64 lba, u8* buffer);
+const char* block_device_get_model(block_device_t* device);
+const char* block_device_get_serial(block_device_t* device);
+const char* block_device_get_firmware(block_device_t* device);
+u64 block_device_get_drive_capacity(block_device_t* device);
 
 #endif // __BLOCK_DEVICE_HPP__
