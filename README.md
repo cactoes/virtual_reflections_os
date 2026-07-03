@@ -19,9 +19,9 @@ Adding the `-Debug` flag make qemu be able to connect to gdb on port `1234`
 PS> .\vrtlkt.ps1 -Tool run
 ```
 
-## Diagrams for a quick overview
-![](docs/svg/kernel%20diagram.svg)
-![](docs/svg/storage%20diagram.svg)
+## Diagrams
+In the `docs/svg` folder there are some diagrams that give a simple overview of the kernel and some subsystems. <br>
+Note: All, except the network diagram, are out of date!
 
 ## Current active tasks
 - processes: process management
