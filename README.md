@@ -1,6 +1,8 @@
 # Virtual Reflections OS
 A 64-bit custom-made operating system, using GRUB as bootloader, Which can play Minesweeper in usermode!
 
+![](logo.png)
+
 ## VirtualReflectionsOS Toolkit
 This is a simple helper powershell script for managing the build environment.
 
@@ -34,17 +36,19 @@ PS> .\vrtlkt.ps1 -Tool run
     - [ ] interfaceable
     - [ ] list of all disks
 - [ ] work on vthreads
-- [ ] general cleanup / restructuring
-    - [ ] interrupt manager
 - [ ] gui
 - [ ] (simple) usb drivers
     - [ ] keyboard
     - [ ] usb storage device
 
-## Mapping driver symbols in debug mode
+## Mapping symbols in debug mode
 ```
--exec add-symbol-file ./build/{driver} {address}
+-exec add-symbol-file ./build/{file} {address}
 ```
+
+## Contributing
+This project is not accepting contributions or pull requests.  
+It is public for reference and educational purposes only.
 
 ## Resources
 ### General
@@ -65,7 +69,3 @@ PS> .\vrtlkt.ps1 -Tool run
 [cavOS - https://github.com/malwarepad/cavOS](https://github.com/malwarepad/cavOS)<br>
 [RedactedOS - https://github.com/differrari/RedactedOS](https://github.com/differrari/RedactedOS)<br>
 [KeblaOS - https://github.com/baponkar/KeblaOS/tree/main](https://github.com/baponkar/KeblaOS/tree/main)<br>
-
-## Contributing
-This project is not accepting contributions or pull requests.  
-It is public for reference and educational purposes only.
