@@ -51,6 +51,7 @@
 #include "cpu.hpp"
 #include "memory/paging.hpp"
 #include "elf.hpp"
+#include "kterminal.hpp"
 
 #include "network/socket.hpp"
 #include "network/dhcp.hpp"
@@ -59,6 +60,7 @@
 
 #include "arch/arch_selector.hpp"
 #include "arch/amd64/apic.hpp"
+#include "arch/amd64/cpu.hpp"
 
 #include "gui/display_driver.hpp"
 #include "process.hpp"
@@ -124,6 +126,7 @@ static storage_manager_t kernel_storage_manager {};
 static driver_manager_t kernel_driver_manager {};
 static process_t kernel_process {};
 static window_manager_t kernel_window_manager {};
+static kterminal_t kernel_terminal {};
 
 static
 void system_log(const char* level, const char* color, const char* message) {
@@ -167,8 +170,6 @@ void init_memory() {
     system_log_ok("setup virtual memory");
 }
 
-extern bool io_term_init(size_t w, size_t h);
-
 void init_graphics(multiboot2_info_t* multiboot_struct) {
     if (graphics_driver_init(&kernel_graphics_driver, multiboot_struct)) {
         set_global_graphics_driver(&kernel_graphics_driver);
@@ -178,7 +179,8 @@ void init_graphics(multiboot2_info_t* multiboot_struct) {
 
         initialized_kernel_components.graphics = true;
 
-        io_term_init(kernel_graphics_driver.framebuffer->width, kernel_graphics_driver.framebuffer->height);
+        kterm_init(&kernel_terminal);
+        set_kterm_session(&kernel_terminal);
     } else {
         kernel_fatal(KERNEL_FATAL_GRAPHICS_INIT, "graphics failed driver to initialize");
     }
@@ -272,8 +274,24 @@ void init_virtual_threading() {
     // make all of these have their own dedicated thread function
     const vthread_handle_t critical_threads[] = {
         vthread_create(nic_thread, "_ZN7kthread3nicEv"),
-        vthread_create([]() { while (true) ps2_mouse_process_packet(); return 1; }, "_ZN7kthread8ps2mouseEv"),
-        vthread_create([]() { while (true) ps2_keyboard_process_packet(); return 1; }, "_ZN7kthread11ps2keyboardEv")
+        vthread_create([]() {
+            while (true) {
+                while (ps2_mouse_process_packet())
+                    ;
+
+                vthread_yield();
+            }
+            return 1;
+        }, "_ZN7kthread8ps2mouseEv"),
+        vthread_create([]() {
+            while (true) {
+                while (ps2_keyboard_process_packet())
+                    ;
+
+                vthread_yield();
+            }
+            return 1;
+        }, "_ZN7kthread11ps2keyboardEv")
     };
 
     for (const auto& thread : critical_threads)
@@ -548,7 +566,9 @@ void init_display_driver() {
     set_global_window_manager(&kernel_window_manager);
 
     // create & init display driver service
-    io_term_disable();
+    // TODO @since 13/07/2026 -- 02:40
+    // disable the kterm
+    // io_term_disable();
 
     // kernel display driver
     vthread_create(dd_buffer_render_loop, "_ZN7kthread3kddEv");
@@ -584,18 +604,20 @@ extern "C" NORETURN void virtual_kernel_entry(multiboot2_info_t* multiboot_struc
     init_storage();
     init_input_devices();
     init_drivers();
-    // init_display_driver();
 
-    // kernel finished
+    // ~~ kernel finished ~~
+
+    // stage 4 -- applications
+    if (!kterm_start(&kernel_terminal))
+        printf("[ \033[91mERROR\033[0m ] failed to start terminal\n");
+
+    // init_display_driver();
 
     // process_t p {};
     // create_process(&p, "harddisk0/TestProgram.exe");
 
-    if (vthread_create(terminal_thread_main) == VTHREAD_HANDLE_INVALID)
-        printf("[ \033[91mERROR\033[0m ] failed to start terminal\n");
-
     // we shoudn t reach this point since the kernel should never stop
     // incase we do just hang here so we dont break anything
     while (true)
-        vthread_yield();
+        amd64_halt();
 }

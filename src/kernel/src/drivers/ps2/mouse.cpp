@@ -104,8 +104,12 @@ const ps2_mouse_state_t* ps2_mouse_get_state() {
     return &g_mouse_state;
 }
 
-void ps2_mouse_process_packet() {
+bool ps2_mouse_process_packet() {
     ps2_mouse_state_t packet {};
-    if (global_mouse_state_buffer.get(packet))
+    if (global_mouse_state_buffer.get(packet)) {
         g_mouse_event_manager.fire_event(&packet);
+        return true;
+    }
+
+    return false;
 }
