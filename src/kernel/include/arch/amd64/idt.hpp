@@ -35,12 +35,12 @@ struct amd64_idt_entry_t {
     u16 isr_mid;
     u32 isr_high;
     u32 reserved;
-} PACKED;
+} __packed;
 
 struct amd64_idt_register_t {
     u16 limit;
     u64 base;
-} PACKED;
+} __packed;
 
 typedef interrupt_regs_t*(*interrupt_dispatch_callback_t)(u64 code, interrupt_regs_t* stack);
 

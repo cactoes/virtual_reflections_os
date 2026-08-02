@@ -18,7 +18,7 @@ struct ethernet_header_t {
     u8 dst_mac[6];
     u8 src_mac[6];
     u16 ethernet_type;
-} PACKED;
+} __packed;
 
 int ethernet_receive(network_interface_t* interface, u8* frame, size_t size);
 void ethernet_send(network_interface_t* interface, u8 dst_mac[6], u16 type, const u8* packet, size_t size);

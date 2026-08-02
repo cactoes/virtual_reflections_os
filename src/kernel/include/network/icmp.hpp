@@ -17,7 +17,7 @@ struct icmp_header_t {
     u16 checksum;
     u16 identifier;
     u16 sequence;
-} PACKED;
+} __packed;
 
 void icmp_receive(network_interface_t* interface, u8* payload, size_t len);
 

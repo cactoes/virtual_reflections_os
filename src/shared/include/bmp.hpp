@@ -15,7 +15,7 @@ struct bmp_file_header_t {
     u32 file_size;
     u16 unused[2];
     u32 image_data_offset;
-} PACKED;
+} __packed;
 
 struct bmp_info_header_t {
     u32 header_size;
@@ -29,13 +29,13 @@ struct bmp_info_header_t {
     int pixels_per_m_y;
     u32 number_of_colors;
     u32 number_of_importand_colors;
-} PACKED;
+} __packed;
 
 struct bmp_color_t {
     u8 r;
     u8 g;
     u8 b;
-} PACKED;
+} __packed;
 
 struct bmp_image_t {
     u8* file_data;

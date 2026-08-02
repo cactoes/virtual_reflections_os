@@ -73,7 +73,7 @@ struct DHCPPacket {
     u32 m_nMagic;
 
     u8 m_aOptions[308];
-} PACKED;
+} __packed;
 
 struct DHCPOptionsWriter {
     u8* m_pBuffer;

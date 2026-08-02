@@ -389,7 +389,7 @@ bool rtl8168_send_packet(rtl8168_t* device, const void* data, u64 size) {
     return false;
 }
 
-DISABLE_SSE void rtl8168_receive_packet(rtl8168_t* device) {
+__disable_sse void rtl8168_receive_packet(rtl8168_t* device) {
     while ((device->rdesc_array[device->rx_current].command & RTL8168_DESC_OWN) == 0) {
         u32 cmd = device->rdesc_array[device->rx_current].command;
         u32 length = cmd & 0x3FFF;

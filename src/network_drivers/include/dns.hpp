@@ -21,19 +21,19 @@
 //     u16 m_nANCount;
 //     u16 m_nNSCount;
 //     u16 m_nARCount;
-// } PACKED;
+// } __packed;
 
 // struct DNSQuery {
 //     u16 m_nQType;
 //     u16 m_nQClass;
-// } PACKED;
+// } __packed;
 
 // struct DNSRecord {
 //     u16 m_nQType;
 //     u16 m_nQClass;
 //     u32 m_nTTL;
 //     u16 m_nRDLength;
-// } PACKED;
+// } __packed;
 
 // enum class DNSQueryType : u16 {
 //     A = 1,

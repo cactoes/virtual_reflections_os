@@ -114,7 +114,7 @@ int e1000_transmit_init(e1000_t* p_device) {
 
 // BUG @since 13/05/2026 -- 20:14
 // DISABLE_SSE is a temp fix for some sse2 bug
-DISABLE_SSE void e1000_recieve_packet(e1000_t* device) {
+__disable_sse void e1000_recieve_packet(e1000_t* device) {
     // get current desc
     e1000_rdesc_t* desc = &device->rdesc_array[device->rx_tail];
 

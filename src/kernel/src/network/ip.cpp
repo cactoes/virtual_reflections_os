@@ -91,7 +91,7 @@ bool ip_send(network_interface_t* interface, u32 dst_ip, u8 protocol, const u8* 
     struct {
         ip_header_t ip;
         u8 payload[1500];
-    } PACKED ip_payload;
+    } __packed ip_payload;
 
     ip_payload.ip = ip;
     memcpy(ip_payload.payload, payload, payload_len > 1500 ? 1500 : payload_len);

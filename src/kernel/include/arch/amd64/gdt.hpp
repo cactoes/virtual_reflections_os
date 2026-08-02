@@ -73,7 +73,7 @@ struct amd64_gdt_t {
 struct amd64_gdtr_t {
     u16 limit;
     u64 address;
-} PACKED;
+} __packed;
 
 struct amd64_tss_t {
     u32 resereved0;
@@ -92,7 +92,7 @@ struct amd64_tss_t {
     u64 resereved3;
     u16 resereved4;
     u16 iomap_offset;
-} PACKED;
+} __packed;
 
 static amd64_gdt_entry_t g_amd64_zero_entry  {
     .limit = 0,
