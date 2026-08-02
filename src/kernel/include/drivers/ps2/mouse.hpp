@@ -55,6 +55,6 @@ void ps2_mouse_init();
 void* ps2_mouse_handle_interrupt(void* stack, void*);
 void ps2_mouse_event_subscribe(void(*p_handler)(const ps2_mouse_state_t*));
 const ps2_mouse_state_t* ps2_mouse_get_state();
-void ps2_mouse_process_packet();
+bool ps2_mouse_process_packet();
 
 #endif // __DRIVERS_PS2_MOUSE_HPP__

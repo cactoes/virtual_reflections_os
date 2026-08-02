@@ -161,6 +161,9 @@ bool process_setup_kernel_process(process_t* process, heap_t* heap) {
 }
 
 void delete_process(process_t* process) {
+    // TODO @since 04/07/2026 -- 00:41
+    // page table cleanup
+
     if (process->data) {
         free(process->data);
         process->data = nullptr;

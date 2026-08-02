@@ -303,3 +303,10 @@ bool iso9660_list_directory(iso9660_fsdata_t* fs_data, const char* path, std::dy
 
     return true;
 }
+
+const block_device_t* iso9660_get_block_device(iso9660_fsdata_t* fs_data) {
+    if (!fs_data)
+        return nullptr;
+
+    return fs_data->block_device.get();
+}

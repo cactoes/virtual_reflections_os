@@ -54,6 +54,16 @@ void kernel_fatal(u64 code, const char* message) {
     sprintf(buffer, 256, "Stop code: 0x%uh", code);
     graphics_driver_draw_text(gd, w / 2 - w2 / 2, 100 + h2 * 8, buffer, { 255, 255, 255 });
 
+    if (code == KERNEL_FATAL_CRITICAL_THREAD_DIED) {
+        // hacky way of getting the name of the thread
+        const char* thread_name = &message[21];
+
+        size_t w3, h3;
+        graphics_driver_get_text_size(get_global_graphics_driver(), buffer, &w3, &h3);
+
+        graphics_driver_draw_text(gd, w / 2 - w2 / 2 + w3, 100 + h2 * 8, thread_name, { 255, 255, 255 });
+    }
+
     graphics_driver_render(gd);
 
     // reboot here?

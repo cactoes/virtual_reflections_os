@@ -5,7 +5,6 @@
 #include "system_info.hpp"
 #include "virtual_thread.hpp"
 
-#include "gui/desktop.hpp"
 #include "time/clock.hpp"
 
 #include "filesystems/vfs.hpp"
@@ -15,6 +14,7 @@
 #include "drivers/driver.hpp"
 #include "drivers/ps2/ps2.hpp"
 #include "network/nidm.hpp"
+#include "storage/storage_manager.hpp"
 
 #include "filesystems/vfs.hpp"
 #include "drivers/vga.hpp"
@@ -162,17 +162,17 @@ void terminal_execute(const std::string& path, const std::dynamic_array<std::str
         case hash_fnv1a_64("diskstat"): {
             if (args.length() >= 1) {
                 auto arg0 = *args.get_at(0);
-    
-                // vfs_storage_info_t storage_info {};
-                // if (!vfs_get_disk_info(get_global_vfs(), arg0.c_str(), &storage_info)) {
-                //     printf("Disk or drive not found\n");
-                //     break;
-                // }
 
-                // printf("%s:\n", storage_info.model.c_str());
-                // printf("    Serial: %s\n", storage_info.serial.c_str());
-                // printf("    Firmware: %s\n", storage_info.firmare.c_str());
-                // printf("    Disk size: %s\n", size_format_to_string(storage_info.capacity).c_str());
+                vfs_storage_info_t storage_info {};
+                if (!vfs_get_storage_info(get_global_vfs(), arg0.c_str(), &storage_info)) {
+                    printf("Disk or drive not found\n");
+                    break;
+                }
+
+                printf("%s:\n", storage_info.model.c_str());
+                printf("    Serial: %s\n", storage_info.serial.c_str());
+                printf("    Firmware: %s\n", storage_info.firmware.c_str());
+                printf("    Disk size: %s\n", size_format_to_string(storage_info.capacity).c_str());
             }
             break;
         }
@@ -182,17 +182,6 @@ void terminal_execute(const std::string& path, const std::dynamic_array<std::str
             printf("CPU:     %s\n", sysinfo->cpu_name.c_str());
             printf("Threads: %ul\n", vthread_get_count());
             printf("Uptime:  %s\n", time_format_to_string(clock_get_time_since_boot()).c_str());
-            break;
-        }
-        case hash_fnv1a_64("gui"): {
-            printf("Starting graphical environment ...\n");
-            io_term_disable();
-            if (vthread_create(desktop_init) == VTHREAD_HANDLE_INVALID)
-                printf("Failed start graphical environment\n");
-
-            // TODO @since 29/10/2025 -- 00:10
-            // terminal keyboard unsubscribe
-            // else the terminal keeps running during gui ...
             break;
         }
         case hash_fnv1a_64("dns"): {

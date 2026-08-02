@@ -1,6 +1,8 @@
 # Virtual Reflections OS
 A 64-bit custom-made operating system, using GRUB as bootloader, Which can play Minesweeper in usermode!
 
+![](logo.png)
+
 ## VirtualReflectionsOS Toolkit
 This is a simple helper powershell script for managing the build environment.
 
@@ -17,9 +19,9 @@ Adding the `-Debug` flag make qemu be able to connect to gdb on port `1234`
 PS> .\vrtlkt.ps1 -Tool run
 ```
 
-## Diagrams for a quick overview
-![](docs/svg/kernel%20diagram.svg)
-![](docs/svg/storage%20diagram.svg)
+## Diagrams
+In the `docs/svg` folder there are some diagrams that give a simple overview of the kernel and some subsystems. <br>
+Note: All, except the network diagram, are out of date!
 
 ## Current active tasks
 - processes: process management
@@ -32,21 +34,21 @@ PS> .\vrtlkt.ps1 -Tool run
 - [ ] rework keyboard controller -> move to io etc..
 - [ ] drive / disk manager
     - [ ] interfaceable
-    - [x] list of all disks
+    - [ ] list of all disks
 - [ ] work on vthreads
-- [ ] general cleanup / restructuring
-    - [ ] interrupt manager
 - [ ] gui
-- [ ] rtl8169 driver (maybe rtl8168)
-    - [ ] fix DHCP packets not receiving
 - [ ] (simple) usb drivers
     - [ ] keyboard
     - [ ] usb storage device
 
-## Mapping driver symbols in debug mode
+## Mapping symbols in debug mode
 ```
--exec add-symbol-file ./build/{driver} {address}
+-exec add-symbol-file ./build/{file} {address}
 ```
+
+## Contributing
+This project is not accepting contributions or pull requests.  
+It is public for reference and educational purposes only.
 
 ## Resources
 ### General
@@ -67,7 +69,3 @@ PS> .\vrtlkt.ps1 -Tool run
 [cavOS - https://github.com/malwarepad/cavOS](https://github.com/malwarepad/cavOS)<br>
 [RedactedOS - https://github.com/differrari/RedactedOS](https://github.com/differrari/RedactedOS)<br>
 [KeblaOS - https://github.com/baponkar/KeblaOS/tree/main](https://github.com/baponkar/KeblaOS/tree/main)<br>
-
-## Contributing
-This project is not accepting contributions or pull requests.  
-It is public for reference and educational purposes only.

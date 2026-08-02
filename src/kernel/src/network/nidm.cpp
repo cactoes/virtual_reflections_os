@@ -50,33 +50,35 @@ bool nic_process_packet(network_interface_controller_t* nic) {
     // swap handling of packets
     static u64 buffer_selector = 0;
     
-    network_packet_t packet {};
+    buffer_selector++;
 
+    network_packet_t packet {};
     if (buffer_selector % 2 == 0) {
         if (nic->incoming_packets.get(packet)) {
             ethernet_receive(packet.interface, packet.data, packet.size);
             network_packet_destroy(&packet);
-        }
-    } else {
-        if (nic->outgoing_packets.get(packet)) {
-            switch (packet.interface->device_type) {
-                case network_interface_device_type_t::E1000:
-                    e1000_send_packet((e1000_t*)packet.interface->device, packet.data, packet.size);
-                    break;
-                case network_interface_device_type_t::RTL8168:
-                    rtl8168_send_packet((rtl8168_t*)packet.interface->device, packet.data, packet.size);
-                    break;
-                default:
-                    break;
-            }
-
-            network_packet_destroy(&packet);
+            return true;
         }
     }
 
-    buffer_selector++;
+    if (nic->outgoing_packets.get(packet)) {
+        switch (packet.interface->device_type) {
+            case network_interface_device_type_t::E1000:
+                e1000_send_packet((e1000_t*)packet.interface->device, packet.data, packet.size);
+                break;
+            case network_interface_device_type_t::RTL8168:
+                rtl8168_send_packet((rtl8168_t*)packet.interface->device, packet.data, packet.size);
+                break;
+            default:
+                break;
+        }
 
-    return true;
+        network_packet_destroy(&packet);
+
+        return true;
+    }
+
+    return false;
 }
 
 bool nic_dispatch_packet(network_interface_controller_t* nic, const network_packet_t& packet) {
@@ -128,6 +130,8 @@ network_interface_t* nic_get_interface_from_device(network_interface_controller_
     return nullptr;
 }
 
+#include "virtual_thread.hpp"
+
 int nic_thread() {
     network_interface_controller_t* nic = get_global_nic();
     while (true) {
@@ -136,7 +140,10 @@ int nic_thread() {
             continue;
         }
 
-        nic_process_packet(nic);
+        while (nic_process_packet(nic))
+            ;
+
+        vthread_yield();
     }
 
     return 1;

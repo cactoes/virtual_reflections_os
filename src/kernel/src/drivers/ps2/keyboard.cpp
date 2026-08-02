@@ -66,10 +66,14 @@ void ps2_keyboard_event_subscribe(void(*p_handler)(const ps2_key_state_t*)) {
     g_keyboard_event_manager.subscribe(p_handler);
 }
 
-void ps2_keyboard_process_packet() {
+bool ps2_keyboard_process_packet() {
     ps2_key_state_t packet {};
-    if (global_keyboard_state_buffer.get(packet))
+    if (global_keyboard_state_buffer.get(packet)) {
         g_keyboard_event_manager.fire_event(&packet);
+        return true;
+    }
+
+    return false;
 }
 
 void ps2_keyboard_init() {

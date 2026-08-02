@@ -389,3 +389,10 @@ bool fat32_list_directory(fat32_fsdata_t* fs_data, const char* path, std::dynami
 
     return true;
 }
+
+const block_device_t* fat32_get_block_device(fat32_fsdata_t* fs_data) {
+    if (!fs_data)
+        return nullptr;
+
+    return fs_data->block_device.get();
+}

@@ -35,3 +35,67 @@ bool block_read(block_device_t* device, u64 lba, u8* buffer) {
 
     return false;
 }
+
+const char* block_device_get_model(block_device_t* device) {
+    if (!device)
+        return nullptr;
+
+    switch (device->type) {
+        case block_device_type_t::IDE:
+            return ((ide_device_t*)device->disk_device)->meta.model;
+        case block_device_type_t::AHCI:
+            return ((ahci_device_t*)device->disk_device)->meta.model;
+        default:
+            return nullptr;
+    }
+
+    return nullptr;
+}
+
+const char* block_device_get_serial(block_device_t* device) {
+    if (!device)
+        return nullptr;
+
+    switch (device->type) {
+        case block_device_type_t::IDE:
+            return ((ide_device_t*)device->disk_device)->meta.serial;
+        case block_device_type_t::AHCI:
+            return ((ahci_device_t*)device->disk_device)->meta.serial;
+        default:
+            return nullptr;
+    }
+
+    return nullptr;
+}
+
+const char* block_device_get_firmware(block_device_t* device) {
+    if (!device)
+        return nullptr;
+
+    switch (device->type) {
+        case block_device_type_t::IDE:
+            return ((ide_device_t*)device->disk_device)->meta.firmware;
+        case block_device_type_t::AHCI:
+            return ((ahci_device_t*)device->disk_device)->meta.firmware;
+        default:
+            return nullptr;
+    }
+
+    return nullptr;
+}
+
+u64 block_device_get_drive_capacity(block_device_t* device) {
+    if (!device)
+        return 0;
+
+    switch (device->type) {
+        case block_device_type_t::IDE:
+            return ((ide_device_t*)device->disk_device)->capacity;
+        case block_device_type_t::AHCI:
+            return ((ahci_device_t*)device->disk_device)->capacity;
+        default:
+            return 0;
+    }
+
+    return 0;
+}
