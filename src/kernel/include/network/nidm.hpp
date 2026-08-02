@@ -24,7 +24,7 @@ union ipv4_address_t {
         u8 byte1;
         u8 byte2;
         u8 byte3;
-    } PACKED;
+    } __packed;
 };
 
 enum class network_interface_device_type_t {
@@ -44,7 +44,7 @@ struct network_interface_t {
         bool is_configured : 1;
         bool is_active : 1;
         bool is_prefered : 1;
-    } PACKED;
+    } __packed;
 
     char device_name[64];
 

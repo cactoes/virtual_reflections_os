@@ -26,18 +26,17 @@
 #define MB(x)               (KB(x) * 1024UL)
 #define GB(x)               (MB(x) * 1024UL)
 
-#define UNUSED(x)           (void)(x)
+#define __ignore(x)           (void)(x)
 
-#define NOINLINE            __attribute__((noinline))
-#define ALWAYS_INLINE       __attribute__((always_inline))
-#define PACKED              __attribute__((packed))
-#define NAKED               __attribute__((naked))
-#define ALIGNED(x)          __attribute__((aligned(x)))
-#define USED                __attribute__((used))
-#define DISABLE_SSE         __attribute__((target("no-sse,no-sse2")))
-#define NODISCARD           [[nodiscard]]
-#define NORETURN            [[noreturn]]
-#define UNUSED_PARAM        [[maybe_unused]]
+#define __noinline          __attribute__((noinline))
+#define __force_inline      __attribute__((always_inline))
+#define __packed            __attribute__((packed))
+#define __naked             __attribute__((naked))
+#define __aligned(x)        __attribute__((aligned(x)))
+#define __disable_sse       __attribute__((target("no-sse,no-sse2")))
+#define __nodiscard         [[nodiscard]]
+#define __noreturn          [[noreturn]]
+#define __unused            [[maybe_unused]]
 
 #define BIT(n)              (1UL << (n))
 #define BIT_SET(x, n)       ((x) |= BIT(n))

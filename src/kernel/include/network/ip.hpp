@@ -28,7 +28,7 @@ struct ip_header_t {
     u16 header_checksum;
     u32 src_addr;
     u32 dst_addr;
-} PACKED;
+} __packed;
 
 void ip_receive(network_interface_t* interface, u8* packet, size_t size, u8 src_mac[6]);
 bool ip_send(network_interface_t* interface, u32 dst_ip, u8 protocol, const u8* payload, size_t payload_len);

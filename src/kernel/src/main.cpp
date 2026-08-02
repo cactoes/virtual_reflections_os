@@ -565,7 +565,7 @@ void init_display_driver() {
     initialized_kernel_components.display_driver = true;
 }
 
-extern "C" NORETURN void virtual_kernel_entry(multiboot2_info_t* multiboot_struct) {
+extern "C" __noreturn void virtual_kernel_entry(multiboot2_info_t* multiboot_struct) {
     // stage 1 -- core essentials
     debug_init();
     init_memory();

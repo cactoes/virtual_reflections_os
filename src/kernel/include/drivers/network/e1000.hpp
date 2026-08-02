@@ -78,7 +78,7 @@ struct e1000_rdesc_t {
     u8 status;
     u8 errors;
     u16 special;
-} PACKED;
+} __packed;
 
 struct e1000_tdesc_t {
     u64 buffer_addr;
@@ -88,7 +88,7 @@ struct e1000_tdesc_t {
     u8 status;
     u8 css;
     u16 special;
-} PACKED;
+} __packed;
 
 struct e1000_t {
     void* mmio_region;

@@ -16,7 +16,7 @@ struct udp_header_t {
     u16 dst_port;
     u16 length;
     u16 checksum;
-} PACKED;
+} __packed;
 
 void udp_receive(network_interface_t* interface, u32 src_ip, u8* payload, size_t payload_length);
 bool udp_send(u32 dst_ip, u16 src_port, u16 dst_port, const u8* payload, size_t size);

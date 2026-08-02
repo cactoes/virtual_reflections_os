@@ -62,7 +62,7 @@ struct rtl8168_desc_t {
     volatile u32 vlan;
     volatile u32 address_low;
     volatile u32 address_high;
-} PACKED;
+} __packed;
 
 struct rtl8168_t {
     void* mmio_region;

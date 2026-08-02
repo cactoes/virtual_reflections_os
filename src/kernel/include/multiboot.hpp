@@ -29,7 +29,7 @@ struct multiboot1_mmap_entry_t {
     u64 addr;
     u64 len;
     u32 type;
-} PACKED;
+} __packed;
 
 struct multiboot1_info_t {
     u32 flags;
@@ -56,7 +56,7 @@ struct multiboot1_info_t {
     u32 vbe_interface_seg;
     u32 vbe_interface_off;
     u32 vbe_interface_len;
-} PACKED;
+} __packed;
 
 struct multiboot2_tag_framebuffer_t {
     u32 type;
@@ -85,14 +85,14 @@ struct multiboot2_tag_framebuffer_t {
             u8 framebuffer_blue_mask_size;
         } rgb;
     };
-} PACKED;
+} __packed;
 
 struct multiboot2_mmap_entry_t {
     u64 addr;
     u64 len;
     u32 type;
     u32 zero;
-} PACKED;
+} __packed;
 
 struct multiboot2_tag_mmap_t {
     u32 type;
@@ -100,18 +100,18 @@ struct multiboot2_tag_mmap_t {
     u32 entry_size;
     u32 entry_version;
     multiboot2_mmap_entry_t entries[];
-} PACKED;
+} __packed;
 
 struct multiboot2_tag_t {
     u32 type;
     u32 size;
-} PACKED;
+} __packed;
 
 struct multiboot2_info_t {
     u32 total_size;
     u32 reserved;
     multiboot2_tag_t tags[];
-} PACKED;
+} __packed;
 
 // struct multiboot_t {
 //     // u64 magic;

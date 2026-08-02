@@ -49,7 +49,7 @@ struct ps2_mouse_state_t {
         bool middle : 1;
         bool right : 1;
     } buttons;
-} PACKED;
+} __packed;
 
 void ps2_mouse_init();
 void* ps2_mouse_handle_interrupt(void* stack, void*);

@@ -31,7 +31,7 @@ struct arp_packet_t {
     u32 sender_ip;
     u8 target_hw[6];
     u32 target_ip;
-} PACKED;
+} __packed;
 
 void arp_table_insert(u32 ipv4, u8 mac[6]);
 void arp_discover_request_ipv4(network_interface_t* interface, u32 ipv4);

@@ -55,7 +55,7 @@ struct tcp_header_t {
     u16 window;
     u16 checksum;
     u16 urgent_ptr;
-} PACKED;
+} __packed;
 
 struct tcb_t {
     u32 local_ip;

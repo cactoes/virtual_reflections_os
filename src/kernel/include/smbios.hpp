@@ -44,7 +44,7 @@ struct smbios_t {
     u32 table_address;
     u16 structure_count;
     u8 bcd_revision;
-} PACKED;
+} __packed;
 
 struct smbios64_t {
     u8 anchor[5];
@@ -57,7 +57,7 @@ struct smbios64_t {
     u8 reserved;
     u32 table_max_size;
     u64 table_address;
-} PACKED;
+} __packed;
 
 struct smbios_entry_header_t {
     smbios_type_t type;

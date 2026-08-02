@@ -162,7 +162,7 @@ struct hba_cmd_header_t {
     u32 ctba;
     u32 ctbau;
     u32 rsv1[4];
-} PACKED;
+} __packed;
 
 struct fis_reg_h2d_t {
     u8 fis_type;
@@ -188,7 +188,7 @@ struct fis_reg_h2d_t {
     u8 control;
 
     u8 rsv1[4];
-} PACKED;
+} __packed;
 
 struct hba_cmd_tbl_t {
     u8 cfis[64];
@@ -204,7 +204,7 @@ struct hba_cmd_tbl_t {
         u32 rsv1   : 9;
         u32 i      : 1;
     } prdt_entry[1];
-} PACKED;
+} __packed;
 
 struct ahci_cmd_context_t {
     hba_cmd_header_t* cmdheader;

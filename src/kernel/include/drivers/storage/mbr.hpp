@@ -14,7 +14,7 @@ struct mbr_entry_t {
     char chs_end[3];
     u32 lba_start;
     u32 sector_count;
-} PACKED;
+} __packed;
 
 struct mbr_t {
     char bootstrap[440];
@@ -22,7 +22,7 @@ struct mbr_t {
     u16 reserved;
     mbr_entry_t partitions[MBR_PARTITIONS];
     u16 signature;
-} PACKED;
+} __packed;
 
 bool mbr_is_entry_valid(const mbr_entry_t* entry);
 bool is_mbr(const u8* data, size_t size);

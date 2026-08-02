@@ -44,4 +44,4 @@ CheckOptions:
     value: '0.0;1.0;-1.0'
 
   - key: readability-identifier-naming.MacroDefinitionIgnoredRegexp
-    value: '^__.*__$'
+    value: '^(__[a-z0-9_]+|__[A-Z0-9_]+__)$'

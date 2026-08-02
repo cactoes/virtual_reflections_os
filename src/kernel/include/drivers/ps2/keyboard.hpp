@@ -34,7 +34,7 @@ struct ps2_key_state_t {
         bool is_shift : 1;
         bool is_capslock : 1;
     };
-} PACKED;
+} __packed;
 
 void* ps2_keyboard_handle_interrupt(void* stack, void*);
 u32 ps2_keyboard_get_last_scancode();

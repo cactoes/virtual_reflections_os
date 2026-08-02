@@ -77,7 +77,7 @@ struct dhcp_packet_t {
     u32 magic;
 
     u8 options[308];
-} PACKED;
+} __packed;
 
 struct dhcp_options_writer_t {
     u8* buffer;

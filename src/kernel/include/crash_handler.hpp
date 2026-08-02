@@ -22,10 +22,10 @@
 
 #include "common.hpp"
 
-NORETURN
+__noreturn
 void kernel_fatal(u64 code, const char* message);
 
-NORETURN
+__noreturn
 void kernel_crash_handler(u64 crash_code, const char* message, void* stack);
 
 #endif // __CRASH_HANDLER_HPP__

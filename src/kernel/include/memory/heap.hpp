@@ -34,7 +34,7 @@ struct heap_block_t {
         // if false all other fields are invalid
         bool used : 1;
     };
-} PACKED;
+} __packed;
 
 struct heap_t {
     heap_block_t* heap_block_array;
@@ -87,7 +87,7 @@ bool heap_init(heap_t* heap, void* vaddr, size_t size, bool is_user = false);
 /// @param[inout] heap  heap to expand
 /// @param size         size to expand the heap by
 /// @return             success status
-NODISCARD bool heap_expand(heap_t* p_heap, size_t size);
+__nodiscard bool heap_expand(heap_t* p_heap, size_t size);
 
 /// @brief              allocates memory from a heap
 /// @param[in] heap     heap to allocate from
@@ -137,7 +137,7 @@ u32 dma_get_physical_upper(heap_t* p_dma_heap, void* p_block);
 /// @return                         0 success, 1 incorrect alignment, 2 heap size failed, 3 heap init failed
 /// @remarks                        technically memory leaks since it never frees
 ///                                 the memory used for the entire dma heap
-NODISCARD int dma_heap_init(heap_t* p_dma_heap, void* p_virtual_address, size_t size);
+__nodiscard int dma_heap_init(heap_t* p_dma_heap, void* p_virtual_address, size_t size);
 
 /// @brief                      initialzes a dma heap manager
 /// @param[inout] manager       pointer to the dma heap manager struct

@@ -50,7 +50,7 @@ struct fat32_bpb_t {
     u16 num_heads;
     u32 hidden_sectors;
     u32 total_sectors_large;
-} PACKED;
+} __packed;
 
 struct fat32_bpb_extended_t {
     fat32_bpb_t bpb;
@@ -70,7 +70,7 @@ struct fat32_bpb_extended_t {
     char fs_type[8];
     char boot_code[420];
     u32 boot_parition_signature;
-} PACKED;
+} __packed;
 
 struct fat32_dir_entry_t {
     char name[11];
@@ -85,7 +85,7 @@ struct fat32_dir_entry_t {
     fat32_date_t write_date;
     u16 first_cluster_low;
     u32 file_size;
-} PACKED;
+} __packed;
 
 struct fat32_lfn_entry_t {
     u8 order;
@@ -96,7 +96,7 @@ struct fat32_lfn_entry_t {
     u16 name2[6];
     u16 zero;
     u16 name3[2];
-} PACKED;
+} __packed;
 
 struct fat32_node_t {
     u32 first_cluster;

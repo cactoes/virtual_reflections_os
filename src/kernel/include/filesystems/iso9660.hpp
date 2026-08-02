@@ -11,12 +11,12 @@
 struct iso9660_lbs_msb_32 {
     u32 le;
     u32 be;
-} PACKED;
+} __packed;
 
 struct iso9660_lbs_msb_16 {
     u16 le;
     u16 be;
-} PACKED;
+} __packed;
 
 enum class iso9660_volume_type_t : u8 {
     BOOT_RECORD = 0,
@@ -33,7 +33,7 @@ struct iso9660_volume_descriptor_t {
     u8 version;
     
     u8 data[2041];
-} PACKED;
+} __packed;
 
 struct iso9660_volume_boot_record_t {
     iso9660_volume_type_t type;
@@ -43,7 +43,7 @@ struct iso9660_volume_boot_record_t {
     char boot_system_identifier_raw[32];
     char boot_identifier_raw[32];
     u8 boot_system_use[1977];
-} PACKED;
+} __packed;
 
 struct iso9660_dir_record_t {
     u8 length;
@@ -57,7 +57,7 @@ struct iso9660_dir_record_t {
     iso9660_lbs_msb_16 volume_sequence_number;
     u8 name_len;
     char name[];
-} PACKED;
+} __packed;
 
 struct iso9660_volume_primary_volume_descriptor_t {
     iso9660_volume_type_t type;
@@ -102,19 +102,19 @@ struct iso9660_volume_primary_volume_descriptor_t {
     u8 unused3; // should be 0
     char application_used[512];
     u8 reserved[653];
-} PACKED;
+} __packed;
 
 struct iso9660_volume_descriptor_set_terminator_t {
     iso9660_volume_type_t type;
     char identifier_raw[5];
     u8 version;
-} PACKED;
+} __packed;
 
 struct iso9660_susp_entry_t {
     char signature[2];
     u8 length;
     u8 version;
-} PACKED;
+} __packed;
 
 struct iso9660_node_t {
     u64 lba;

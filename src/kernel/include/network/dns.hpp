@@ -22,19 +22,19 @@ struct dns_header_t {
     u16 ancount;
     u16 nscount;
     u16 arcount;
-} PACKED;
+} __packed;
 
 struct dns_query_t {
     u16 qtype;
     u16 qclass;
-} PACKED;
+} __packed;
 
 struct dns_record_t {
     u16 qtype;
     u16 qclass;
     u16 ttl;
     u16 rdlength;
-} PACKED;
+} __packed;
 
 enum class dns_query_type_t : u16 {
     A = 1,
