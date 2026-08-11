@@ -57,6 +57,16 @@
 #define MAX_INT32           ((i32)(MAX_UINT32 >> 1))
 #define MAX_INT64           ((i64)(MAX_UINT64 >> 1))
 
+// the magic for an object tag to identify it
+#define TAG_MAGIC           (u32)0xfee1baad
+// creates an object tag for finding what is what in memory
+#define TAG_OBJECT(x)       \
+    struct { \
+        const u32 magic = TAG_MAGIC; \
+        const char name[sizeof(#x)] = #x; \
+    } __tag
+
+
 #define TO_IP(a0, a1, a2, a3)   ((((u32)(a0) & 0xff) << 24) | (((u32)(a1) & 0xff) << 16) | (((u32)(a2) & 0xff) << 8) | (((u32)(a3) & 0xff) << 0))
 #define FROM_IP(ip)             ((ip) >> 24) & 0xFF, ((ip) >> 16) & 0xFF, ((ip) >> 8)  & 0xFF, ((ip) >> 0)  & 0xFF
 

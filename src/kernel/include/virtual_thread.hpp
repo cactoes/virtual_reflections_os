@@ -45,6 +45,8 @@ enum class vthread_state_t {
 };
 
 struct vthread_t {
+    TAG_OBJECT(vthread_t);
+
     // handle to thread
     vthread_handle_t handle;
 
