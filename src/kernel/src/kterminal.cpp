@@ -211,6 +211,25 @@ void kterm_execute_command(const std::string& command, const std::dynamic_array<
                 }
                 break;
             }
+            case hash_fnv1a_64("^memdump"): {
+                auto heap = get_global_heap();
+                u64 minsize = 256;
+                if (args.length() >= 1) {
+                    const auto str = *args.get_at(0);
+                    minsize = (u64)atoll(str.c_str());
+                }
+                for (size_t i = 0; i < heap->heap_block_array_size; i++) {
+                    heap_block_t* block = &heap->heap_block_array[i];
+                    if (block->used && block->size >= minsize && !block->free) {
+                        if (((u32*)block->start_real_addr)[0] == TAG_MAGIC)
+                            kprintf("[%s] ", (u32*)block->start_real_addr + 1);
+                        else
+                            kprintf("[?] ");
+                        kprintf("%c %p-%p (%s)\n", block->free ? 'f' : 'u', block->start_real_addr, (void*)((u64)block->start_real_addr + block->size), size_format_to_string(block->size).c_str());
+                    }
+                }
+                break;
+            }
             default:
                 printf("Failed to find command, run ^help for a list of commands.\n");
                 break;
