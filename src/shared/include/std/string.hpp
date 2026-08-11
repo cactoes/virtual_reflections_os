@@ -496,6 +496,15 @@ static int atoi(const char *str) {
     return result;
 }
 
+static u64 atoll(const char* str) {
+    u64 result = 0;
+    while (*str >= '0' && *str <= '9') {
+        result = result * 10 + (*str - '0');
+        str++;
+    }
+    return result;
+}
+
 namespace std {
 
 class string {
