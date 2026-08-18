@@ -6,6 +6,7 @@
 #include "drivers/keyboard.hpp"
 #include "process.hpp"
 #include "network/nidm.hpp"
+#include "network/network_manager.hpp"
 #include "ansi.hpp"
 
 static kterminal_t* global_kterm_session = nullptr;
@@ -228,6 +229,32 @@ void kterm_execute_command(const std::string& command, const std::dynamic_array<
                         kprintf("%c %p-%p (%s)\n", block->free ? 'f' : 'u', block->start_real_addr, (void*)((u64)block->start_real_addr + block->size), size_format_to_string(block->size).c_str());
                     }
                 }
+                break;
+            }
+            case hash_fnv1a_64("^dns"): {
+                if (args.length() >= 1) {
+                    auto arg0 = *args.get_at(0);
+                    if (arg0 == "resolve") {
+                        if (args.length() >= 2) {
+                            auto arg1 = *args.get_at(1);
+                            auto ip = network_manager_dns_query(get_global_network_manager(), arg1.c_str());
+                            if (ip != 0)
+                                printf("Hostname: %s\nIP:       %u.%u.%u.%u\n", arg1.c_str(), FROM_IP(ip));
+                            else
+                                printf("Unable to resolve hostname\n");
+                            break;
+                        }
+
+                        printf("No host name given\n");
+                        break;
+                    }
+
+                    if (arg0 == "server") {
+                        printf("IP:       %u.%u.%u.%u\n", FROM_IP(DEFAULT_DNS_SERVER));
+                        break;
+                    }
+                }
+
                 break;
             }
             default:
