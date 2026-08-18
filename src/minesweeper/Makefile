@@ -1,6 +1,6 @@
 #==========================================
 ## @file       Makefile
-## @brief      build script for test program
+## @brief      build script for Minesweeper
 #==========================================
 
 # makefile config
