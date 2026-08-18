@@ -46,7 +46,7 @@ extern "C" u8 __lnk_init_array_end;
 
 extern "C" u8 __lnk_kernel_end_physical;
 
-extern "C" u8 page_table_l4;
+extern "C" u8 page_table_l4[];
 
 } // namespace linker_variables
 // NOLINTEND
@@ -366,7 +366,7 @@ void amd64_crash_dump(u64 crash_code, const char* message, interrupt_regs_t* sta
 
 [[noreturn]]
 static
-__attribute__((section(".text")))
+__attribute__((section(".text"), noinline))
 void amd64_kernel_jump_stub(void* mbs) {
     // unmap the boot code
     const u64 kernel_page_count = ((u64)&linker_variables::__lnk_kernel_end_physical + (PAGE_SIZE_LARGE - 1)) >> 21;
