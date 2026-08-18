@@ -150,6 +150,11 @@ void system_log_info(const char* system, const char* message) {
 }
 
 static
+void init_debug() {
+    uart_init(AMD64_COM1, UART_BAUD_115200);
+}
+
+static
 void init_memory() {
     if (!heap_init(&kernel_heap, (void*)VMEM_KERNEL_HEAP_START, HEAP_START_SIZE))
         kernel_fatal(KERNEL_FATAL_HEAP_INIT, "kernel heap fail to initialize");
@@ -585,7 +590,7 @@ void init_display_driver() {
 
 extern "C" __noreturn void virtual_kernel_entry(multiboot2_info_t* multiboot_struct) {
     // stage 1 -- core essentials
-    debug_init();
+    init_debug();
     init_memory();
     init_graphics(multiboot_struct);
     init_interrupts();

@@ -5,34 +5,50 @@
 #include "arch/amd64/port.hpp"
 #include "arch/amd64/cpu.hpp"
 
-int serial_is_transmit_ready() {
-    return amd64_in_port8(DEBUG_PORT + DEBUG_SERIAL_LINE_STATUS) & DEBUG_SERIAL_TRANSMIT_READY;
-}
-
-void debug_init() {
-    amd64_out_port8(DEBUG_PORT + DEBUG_SERIAL_INTERRUPT_ENABLE, DEBUG_SERIAL_DISABLE_INTERRUPTS);
-    amd64_out_port8(DEBUG_PORT + DEBUG_SERIAL_LINE_CTRL, DEBUG_SERIAL_ENABLE_DLAB);
-    amd64_out_port8(DEBUG_PORT + DEBUG_SERIAL_DATA_PORT, DEBUG_SERIAL_BAUD_DIVISOR_LOW);
-    amd64_out_port8(DEBUG_PORT + DEBUG_SERIAL_INTERRUPT_ENABLE, DEBUG_SERIAL_BAUD_DIVISOR_HIGH);
-    amd64_out_port8(DEBUG_PORT + DEBUG_SERIAL_LINE_CTRL, DEBUG_SERIAL_8N1);
-    amd64_out_port8(DEBUG_PORT + DEBUG_SERIAL_FIFO_CTRL, DEBUG_SERIAL_FIFO_ENABLE_CLEAR_14);
-    amd64_out_port8(DEBUG_PORT + DEBUG_SERIAL_MODEM_CTRL, DEBUG_SERIAL_MODEM_IRQ_RTS_DSR);
+bool uart_is_transmit_ready(u16 base) {
+    return (amd64_in_port8(base + UART_LINE_STATUS) & UART_TRANSMIT_READY) != 0;
 }
 
 void debug_putc(const char ch) {
-    while (!serial_is_transmit_ready()) {}
-        amd64_out_port8(DEBUG_PORT, ch);
+    uart_putc(AMD64_COM1, ch);
 }
 
-void debug_puts(const char* p_str) {
-    const char* p_ptr = p_str;
-    while (*p_ptr)
-        debug_putc(*p_ptr++);
+void debug_puts(const char* str) {
+    uart_puts(AMD64_COM1, str);
 }
 
 void debug_trap(const char* msg) {
-    debug_puts("[debug trap hit: ");
-    debug_puts(msg);
-    debug_puts("]");
+    uart_puts(AMD64_COM1, "[debug trap hit: ");
+    uart_puts(AMD64_COM1, msg);
+    uart_puts(AMD64_COM1, "]");
+#if CPU_ARCHITECTURE == ARCH_AMD64
     amd64_halt();
+#endif
+}
+
+void uart_init(u16 base, u16 divisor) {
+    // TODO @since 19/08/2026 -- 00:08
+    // move actual implementation to amd64 folder
+
+#if CPU_ARCHITECTURE == ARCH_AMD64
+    amd64_out_port8(base + UART_INTERRUPT_ENABLE, UART_DISABLE_INTERRUPTS);
+    amd64_out_port8(base + UART_LINE_CTRL, UART_ENABLE_DLAB);
+    amd64_out_port8(base + UART_DATA_PORT, divisor & 0xFF);
+    amd64_out_port8(base + UART_INTERRUPT_ENABLE, (divisor >> 8) & 0xFF);
+    amd64_out_port8(base + UART_LINE_CTRL, UART_8N1);
+    amd64_out_port8(base + UART_FIFO_CTRL, UART_FIFO_ENABLE_CLEAR_14);
+    amd64_out_port8(base + UART_MODEM_CTRL, UART_MODEM_IRQ_RTS_DSR);
+#endif
+}
+
+void uart_putc(u16 base, char ch) {
+    while (!uart_is_transmit_ready(base))
+        ;
+
+    amd64_out_port8(base + UART_DATA_PORT, ch);
+}
+
+void uart_puts(u16 base, const char* str) {
+    while (*str)
+        debug_putc(*str++);
 }
