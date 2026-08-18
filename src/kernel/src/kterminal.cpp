@@ -8,6 +8,8 @@
 #include "network/nidm.hpp"
 #include "network/network_manager.hpp"
 #include "ansi.hpp"
+#include "system_info.hpp"
+#include "time/clock.hpp"
 
 static kterminal_t* global_kterm_session = nullptr;
 
@@ -255,6 +257,92 @@ void kterm_execute_command(const std::string& command, const std::dynamic_array<
                     }
                 }
 
+                break;
+            }
+            case hash_fnv1a_64("^diskstat"): {
+                if (args.length() >= 1) {
+                    auto arg0 = *args.get_at(0);
+
+                    vfs_storage_info_t storage_info {};
+                    if (!vfs_get_storage_info(get_global_vfs(), arg0.c_str(), &storage_info)) {
+                        printf("Disk or drive not found\n");
+                        break;
+                    }
+
+                    printf("%s:\n", storage_info.model.c_str());
+                    printf("    Serial: %s\n", storage_info.serial.c_str());
+                    printf("    Firmware: %s\n", storage_info.firmware.c_str());
+                    printf("    Disk size: %s\n", size_format_to_string(storage_info.capacity).c_str());
+                } else {
+                    // FIXME @since 19/08/2026 -- 01:38
+                    // add a more proper drive enumeration thing
+                    for (auto& mpstr : get_global_vfs()->mount_points) {
+                        vfs_storage_info_t storage_info {};
+                        if (!vfs_get_storage_info(get_global_vfs(), mpstr.key.c_str(), &storage_info)) {
+                            printf("Failed to read disk or drive: %s\n", mpstr.key.c_str());
+                            break;
+                        }
+
+                        printf("[%s] %s:\n", mpstr.key.c_str(), storage_info.model.c_str());
+                        printf("    Serial: %s\n", storage_info.serial.c_str());
+                        printf("    Firmware: %s\n", storage_info.firmware.c_str());
+                        printf("    Disk size: %s\n", size_format_to_string(storage_info.capacity).c_str());
+                    }
+                }
+                break;
+            }
+            case hash_fnv1a_64("^memstat"): {
+                auto heap = get_global_heap();
+                size_t used_mem = 0;
+                for (size_t i = 0; i < heap->heap_block_array_size; i++) {
+                    if (!heap->heap_block_array[i].free)
+                        used_mem += heap->heap_block_array[i].size;
+                }
+
+                for (auto& h : get_global_dma_heap_manager()->heaps) {
+                    for (size_t i = 0; i < h.heap_block_array_size; i++) {
+                        if (!h.heap_block_array[i].free)
+                            used_mem += h.heap_block_array[i].size;
+                    }
+                }
+
+                size_t available_mem = heap->size + get_global_dma_heap_manager()->size;
+
+                printf("Memory allocated:   %s/%s (%i%)\n", size_format_to_string(used_mem).c_str(), size_format_to_string(available_mem).c_str(), (int)(((double)used_mem / (double)available_mem) * 100));
+                printf("Total available:    %s\n", size_format_to_string(get_global_system_info_manager()->memory_size).c_str());
+                printf("Total comitted:     %f%\n", (double)(((double)available_mem / (double)get_global_system_info_manager()->memory_size) * 100));
+                break;
+            }
+            case hash_fnv1a_64("^pcistat"): {
+                for (auto& device : get_global_pcie_device_manager()->devices) {
+                    const char* cd = pci_get_class_description(&device);
+                    printf("[%u:%u.%u] %s:\n", device.bus, device.device, device.function, cd);
+                    printf("    Vendor ID: 0x%uh, Device ID: 0x%uh\n", device.vendor_device_id.vendor_id, device.vendor_device_id.device_id);
+                }
+                break;
+            }
+            case hash_fnv1a_64("^systemstat"): {
+                system_info_manager_t* sysinfo = get_global_system_info_manager();
+                printf("Host:    %s %s %s %s\n", sysinfo->manufacturer.c_str(), sysinfo->product_name.c_str(), sysinfo->version.c_str(), sysinfo->serial_number.c_str());
+                printf("CPU:     %s\n", sysinfo->cpu_name.c_str());
+                printf("Threads: %ul\n", vthread_get_count());
+                printf("Uptime:  %s\n", time_format_to_string(clock_get_time_since_boot()).c_str());
+                break;
+            }
+            case hash_fnv1a_64("^help"): {
+                printf("[all of the listed command need the \"^\" prefix]");
+                printf("help                           Displays this help message\n");
+                printf("memstat                        Memory info\n");
+                printf("memstat                        Dump memory object to COM1\n");
+                printf("    <size>                     Minimum byte size for object to be shown, default is 256");
+                printf("netstat                        Network card info\n");
+                printf("pcistat                        PCI(e) info\n");
+                printf("systemstat                     Display system information\n");
+                printf("diskstat                       Displays disk info\n");
+                printf("    <path>                     Target disk path\n");
+                printf("dns                            DNS information\n");
+                printf("    server                     Get the dns server that is used\n");
+                printf("    resolve <hostname>         Resolves the given hostname\n");
                 break;
             }
             default:
