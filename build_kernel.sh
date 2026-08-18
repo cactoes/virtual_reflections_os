@@ -15,6 +15,11 @@ cd src/minesweeper
 make -j$(nproc) build
 cd ../..
 
+echo "Building calculator ..."
+cd src/console_calculator
+make -j$(nproc) build
+cd ../..
+
 # kernel
 echo "Building kernel ..."
 make -j$(nproc) build
