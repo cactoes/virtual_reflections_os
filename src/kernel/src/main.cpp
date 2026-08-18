@@ -144,7 +144,7 @@ void system_log_error(const char* message) {
     system_log("ERROR", "\033[94m", message); 
 }
 
-//static
+static
 void system_log_info(const char* system, const char* message) { 
     system_log(system, "\033[0m", message);
 }
@@ -588,7 +588,13 @@ void init_display_driver() {
     initialized_kernel_components.display_driver = true;
 }
 
-extern "C" __noreturn void virtual_kernel_entry(multiboot2_info_t* multiboot_struct) {
+/// @brief          this is the main entry for the kernel, platform specific setup should already be done like:
+///                  - virtual memory mapping
+///                  - interrupt base addresses etc
+///                  - the C/C++ evironment
+extern "C"
+__noreturn
+void virtual_kernel_entry(multiboot2_info_t* multiboot_struct) {
     // stage 1 -- core essentials
     init_debug();
     init_memory();
