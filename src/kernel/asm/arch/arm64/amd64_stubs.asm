@@ -7,6 +7,7 @@ bits 64
 section .text
     extern amd64_syscall_dispatch
     extern amd64_interrupt_dispatch
+    extern fpu_scratch
 
     global amd64_memcpy_impl
     global amd64_memset_impl
@@ -78,6 +79,8 @@ isr_stub_%+%1:
 
     push_all_regs
 
+    fxsave [rel fpu_scratch]
+
     ; store isr code
     mov     rdi, %1
     ; store pointer to the stack
@@ -91,6 +94,8 @@ isr_stub_%+%1:
 
     ; update / restore stack pointer
     mov     rsp, rax
+
+    fxrstor [rel fpu_scratch]
 
     pop_all_regs
 
@@ -138,9 +143,16 @@ amd64_syscall_stub:
     mov rdi, rax
     mov rsi, rsp
 
+    sub rsp, 512
+    and rsp, -16
+    fxsave [rsp]
+
     sti
     call amd64_syscall_dispatch
     cli
+
+    fxrstor [rsp]
+    add rsp, 512
 
     pop r15
     pop r14

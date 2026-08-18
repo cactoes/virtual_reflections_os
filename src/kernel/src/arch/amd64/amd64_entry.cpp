@@ -74,6 +74,10 @@ amd64_idt_entry_t idt[AMD64_INT_IDT_ENTRY_COUNT];
 __attribute__((section(".bss")))
 amd64_idt_register_t idtr;
 
+// SHOULD BE PER CPU!!!
+__attribute__((section(".bss"), aligned(16)))
+u8 fpu_scratch[512];
+
 /// @brief      returns a pointer to the tss
 /// @return     pinter to tss struct
 __attribute__((section(".text")))
