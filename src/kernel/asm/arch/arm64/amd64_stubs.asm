@@ -82,6 +82,10 @@ isr_stub_%+%1:
     mov     rdi, %1
     ; store pointer to the stack
     mov     rsi, rsp
+
+    ; re-align stack
+    sub     rsp, 8
+
     ; call the interrupt handler
     call    amd64_interrupt_dispatch
 
