@@ -196,6 +196,8 @@ vthread_handle_t vthread_start_and_setup_main() {
 vthread_handle_t vthread_create(thread_entry_t p_thread_entry, const char name[VTHREAD_MAX_NAME_SIZE]) {
     // TODO @since 22/05/2026 -- 18:25
     // remove this leaking smart pointer
+    // -- 19/08/2026 -- 02:06
+    // leaking smart pointer??
     std::unique_ptr<vthread_t> p_vthread = std::make_unique<vthread_t>();
     auto pp_vthread = p_vthread.get();
 
