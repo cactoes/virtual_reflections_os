@@ -4,25 +4,15 @@
 
 export GIT_COMMIT_HASH
 
-# network drivers
-echo "Building drivers ..."
-cd src/network_drivers
-make -j$(nproc) build
-cd ../..
+build_component() {
+    echo "Building $1 ..."
+    make -C "$2" -j$(nproc) build
+}
 
-echo "Building minesweeper ..."
-cd src/minesweeper
-make -j$(nproc) build
-cd ../..
-
-echo "Building calculator ..."
-cd src/console_calculator
-make -j$(nproc) build
-cd ../..
-
-# kernel
-echo "Building kernel ..."
-make -j$(nproc) build
+build_component "Network Drivers" src/network_drivers
+build_component "Minesweeper"     src/minesweeper
+build_component "Calculator"      src/console_calculator
+build_component "Kernel"          src/kernel
 
 # generate gdb symbol file
 # echo "Generating gdb symbols (for kernel) ..."

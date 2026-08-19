@@ -7,11 +7,11 @@
 .RECIPEPREFIX = >
 
 # directories & files
-PROJECT_PATH                := src/kernel
+PROJECT_PATH                := .
 SOURCE_FILES_PATH           := $(PROJECT_PATH)/src
 HEADER_FILES_PATH           := $(PROJECT_PATH)/include
 ASSEMBLY_FILES_PATH         := $(PROJECT_PATH)/asm
-ROOT_PATH                   := .
+ROOT_PATH                   := ../..
 BUILD_PATH                  := $(ROOT_PATH)/build
 ISO_PATH                    := $(ROOT_PATH)/iso
 LINKER_SCRIPT               := $(PROJECT_PATH)/linker.ld
