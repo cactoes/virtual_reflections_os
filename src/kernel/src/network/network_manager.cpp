@@ -41,9 +41,19 @@ void network_manager_dhcp_callback(socket_t* socket, u32 ip, u16 port, const u8*
 
     dhcp_packet_t* packet = (dhcp_packet_t*)data;
 
+    if (packet->magic != bswap32(DHCP_MAGIC)) {
+        printf("[ network manager -> DHCP] skipping non DHCP packet\n");
+        return;
+    }
+
+    if (packet->op != DHCP_OP_BOOTREPLY) {
+        printf("[ network manager -> DHCP] skipping non BOOTREPLY packet\n");
+        return;
+    }
+
     dhcp_client_t::session_t& session = network_manager->dhcp_client->session;
     if (packet->xid != session.xid) {
-         printf("[ network manager -> DHCP ] invalid XID\n");
+        printf("[ network manager -> DHCP ] invalid XID\n");
         return;
     }
 
@@ -213,8 +223,7 @@ bool network_manager_configure(network_manager_t* network_manager) {
     if (!network_manager->dhcp_client)
         return false;
 
-    network_manager->dhcp_socket = (socket_t*)malloc(sizeof(socket_t));
-    memzero(network_manager->dhcp_socket, sizeof(socket_t));
+    network_manager->dhcp_socket = new (malloc(sizeof(socket_t))) socket_t();
     if (!network_manager->dhcp_socket)
         return false;
 
@@ -231,8 +240,7 @@ bool network_manager_configure(network_manager_t* network_manager) {
     if (!network_manager->dns_client)
         return false;
 
-    network_manager->dns_socket = (socket_t*)malloc(sizeof(socket_t));
-    memzero(network_manager->dns_socket, sizeof(socket_t));
+    network_manager->dns_socket = new (malloc(sizeof(socket_t))) socket_t();
     if (!network_manager->dns_socket)
         return false;
 

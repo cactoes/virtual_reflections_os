@@ -39,20 +39,30 @@ u8* dhcp_option_get(dhcp_packet_t* packet, u8 type) {
 
     size_t ptr = 0;
     while (ptr < max_size) {
-        if (options[0] == type)
-            return options;
+        u8 code = options[0];
 
-        if (options[0] == DHCP_OPTION_END)
-            return nullptr;
+        if (code == DHCP_OPTION_END)
+            break;
 
-        if (options[0] == DHCP_OPTION_PAD) {
-            options++;
+        if (code == DHCP_OPTION_PAD) {
             ptr++;
+            options++;
             continue;
         }
 
-        options += options[1] + 2;
-        ptr += options[1] + 2;
+        if (ptr + 1 >= max_size)
+            break;
+
+        u8 len = options[1];
+
+        if (ptr + 2 + len > max_size)
+            break;
+
+        if (code == type)
+            return options;
+
+        ptr += 2 + len;
+        options += 2 + len;
     }
 
     return nullptr;
