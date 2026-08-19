@@ -20,6 +20,8 @@ enum class socket_protocol_t {
 };
 
 struct socket_t {
+    TAG_OBJECT(socket_t);
+
     socket_protocol_t protocol;
     socket_listener_t listener;
     u32 local_ip;
