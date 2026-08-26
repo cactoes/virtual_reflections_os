@@ -104,6 +104,7 @@
 #include "std/array.hpp"
 #include "memory/heap.hpp"
 #include "utils/mutex.hpp"
+#include "storage/disk_manager.hpp"
 
 struct hba_port_t {
     volatile u32 clb;
@@ -250,5 +251,6 @@ bool ahci_device_init(ahci_device_t* device);
 bool ahci_read(ahci_device_t* device, u64 lba, u8* buffer, size_t size);
 bool ahci_write(ahci_device_t* device);
 bool is_ahci_device(const pci_device_t* device);
+const disk_interface_t* get_ahci_disk_interface();
 
 #endif // __AHCI_HPP__

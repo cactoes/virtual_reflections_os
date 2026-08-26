@@ -31,6 +31,7 @@
 #include "drivers/storage/block_device.hpp"
 #include "std/array.hpp"
 #include "std/pointer.hpp"
+#include "filesystems/vfs.hpp"
 
 typedef u16 fat32_date_t;
 typedef u16 fat32_time_t;
@@ -106,7 +107,7 @@ struct fat32_node_t {
 };
 
 struct fat32_fsdata_t {
-    std::unique_ptr<block_device_t> block_device;
+    block_device_t* block_device;
     u64 volume_size;
     fat32_node_t root_node;
 
@@ -122,12 +123,13 @@ struct fat32_fsdata_t {
 
 bool fat32_validate(u8* buffer, size_t size);
 
-bool fat32_init(std::unique_ptr<block_device_t> device, fat32_fsdata_t* fs_data);
+bool fat32_init(block_device_t* device, fat32_fsdata_t* fs_data);
 bool fat32_find_node(fat32_fsdata_t* fs_data, const char* path, size_t size, u32 cluster, fat32_node_t* out_node);
 bool fat32_directory_exists(fat32_fsdata_t* fs_data, const char* path);
 bool fat32_file_exists(fat32_fsdata_t* fs_data, const char* path);
 bool fat32_read(fat32_fsdata_t* fs_data, const char* path, u8** out_data, size_t* out_size);
 bool fat32_list_directory(fat32_fsdata_t* fs_data, const char* path, std::dynamic_array<fat32_node_t>* out_nodes);
 const block_device_t* fat32_get_block_device(fat32_fsdata_t* fs_data);
+const filesystem_interface_t* get_fat32_filesystem_interface();
 
 #endif // __FAT32_HPP__

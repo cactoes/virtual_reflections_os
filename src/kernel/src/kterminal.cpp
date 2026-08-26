@@ -260,33 +260,37 @@ void kterm_execute_command(const std::string& command, const std::dynamic_array<
                 break;
             }
             case hash_fnv1a_64("^diskstat"): {
-                if (args.length() >= 1) {
-                    auto arg0 = *args.get_at(0);
+                disk_manager_t* dm = get_global_disk_manager();
+                vfs_t* vfs = get_global_vfs();
 
-                    vfs_storage_info_t storage_info {};
-                    if (!vfs_get_storage_info(get_global_vfs(), arg0.c_str(), &storage_info)) {
-                        printf("Disk or drive not found\n");
-                        break;
-                    }
+                for (auto& disk : dm->disks) {
+                    const char* model    = disk.interface->get_model    ? disk.interface->get_model(disk.disk_data)    : "unknown";
+                    const char* firmware = disk.interface->get_firmware ? disk.interface->get_firmware(disk.disk_data) : "unknown";
+                    u64 capacity = disk.interface->get_capacity(disk.disk_data);
 
-                    printf("%s:\n", storage_info.model.c_str());
-                    printf("    Serial: %s\n", storage_info.serial.c_str());
-                    printf("    Firmware: %s\n", storage_info.firmware.c_str());
-                    printf("    Disk size: %s\n", size_format_to_string(storage_info.capacity).c_str());
-                } else {
-                    // FIXME @since 19/08/2026 -- 01:38
-                    // add a more proper drive enumeration thing
-                    for (auto& mpstr : get_global_vfs()->mount_points) {
-                        vfs_storage_info_t storage_info {};
-                        if (!vfs_get_storage_info(get_global_vfs(), mpstr.key.c_str(), &storage_info)) {
-                            printf("Failed to read disk or drive: %s\n", mpstr.key.c_str());
-                            break;
-                        }
+                    printf("%s - %s %s (%s)\n", disk.name, model, firmware, size_format_to_string(capacity).c_str());
 
-                        printf("[%s] %s:\n", mpstr.key.c_str(), storage_info.model.c_str());
-                        printf("    Serial: %s\n", storage_info.serial.c_str());
-                        printf("    Firmware: %s\n", storage_info.firmware.c_str());
-                        printf("    Disk size: %s\n", size_format_to_string(storage_info.capacity).c_str());
+                    char prefix[40];
+                    sprintf(prefix, sizeof(prefix), "%sp", disk.name);
+                    size_t disk_name_len = strlen(disk.name);
+
+                    for (auto& mpstr : vfs->mount_points) {
+                        const std::string& mount_name = mpstr.key;
+                        bool is_partition  = str_starts_with(mount_name.c_str(), prefix);
+                        bool is_whole_disk = mount_name == disk.name;
+
+                        if (!is_partition && !is_whole_disk)
+                            continue;
+
+                        const vfs_mount_point_t& mp = mpstr.value;
+                        const block_device_t* bd = mp.interface->get_block_device(mp.filesystem_data);
+                        if (!bd)
+                            continue;
+
+                        u64 size = (bd->end_lba - bd->start_lba) * bd->block_size;
+
+                        if (!is_whole_disk)
+                            printf("    %s  %s\n", mount_name.c_str() + disk_name_len, size_format_to_string(size).c_str());
                     }
                 }
                 break;
@@ -330,7 +334,7 @@ void kterm_execute_command(const std::string& command, const std::dynamic_array<
                 break;
             }
             case hash_fnv1a_64("^help"): {
-                printf("[all of the listed command need the \"^\" prefix]");
+                printf("[all of the listed command need the \"^\" prefix]\n");
                 printf("help                           Displays this help message\n");
                 printf("memstat                        Memory info\n");
                 printf("memstat                        Dump memory object to COM1\n");

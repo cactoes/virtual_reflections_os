@@ -76,7 +76,7 @@ bool get_name(iso9660_dir_record_t* record, char* out, size_t out_size) {
     return fmt_name(record->name, record->name_len, out);
 }
 
-bool iso9660_init(std::unique_ptr<block_device_t> device, iso9660_fsdata_t* fs_data) {
+bool iso9660_init(block_device_t* device, iso9660_fsdata_t* fs_data) {
     if (!device || !fs_data)
         return false;
 
@@ -84,7 +84,10 @@ bool iso9660_init(std::unique_ptr<block_device_t> device, iso9660_fsdata_t* fs_d
     if (!buffer)
         return false;
 
-    if (!block_read(device.get(), 16, buffer))
+    if (!block_device_read(device, 16, buffer, device->block_size))
+        return false;
+
+    if (!iso9660_validate(buffer, device->block_size))
         return false;
 
     iso9660_volume_primary_volume_descriptor_t* pvd = (iso9660_volume_primary_volume_descriptor_t*)buffer;
@@ -114,7 +117,7 @@ std::unique_ptr<u8> iso9660_read_from_disk(block_device_t* device, size_t size, 
     if (error) *error = false;
 
     for (size_t i = 0; i < lba_count; i++) {
-        if (!block_read(device, lba + i, data.get() + (i * device->block_size))) {
+        if (!block_device_read(device, lba + i, data.get() + (i * device->block_size), device->block_size)) {
             if (error) *error = true;
             break;
         }
@@ -146,7 +149,7 @@ bool iso9660_find_node(iso9660_fsdata_t* fs_data, const char* path, u64 size, u6
 
     // read target disk section
     bool error;
-    std::unique_ptr<u8> disk_data = iso9660_read_from_disk(fs_data->block_device.get(), size, lba, &error);
+    std::unique_ptr<u8> disk_data = iso9660_read_from_disk(fs_data->block_device, size, lba, &error);
     if (error)
         return false;
 
@@ -240,7 +243,7 @@ bool iso9660_read(iso9660_fsdata_t* fs_data, const char* path, u8** out_data, si
     if (!file_buffer.get())
         return false;
 
-    if (!block_read_sized(fs_data->block_device.get(), node.lba, file_buffer.get(), aligned_size))
+    if (!block_device_read_sized(fs_data->block_device, node.lba, file_buffer.get(), aligned_size))
         return false;
 
     *out_size = 0;
@@ -265,7 +268,7 @@ bool iso9660_list_directory(iso9660_fsdata_t* fs_data, const char* path, std::dy
         return false;
 
     bool error;
-    std::unique_ptr<u8> disk_data = iso9660_read_from_disk(fs_data->block_device.get(), node.size, node.lba, &error);
+    std::unique_ptr<u8> disk_data = iso9660_read_from_disk(fs_data->block_device, node.size, node.lba, &error);
     if (error)
         return false;
 
@@ -308,5 +311,37 @@ const block_device_t* iso9660_get_block_device(iso9660_fsdata_t* fs_data) {
     if (!fs_data)
         return nullptr;
 
-    return fs_data->block_device.get();
+    return fs_data->block_device;
+}
+
+const filesystem_interface_t* get_iso9660_filesystem_interface() {
+    static const filesystem_interface_t interface {
+        .get_block_device = (decltype(filesystem_interface_t::get_block_device))iso9660_get_block_device,
+        .read = (decltype(filesystem_interface_t::read))iso9660_read,
+        .file_exists = (decltype(filesystem_interface_t::file_exists))iso9660_file_exists,
+        .enumerate_directory = [](void* filesystem_data, const char* path, std::dynamic_array<vfs_node_t>* out) -> bool {
+            std::dynamic_array<iso9660_node_t> nodes {};
+            if (!iso9660_list_directory((iso9660_fsdata_t*)filesystem_data, path, &nodes))
+                return false;
+
+            for (auto& n : nodes)
+                out->insert_back({ .name = n.name, .size = n.size, .is_directory = n.is_directory });
+
+            return true;
+        }
+    };
+
+    return &interface;
+}
+
+bool iso9660_validate(const u8* buffer, size_t size) {
+    if (!buffer || size < sizeof(iso9660_volume_descriptor_t))
+        return false;
+
+    const iso9660_volume_descriptor_t* vd = (const iso9660_volume_descriptor_t*)buffer;
+
+    if (vd->type != iso9660_volume_type_t::PRIMARY_VOLUME_DESCRIPTOR)
+        return false;
+
+    return memeq(vd->identifier_raw, "CD001", 5);
 }

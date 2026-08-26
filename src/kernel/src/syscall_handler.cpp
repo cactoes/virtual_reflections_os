@@ -124,7 +124,7 @@ u64 syscall_handler_read_file(u64 handle, u8** data, u64* size) {
         return SYSCALL_RESULT_OK;
 
     u8* file_data = nullptr;
-    size_t file_size = 0;
+    u64 file_size = 0;
     if (!vfs_read_file(get_global_vfs(), handle, &file_data, &file_size))
         return SYSCALL_RESULT_ERR;
 

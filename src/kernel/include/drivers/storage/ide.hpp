@@ -48,6 +48,7 @@
 #include "drivers/pcie.hpp"
 #include "std/array.hpp"
 #include "utils/mutex.hpp"
+#include "storage/disk_manager.hpp"
 
 enum class ide_channel_type_t {
     NONE = 0,
@@ -92,5 +93,6 @@ bool ide_device_init(ide_device_t* device);
 bool ide_read(ide_device_t* device, u64 lba, u8* buffer, size_t size);
 bool ide_write(ide_device_t* device);
 bool is_ide_device(const pci_device_t* device);
+const disk_interface_t* get_ide_disk_interface();
 
 #endif // __IDE_HPP__

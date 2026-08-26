@@ -264,3 +264,25 @@ bool is_ide_device(const pci_device_t* device) {
     return device->class_info.class_code == 0x1 &&
            device->class_info.sub_class == 0x1;
 }
+
+u64 ide_get_sector_size(ide_device_t* device) {
+    return device->logical_sector_size;
+}
+
+u64 ide_get_capacity(ide_device_t* device) {
+    return device->capacity;
+}
+
+const disk_interface_t* get_ide_disk_interface() {
+    static const disk_interface_t interface {
+        .read = (decltype(disk_interface_t::read))ide_read,
+        .write = nullptr,
+        .get_sector_size = (decltype(disk_interface_t::get_sector_size))ide_get_sector_size,
+        .get_capacity = (decltype(disk_interface_t::get_capacity))ide_get_capacity,
+        .get_model = [](void* disk_data) -> const char* { return ((ide_device_t*)disk_data)->meta.model; },
+        .get_serial = [](void* disk_data) -> const char* { return ((ide_device_t*)disk_data)->meta.serial; },
+        .get_firmware = [](void* disk_data) -> const char* { return ((ide_device_t*)disk_data)->meta.firmware; }
+    };
+
+    return &interface;
+}

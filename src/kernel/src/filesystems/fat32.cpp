@@ -44,7 +44,7 @@ u32 get_next_cluster(const fat32_fsdata_t* fs_data, u32 cluster) {
     u32 entry_offset = offset % fs_data->layout.bytes_per_sector;
 
     u8* sector_data = (u8*)malloc(fs_data->block_device->block_size);
-    if (!block_read(fs_data->block_device.get(), fat_sector, sector_data)) {
+    if (!block_device_read(fs_data->block_device, fat_sector, sector_data, fs_data->block_device->block_size)) {
         free(sector_data);
         return FAT32_EOC32;
     }
@@ -63,7 +63,7 @@ std::unique_ptr<u8> fat32_read_from_disk(fat32_fsdata_t* fs_data, size_t cluster
     if (error) *error = false;
 
     for (u32 sector = 0; sector < fs_data->layout.sectors_per_cluster; sector++) {
-        if (!block_read_sized(fs_data->block_device.get(), cluster_to_lba(fs_data, cluster) + sector, data.get() + (sector * fs_data->layout.bytes_per_sector), fs_data->layout.bytes_per_sector)) {
+        if (!block_device_read(fs_data->block_device, cluster_to_lba(fs_data, cluster) + sector, data.get() + (sector * fs_data->layout.bytes_per_sector), fs_data->layout.bytes_per_sector)) {
             if (error) *error = true;
             break;
         }
@@ -112,12 +112,12 @@ bool fat32_validate(u8* buffer, size_t size) {
     return true;
 }
 
-bool fat32_init(std::unique_ptr<block_device_t> device, fat32_fsdata_t* fs_data) {
+bool fat32_init(block_device_t* device, fat32_fsdata_t* fs_data) {
     if (!device || !fs_data)
         return false;
 
     u8* buffer = (u8*)malloc(device->block_size);
-    if (!block_read(device.get(), 0, buffer))
+    if (!block_device_read(device, 0, buffer, device->block_size))
         return false;
 
     const fat32_bpb_extended_t* bpb_extended = (fat32_bpb_extended_t*)buffer;
@@ -394,5 +394,25 @@ const block_device_t* fat32_get_block_device(fat32_fsdata_t* fs_data) {
     if (!fs_data)
         return nullptr;
 
-    return fs_data->block_device.get();
+    return fs_data->block_device;
+}
+
+const filesystem_interface_t* get_fat32_filesystem_interface() {
+    static const filesystem_interface_t interface {
+        .get_block_device = (decltype(filesystem_interface_t::get_block_device))fat32_get_block_device,
+        .read = (decltype(filesystem_interface_t::read))fat32_read,
+        .file_exists = (decltype(filesystem_interface_t::file_exists))fat32_file_exists,
+        .enumerate_directory = [](void* filesystem_data, const char* path, std::dynamic_array<vfs_node_t>* out) -> bool {
+            std::dynamic_array<fat32_node_t> nodes {};
+            if (!fat32_list_directory((fat32_fsdata_t*)filesystem_data, path, &nodes))
+                return false;
+
+            for (auto& n : nodes)
+                out->insert_back({ .name = n.name, .size = n.size, .is_directory = n.is_directory });
+
+            return true;
+        }
+    };
+
+    return &interface;
 }

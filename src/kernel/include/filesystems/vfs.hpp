@@ -8,7 +8,8 @@
 #ifndef __VFS_HPP__
 #define __VFS_HPP__
 
-#define FILE_DESCRIPTOR_INVALID MAX_UINT64
+#define FILE_DESCRIPTOR_INVALID     MAX_UINT64
+#define MOUNT_POINT_MAX_NAME_LEN    256
 
 #include "common.hpp"
 #include "std/string.hpp"
@@ -27,16 +28,23 @@ enum class fs_type_t {
     FAT32
 };
 
-struct vfs_mount_point_t {
-    std::string name;
-    fs_type_t type;
-    std::unique_ptr<void> data;
-};
-
 struct vfs_node_t {
     std::string name;
     size_t size;
     bool is_directory;
+};
+
+struct filesystem_interface_t {
+    const block_device_t*(*get_block_device)(void* filesystem_data);
+    bool(*read)(void* filesystem_data, const char* path, u8** out, u64* size);
+    bool(*file_exists)(void* filesystem_data, const char* path);
+    bool(*enumerate_directory)(void* filesystem_data, const char* path, std::dynamic_array<vfs_node_t>* out);
+};
+
+struct vfs_mount_point_t {
+    char name[MOUNT_POINT_MAX_NAME_LEN];
+    const filesystem_interface_t* interface;
+    void* filesystem_data;
 };
 
 struct vfs_t {
@@ -45,27 +53,16 @@ struct vfs_t {
     file_descriptor_t last_fd;
 };
 
-struct vfs_storage_info_t {
-    std::string serial;
-    std::string firmware;
-    std::string model;
-    u64 capacity;
-};
-
 vfs_t* get_global_vfs();
 void set_global_vfs(vfs_t* vfs);
 
 void vfs_init(vfs_t* vfs);
 
-bool vfs_mount_file_system(vfs_t* vfs, const char* name, fs_type_t type, std::unique_ptr<void> fs_data);
-const vfs_mount_point_t* vfs_get_mount_point(vfs_t* vfs, const char* path);
+bool vfs_mount_block_device(vfs_t* vfs, block_device_t* block_device, const char* name);
+
 file_descriptor_t vfs_open_file(vfs_t* vfs, const char* path);
 bool vfs_close_file(vfs_t* vfs, file_descriptor_t fd);
-bool vfs_read_file(vfs_t* vfs, file_descriptor_t fd, u8** data, size_t* size);
+bool vfs_read_file(vfs_t* vfs, file_descriptor_t fd, u8** data, u64* size);
 bool vfs_list_directory(vfs_t* vfs, const char* path, std::dynamic_array<vfs_node_t>* out_nodes);
-
-bool vfs_mount_block_device(vfs_t* vfs, std::unique_ptr<block_device_t> device, const char* name);
-bool vfs_mount_device(vfs_t* vfs, void* device, block_device_type_t type, const char* name);
-bool vfs_get_storage_info(vfs_t* vfs, const char* path, vfs_storage_info_t* storage_info);
 
 #endif // __VFS_HPP__

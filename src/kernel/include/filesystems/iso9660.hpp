@@ -7,6 +7,7 @@
 #include "drivers/storage/block_device.hpp"
 #include "std/array.hpp"
 #include "std/pointer.hpp"
+#include "filesystems/vfs.hpp"
 
 struct iso9660_lbs_msb_32 {
     u32 le;
@@ -124,18 +125,20 @@ struct iso9660_node_t {
 };
 
 struct iso9660_fsdata_t {
-    std::unique_ptr<block_device_t> block_device;
+    block_device_t* block_device;
     u64 volume_size;
     iso9660_node_t root_node;
     iso9660_volume_primary_volume_descriptor_t pvd;
 };
 
-bool iso9660_init(std::unique_ptr<block_device_t> device, iso9660_fsdata_t* fs_data);
+bool iso9660_init(block_device_t* device, iso9660_fsdata_t* fs_data);
 bool iso9660_find_node(iso9660_fsdata_t* fs_data, const char* path, u64 size, u64 lba, iso9660_node_t* out_node);
 bool iso9660_directory_exists(iso9660_fsdata_t* fs_data, const char* path);
 bool iso9660_file_exists(iso9660_fsdata_t* fs_data, const char* path);
 bool iso9660_read(iso9660_fsdata_t* fs_data, const char* path, u8** out_data, size_t* out_size);
 bool iso9660_list_directory(iso9660_fsdata_t* fs_data, const char* path, std::dynamic_array<iso9660_node_t>* out_nodes);
 const block_device_t* iso9660_get_block_device(iso9660_fsdata_t* fs_data);
+const filesystem_interface_t* get_iso9660_filesystem_interface();
+bool iso9660_validate(const u8* buffer, size_t size);
 
 #endif // __ISO9660_HPP__

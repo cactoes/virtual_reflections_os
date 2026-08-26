@@ -1,7 +1,6 @@
 #include "filesystems/vfs.hpp"
 #include "filesystems/iso9660.hpp"
 #include "filesystems/fat32.hpp"
-#include "drivers/storage/mbr.hpp"
 
 static vfs_t* global_vfs = nullptr;
 
@@ -14,20 +13,95 @@ void set_global_vfs(vfs_t* vfs) {
 }
 
 void vfs_init(vfs_t* vfs) {
+    vfs->mount_points = {};
     vfs->file_handles = {};
     vfs->last_fd = 0;
-    vfs->mount_points = {};
 }
 
-bool vfs_mount_file_system(vfs_t* vfs, const char* name, fs_type_t type, std::unique_ptr<void> fs_data) {
-    if (vfs->mount_points.contains(std::string(name)))
+fs_type_t get_filesystem(block_device_t* device) {
+    if (!device)
+        return fs_type_t::UNKNOWN;
+
+    u8* buffer = (u8*)malloc(device->block_size);
+    if (!block_device_read(device, 16, buffer, device->block_size))
+        return fs_type_t::UNKNOWN;
+
+    if (memeq(&buffer[1], "CD001", 5)) {
+        free(buffer);
+        return fs_type_t::ISO9660;        
+    }
+
+    memzero(buffer, device->block_size);
+    if (!block_device_read(device, 0, buffer, device->block_size))
+        return fs_type_t::UNKNOWN;
+
+    if (fat32_validate(buffer, device->block_size)) {
+        free(buffer);
+        return fs_type_t::FAT32;
+    }
+
+    free(buffer);
+    return fs_type_t::UNKNOWN;
+}
+
+bool vfs_mount_block_device(vfs_t* vfs, block_device_t* block_device, const char* name) {
+    if (!name)
         return false;
 
-    vfs->mount_points[std::string(name)] = { .name = name, .type = type, .data = move(fs_data)  };
-    return true;
+    if (!vfs || !block_device || vfs->mount_points.contains(std::string(name)))
+        return false;
+
+    switch (get_filesystem(block_device)) {
+        case fs_type_t::FAT32: {
+            fat32_fsdata_t* data = new (malloc(sizeof(fat32_fsdata_t))) fat32_fsdata_t();
+            if (!data)
+                return false;
+
+            if (!fat32_init(block_device, data)) {
+                free(data);
+                return false;
+            }
+
+            vfs_mount_point_t mount_point {};
+            size_t copy_len = MIN(strlen(name), sizeof(mount_point.name) - 1);
+            memcpy(mount_point.name, name, copy_len);
+            mount_point.name[copy_len] = '\0';
+            mount_point.interface = get_fat32_filesystem_interface();
+            mount_point.filesystem_data = data;
+            vfs->mount_points[name] = mount_point;
+
+            return true;
+
+        }
+        case fs_type_t::ISO9660: {
+            iso9660_fsdata_t* data = new (malloc(sizeof(iso9660_fsdata_t))) iso9660_fsdata_t();
+            if (!data)
+                return false;
+
+            if (!iso9660_init(block_device, data)) {
+                free(data);
+                return false;
+            }
+
+            vfs_mount_point_t mount_point {};
+            size_t copy_len = MIN(strlen(name), sizeof(mount_point.name) - 1);
+            memcpy(mount_point.name, name, copy_len);
+            mount_point.name[copy_len] = '\0';
+            mount_point.interface = get_iso9660_filesystem_interface();
+            mount_point.filesystem_data = data;
+            vfs->mount_points[name] = mount_point;
+
+            return true;
+
+        }
+        default:
+            return false;
+    }
+
+    return false;
 }
 
-const vfs_mount_point_t* vfs_get_mount_point(vfs_t* vfs, const char* path) {
+const vfs_mount_point_t* vfs_get_mount_point_from_path(vfs_t* vfs, const char* path) {
     const std::dynamic_array<std::string> path_parts = str_split(std::string(path), '/');
     if (path_parts.length() == 0)
         return nullptr;
@@ -45,9 +119,7 @@ std::string get_mount_point_relative_path(const vfs_mount_point_t* mount_point, 
 
     size_t str_offset = str_starts_with(path.c_str(), "/") ? 1 : 0;
 
-    // FIXME @since 30/01/2026 -- 02:41
-    // proper check
-    size_t size = mount_point->name.length() + str_offset;
+    size_t size = strlen(mount_point->name) + str_offset;
     if (size >= path.length())
         return "";
 
@@ -55,25 +127,13 @@ std::string get_mount_point_relative_path(const vfs_mount_point_t* mount_point, 
 }
 
 file_descriptor_t vfs_open_file(vfs_t* vfs, const char* path) {
-    const vfs_mount_point_t* mount_point = vfs_get_mount_point(vfs, path);
+    const vfs_mount_point_t* mount_point = vfs_get_mount_point_from_path(vfs, path);
     if (!mount_point)
         return FILE_DESCRIPTOR_INVALID;
 
     const std::string mount_point_relative_path = get_mount_point_relative_path(mount_point, std::string(path));
 
-    bool file_exists = false;
-    switch (mount_point->type) {
-        case fs_type_t::ISO9660:
-            file_exists = iso9660_file_exists((iso9660_fsdata_t*)mount_point->data.get(), mount_point_relative_path.c_str());
-            break;
-        case fs_type_t::FAT32:
-            file_exists = fat32_file_exists((fat32_fsdata_t*)mount_point->data.get(), mount_point_relative_path.c_str());
-            break;
-        default:
-            file_exists = false;
-            break;
-    }
-
+    bool file_exists = mount_point->interface->file_exists(mount_point->filesystem_data, mount_point_relative_path.c_str());
     if (!file_exists)
         return FILE_DESCRIPTOR_INVALID;
 
@@ -100,13 +160,13 @@ bool vfs_close_file(vfs_t* vfs, file_descriptor_t fd) {
     return vfs->file_handles.remove(fd);
 }
 
-bool vfs_read_file(vfs_t* vfs, file_descriptor_t fd, u8** data, size_t* size) {
+bool vfs_read_file(vfs_t* vfs, file_descriptor_t fd, u8** data, u64* size) {
     auto fd_iterator = vfs->file_handles.get(fd);
     if (fd_iterator == vfs->file_handles.end())
         return false;
 
     const std::string& path = fd_iterator->value;
-    const vfs_mount_point_t* mount_point = vfs_get_mount_point(vfs, path.c_str());
+    const vfs_mount_point_t* mount_point = vfs_get_mount_point_from_path(vfs, path.c_str());
     if (!mount_point)
         return false;
 
@@ -114,229 +174,19 @@ bool vfs_read_file(vfs_t* vfs, file_descriptor_t fd, u8** data, size_t* size) {
     *size = 0;
 
     const std::string mount_point_relative_path = get_mount_point_relative_path(mount_point, path);
-    switch (mount_point->type) {
-        case fs_type_t::ISO9660:
-            return iso9660_read((iso9660_fsdata_t*)mount_point->data.get(), mount_point_relative_path.c_str(), data, size);
-        case fs_type_t::FAT32:
-            return fat32_read((fat32_fsdata_t*)mount_point->data.get(), mount_point_relative_path.c_str(), data, size);
-        default:
-            return false;
-    }
 
-    return false;
+    return mount_point->interface->read(mount_point->filesystem_data, mount_point_relative_path.c_str(), data, size);
 }
 
 bool vfs_list_directory(vfs_t* vfs, const char* path, std::dynamic_array<vfs_node_t>* out_nodes) {
     if (!vfs || !path || !out_nodes)
         return false;
 
-    const vfs_mount_point_t* mount_point = vfs_get_mount_point(vfs, path);
+    const vfs_mount_point_t* mount_point = vfs_get_mount_point_from_path(vfs, path);
     if (!mount_point)
         return false;
 
     const std::string mount_point_relative_path = get_mount_point_relative_path(mount_point, path);
-
-    switch (mount_point->type) {
-        case fs_type_t::ISO9660: {
-            std::dynamic_array<iso9660_node_t> iso9660_nodes {};
-            if (!iso9660_list_directory((iso9660_fsdata_t*)mount_point->data.get(), mount_point_relative_path.c_str(), &iso9660_nodes))
-                return false;
-
-            for (const auto& node : iso9660_nodes) {
-                vfs_node_t vfs_node {};
-                vfs_node.is_directory = node.is_directory;
-                vfs_node.name = std::string(node.name);
-                vfs_node.size = node.size;
-                out_nodes->insert_back(vfs_node);
-            }
-
-            return true;
-        }
-        case fs_type_t::FAT32: {
-            std::dynamic_array<fat32_node_t> fat32_nodes {};
-            if (!fat32_list_directory((fat32_fsdata_t*)mount_point->data.get(), mount_point_relative_path.c_str(), &fat32_nodes))
-                return false;
-
-            for (const auto& node : fat32_nodes) {
-                vfs_node_t vfs_node {};
-                vfs_node.is_directory = node.is_directory;
-                vfs_node.name = std::string(node.name);
-                vfs_node.size = node.size;
-                out_nodes->insert_back(vfs_node);
-            }
-            
-            return true;
-        }
-        default:
-            return false;
-    }
-
-    return false;
-}
-
-fs_type_t get_filesystem(block_device_t* device) {
-    if (!device)
-        return fs_type_t::UNKNOWN;
-
-    u8* buffer = (u8*)malloc(device->block_size);
-    if (!block_read(device, 16, buffer))
-        return fs_type_t::UNKNOWN;
-
-    if (memeq(&buffer[1], "CD001", 5)) {
-        free(buffer);
-        return fs_type_t::ISO9660;        
-    }
-
-    memzero(buffer, device->block_size);
-    if (!block_read(device, 0, buffer))
-        return fs_type_t::UNKNOWN;
-
-    if (fat32_validate(buffer, device->block_size)) {
-        free(buffer);
-        return fs_type_t::FAT32;
-    }
-
-    free(buffer);
-    return fs_type_t::UNKNOWN;
-}
-
-bool vfs_mount_block_device(vfs_t* vfs, std::unique_ptr<block_device_t> device, const char* name) {
-    switch (get_filesystem(device.get())) {
-        case fs_type_t::ISO9660: {
-            iso9660_fsdata_t* data = new (malloc(sizeof(iso9660_fsdata_t))) iso9660_fsdata_t();
-            if (!data)
-                return false;
-
-            if (!iso9660_init(move(device), data)) {
-                free(data);
-                return false;
-            }
-
-            return vfs_mount_file_system(vfs, name, fs_type_t::ISO9660, std::unique_ptr<void>(data));
-        }
-        case fs_type_t::FAT32: {
-            fat32_fsdata_t* data = new (malloc(sizeof(fat32_fsdata_t))) fat32_fsdata_t();
-            if (!data)
-                return false;
-
-            if (!fat32_init(move(device), data)) {
-                free(data);
-                return false;
-            }
-
-            return vfs_mount_file_system(vfs, name, fs_type_t::FAT32, std::unique_ptr<void>(data));
-        }
-        case fs_type_t::UNKNOWN:
-        default:
-            return false;
-    }
-
-    return false;
-}
-
-bool vfs_mount_device(vfs_t* vfs, void* device, block_device_type_t type, const char* name) {
-    if (!vfs || !device || !name)
-        return false;
     
-    if (type == block_device_type_t::UNKOWN)
-        return false;
-
-    u8* buffer = nullptr;
-    u64 logical_sector_size = 0;
-    u64 lba_count = 0;
-    switch (type) {
-        case block_device_type_t::IDE:
-            logical_sector_size = ((ide_device_t*)device)->logical_sector_size;
-            lba_count = ((ide_device_t*)device)->lba_count;
-            buffer = (u8*)malloc(logical_sector_size);
-            if (!buffer) return false;
-            if (!ide_read((ide_device_t*)device, 0, buffer, ((ide_device_t*)device)->logical_sector_size)) {
-                free(buffer);
-                return false;
-            }
-            break;
-        case block_device_type_t::AHCI:
-            logical_sector_size = ((ahci_device_t*)device)->logical_sector_size;
-            lba_count = ((ahci_device_t*)device)->lba_count;
-            buffer = (u8*)malloc(logical_sector_size);
-            if (!buffer) return false;
-            if (!ahci_read((ahci_device_t*)device, 0, buffer, ((ahci_device_t*)device)->logical_sector_size)) {
-                free(buffer);
-                return false;
-            }
-            break;
-    }
-
-    std::unique_ptr<block_device_t> initial_block_device = std::make_unique<block_device_t>();
-    initial_block_device->disk_device = device;
-    initial_block_device->type = type;
-    initial_block_device->start_lba = 0;
-    initial_block_device->end_lba = lba_count - 1;
-    initial_block_device->block_size = logical_sector_size;
-
-    if (vfs_mount_block_device(vfs, move(initial_block_device), name)) {
-        free(buffer);
-        return true;
-    }
-
-    // might be mbr
-    if (!is_mbr(buffer, logical_sector_size)) {
-        free(buffer);
-        return false;
-    }
-
-    mbr_t* mbr = (mbr_t*)buffer;
-
-    for (size_t i = 0; i < MBR_PARTITIONS; i++) {
-        const mbr_entry_t* partition = &mbr->partitions[i];
-        if (!mbr_is_entry_valid(partition))
-            continue;
-
-        std::unique_ptr<block_device_t> block_device = std::make_unique<block_device_t>();
-        block_device->disk_device = device;
-        block_device->type = type;
-        block_device->start_lba = partition->lba_start;
-        block_device->end_lba = partition->lba_start + partition->sector_count - 1;
-        block_device->block_size = logical_sector_size;
-
-        char* name_buffer = (char*)malloc(strlen(name) + 6);
-        sprintf(name_buffer, strlen(name) + 6, "%sp%u", name, i);
-        (void)vfs_mount_block_device(vfs, move(block_device), name_buffer);
-        free(name_buffer);
-    }
-
-    free(buffer);
-    return true;
-}
-
-bool vfs_get_storage_info(vfs_t* vfs, const char* path, vfs_storage_info_t* storage_info) {
-    if (!vfs || !path || !storage_info)
-        return false;
-    
-    const vfs_mount_point_t* mount_point = vfs_get_mount_point(vfs, path);
-    if (!mount_point)
-        return false;
-
-    const block_device_t* block_device = nullptr;
-
-    switch (mount_point->type) {
-        case fs_type_t::ISO9660:
-            block_device = iso9660_get_block_device((iso9660_fsdata_t*)mount_point->data.get());
-            break;
-        case fs_type_t::FAT32:
-            block_device = fat32_get_block_device((fat32_fsdata_t*)mount_point->data.get());
-            break;
-        default:
-            break;
-    }
-
-    if (!block_device)
-        return false;
-
-    storage_info->capacity = block_device_get_drive_capacity((block_device_t*)block_device);
-    storage_info->firmware = block_device_get_firmware((block_device_t*)block_device);
-    storage_info->serial = block_device_get_serial((block_device_t*)block_device);
-    storage_info->model = block_device_get_model((block_device_t*)block_device);
-
-    return true;
+    return mount_point->interface->enumerate_directory(mount_point->filesystem_data, mount_point_relative_path.c_str(), out_nodes);
 }

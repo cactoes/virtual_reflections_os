@@ -33,7 +33,7 @@ struct process_t {
     // idk[]
 
     u8* data;
-    size_t data_size;
+    u64 data_size;
     void* start_address;
 
     void* program_data_v;

@@ -82,49 +82,49 @@ void terminal_execute(const std::string& path, const std::dynamic_array<std::str
             break;
         }
         case hash_fnv1a_64("ls"): {
-            // TODO @since 11/10/2025 -- 01:09
-            // check if is file
-            std::dynamic_array<vfs_node_t> entries {};
-            std::string arg_path = "";
-            if (args.length() >= 1)
-                arg_path = *args.get_at(0);
+            // // TODO @since 11/10/2025 -- 01:09
+            // // check if is file
+            // std::dynamic_array<vfs_node_t> entries {};
+            // std::string arg_path = "";
+            // if (args.length() >= 1)
+            //     arg_path = *args.get_at(0);
 
-            bool result = vfs_list_directory(get_global_vfs(), arg_path.c_str(), &entries);
-            if (!result) {
-                printf("Directory not found");
-                break;
-            }
+            // bool result = vfs_list_directory(get_global_vfs(), arg_path.c_str(), &entries);
+            // if (!result) {
+            //     printf("Directory not found");
+            //     break;
+            // }
 
-            for (auto& dir : entries)
-                printf("%s\n", dir.name.c_str());
+            // for (auto& dir : entries)
+            //     printf("%s\n", dir.name.c_str());
 
             break;
         }
         case hash_fnv1a_64("cat"): {
-            // TODO @since 11/10/2025 -- 01:09
-            // check if is directory
-            std::dynamic_array<vfs_node_t> entries {};
-            std::string arg_path = "";
-            if (args.length() >= 1)
-                arg_path = *args.get_at(0);
+            // // TODO @since 11/10/2025 -- 01:09
+            // // check if is directory
+            // std::dynamic_array<vfs_node_t> entries {};
+            // std::string arg_path = "";
+            // if (args.length() >= 1)
+            //     arg_path = *args.get_at(0);
 
-            file_descriptor_t result = vfs_open_file(get_global_vfs(), arg_path.c_str());
-            if (result == FILE_DESCRIPTOR_INVALID) {
-                printf("File not found");
-                break;
-            }
+            // file_descriptor_t result = vfs_open_file(get_global_vfs(), arg_path.c_str());
+            // if (result == FILE_DESCRIPTOR_INVALID) {
+            //     printf("File not found");
+            //     break;
+            // }
 
-            u8* buffer;
-            size_t size;
-            if (vfs_read_file(get_global_vfs(), result, &buffer, &size)) {
-                std::dynamic_array<u8> data {};
-                data.assign(buffer, size);
-                data.insert_back('\n');
-                data.insert_back(0);
-                printf((char*)data.get_data());
-            } else {
-                printf("Failed to read file");
-            }
+            // u8* buffer;
+            // size_t size;
+            // if (vfs_read_file(get_global_vfs(), result, &buffer, &size)) {
+            //     std::dynamic_array<u8> data {};
+            //     data.assign(buffer, size);
+            //     data.insert_back('\n');
+            //     data.insert_back(0);
+            //     printf((char*)data.get_data());
+            // } else {
+            //     printf("Failed to read file");
+            // }
             break;
         }
         case hash_fnv1a_64("driverquery"): {
@@ -160,20 +160,20 @@ void terminal_execute(const std::string& path, const std::dynamic_array<std::str
             break;
         }
         case hash_fnv1a_64("diskstat"): {
-            if (args.length() >= 1) {
-                auto arg0 = *args.get_at(0);
+            // if (args.length() >= 1) {
+            //     auto arg0 = *args.get_at(0);
 
-                vfs_storage_info_t storage_info {};
-                if (!vfs_get_storage_info(get_global_vfs(), arg0.c_str(), &storage_info)) {
-                    printf("Disk or drive not found\n");
-                    break;
-                }
+            //     vfs_storage_info_t storage_info {};
+            //     if (!vfs_get_storage_info(get_global_vfs(), arg0.c_str(), &storage_info)) {
+            //         printf("Disk or drive not found\n");
+            //         break;
+            //     }
 
-                printf("%s:\n", storage_info.model.c_str());
-                printf("    Serial: %s\n", storage_info.serial.c_str());
-                printf("    Firmware: %s\n", storage_info.firmware.c_str());
-                printf("    Disk size: %s\n", size_format_to_string(storage_info.capacity).c_str());
-            }
+            //     printf("%s:\n", storage_info.model.c_str());
+            //     printf("    Serial: %s\n", storage_info.serial.c_str());
+            //     printf("    Firmware: %s\n", storage_info.firmware.c_str());
+            //     printf("    Disk size: %s\n", size_format_to_string(storage_info.capacity).c_str());
+            // }
             break;
         }
         case hash_fnv1a_64("systemstat"): {

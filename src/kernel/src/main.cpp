@@ -123,6 +123,7 @@ static system_info_manager_t kernel_sim {};
 static pcie_device_manager_t kernel_pciedm {};
 static network_manager_t kernel_network_manager {};
 static storage_manager_t kernel_storage_manager {};
+static disk_manager_t kernel_disk_manager {};
 static driver_manager_t kernel_driver_manager {};
 static process_t kernel_process {};
 static window_manager_t kernel_window_manager {};
@@ -426,25 +427,8 @@ static
 void storage_pci_loop(const pci_device_t* device) {
     if (is_ide_device(device)) {
         auto& ide_devices = get_global_storage_manager()->ide.devices;
-        if (ide_init(device, &ide_devices)) {
-            size_t ide_device_index = 0;
-            for (auto& device : ide_devices) {
-                char name[128];
-                sprintf(name, sizeof(name), "harddisk%i", ide_device_index++);
-
-                if (vfs_mount_device(get_global_vfs(), &device, block_device_type_t::IDE, name)) {
-                    char outstr[128];
-                    sprintf(outstr, sizeof(outstr), "mounted '%s'", name);
-                    system_log_info("IDE", outstr);
-                } else {
-                    char outstr[128];
-                    sprintf(outstr, sizeof(outstr), "failed to mount '%s'", name);
-                    system_log_info("IDE", outstr);
-                }
-            }
-        } else {
+        if (!ide_init(device, &ide_devices))
             system_log_info("IDE", "driver failed to initialize");
-        }
 
         return;
     }
@@ -452,27 +436,91 @@ void storage_pci_loop(const pci_device_t* device) {
     if (is_ahci_device(device)) {
         auto& ahci_driver_ctx = get_global_storage_manager()->ahci.driver_ctx;
         auto& ahci_devices = get_global_storage_manager()->ahci.devices;
-        if (ahci_init(device, &ahci_driver_ctx, &ahci_devices)) {
-            size_t ahci_device_index = 0;
-            for (auto& device : ahci_devices) {
-                char name[18];
-                sprintf(name, sizeof(name), "drive%i", ahci_device_index++);
-                if (vfs_mount_device(get_global_vfs(), &device, block_device_type_t::AHCI, name)) {
-                    char outstr[128];
-                    sprintf(outstr, sizeof(outstr), "mounted '%s'", name);
-                    system_log_info("AHCI", outstr);
-                } else {
-                    char outstr[128];
-                    sprintf(outstr, sizeof(outstr), "failed to mount '%s'", name);
-                    system_log_info("AHCI", outstr);
-                }
-            }
-        } else {
+        if (!ahci_init(device, &ahci_driver_ctx, &ahci_devices))
             system_log_info("AHCI", "driver failed to initialize");
-        }
 
         // valid device so we can continue to the next device
         return;
+    }
+}
+
+static
+void mount_disks(storage_manager_t* sm, disk_manager_t* dm, vfs_t* vfs) {
+    u64 disknr = 0;
+    for (auto& device : sm->ahci.devices) {
+        char name[32];
+        sprintf(name, sizeof(name), "disk%i", disknr++);
+        disk_manager_register(dm, name, get_ahci_disk_interface(), &device);
+    }
+
+    for (auto& device : sm->ide.devices) {
+        char name[32];
+        sprintf(name, sizeof(name), "disk%i", disknr++);
+        disk_manager_register(dm, name, get_ide_disk_interface(), &device);
+    }
+
+    std::dynamic_array<block_device_t*> block_devices {};
+    for (auto& disk :dm->disks) {
+        size_t sector_size = disk.interface->get_sector_size(disk.disk_data);
+
+        u8 iso_buffer[2048];
+        bool is_iso = disk.interface->read(disk.disk_data, 16, iso_buffer, sizeof(iso_buffer)) && iso9660_validate(iso_buffer, sizeof(iso_buffer));
+
+        if (is_iso) {
+            auto* whole = new block_device_t {};
+            sprintf(whole->name, sizeof(whole->name), "%s", disk.name);
+            whole->interface = disk.interface;
+            whole->disk_data = disk.disk_data;
+            whole->start_lba = 0;
+            whole->end_lba = disk.interface->get_capacity(disk.disk_data) / sector_size;
+            whole->block_size = sector_size;
+            block_devices.insert_back(whole);
+            continue;
+        }
+
+        u8 buffer[sector_size];
+        if (!disk.interface->read(disk.disk_data, 0, buffer, sector_size))
+            continue;
+
+        if (!is_mbr(buffer, sector_size)) {
+            auto* whole = new block_device_t {};
+            sprintf(whole->name, sizeof(whole->name), "%s", disk.name);
+            whole->interface = disk.interface;
+            whole->disk_data = disk.disk_data;
+            whole->start_lba = 0;
+            whole->end_lba = disk.interface->get_capacity(disk.disk_data) / sector_size;
+            whole->block_size = sector_size;
+            block_devices.insert_back(whole);
+            continue;
+        }
+
+        mbr_t* mbr = (mbr_t*)buffer;
+        for (u64 i = 0; i < MBR_PARTITIONS; i++) {
+            const mbr_entry_t* entry = &mbr->partitions[i];
+            if (!mbr_is_entry_valid(entry))
+                continue;
+
+            auto* part = new block_device_t {};
+            sprintf(part->name, sizeof(part->name), "%sp%i", disk.name, i);
+            part->interface = disk.interface;
+            part->disk_data = disk.disk_data;
+            part->start_lba = entry->lba_start;
+            part->end_lba = entry->lba_start + entry->sector_count;
+            part->block_size = sector_size;
+            block_devices.insert_back(part);
+        }
+    }
+
+    for (auto& device : block_devices) {
+        if (vfs_mount_block_device(vfs, device, device->name)) {
+            char outstr[256];
+            sprintf(outstr, sizeof(outstr), "mounted '%s'", device->name);
+            system_log_info("VFS", outstr);
+        } else {
+            char outstr[256];
+            sprintf(outstr, sizeof(outstr), "failed to mount '%s'", device->name);
+            system_log_info("VFS", outstr);
+        }
     }
 }
 
@@ -484,8 +532,10 @@ void init_storage() {
     }
 
     set_global_storage_manager(&kernel_storage_manager);
+    set_global_disk_manager(&kernel_disk_manager);
 
     pci_loop_devices(get_global_pcie_device_manager(), storage_pci_loop);
+    mount_disks(get_global_storage_manager(), get_global_disk_manager(), get_global_vfs());
 
     initialized_kernel_components.storage = true;
 
