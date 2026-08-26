@@ -1,26 +1,111 @@
 @startuml storage diagram
 title storage diagram
 
-interface storage_driver_interface_t {
-    virtual read(...) = 0;
-    virtual write(...) = 0;
+database "disk" as disk {
 }
 
-interface filesystem_interface_t {
-    virtual read(...) = 0;
-    virtual write(...) = 0;
-    virtual enumerate_directory(...) = 0;
+struct disk_interface_t {
+    read(void* disk_data, u64 lba, u8* buffer, u64 size): bool
+    write(void* disk_data, u64 lba, const u8* buffer, u64 size): void
+    get_sector_size(void* disk_data): u64
+    get_capacity(void* disk_data): u64
 }
 
-interface vfs_storage_interface_t {
-    virtual read_file(...) = 0
-    virtual write_file(...) = 0
-    virtual write_file(...) = 0
-    virtual enumerate_directory(...) = 0
-    virtual create_directory(...) = 0
+struct disk_t {
+    name: string
+    interface: const disk_interface_t*
+    disk_data: void*
 }
 
-vfs_storage_interface_t <-- filesystem_interface_t
-filesystem_interface_t <-- storage_driver_interface_t
+struct disk_manager_t {
+    disks: list<disk_t>
+}
+
+struct block_device_t {
+    name: string
+    interface: const disk_interface_t*
+    disk_data: void*
+    start_lba: u64
+    end_lba: u64
+    block_size: u64
+}
+
+struct filesystem_interface_t {
+    file_exists(void* fs_data, const char* path): bool
+    directory_exists(void* fs_data, const char* path): bool
+    read(void* fs_data, const char* path, u8** out_data, u64* out_size): bool
+    list_directory(void* fs_data, const char* path, list<vfs_node_t>* out): bool
+    get_block_device(void* fs_data): const block_device_t*
+}
+
+struct vfs_node_t {
+    size: u64
+    is_directory: bool
+    name: string
+}
+
+struct vfs_mount_point_t {
+    name: string
+    interface: const filesystem_interface_t*
+    fs_data: void*
+}
+
+struct vfs_t {
+    mount_points: map<string, vfs_mount_point_t>
+}
+
+struct fat32_fsdata_t {
+    block_device: unique_ptr<block_device_t>
+    volume_size: u64
+    layout: struct
+}
+
+struct iso9660_fsdata_t {
+    block_device: unique_ptr<block_device_t>
+    volume_size: u64
+    pvd: struct
+}
+
+struct ahci_device_t {
+    clb: void*
+    port: hba_port_t*
+    type: ahci_device_type_t
+    lba_count: u64
+    capacity: u64
+    logical_sector_size: u64
+    meta: struct
+}
+
+struct ide_device_t {
+    io_base: u16
+    control_base: u16
+    is_slave: bool
+    capacity: u64
+    sector_size: u64
+}
+
+disk_manager_t "1" o-- "many" disk_t : disks
+disk_t ..> disk_interface_t : dispatches via
+disk_t --> disk : disk_data >
+
+ahci_device_t ..|> disk_interface_t : implements (ahci_disk_interface)
+ide_device_t ..|> disk_interface_t : implements (ide_disk_interface)
+disk_t ..> ahci_device_t : disk_data (opaque) >
+disk_t ..> ide_device_t : disk_data (opaque) >
+block_device_t ..> ahci_device_t : disk_data (opaque) >
+block_device_t ..> ide_device_t : disk_data (opaque) >
+
+block_device_t ..> disk_interface_t : dispatches via
+
+fat32_fsdata_t *-- block_device_t : owns
+iso9660_fsdata_t *-- block_device_t : owns
+fat32_fsdata_t ..|> filesystem_interface_t : implements
+iso9660_fsdata_t ..|> filesystem_interface_t : implements
+
+vfs_t "1" o-- "many" vfs_mount_point_t : mount_points
+vfs_mount_point_t --> filesystem_interface_t : interface >
+vfs_mount_point_t ..> fat32_fsdata_t : fs_data (opaque) >
+vfs_mount_point_t ..> iso9660_fsdata_t : fs_data (opaque) >
+filesystem_interface_t ..> vfs_node_t : returns
 
 @enduml
