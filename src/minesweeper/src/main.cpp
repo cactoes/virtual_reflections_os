@@ -287,7 +287,7 @@ int main() {
 
     game_board_create(active_game);
 
-    u64 file_handle = syscall_open_file("harddisk0/minesweeper/sprites.bmp");
+    u64 file_handle = syscall_open_file("disk1/minesweeper/sprites.bmp");
     
     u8* data = nullptr;
     u64 size = 0;

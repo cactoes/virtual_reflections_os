@@ -675,7 +675,7 @@ void virtual_kernel_entry(multiboot2_info_t* multiboot_struct) {
     // init_display_driver();
 
     // process_t p {};
-    // create_process(&p, "harddisk0/TestProgram.exe");
+    // create_process(&p, "disk1/Minesweeper.exe");
 
     // we shoudn t reach this point since the kernel should never stop
     // incase we do just hang here so we dont break anything

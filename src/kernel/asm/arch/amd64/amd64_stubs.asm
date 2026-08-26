@@ -143,16 +143,17 @@ amd64_syscall_stub:
     mov rdi, rax
     mov rsi, rsp
 
-    sub rsp, 512
-    and rsp, -16
-    fxsave [rsp]
+    ; TODO
+    ; sub rsp, 512
+    ; and rsp, -16
+    ; fxsave [rsp]
 
-    sti
+    ; sti
     call amd64_syscall_dispatch
-    cli
+    ; cli
 
-    fxrstor [rsp]
-    add rsp, 512
+    ; fxrstor [rsp]
+    ; add rsp, 512
 
     pop r15
     pop r14
