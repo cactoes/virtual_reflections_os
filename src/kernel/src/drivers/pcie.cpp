@@ -94,7 +94,7 @@ bool pci_write_bar(const pci_device_t* device, u32 bar, u32 value) {
 }
 
 bool pci_enumerate_devices(pcie_device_manager_t* device_manager) {
-        for (u32 bus = 0; bus < 256; bus++) {
+    for (u32 bus = 0; bus < 256; bus++) {
         for (u32 device = 0; device < 32; device++) {
             for (u32 function = 0; function < 8; function++) {
                 pci_device_t pci_device {};
