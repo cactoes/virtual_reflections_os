@@ -37,7 +37,13 @@ const char* pci_get_class_description(const pci_device_t* p_device) {
                 case 0x04: return "RAID Controller";
                 case 0x05: return "ATA Controller";
                 case 0x06: return "Serial ATA Controller";
-                default:   return "Unkown Mass Storage Controller";
+                case 0x08: {
+                    switch (p_device->class_info.prog_if) {
+                        case 0x02: return "NVM Express";
+                        default: return "Unknown NVMe controller";
+                    }
+                }
+                default:   return "Unknown Mass Storage Controller";
             }
         case 0x02: return "Network Controller";
         case 0x03: return "Display Controller";
@@ -55,7 +61,7 @@ const char* pci_get_class_description(const pci_device_t* p_device) {
                 case 0x07: return "CardBus Bridge";
                 case 0x08: return "RACEway Bridge";
                 case 0x09: return "PCI-to-PCI Bridge";
-                default:   return "Unkown Bridge";
+                default:   return "Unknown Bridge";
             }
         case 0x0C: // Serial Bus Controller
             switch (p_device->class_info.sub_class) {
@@ -71,7 +77,7 @@ const char* pci_get_class_description(const pci_device_t* p_device) {
                 case 0x12: return "Broadband Controller";
                 case 0x20: return "Ethernet Controller (802.1a)";
                 case 0x21: return "Ethernet Controller (802.1b)";
-                default:   return "Unkown Wireless Controller";
+                default:   return "Unknown Wireless Controller";
             }
         default: return "Unknown Device Type";
     }
