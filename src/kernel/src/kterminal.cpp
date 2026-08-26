@@ -266,9 +266,10 @@ void kterm_execute_command(const std::string& command, const std::dynamic_array<
                 for (auto& disk : dm->disks) {
                     const char* model    = disk.interface->get_model    ? disk.interface->get_model(disk.disk_data)    : "unknown";
                     const char* firmware = disk.interface->get_firmware ? disk.interface->get_firmware(disk.disk_data) : "unknown";
+                    const char* serial = disk.interface->get_serial ? disk.interface->get_serial(disk.disk_data) : "unknown";
                     u64 capacity = disk.interface->get_capacity(disk.disk_data);
 
-                    printf("%s - %s %s (%s)\n", disk.name, model, firmware, size_format_to_string(capacity).c_str());
+                    printf("%s - %s %s (%s) [%s]\n", disk.name, model, firmware, size_format_to_string(capacity).c_str(), serial);
 
                     char prefix[40];
                     sprintf(prefix, sizeof(prefix), "%sp", disk.name);
