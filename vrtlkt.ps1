@@ -41,15 +41,22 @@ function Start-QEMU {
         $argument_list += @("-device", "ahci,id=ahci")
     }
 
+    if ($config["qemu_enable_nvme"]) {
+        $argument_list += @("-device", "nvme,id=nvme,serial=QMNVME0001")
+    }
+
     if ($config["qemu_enable_serial_io"]) {
         $argument_list += @("-serial", "stdio")
     }
 
     if ($config["qemu_enable_vhd"]) {
-        $argument_list += @(
-            "-drive", "format=raw,file=""$($config["qemu_path_vhd"])"",id=disk,if=none",
-            "-device", "ide-hd,drive=disk,bus=ahci.0"
-        )
+        $argument_list += @("-drive", "format=raw,file=""$($config["qemu_path_vhd"])"",id=disk,if=none")
+
+        if ($config["qemu_attack_vhd_target"] -eq "ahci") {
+            $argument_list += @("-device", "ide-hd,drive=disk,bus=ahci.0")
+        } elseif ($config["qemu_attack_vhd_target"] -eq "nvme") {
+            $argument_list += @("-device", "nvme-ns,drive=disk,bus=nvme.0")
+        }
     }
 
     if ($config["qemu_enable_iso"]) {
