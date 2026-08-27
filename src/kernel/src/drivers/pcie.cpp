@@ -39,7 +39,7 @@ const char* pci_get_class_description(const pci_device_t* p_device) {
                 case 0x06: return "Serial ATA Controller";
                 case 0x08: {
                     switch (p_device->class_info.prog_if) {
-                        case 0x02: return "NVM Express";
+                        case 0x02: return "NVM Express controller";
                         default: return "Unknown NVMe controller";
                     }
                 }
