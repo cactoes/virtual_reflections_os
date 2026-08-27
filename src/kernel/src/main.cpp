@@ -18,6 +18,7 @@
 
 #include "drivers/storage/ide.hpp"
 #include "drivers/storage/ahci.hpp"
+#include "drivers/storage/nvme.hpp"
 #include "drivers/storage/block_device.hpp"
 #include "filesystems/vfs.hpp"
 #include "drivers/storage/mbr.hpp"
@@ -439,7 +440,14 @@ void storage_pci_loop(const pci_device_t* device) {
         if (!ahci_init(device, &ahci_driver_ctx, &ahci_devices))
             system_log_info("AHCI", "driver failed to initialize");
 
-        // valid device so we can continue to the next device
+        return;
+    }
+
+    if (is_nvme_device(device)) {
+        nvme_driver_ctx_t ctx {};
+        std::dynamic_array<nvme_device_t> device_list {};
+        if (!nvme_init(device, &ctx, &device_list))
+            system_log_info("NVMe", "driver failed to initialize");
         return;
     }
 }
