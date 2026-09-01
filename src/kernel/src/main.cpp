@@ -444,9 +444,9 @@ void storage_pci_loop(const pci_device_t* device) {
     }
 
     if (is_nvme_device(device)) {
-        nvme_driver_ctx_t ctx {};
-        std::dynamic_array<nvme_device_t> device_list {};
-        if (!nvme_init(device, &ctx, &device_list))
+        auto& nvme_driver_ctx = get_global_storage_manager()->nvme.driver_ctx;
+        auto& nvme_devices = get_global_storage_manager()->nvme.devices;
+        if (!nvme_init(device, &nvme_driver_ctx, &nvme_devices))
             system_log_info("NVMe", "driver failed to initialize");
         return;
     }
@@ -467,8 +467,14 @@ void mount_disks(storage_manager_t* sm, disk_manager_t* dm, vfs_t* vfs) {
         disk_manager_register(dm, name, get_ide_disk_interface(), &device);
     }
 
+    for (auto& device : sm->nvme.devices) {
+        char name[32];
+        sprintf(name, sizeof(name), "disk%i", disknr++);
+        disk_manager_register(dm, name, get_nvme_disk_interface(), &device);
+    }
+
     std::dynamic_array<block_device_t*> block_devices {};
-    for (auto& disk :dm->disks) {
+    for (auto& disk : dm->disks) {
         size_t sector_size = disk.interface->get_sector_size(disk.disk_data);
 
         u8 iso_buffer[2048];

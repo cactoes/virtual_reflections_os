@@ -55,7 +55,7 @@ function Start-QEMU {
         if ($config["qemu_attack_vhd_target"] -eq "ahci") {
             $argument_list += @("-device", "ide-hd,drive=disk,bus=ahci.0")
         } elseif ($config["qemu_attack_vhd_target"] -eq "nvme") {
-            $argument_list += @("-device", "nvme-ns,drive=disk,bus=nvme.0")
+            $argument_list += @("-device", "nvme-ns,drive=disk,bus=nvme")
         }
     }
 

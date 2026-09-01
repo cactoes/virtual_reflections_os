@@ -11,6 +11,7 @@
 #include "common.hpp"
 #include "drivers/storage/ide.hpp"
 #include "drivers/storage/ahci.hpp"
+#include "drivers/storage/nvme.hpp"
 #include "std/array.hpp"
 
 struct storage_manager_t {
@@ -22,6 +23,11 @@ struct storage_manager_t {
         ahci_driver_ctx_t driver_ctx;
         std::dynamic_array<ahci_device_t> devices;
     } ahci;
+
+    struct {
+        nvme_driver_ctx_t driver_ctx {};
+        std::dynamic_array<nvme_device_t> devices {};
+    } nvme;
 };
 
 storage_manager_t* get_global_storage_manager();

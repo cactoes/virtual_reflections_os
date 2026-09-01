@@ -38,6 +38,7 @@
 #include "common.hpp"
 #include "drivers/pcie.hpp"
 #include "utils/mutex.hpp"
+#include "storage/disk_manager.hpp"
 
 struct nvme_regs_t {
     u64 cap;
@@ -106,6 +107,12 @@ struct nvme_driver_ctx_t {
     nvme_queue_t admin_q;
     nvme_queue_t io_q;
     mutex_t submit_mutex;
+
+    struct {
+        char model[41];
+        char serial[21];
+        char firmware[9];
+    } meta;
 };
 
 struct nvme_device_t {
@@ -118,5 +125,6 @@ struct nvme_device_t {
 
 bool nvme_init(const pci_device_t* device, nvme_driver_ctx_t* ctx, std::dynamic_array<nvme_device_t>* device_list);
 bool is_nvme_device(const pci_device_t* device);
+const disk_interface_t* get_nvme_disk_interface();
 
 #endif // __NVME_HPP__

@@ -4,6 +4,15 @@
 #include "io.hpp"
 #include "arch/amd64/cpu.hpp"
 
+void nvme_trim_ascii(char* dst, const volatile u8* src, u32 len) {
+    for (u32 i = 0; i < len; i++)
+        dst[i] = (char)src[i];
+    dst[len] = 0;
+
+    for (i32 i = (i32)len - 1; i >= 0 && dst[i] == ' '; i--)
+        dst[i] = 0;
+}
+
 bool nvme_poll_until(volatile u32* reg, u32 mask, u32 want, u32 max_iters = 5000000) {
     for (u32 i = 0; i < max_iters; i++) {
         if ((*reg & mask) == want)
@@ -207,8 +216,9 @@ bool nvme_init(const pci_device_t* device, nvme_driver_ctx_t* ctx, std::dynamic_
     if (!ns_identify_buf)
         return false;
 
-    // TODO @since 27/08/2026 -- 03:54
-    // nslist == empty???
+    nvme_trim_ascii(ctx->meta.serial, (const volatile u8*)identify_buf + 4, 20);
+    nvme_trim_ascii(ctx->meta.model, (const volatile u8*)identify_buf + 24, 40);
+    nvme_trim_ascii(ctx->meta.firmware, (const volatile u8*)identify_buf + 64, 8);
 
     for (u32 i = 0; i < 1024 && nslist[i] != 0; i++) {
         const u32 nsid = nslist[i];
@@ -237,4 +247,58 @@ bool is_nvme_device(const pci_device_t* device) {
     return device->class_info.prog_if == 0x02 &&
            device->class_info.class_code == 0x01 &&
            device->class_info.sub_class == 0x08;
+}
+
+bool nvme_read(nvme_device_t* device, u64 lba, u8* buffer, u64 size) {
+    if (!device)
+        return false;
+
+    if (size % device->block_size != 0)
+        return false;
+
+    nvme_driver_ctx_t* ctx = device->nvme_driver_ctx;
+
+    auto* b2 = dma_heap_alloc(ctx->dma, size, 16);
+
+    u64 num_blocks = size / device->block_size;
+
+    nvme_command_t cmd {};
+    cmd.cdw0 = NVME_OPC_READ;
+    cmd.nsid = device->nsid;
+    cmd.prp1 = dma_get_physical(ctx->dma, b2);
+    cmd.cdw10 = (u32)(lba & 0xFFFFFFFF);
+    cmd.cdw11 = (u32)(lba >> 32);
+    cmd.cdw12 = (num_blocks - 1) & 0xFFFF;
+
+    mutex_lock(&ctx->submit_mutex);
+    bool ok = nvme_submit_and_wait(ctx, &ctx->io_q, cmd);
+    mutex_unlock(&ctx->submit_mutex);
+
+    if (ok)
+        memcpy(buffer, b2, size);
+
+    dma_heap_free(ctx->dma, b2);
+    return ok;
+}
+
+u64 nvme_get_sector_size(nvme_device_t* disk_data) {
+    return disk_data->block_size;
+}
+
+u64 nvme_get_capacity(nvme_device_t* disk_data) {
+    return disk_data->block_count * disk_data->block_size;
+}
+
+const disk_interface_t* get_nvme_disk_interface() {
+    static const disk_interface_t interface {
+        .read = (decltype(disk_interface_t::read))nvme_read,
+        .write = nullptr,
+        .get_sector_size = (decltype(disk_interface_t::get_sector_size))nvme_get_sector_size,
+        .get_capacity = (decltype(disk_interface_t::get_capacity))nvme_get_capacity,
+        .get_model = [](void* disk_data) -> const char* { return ((nvme_device_t*)disk_data)->nvme_driver_ctx->meta.model; },
+        .get_serial = [](void* disk_data) -> const char* { return ((nvme_device_t*)disk_data)->nvme_driver_ctx->meta.serial; },
+        .get_firmware = [](void* disk_data) -> const char* { return ((nvme_device_t*)disk_data)->nvme_driver_ctx->meta.firmware; }
+    };
+
+    return &interface;
 }
