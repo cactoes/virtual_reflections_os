@@ -334,6 +334,25 @@ void kterm_execute_command(const std::string& command, const std::dynamic_array<
                 printf("Uptime:  %s\n", time_format_to_string(clock_get_time_since_boot()).c_str());
                 break;
             }
+            case hash_fnv1a_64("^ls"): {
+                if (args.length() < 1) {
+                    printf("Failed to find directory\n");
+                    break;
+                }
+
+                auto arg0 = *args.get_at(0);
+
+                std::dynamic_array<vfs_node_t> nodes {};
+                if (!vfs_list_directory(get_global_vfs(), arg0.c_str(), &nodes)) {
+                    printf("Failed to find directory\n");
+                    break;
+                }
+
+                for (auto& node : nodes)
+                    printf("[%s] %s\n", node.is_directory ? "d" : "-", node.name.c_str());
+                
+                break;
+            }
             case hash_fnv1a_64("^help"): {
                 printf("[all of the listed command need the \"^\" prefix]\n");
                 printf("help                           Displays this help message\n");
@@ -348,6 +367,8 @@ void kterm_execute_command(const std::string& command, const std::dynamic_array<
                 printf("dns                            DNS information\n");
                 printf("    server                     Get the dns server that is used\n");
                 printf("    resolve <hostname>         Resolves the given hostname\n");
+                printf("ls                             List directory\n");
+                printf("    <path>                     Target directory\n");
                 break;
             }
             default:
