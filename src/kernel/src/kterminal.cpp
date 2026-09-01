@@ -321,8 +321,9 @@ void kterm_execute_command(const std::string& command, const std::dynamic_array<
             case hash_fnv1a_64("^pcistat"): {
                 for (auto& device : get_global_pcie_device_manager()->devices) {
                     const char* cd = pci_get_class_description(&device);
-                    printf("[%u:%u.%u] %s:\n", device.bus, device.device, device.function, cd);
-                    printf("    Vendor ID: 0x%uh, Device ID: 0x%uh\n", device.vendor_device_id.vendor_id, device.vendor_device_id.device_id);
+                    printf("[%u:%u.%u] %s (vendor=0x%uh, device=0x%uh)\n",
+                        device.bus, device.device, device.function, cd,
+                        device.vendor_device_id.vendor_id, device.vendor_device_id.device_id);
                 }
                 break;
             }
