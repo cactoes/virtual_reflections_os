@@ -727,7 +727,7 @@ private:
 } // namespace std
 
 static std::string size_format_to_string(size_t size) {
-    constexpr const char* sizes[] { "B", "KB", "MB", "GB", "TB" };
+    constexpr const char* sizes[] { "B", "KiB", "MiB", "GiB", "TiB" };
     size_t size_index = 0;
     double size_current = (double)size;
 
