@@ -20,6 +20,8 @@ struct system_info_manager_t {
     std::string serial_number;
 
     std::string cpu_name;
+
+    std::string boot_uuid;
 };
 
 /// @brief                          set the global system info manager
@@ -42,5 +44,7 @@ void system_info_parse_system_information(system_info_manager_t* system_info_man
 /// @brief                              gets the cpu name of the system
 /// @param[inout] system_info_manager   system info manager to store the name in
 void system_info_get_cpu_name(system_info_manager_t* system_info_manager);
+
+void system_info_get_boot_uuid(system_info_manager_t* system_info_manager, multiboot2_info_t* multiboot2_struct);
 
 #endif // __SYSTEM_INFO_HPP__

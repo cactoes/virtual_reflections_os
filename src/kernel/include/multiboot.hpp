@@ -142,6 +142,7 @@ enum class multiboot_flags_t : u32 {
 };
 
 enum class multiboot_tag_type_t : u32 {
+    CMDLINE = 1,
     MMAP = 6,
     FRAMEBUFFER = 8,
 };

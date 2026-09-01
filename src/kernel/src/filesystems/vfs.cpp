@@ -190,3 +190,10 @@ bool vfs_list_directory(vfs_t* vfs, const char* path, std::dynamic_array<vfs_nod
     
     return mount_point->interface->enumerate_directory(mount_point->filesystem_data, mount_point_relative_path.c_str(), out_nodes);
 }
+
+const std::linear_map<std::string, vfs_mount_point_t>* vfs_get_mount_points(vfs_t* vfs) {
+    if (!vfs)
+        return nullptr;
+
+    return &vfs->mount_points;
+}

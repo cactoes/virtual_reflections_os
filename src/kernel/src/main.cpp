@@ -257,6 +257,8 @@ void init_system_info(void* multiboot_struct) {
     // system_info_parse_system_information(get_global_system_info_manager());
     system_info_get_cpu_name(&kernel_sim);
 
+    system_info_get_boot_uuid(&kernel_sim, (multiboot2_info_t*)multiboot_struct);
+
     initialized_kernel_components.system_info = true;
 
     system_log_ok("parsed system info");
@@ -685,6 +687,36 @@ void virtual_kernel_entry(multiboot2_info_t* multiboot_struct) {
     // stage 4 -- applications
     if (!kterm_start(&kernel_terminal))
         printf("[ \033[91mERROR\033[0m ] failed to start terminal\n");
+
+
+    std::string& boot_uuid = get_global_system_info_manager()->boot_uuid;
+    kprintf("boot uuid: %s\n", boot_uuid.c_str());
+    std::string boot_mount_point = "";
+
+    for (const auto& mp : *vfs_get_mount_points(get_global_vfs())) {
+        std::string file_path = mp.key + "/boot/LIVEMEDIA";
+        
+        file_descriptor_t fd = vfs_open_file(get_global_vfs(), file_path.c_str());
+        if (fd == FILE_DESCRIPTOR_INVALID)
+            continue;
+
+        u8* data;
+        u64 size;
+
+        if (!vfs_read_file(get_global_vfs(), fd, &data, &size))
+            continue;
+
+        // 32 == uuid len
+        if (size != 32)
+            continue;
+
+        if (!memeq(boot_uuid.c_str(), data, 32))
+            continue;
+
+        boot_mount_point = mp.key;
+    }
+
+    kprintf("boot disk: %s\n", boot_mount_point.c_str());
 
     // init_display_driver();
 

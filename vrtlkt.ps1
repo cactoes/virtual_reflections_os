@@ -6,10 +6,11 @@
 
 # startup commands
 param (
-    [ValidateSet("install", "build", "run", "clean")]
+    [ValidateSet("install", "build", "run", "clean", "genid")]
     [string]$Tool,
     [switch]$Debug,
-    [switch]$NoWelcomeMessage
+    [switch]$NoWelcomeMessage,
+    [switch]$Regen
 )
 
 # functions
@@ -19,6 +20,33 @@ function Install-DockerEnvironment {
 
 function Start-DockerEnvironment {
     docker run --name VirtualReflectionsOS --rm -v "${PWD}:/root/env" -e GIT_COMMIT_HASH=$git_commit_hash -e WINDOWS_PATH="${PWD}" virtual_reflections_os_buildenv
+}
+
+function Start-GenerateBootId {
+    $bootDir = "iso\boot"
+    $liveFile = Join-Path $bootDir "LIVEMEDIA"
+    $grubCfg = Join-Path $bootDir "grub\grub.cfg"
+
+    if (-not (Test-Path $bootDir)) {
+        New-Item -Path $bootDir -ItemType Directory -Force | Out-Null
+    }
+
+    if ((Test-Path $liveFile) -and -not $Regen) {
+        $bootId = (Get-Content $liveFile -Raw).Trim()
+        Write-Host "Reusing: $bootId"
+    } else {
+        $bootId = [guid]::NewGuid().ToString("N")
+        Write-Host "Generated: $bootId"
+    }
+
+    Set-Content -Path $liveFile -Value $bootId -NoNewline
+
+    if (Test-Path $grubCfg) {
+        (Get-Content $grubCfg -Raw) -replace 'root=[a-fA-F0-9]+', "root=$bootId" |
+            Set-Content -Path $grubCfg -NoNewline
+    } else {
+        Write-Warning "grub.cfg not found at $grubCfg, skipping root= patch."
+    }
 }
 
 function Start-QEMU {
@@ -175,6 +203,11 @@ switch ($Tool) {
     "clean" {
         Write-Host "Cleaning build environment ..."
         Start-CleanBuildEnvironment
+    }
+
+    "genid" {
+        Write-Host "Generating boot ID ..."
+        Start-GenerateBootId
     }
 
     default {

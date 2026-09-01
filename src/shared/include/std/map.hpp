@@ -79,11 +79,11 @@ public:
     
     ~linear_map() = default;
 
-    linear_map_iterator<T, U> begin() {
+    linear_map_iterator<T, U> begin() const {
         return linear_map_iterator<T, U>(data.get_data());
     }
 
-    linear_map_iterator<T, U> end() {
+    linear_map_iterator<T, U> end() const {
         return linear_map_iterator<T, U>(data.get_data() + data.length());
     }
 
