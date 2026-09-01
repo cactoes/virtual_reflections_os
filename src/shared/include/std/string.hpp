@@ -729,14 +729,24 @@ private:
 static std::string size_format_to_string(size_t size) {
     constexpr const char* sizes[] { "B", "KB", "MB", "GB", "TB" };
     size_t size_index = 0;
-    double size_current = size;
-    while (size_current > 1024.0 && size_index < ARRAY_LENGTH(sizes) - 1) {
+    double size_current = (double)size;
+
+    while (size_current >= 1024.0 && size_index < ARRAY_LENGTH(sizes) - 1) {
         size_index++;
         size_current /= 1024.0;
     }
 
-    char buffer[256];
-    sprintf(buffer, sizeof(buffer), "%f%s", size_current, sizes[size_index]);
+    u64 whole = (u64)size_current;
+    u64 frac  = (u64)((size_current - whole) * 100.0 + 0.5);
+    if (frac >= 100) { whole += 1; frac -= 100; }
+
+    char frac_buf[3];
+    frac_buf[0] = '0' + (frac / 10);
+    frac_buf[1] = '0' + (frac % 10);
+    frac_buf[2] = '\0';
+
+    char buffer[64];
+    sprintf(buffer, sizeof(buffer), "%ul.%s%s", whole, frac_buf, sizes[size_index]);
     return std::string(buffer);
 }
 
