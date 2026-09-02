@@ -688,7 +688,6 @@ void virtual_kernel_entry(multiboot2_info_t* multiboot_struct) {
     if (!kterm_start(&kernel_terminal))
         printf("[ \033[91mERROR\033[0m ] failed to start terminal\n");
 
-
     std::string& boot_uuid = get_global_system_info_manager()->boot_uuid;
     kprintf("boot uuid: %s\n", boot_uuid.c_str());
     std::string boot_mount_point = "";
@@ -714,9 +713,26 @@ void virtual_kernel_entry(multiboot2_info_t* multiboot_struct) {
             continue;
 
         boot_mount_point = mp.key;
+
+        ((std::key_value_pair_t<std::string, vfs_mount_point_t> &)mp).value.logical_name[0] = 'b';
+        ((std::key_value_pair_t<std::string, vfs_mount_point_t> &)mp).value.logical_name[1] = 'o';
+        ((std::key_value_pair_t<std::string, vfs_mount_point_t> &)mp).value.logical_name[2] = 'o';
+        ((std::key_value_pair_t<std::string, vfs_mount_point_t> &)mp).value.logical_name[3] = 't';
+        ((std::key_value_pair_t<std::string, vfs_mount_point_t> &)mp).value.logical_name[4] = '\0';
+
+        get_global_vfs()->logical_to_mount_map[hash_fnv1a_64("boot")] = mp.key;
     }
 
     kprintf("boot disk: %s\n", boot_mount_point.c_str());
+
+    auto fd = vfs_open_file(get_global_vfs(), "//./boot/.env");
+
+    u8* data;
+    u64 size;
+
+    vfs_read_file(get_global_vfs(), fd, &data, &size);
+
+    kprintf("%s\n", data);
 
     // init_display_driver();
 

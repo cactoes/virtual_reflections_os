@@ -15,6 +15,7 @@ void set_global_vfs(vfs_t* vfs) {
 void vfs_init(vfs_t* vfs) {
     vfs->mount_points = {};
     vfs->file_handles = {};
+    vfs->logical_to_mount_map = {};
     vfs->last_fd = 0;
 }
 
@@ -102,24 +103,44 @@ bool vfs_mount_block_device(vfs_t* vfs, block_device_t* block_device, const char
 }
 
 const vfs_mount_point_t* vfs_get_mount_point_from_path(vfs_t* vfs, const char* path) {
+    bool is_logical_device = str_starts_with(path, "//./");
+
+    if (is_logical_device)
+        path += 4;
+
     const std::dynamic_array<std::string> path_parts = str_split(std::string(path), '/');
     if (path_parts.length() == 0)
         return nullptr;
 
-    const std::string& mount_name = *path_parts.get_at(0);
+    std::string mount_name = *path_parts.get_at(0);
+
+    if (is_logical_device) {
+        u64 hashed_logical_name = hash_fnv1a_64(mount_name.c_str());
+
+        if (!vfs->logical_to_mount_map.contains(hashed_logical_name))
+            return nullptr;
+
+        mount_name = vfs->logical_to_mount_map.get(hashed_logical_name)->value;
+    }
+    
     if (!vfs->mount_points.contains(mount_name))
         return nullptr;
 
     return &vfs->mount_points.get(mount_name)->value;
 }
 
-std::string get_mount_point_relative_path(const vfs_mount_point_t* mount_point, const std::string& path) {
+std::string get_mount_point_relative_path(const vfs_mount_point_t* mount_point, std::string path) {
     if (!mount_point)
         return path;
 
+    bool is_logical_device = str_starts_with(path.c_str(), "//./");
+
+    if (is_logical_device)
+        path = path.substr(4);
+
     size_t str_offset = str_starts_with(path.c_str(), "/") ? 1 : 0;
 
-    size_t size = strlen(mount_point->name) + str_offset;
+    size_t size = strlen(is_logical_device ? mount_point->logical_name : mount_point->name) + str_offset;
     if (size >= path.length())
         return "";
 

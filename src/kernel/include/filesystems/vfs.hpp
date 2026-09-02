@@ -8,8 +8,9 @@
 #ifndef __VFS_HPP__
 #define __VFS_HPP__
 
-#define FILE_DESCRIPTOR_INVALID     MAX_UINT64
-#define MOUNT_POINT_MAX_NAME_LEN    256
+#define FILE_DESCRIPTOR_INVALID             MAX_UINT64
+#define MOUNT_POINT_MAX_NAME_LEN            256
+#define MOUNT_POINT_MAX_LOGICAL_NAME_LEN    256
 
 #include "common.hpp"
 #include "std/string.hpp"
@@ -43,12 +44,14 @@ struct filesystem_interface_t {
 
 struct vfs_mount_point_t {
     char name[MOUNT_POINT_MAX_NAME_LEN];
+    char logical_name[MOUNT_POINT_MAX_LOGICAL_NAME_LEN];
     const filesystem_interface_t* interface;
     void* filesystem_data;
 };
 
 struct vfs_t {
     std::linear_map<std::string, vfs_mount_point_t> mount_points;
+    std::linear_map<u64, std::string> logical_to_mount_map;
     std::linear_map<file_descriptor_t, std::string> file_handles;
     file_descriptor_t last_fd;
 };
