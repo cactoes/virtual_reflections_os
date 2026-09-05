@@ -68,5 +68,6 @@ bool vfs_close_file(vfs_t* vfs, file_descriptor_t fd);
 bool vfs_read_file(vfs_t* vfs, file_descriptor_t fd, u8** data, u64* size);
 bool vfs_list_directory(vfs_t* vfs, const char* path, std::dynamic_array<vfs_node_t>* out_nodes);
 const std::linear_map<std::string, vfs_mount_point_t>* vfs_get_mount_points(vfs_t* vfs);
+bool mount_point_set_logical_name(vfs_t* vfs, vfs_mount_point_t* mount_point, const char* name);
 
 #endif // __VFS_HPP__

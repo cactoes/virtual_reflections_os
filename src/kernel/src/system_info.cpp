@@ -60,7 +60,6 @@ void system_info_get_cpu_name(system_info_manager_t* system_info_manager) {
 void system_info_get_boot_uuid(system_info_manager_t* system_info_manager, multiboot2_info_t* multiboot2_struct) {
     char* cmdline = nullptr;
     u64 cmdline_len = 0;
-    const u64 uuid_len = 32;
     const char root_text[] = "root=";
 
     for (multiboot2_tag_t* tag = (multiboot2_tag_t*)multiboot2_struct->tags; tag->type != 0 && tag->size != 8; tag = (multiboot2_tag_t*)((u64)tag + align_up(tag->size, 8))) {
@@ -71,15 +70,15 @@ void system_info_get_boot_uuid(system_info_manager_t* system_info_manager, multi
         cmdline_len = tag->size - sizeof(multiboot2_tag_t) - 1;
     }
 
-    if (!cmdline || cmdline_len < uuid_len + sizeof(root_text) - 1)
+    if (!cmdline || cmdline_len < UUID_LEN + sizeof(root_text) - 1)
         return;
 
-    char uuid[uuid_len + 1] {};
+    char uuid[UUID_LEN + 1] {};
 
     for (u64 i = 0; i < cmdline_len; i++) {
         const char* currentptr = &cmdline[i];
-        if (str_starts_with(currentptr, root_text) && cmdline_len - (sizeof(root_text) - 1) - i >= uuid_len) {
-            memcpy(&uuid[0], currentptr + sizeof(root_text) - 1, uuid_len);
+        if (str_starts_with(currentptr, root_text) && cmdline_len - (sizeof(root_text) - 1) - i >= UUID_LEN) {
+            memcpy(&uuid[0], currentptr + sizeof(root_text) - 1, UUID_LEN);
         }
     }
 

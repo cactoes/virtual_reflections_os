@@ -218,3 +218,22 @@ const std::linear_map<std::string, vfs_mount_point_t>* vfs_get_mount_points(vfs_
 
     return &vfs->mount_points;
 }
+
+bool mount_point_set_logical_name(vfs_t* vfs, vfs_mount_point_t* mount_point, const char* name) {
+    if (!mount_point || !name)
+        return false;
+
+    if (vfs->logical_to_mount_map.contains(hash_fnv1a_64(name)))
+        return false;
+
+    size_t namelen = strlen(name);
+    if (namelen >= MOUNT_POINT_MAX_LOGICAL_NAME_LEN)
+        namelen = MOUNT_POINT_MAX_LOGICAL_NAME_LEN - 1;
+
+    memcpy(mount_point->logical_name, name, namelen);
+    mount_point->logical_name[namelen] = '\0';
+
+    vfs->logical_to_mount_map[hash_fnv1a_64(name)] = mount_point->name;
+
+    return true;
+}

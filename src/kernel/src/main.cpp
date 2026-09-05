@@ -705,22 +705,15 @@ void virtual_kernel_entry(multiboot2_info_t* multiboot_struct) {
         if (!vfs_read_file(get_global_vfs(), fd, &data, &size))
             continue;
 
-        // 32 == uuid len
-        if (size != 32)
+        if (size != UUID_LEN)
             continue;
 
-        if (!memeq(boot_uuid.c_str(), data, 32))
+        if (!memeq(boot_uuid.c_str(), data, UUID_LEN))
             continue;
 
         boot_mount_point = mp.key;
 
-        ((std::key_value_pair_t<std::string, vfs_mount_point_t> &)mp).value.logical_name[0] = 'b';
-        ((std::key_value_pair_t<std::string, vfs_mount_point_t> &)mp).value.logical_name[1] = 'o';
-        ((std::key_value_pair_t<std::string, vfs_mount_point_t> &)mp).value.logical_name[2] = 'o';
-        ((std::key_value_pair_t<std::string, vfs_mount_point_t> &)mp).value.logical_name[3] = 't';
-        ((std::key_value_pair_t<std::string, vfs_mount_point_t> &)mp).value.logical_name[4] = '\0';
-
-        get_global_vfs()->logical_to_mount_map[hash_fnv1a_64("boot")] = mp.key;
+        mount_point_set_logical_name(get_global_vfs(), (vfs_mount_point_t*)(&mp.value), "boot");
     }
 
     kprintf("boot disk: %s\n", boot_mount_point.c_str());

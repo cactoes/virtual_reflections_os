@@ -8,6 +8,8 @@
 #ifndef __SYSTEM_INFO_HPP__
 #define __SYSTEM_INFO_HPP__
 
+#define UUID_LEN 32
+
 #include "multiboot.hpp"
 #include "std/string.hpp"
 
