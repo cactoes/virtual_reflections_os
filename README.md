@@ -24,22 +24,8 @@ In the `docs/svg` folder there are some diagrams that give a simple overview of 
 Note: All, except the network diagram, are out of date!
 
 ## Current active tasks
-- processes: process management
-- window manager: desktop environment
 
 ## TODO
-- [ ] redo subsystem manager
-- [ ] (generic?) device drivers
-- [ ] reworking vfs -> [storage_controller.md](storage_controller.md)
-- [ ] rework keyboard controller -> move to io etc..
-- [ ] drive / disk manager
-    - [ ] interfaceable
-    - [ ] list of all disks
-- [ ] work on vthreads
-- [ ] gui
-- [ ] (simple) usb drivers
-    - [ ] keyboard
-    - [ ] usb storage device
 
 ## Mapping symbols in debug mode
 ```
