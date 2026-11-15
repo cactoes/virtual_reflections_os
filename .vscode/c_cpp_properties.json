@@ -1,16 +1,19 @@
 {
     "configurations": [
         {
-            "name": "Linux",
+            "name": "kernel",
+            "compilerPath": "",
+            "cStandard": "gnu11",
+            "intelliSenseMode": "linux-gcc-x64",
             "includePath": [
-                "${workspaceFolder}/src/**",
+                "${workspaceFolder}/src/kernel/include",
                 "${workspaceFolder}/src/shared/include"
             ],
-            "defines": [],
-            "compilerPath": "x86_64-w64-mingw32-g++.exe",
-            "cStandard": "c17",
-            "cppStandard": "c++17",
-            "intelliSenseMode": "linux-gcc-x64"
+            "defines": [
+                "KERNEL_VIRTUAL_BASE=0xFFFFF80000000000ull",
+                "CPU_ARCHITECTURE=1",
+                "GIT_COMMIT_HASH=\"dev\""
+            ]
         }
     ],
     "version": 4
