@@ -2,22 +2,21 @@
 FROM randomdude/gcc-cross-x86_64-elf
 
 # required tools for building the iso & compiling
-RUN apt-get update
-RUN apt-get upgrade -y
-RUN apt-get install -y \
-    binutils \
-    mtools \
-    nasm \
-    xorriso \
-    grub-pc-bin \
-    grub-common \
-    grub-efi-amd64-bin
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        binutils \
+        grub-common \
+        grub-efi-amd64-bin \
+        grub-pc-bin \
+        mtools \
+        nasm \
+        xorriso \
+    && rm -rf /var/lib/apt/lists/*
 
-# linking with the project
-VOLUME /root/env
+# linking build scripts
 WORKDIR /root/env
+VOLUME /root/env
 
-# copying the build script
-COPY build_kernel.sh /root/env/
-RUN chmod +x /root/env/build_kernel.sh
-CMD [ "/bin/bash", "/root/env/build_kernel.sh" ]
+COPY --chmod=755 build_kernel.sh /root/env/build_kernel.sh
+
+CMD ["/bin/bash", "/root/env/build_kernel.sh"]
