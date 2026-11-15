@@ -1,6 +1,6 @@
 #==========================================
 ## @file       Makefile
-## @brief      build script (c kernel)
+## @brief      build script (c kernel, amd64 only (x86-64))
 #==========================================
 
 # makefile config
@@ -39,12 +39,14 @@ GRUB_MKSTANDALONE   := grub-mkstandalone
 # build time values
 GIT_COMMIT_HASH     ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo unknown)
 CPU_ARCHITECTURE    := 1    # 1 == amd64
+KERNEL_VIRTUAL_BASE := 0xFFFFF80000000000
 
 # flags
 CPPFLAGS            := -I$(INC_DIR) \
                        -I$(SHARED_DIR)/include \
                        -DGIT_COMMIT_HASH=\"$(GIT_COMMIT_HASH)\" \
                        -DCPU_ARCHITECTURE=$(CPU_ARCHITECTURE) \
+                       -DKERNEL_VIRTUAL_BASE=$(KERNEL_VIRTUAL_BASE)ull \
                        -MMD -MP
 
 CFLAGS              := -std=gnu11 -g -m64 -mcmodel=large \
@@ -52,8 +54,9 @@ CFLAGS              := -std=gnu11 -g -m64 -mcmodel=large \
                        -msse -msse2 -mno-red-zone \
                        -Wunused-result -Werror
 
-ASFLAGS             := -f elf64
-LDFLAGS             := -z max-page-size=0x1000 -n -T $(LINKER_SCRIPT)
+ASFLAGS             := -f elf64 -DKERNEL_VIRTUAL_BASE=$(KERNEL_VIRTUAL_BASE)
+LDFLAGS             := -z max-page-size=0x1000 -n -T $(LINKER_SCRIPT) \
+                       --defsym KERNEL_VIRTUAL_BASE=$(KERNEL_VIRTUAL_BASE)
 
 # sources & objects
 src_files           := $(shell find $(SRC_DIR) -name '*.c')
