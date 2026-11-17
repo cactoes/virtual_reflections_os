@@ -51,7 +51,7 @@ CPPFLAGS            := -I$(INC_DIR) \
 
 CFLAGS              := -std=gnu11 -g -m64 -mcmodel=large \
                        -ffreestanding -nostdlib \
-                       -msse -msse2 -mno-red-zone \
+                       -mgeneral-regs-only -mno-red-zone \
                        -Wunused-result -Werror
 
 ASFLAGS             := -f elf64 -DKERNEL_VIRTUAL_BASE=$(KERNEL_VIRTUAL_BASE)
