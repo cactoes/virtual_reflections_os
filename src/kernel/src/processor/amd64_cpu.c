@@ -1,5 +1,6 @@
 #include "processor/amd64_linker.h"
 #include "processor/amd64_cpu.h"
+#include "libdef.h"
 
 static
 u64 read_cr0() {
@@ -43,6 +44,15 @@ void write_cr4(u64 value) {
 }
 
 static
+void cpuid(u32 leaf, u32 subleaf, u32* eax, u32* ebx, u32* ecx, u32* edx) {
+    __asm__ volatile (
+        "cpuid"
+        : "=a"(*eax), "=b"(*ebx), "=c"(*ecx), "=d"(*edx)
+        : "a"(leaf), "c"(subleaf)
+    );
+}
+
+static
 void enable_simd() {
     u64 new_cr0 = (read_cr0() | AMD64_CR0_MP) & ~(u64)AMD64_CR0_EM;
     write_cr0(new_cr0);
@@ -50,6 +60,24 @@ void enable_simd() {
     write_cr4(new_cr4);
 }
 
-void amd64_enable_processor_extensions() {
-    enable_simd();
+void amd64_enable_processor_extensions(u64 extensions) {
+    if (HAS_BIT(extensions, AMD64_CPU_EXTENSION_SIMD_BIT))
+        enable_simd();
+}
+
+u64 amd64_get_processor_extensions() {
+    u64 extensions = 0;
+    u32 eax, ebx, ecx, edx;
+
+    cpuid(AMD64_CPUID_LEAF_BASIC_MAX, 0, &eax, &ebx, &ecx, &edx);
+    u32 max_basic = eax;
+
+    if (max_basic >= AMD64_CPUID_LEAF_FEATURES) {
+        cpuid(AMD64_CPUID_LEAF_FEATURES, 0, &eax, &ebx, &ecx, &edx);
+ 
+        if (HAS_ANY(edx, AMD64_CPUID1_EDX_SIMD) || HAS_ANY(ecx, AMD64_CPUID1_ECX_SIMD))
+            extensions |= (1ull << AMD64_CPU_EXTENSION_SIMD_BIT);
+    }
+
+    return extensions;
 }

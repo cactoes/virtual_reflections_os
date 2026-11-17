@@ -14,6 +14,18 @@
 #define AMD64_CR4_OSFXSR          (1u << 9)
 #define AMD64_CR4_OSXMMEXCPT      (1u << 10)
 
-void amd64_enable_processor_extensions();
+#define AMD64_CPUID1_EDX_SIMD       ((1u << 24) | (1u << 25) | (1u << 26)) // FXSR, SSE, SSE2
+#define AMD64_CPUID1_ECX_SIMD       ((1u << 0) | (1u << 9) | (1u << 19) | (1u << 20) | (1u << 28)) // SSE3, SSSE3, SSE4.1, SSE4.2, AVX
+
+#define AMD64_CPUID_LEAF_BASIC_MAX          0x00000000
+#define AMD64_CPUID_LEAF_FEATURES           0x00000001
+#define AMD64_CPUID_LEAF_EXTENDED_FEAT      0x00000007
+#define AMD64_CPUID_LEAF_EXTENDED_MAX       0x80000000
+#define AMD64_CPUID_LEAF_EXTENDED_INFO      0x80000001
+
+#define AMD64_CPU_EXTENSION_SIMD_BIT    0
+
+void amd64_enable_processor_extensions(u64 extensions);
+u64 amd64_get_processor_extensions();
 
 #endif // AMD64_CPU_H

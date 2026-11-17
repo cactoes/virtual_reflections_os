@@ -10,6 +10,9 @@
 
 #define CPU_ARCH_AMD64 1
 
-void cpu_enable_processor_extensions();
+#include "libtype.h"
+
+u64 cpu_get_processor_extensions();
+void cpu_enable_processor_extensions(u64 extensions);
 
 #endif // CPU_DIRECT_H

@@ -23,4 +23,9 @@
 
 #define __section_boot_bss_4k            __attribute__((section(".boot.bss"), aligned(4096)))
 
+#define HAS_BIT(val, bit)           (((val) & (1ull << (bit))) != 0)
+#define HAS_ALL(val, mask)          (((val) & (mask)) == (mask))
+#define HAS_ANY(val, mask)      (((val) & (mask)) != 0)
+
+
 #endif // LIBDEF_H
