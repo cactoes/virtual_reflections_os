@@ -97,7 +97,6 @@ _boot_amd64:
 
     call init_boot_page_table
     call enable_paging
-    call enable_simd
 
     lgdt [boot_gdtr]
 
@@ -243,22 +242,6 @@ enable_paging:
     mov     eax, cr0
     or      eax, CR0_PG
     mov     cr0, eax
-
-    ret
-
-;==========================================
-; @function     enable_simd
-; @brief        enable simd (sse/sse2)
-;==========================================
-enable_simd:
-    mov     eax, cr0
-    or      eax, CR0_MP
-    and     eax, ~CR0_EM
-    mov     cr0, eax
-
-    mov     eax, cr4
-    or      eax, CR4_OSFXSR | CR4_OSXMMEXCPT
-    mov     cr4, eax
 
     ret
 
