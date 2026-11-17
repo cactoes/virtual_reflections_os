@@ -7,6 +7,13 @@ void virtual_kernel_entry(void* multiboot2) {
     // setup generic init interrupt
     // setup generic other cpu setup (like gdt & msr)
     // setup memory
-
+    // bind interrupts
+    // parse system information
+    // setup process
+    // setup virtual threads
+    // setup virtual filsystem
+    // setup pcie
+    // setup drivers: networking, storage, i/o
+    // setup other more software related code: nic, i/o etc
     while (true);
 }
