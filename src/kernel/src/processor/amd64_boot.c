@@ -8,7 +8,12 @@ void virtual_kernel_entry(void* multiboot2);
 static
 __section_text
 void __memzero(void* dst, u64 size) {
-    __asm__ volatile ("rep stosb" : "+D"(dst), "+c"(size) : "a"(0) : "memory");
+    __asm__ volatile (
+        "rep stosb"
+        : "+D"(dst), "+c"(size)
+        : "a"(0)
+        : "memory"
+    );
 }
 
 static

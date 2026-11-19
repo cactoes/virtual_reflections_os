@@ -14,5 +14,6 @@
 
 u64 cpu_get_processor_extensions();
 void cpu_enable_processor_extensions(u64 extensions);
+void cpu_init();
 
 #endif // CPU_DIRECT_H
