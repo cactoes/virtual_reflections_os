@@ -29,6 +29,7 @@ void cpu_init() {
     amd64_cpu_gdt_init();
     amd64_cpu_idt_init();
     // msr ?
+    // todo lapic
     amd64_enable_interrupts();
 #else
 #endif

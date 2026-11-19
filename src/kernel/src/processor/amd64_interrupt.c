@@ -88,10 +88,6 @@ void install_idtr(const amd64_idtr_t* idtr) {
 void amd64_cpu_idt_init() {
     set_idt_entries(&idt);
     update_idtr(&idtr, &idt);
-
-    // todo lapic
-
     remap_pic();
-
     install_idtr(&idtr);
 }
