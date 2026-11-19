@@ -1,6 +1,5 @@
 #include "libmem.h"
 #include "processor/amd64_gdt.h"
-#include "processor/amd64_cpu.h"
 
 static amd64_gdt_t gdt;
 static amd64_gdtr_t gdtr;
@@ -136,8 +135,6 @@ void reload_kernel_segments(u16 data_selector, u16 code_selector) {
 }
 
 void amd64_cpu_gdt_init() {
-    amd64_disable_interrupts();
-
     memzero(&gdt, sizeof(amd64_gdt_t));
     memzero(&gdtr, sizeof(amd64_gdtr_t));
     memzero(&tss, sizeof(amd64_tss_t));
@@ -157,6 +154,4 @@ void amd64_cpu_gdt_init() {
 
     load_tss(AMD64_GDT_INDEX_TO_SELECTOR(GDT_INDEX_TSS, 0));
     reload_kernel_segments(AMD64_GDT_INDEX_TO_SELECTOR(GDT_INDEX_KERNEL_DATA, 0), AMD64_GDT_INDEX_TO_SELECTOR(GDT_INDEX_KERNEL_CODE, 0));
-
-    amd64_enable_interrupts();
 }

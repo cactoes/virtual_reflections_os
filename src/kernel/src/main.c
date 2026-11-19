@@ -7,13 +7,11 @@
 void virtual_kernel_entry(void* multiboot2) {
     u64 extensions = cpu_get_processor_extensions();
     cpu_enable_processor_extensions(extensions);
+    
+    // setup memory
 
     cpu_init();
 
-    // setup generic init interrupts & interrupt generic devices
-
-    // setup generic other cpu setup (like gdt & msr)
-    // setup memory
     // parse system information
     // setup process
     // setup virtual threads

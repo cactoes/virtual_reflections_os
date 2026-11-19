@@ -25,8 +25,11 @@ void cpu_enable_processor_extensions(u64 extensions) {
 
 void cpu_init() {
 #if CPU_ARCHITECTURE == CPU_ARCH_AMD64
+    amd64_disable_interrupts();
     amd64_cpu_gdt_init();
     amd64_cpu_idt_init();
+    // msr ?
+    amd64_enable_interrupts();
 #else
 #endif
 }
