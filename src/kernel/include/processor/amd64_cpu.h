@@ -28,4 +28,44 @@
 void amd64_enable_processor_extensions(u64 extensions);
 u64 amd64_get_processor_extensions();
 
+static inline
+void amd64_disable_interrupts() {
+    __asm__ volatile(
+        "cli"
+        :
+        :
+        : "memory"
+    );
+}
+
+static inline
+void amd64_enable_interrupts() {
+    __asm__ volatile(
+        "sti"
+        :
+        :
+        : "memory"
+    );
+}
+
+static inline
+u64 amd64_save_interrupts() {
+    u64 flags;
+    __asm__ volatile(
+        "pushfq\n"
+        "popq %0\n"
+        "cli"
+        : "=r"(flags)
+        :
+        : "memory"
+    );
+    return flags;
+}
+
+static inline
+void amd64_restore_interrupts(u64 flags) {
+    if (flags & (1u << 9)) // IF
+        amd64_enable_interrupts();
+}
+
 #endif // AMD64_CPU_H
