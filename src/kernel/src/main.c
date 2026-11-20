@@ -1,22 +1,34 @@
 #include "libtype.h"
 #include "processor/cpu_direct.h"
 #include "memory/pmm.h"
+#include "kbootinfo.h"
 
 // TODO @since 18/11/2026 -- 00:32
 // abstract multiboot since its primarily on amd64
 
-
-
-void virtual_kernel_entry(void* multiboot2) {
+void virtual_kernel_entry(kboot_info_t kboot_info) {
     u64 extensions = cpu_get_processor_extensions();
     cpu_enable_processor_extensions(extensions);
     
+    u64 physical_page_count = kboot_info.memory.size / PMM_PAGE_SIZE;
+    pmm_init(physical_page_count);
+    pmm_reserve_range(0, kboot_info.kernel_page_count);
+
+    for (u64 i = 0; i < kboot_info.memory.region_count; i++) {
+        memory_region_t* region = &kboot_info.memory.regions[i];
+        memory_type_t type = region->addr & MEMORY_TYPE_MASK;
+        if (type == MEMORY_USABLE)
+            continue;
+
+        void* address = (void*)(region->addr & ~MEMORY_TYPE_MASK);
+        u64 page_count = (region->size + PMM_PAGE_SIZE - 1) / PMM_PAGE_SIZE;
+        pmm_reserve_range(address, page_count);
+    }
+
     // setup virtual memory
-    pmm_init();
 
     cpu_init();
 
-    // parse system information
     // setup process
     // setup virtual threads
     // setup virtual filsystem
