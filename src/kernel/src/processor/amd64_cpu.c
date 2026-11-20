@@ -1,5 +1,6 @@
 #include "processor/amd64_linker.h"
 #include "processor/amd64_cpu.h"
+#include "processor/amd64_vmm.h"
 #include "libdef.h"
 
 static
@@ -88,6 +89,7 @@ static
 void enable_nxe() {
     amd64_wrmsr(AMD64_MSR_EFER, amd64_rdmsr(AMD64_MSR_EFER) | AMD64_EFER_NXE);
     amd64_wrmsr(AMD64_MSR_PAT, 0x0007040100070406ull);
+    amd64_vmm_set_use_nx(true);
 }
 
 void amd64_enable_processor_extensions(u64 extensions) {

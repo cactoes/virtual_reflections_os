@@ -4,6 +4,8 @@
 #include "memory/pmm.h"
 #include "libmem.h"
 
+static bool use_nx = false;
+
 static
 void flush_tlb(void* vaddr) {
     __asm__ volatile(
@@ -212,4 +214,12 @@ bool amd64_vmm_remove_mapping(const void* vaddr, u64 page_size, u64* old_paddr) 
         return false;
 
     return vmm_clear_mapping(pt, pte, vaddr, false, VMEM_PAGE_SIZE_SMALL, old_paddr);
+}
+
+bool amd64_vmm_set_use_nx(bool state) {
+    use_nx = state;
+}
+
+bool amd64_vmm_get_use_nx() {
+    return use_nx;
 }
