@@ -26,11 +26,16 @@ void mark_free(u64 i) {
 }
 
 static
-u64 find_run(u64 from, u64 to, u64 count) {
+u64 find_run(u64 from, u64 to, u64 count, u64 align_pages) {
     u64 run = 0;
     u64 start = 0;
 
     for (u64 i = from; i < to; ) {
+        if (run == 0 && (i & (align_pages - 1))) {
+            i = (i + align_pages - 1) & ~(align_pages - 1);
+            continue;
+        }
+
         if ((i % 64) == 0 && bitmap[i / 64] == ~0ull) {
             run = 0; i += 64;
             continue;
@@ -51,6 +56,24 @@ u64 find_run(u64 from, u64 to, u64 count) {
     return ~0ull;
 }
 
+static
+void* alloc_run(u64 count, u64 align_pages) {
+    if (count == 0 || count > free_page_count)
+        return nullptr;
+
+    u64 found = find_run(free_page_hint, max_page_count, count, align_pages);
+    if (found == ~0ull)
+        found = find_run(0, max_page_count, count, align_pages);
+    if (found == ~0ull)
+        return nullptr;
+
+    for (u64 i = 0; i < count; i++)
+        mark_used(found + i);
+
+    free_page_hint = (found + count < max_page_count) ? found + count : 0;
+    return (void*)(found * PMM_PAGE_SIZE);
+}
+
 bool pmm_reserve_range(void* addr, u64 count) {
     if ((u64)addr % PMM_PAGE_SIZE)
         return false;
@@ -69,20 +92,17 @@ bool pmm_reserve_range(void* addr, u64 count) {
 }
 
 void* pmm_alloc_pages(u64 count) {
-    if (count == 0 || count > free_page_count)
+    return alloc_run(count, 1);
+}
+
+void* pmm_alloc_pages_aligned(u64 count, u64 alignment) {
+    if (alignment == 0 || (alignment & (alignment - 1)) != 0)
         return nullptr;
 
-    u64 found = find_run(free_page_hint, max_page_count, count);
-    if (found == ~0ull)
-        found = find_run(0, max_page_count, count);
-    if (found == ~0ull)
-        return 0;
+    if (alignment < PMM_PAGE_SIZE)
+        alignment = PMM_PAGE_SIZE;
 
-    for (u64 i = 0; i < count; i++)
-        mark_used(found + i);
-
-    free_page_hint = (found + count < max_page_count) ? found + count : 0;
-    return (void*)(found * PMM_PAGE_SIZE);
+    return alloc_run(count, alignment / PMM_PAGE_SIZE);
 }
 
 void pmm_free_pages(void* addr, u64 count) {

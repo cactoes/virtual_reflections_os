@@ -16,6 +16,7 @@
 
 bool pmm_reserve_range(void* addr, u64 count);
 void* pmm_alloc_pages(u64 count);
+void* pmm_alloc_pages_aligned(u64 count, u64 alignment);
 void pmm_free_pages(void* addr, u64 count);
 void pmm_init(u64 max_physical_pages);
 

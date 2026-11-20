@@ -169,9 +169,9 @@ void amd64_entry(multiboot2_info_t* multiboot2) {
     kboot_info.framebuffer.valid = parse_framebuffer(multiboot2, &kboot_info);
     kboot_info.boot_uuid_valid = parse_boot_uuid(multiboot2, &kboot_info);
     kboot_info.boot_media_type = MEDIA_TYPE_LIVE; // hardcoded for now
-    
-    // PAGE_SIZE_LARGE
-    kboot_info.kernel_page_count = (LNK_KERNEL_END_PHYSICAL + 0x200000 - 1) >> 21;
+
+    // VMEM_PAGE_SIZE_SMALL
+    kboot_info.kernel_page_count = (LNK_KERNEL_END_PHYSICAL + 0x1000 - 1) >> 12;
 
     virtual_kernel_entry(kboot_info);
     while (true);
