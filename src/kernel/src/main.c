@@ -25,6 +25,10 @@ void virtual_kernel_entry(kboot_info_t kboot_info) {
         pmm_reserve_range(address, page_count);
     }
 
+    u64 framebuffer_page_count = (kboot_info.framebuffer.pitch * kboot_info.framebuffer.height + PMM_PAGE_SIZE - 1) / PMM_PAGE_SIZE;
+    void* framebuffer_start = (void*)(kboot_info.framebuffer.physical_address & ~(PMM_PAGE_SIZE - 1));
+    pmm_reserve_range(framebuffer_start, framebuffer_page_count);
+
     // setup virtual memory
 
     cpu_init();
