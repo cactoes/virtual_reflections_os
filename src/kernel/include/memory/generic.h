@@ -1,6 +1,6 @@
 //==========================================
 /// @file       generic.h
-/// @brief      
+/// @brief      generic (virtual) memory allocator implementation
 //==========================================
 
 #pragma once
@@ -12,17 +12,46 @@
 #define KERNEL_HEAP_END         0xfffff83000000000ull
 #define KERNEL_MMIO_BASE        0xfffff84000000000ull
 #define KERNEL_MMIO_END         0xfffff86000000000ull
-#define KERNEL_STACK_BASE       0xfffff86000000000ull
-#define KERNEL_STACK_END        0xfffff87000000000ull
 
 #define USER_SPACE_BASE         0x0000000000000000ull
 #define USER_SPACE_END          0x00007fffffffffffull
 
-#include "libtype.h"
+#define VIRTUAL_HEAP_BLOCK_FREE     (1u << 0)
+#define VIRTUAL_HEAP_BLOCK_ACCESSED (1u << 1)
+#define VIRTUAL_HEAP_BLOCK_METADATA (1u << 2)
 
-void* kalloc(u64 size);
-void* kcalloc(u64 size, u8 value);
-void kfree(void* ptr);
+#include "libtype.h"
+#include "memory/vmm.h" // for the VMEM_* defines
+
+typedef struct __virtual_heap_block virtual_heap_block_t;
+typedef struct __virtual_heap_block_table virtual_heap_block_table_t;
+
+struct __virtual_heap_block {
+    void* start;
+    u64 size;
+    virtual_heap_block_t* prev;
+    virtual_heap_block_t* next;
+    u64 flags;
+};
+
+struct __virtual_heap_block_table {
+    // wierd calculation to ensure we keep this struct under 4kb
+    virtual_heap_block_t blocks[(0x1000 - sizeof(virtual_heap_block_table_t*) * 2) / sizeof(virtual_heap_block_t)];
+    virtual_heap_block_table_t* next;
+    virtual_heap_block_table_t* prev;
+};
+
+typedef struct __virtual_heap {
+    u64 heap_start, heap_limit;
+    // current edge of virtual addresses
+    u64 heap_edge;
+    u64 heap_size_current;
+    virtual_heap_block_table_t* table;
+} virtual_heap_t;
+
+bool virtual_heap_create(void* vaddr_start, void* vaddr_limit, u64 start_size, virtual_heap_t* virtual_heap, u64 flags);
+void* virtual_alloc(virtual_heap_t* virtual_heap, u64 size);
+void virtual_free(virtual_heap_t* virtual_heap, void* ptr);
 
 static inline
 bool is_aligned(u64 addr, u64 align) {
