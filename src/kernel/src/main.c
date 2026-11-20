@@ -33,6 +33,8 @@ void virtual_kernel_entry(kboot_info_t kboot_info) {
 
     cpu_init();
 
+    // setup COM ports? or just ports in general for qemu its uart amd_COM1 on 115200 baud
+
     // setup process
     // setup virtual threads
     // setup virtual filsystem
