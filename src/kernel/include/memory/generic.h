@@ -8,6 +8,16 @@
 #ifndef GENERIC_H
 #define GENERIC_H
 
+#define KERNEL_HEAP_BASE        0xfffff81000000000ull
+#define KERNEL_HEAP_END         0xfffff83000000000ull
+#define KERNEL_MMIO_BASE        0xfffff84000000000ull
+#define KERNEL_MMIO_END         0xfffff86000000000ull
+#define KERNEL_STACK_BASE       0xfffff86000000000ull
+#define KERNEL_STACK_END        0xfffff87000000000ull
+
+#define USER_SPACE_BASE         0x0000000000000000ull
+#define USER_SPACE_END          0x00007fffffffffffull
+
 #include "libtype.h"
 
 void* kalloc(u64 size);

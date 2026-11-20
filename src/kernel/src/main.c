@@ -3,6 +3,7 @@
 #include "memory/pmm.h"
 #include "kbootinfo.h"
 #include "memory/vmm.h"
+#include "memory/generic.h"
 
 // TODO @since 18/11/2026 -- 00:32
 // abstract multiboot since its primarily on amd64
@@ -30,9 +31,7 @@ void virtual_kernel_entry(kboot_info_t kboot_info) {
     void* framebuffer_start = (void*)(kboot_info.framebuffer.physical_address & ~(PMM_PAGE_SIZE - 1));
     pmm_reserve_range(framebuffer_start, framebuffer_page_count);
 
-    
-
-    void* heap_start = (void*)0xfffff80300000000ull;
+    void* heap_start = (void*)KERNEL_HEAP_BASE;
     void* paddr_start = pmm_alloc_pages_aligned(1 * (VMEM_PAGE_SIZE_LARGE / VMEM_PAGE_SIZE_SMALL), VMEM_PAGE_SIZE_LARGE);
     bool result = vmm_map_2mb(heap_start, paddr_start, VMEM_KERNEL_DATA);
 
