@@ -5,9 +5,6 @@
 #include "memory/vmm.h"
 #include "memory/generic.h"
 
-// TODO @since 18/11/2026 -- 00:32
-// abstract multiboot since its primarily on amd64
-
 void virtual_kernel_entry(kboot_info_t kboot_info) {
     u64 extensions = cpu_get_processor_extensions();
     cpu_enable_processor_extensions(extensions);
