@@ -30,9 +30,12 @@ void virtual_kernel_entry(kboot_info_t kboot_info) {
 
     cpu_init();
 
+    // TODO @since 21/11/2026 -- 02:21
+    // * do something with result
+    // * store virtual heap somewhere everyone can access
     virtual_heap_t virtual_heap;
     bool result = virtual_heap_create((void*)KERNEL_HEAP_BASE, (void*)KERNEL_HEAP_END, VMEM_PAGE_SIZE_LARGE, &virtual_heap, VMEM_KERNEL_DATA);
-    
+
     // initialize mmio mapper
     //      -> mmio map region 4k, ...
 

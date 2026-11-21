@@ -49,9 +49,11 @@ typedef struct __virtual_heap {
     virtual_heap_block_table_t* table;
 } virtual_heap_t;
 
+typedef bool(*heap_block_filter_t)(const virtual_heap_block_t* block, const void* arg);
+
 bool virtual_heap_create(void* vaddr_start, void* vaddr_limit, u64 start_size, virtual_heap_t* virtual_heap, u64 flags);
 void* virtual_alloc(virtual_heap_t* virtual_heap, u64 size);
-void virtual_free(virtual_heap_t* virtual_heap, void* ptr);
+bool virtual_free(virtual_heap_t* virtual_heap, void* ptr);
 
 static inline
 bool is_aligned(u64 addr, u64 align) {
