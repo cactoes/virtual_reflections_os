@@ -3,6 +3,9 @@
 #include "libmem.h"
 #include "libdef.h"
 
+static virtual_heap_t virtual_kernel_heap;
+static virtual_heap_t virtual_kernel_mmio_heap;
+
 static
 u64 pick_page_size(u64 vaddr, u64 remaining) {
     if (is_aligned(vaddr, VMEM_PAGE_SIZE_HUGE) && remaining >= VMEM_PAGE_SIZE_HUGE)
@@ -51,6 +54,17 @@ bool virtual_heap_map_range(u64 vaddr, u64 remaining, u64 flags) {
     }
 
     return true;
+}
+
+static
+virtual_heap_block_t* virtual_find_block(virtual_heap_t* heap, void* ptr) {
+    if (!heap || !heap->table)
+        return nullptr;
+
+    virtual_heap_block_t* block = &heap->table->blocks[0];
+    while (block && block->start != ptr)
+        block = block->next;
+    return block;
 }
 
 bool virtual_heap_create(void* vaddr_start, void* vaddr_limit, u64 start_size, virtual_heap_t* virtual_heap, u64 flags) {
@@ -105,25 +119,26 @@ bool virtual_heap_create(void* vaddr_start, void* vaddr_limit, u64 start_size, v
     return true;
 }
 
+static
 bool donor_block_filter(const virtual_heap_block_t* block, const void* arg) {
     if (HAS_ANY(block->flags, VIRTUAL_HEAP_BLOCK_METADATA))
         return false;
 
-    return HAS_ALL(block->flags, VIRTUAL_HEAP_BLOCK_ACCESSED | VIRTUAL_HEAP_BLOCK_FREE)
-        && block->size >= *(const u64*)arg;
+    return HAS_ALL(block->flags, VIRTUAL_HEAP_BLOCK_ACCESSED | VIRTUAL_HEAP_BLOCK_FREE) 
+            && block->size >= *(const u64*)arg;
 }
 
+static
 bool unused_block_filter(const virtual_heap_block_t* block, const void* arg) {
     (void)arg;
 
-    // never reuse a descriptor that tracks a table page
     if (HAS_ANY(block->flags, VIRTUAL_HEAP_BLOCK_METADATA))
         return false;
 
-    // a descriptor slot that is not in use
     return !HAS_ANY(block->flags, VIRTUAL_HEAP_BLOCK_ACCESSED);
 }
 
+static
 bool filter_heap_blocks(virtual_heap_t* heap, void* arg, heap_block_filter_t callbacks[], u64 callback_count, virtual_heap_block_t* out_blocks[], u64 out_count) {
     if (!heap || !heap->table || !callbacks || !out_blocks ||
         callback_count == 0 || callback_count != out_count)
@@ -226,10 +241,7 @@ bool virtual_free(virtual_heap_t* virtual_heap, void* ptr) {
     if (!ptr)
         return false;
 
-    virtual_heap_block_t* block = &virtual_heap->table->blocks[0];
-    while (block && block->start != ptr)
-        block = block->next;
-
+    virtual_heap_block_t* block = virtual_find_block(virtual_heap, ptr);
     if (!block)
         return false;
 
@@ -249,4 +261,297 @@ bool virtual_free(virtual_heap_t* virtual_heap, void* ptr) {
         block_absorb_next(prev);
 
     return true;
+}
+
+static
+u64 mmio_alignment_for(u64 size) {
+    if (size >= VMEM_PAGE_SIZE_HUGE)
+        return VMEM_PAGE_SIZE_HUGE;
+
+    if (size >= VMEM_PAGE_SIZE_LARGE)
+        return VMEM_PAGE_SIZE_LARGE;
+
+    return VMEM_PAGE_SIZE_SMALL;
+}
+
+static
+void mmio_unmap_pages(u64 vbase, u64 total, u64 upto) {
+    u64 off = 0;
+    while (off < upto) {
+        const u64 page = pick_page_size(vbase + off, total - off);
+        void* vaddr = (void*)(vbase + off);
+
+        switch (page) {
+            case VMEM_PAGE_SIZE_HUGE:  vmm_unmap_1gb(vaddr, nullptr); break;
+            case VMEM_PAGE_SIZE_LARGE: vmm_unmap_2mb(vaddr, nullptr); break;
+            default:                   vmm_unmap_4kb(vaddr, nullptr); break;
+        }
+
+        off += page;
+    }
+}
+
+static
+bool mmio_map_pages(u64 vbase, u64 pbase, u64 total, u64 flags) {
+    u64 off = 0;
+    while (off < total) {
+        const u64 page = mmio_pick_page_size(vbase + off, total - off);
+        void* vaddr = (void*)(vbase + off);
+        void* paddr = (void*)(pbase + off);
+
+        bool ok;
+        switch (page) {
+            case VMEM_PAGE_SIZE_HUGE: ok = vmm_map_1gb(vaddr, paddr, flags); break;
+            case VMEM_PAGE_SIZE_LARGE: ok = vmm_map_2mb(vaddr, paddr, flags); break;
+            default: ok = vmm_map_4kb(vaddr, paddr, flags); break;
+        }
+
+        if (!ok) {
+            mmio_unmap_pages(vbase, total, off);
+            return false;
+        }
+
+        off += page;
+    }
+    return true;
+}
+
+static
+void mmio_link_after(virtual_heap_block_t* prev, virtual_heap_block_t* node) {
+    node->prev = prev;
+    node->next = prev->next;
+    if (prev->next)
+        prev->next->prev = node;
+    prev->next = node;
+}
+
+static
+bool mmio_find_placement(u64 start, u64 end, u64 size, u64 align, u64 phase, u64* out) {
+    if (end <= start || end - start < size)
+        return false;
+
+    const u64 hi = end - size;
+    const u64 r = hi & (align - 1);
+    const u64 back = (r >= phase) ? (r - phase) : (r + align - phase);
+
+    if (back > hi - start)
+        return false;
+
+    *out = hi - back;
+    return true;
+}
+
+static
+u64 mmio_collect_slots(virtual_heap_t* mmio, virtual_heap_block_t* out[], u64 count) {
+    heap_block_filter_t filters[] = { unused_block_filter, unused_block_filter, unused_block_filter, unused_block_filter };
+    filter_heap_blocks(mmio, nullptr, filters, count, out, count);
+
+    u64 n = 0;
+    for (u64 i = 0; i < count; i++)
+        if (out[i])
+            n++;
+
+    return n;
+}
+
+static
+virtual_heap_block_t* mmio_carve(virtual_heap_t* mmio, u64 size, u64 align, u64 phase) {
+    virtual_heap_block_t* donor = nullptr;
+    u64 a = 0;
+
+    for (virtual_heap_block_t* b = &mmio->table->blocks[0]; b; b = b->next) {
+        if (!HAS_ALL(b->flags, VIRTUAL_HEAP_BLOCK_ACCESSED | VIRTUAL_HEAP_BLOCK_FREE) ||
+            HAS_ANY(b->flags, VIRTUAL_HEAP_BLOCK_METADATA))
+            continue;
+
+        if (mmio_find_placement((u64)b->start, (u64)b->start + b->size, size, align, phase, &a)) {
+            donor = b;
+            break;
+        }
+    }
+
+    if (!donor)
+        return nullptr;
+
+    const u64 head = a - (u64)donor->start;
+    const u64 tail = ((u64)donor->start + donor->size) - (a + size);
+    const u64 need = (head ? 1 : 0) + (tail ? 1 : 0);
+
+    virtual_heap_block_t* spare[2];
+    if (mmio_collect_slots(mmio, spare, 2) < need)
+        return nullptr;
+
+    u64 s = 0;
+    virtual_heap_block_t* used = donor;
+    virtual_heap_block_t* last = donor;
+
+    if (head) {
+        used = spare[s++];
+        donor->size = head;
+
+        used->start = (void*)a;
+        used->size  = size;
+        used->flags = VIRTUAL_HEAP_BLOCK_ACCESSED;
+        mmio_link_after(donor, used);
+        last = used;
+    } else {
+        donor->size = size;
+        CLEAR_MASK(donor->flags, VIRTUAL_HEAP_BLOCK_FREE);
+    }
+
+    if (tail) {
+        virtual_heap_block_t* tail_block = spare[s++];
+        tail_block->start = (void*)(a + size);
+        tail_block->size  = tail;
+        tail_block->flags = VIRTUAL_HEAP_BLOCK_ACCESSED | VIRTUAL_HEAP_BLOCK_FREE;
+        mmio_link_after(last, tail_block);
+    }
+
+    return used;
+}
+
+static
+bool mmio_grow(virtual_heap_t* mmio) {
+    virtual_heap_block_t* block = mmio_carve(mmio, VMEM_PAGE_SIZE_SMALL, VMEM_PAGE_SIZE_SMALL, 0);
+    if (!block)
+        return false;
+
+    void* paddr = pmm_alloc_pages(1);
+    const bool ok = paddr && vmm_map_4kb(block->start, paddr, VMEM_KERNEL_DATA);
+    if (!ok) {
+        if (paddr)
+            pmm_free_pages(paddr, 1);
+
+        virtual_free(mmio, block->start);
+        return false;
+    }
+
+    virtual_heap_block_table_t* table = (virtual_heap_block_table_t*)block->start;
+    memzero(table, sizeof(virtual_heap_block_table_t));
+    SET_MASK(block->flags, VIRTUAL_HEAP_BLOCK_METADATA);
+
+    virtual_heap_block_table_t* last = mmio->table;
+    while (last->next)
+        last = last->next;
+    last->next  = table;
+    table->prev = last;
+    return true;
+}
+
+static
+void mmio_ensure_slots(virtual_heap_t* mmio) {
+    virtual_heap_block_t* tmp[4];
+    if (mmio_collect_slots(mmio, tmp, 4) < 4)
+        mmio_grow(mmio);
+}
+
+bool virtual_mmio_create(virtual_heap_t* mmio, void* vaddr_start, void* vaddr_limit) {
+    const u64 start = (u64)vaddr_start;
+    const u64 limit = (u64)vaddr_limit;
+
+    if (!mmio || start >= limit ||
+        !is_aligned(start, VMEM_PAGE_SIZE_SMALL) || !is_aligned(limit, VMEM_PAGE_SIZE_SMALL) ||
+        limit - start < 2 * VMEM_PAGE_SIZE_SMALL)
+        return false;
+
+    void* paddr = pmm_alloc_pages(1);
+    if (!paddr)
+        return false;
+
+    if (!vmm_map_4kb((void*)start, paddr, VMEM_KERNEL_DATA)) {
+        pmm_free_pages(paddr, 1);
+        return false;
+    }
+
+    memzero(mmio, sizeof(virtual_heap_t));
+    mmio->heap_start = start;
+    mmio->heap_limit = limit;
+    mmio->table = (virtual_heap_block_table_t*)start;
+    memzero(mmio->table, sizeof(virtual_heap_block_table_t));
+
+    virtual_heap_block_t* blocks = mmio->table->blocks;
+
+    blocks[0].start = (void*)start;
+    blocks[0].size = VMEM_PAGE_SIZE_SMALL;
+    blocks[0].prev = nullptr;
+    blocks[0].next = &blocks[1];
+    blocks[0].flags = VIRTUAL_HEAP_BLOCK_METADATA | VIRTUAL_HEAP_BLOCK_ACCESSED;
+
+    blocks[1].start = (void*)(start + VMEM_PAGE_SIZE_SMALL);
+    blocks[1].size = limit - start - VMEM_PAGE_SIZE_SMALL;
+    blocks[1].prev = &blocks[0];
+    blocks[1].next = nullptr;
+    blocks[1].flags = VIRTUAL_HEAP_BLOCK_FREE | VIRTUAL_HEAP_BLOCK_ACCESSED;
+
+    mmio->heap_edge = limit;
+    mmio->heap_size_current = VMEM_PAGE_SIZE_SMALL;
+    return true;
+}
+
+void* virtual_mmio_map_ex(virtual_heap_t* mmio, void* paddr, u64 size, u64 flags) {
+    if (!mmio || !mmio->table || size == 0)
+        return nullptr;
+
+    const u64 offset = (u64)paddr & (VMEM_PAGE_SIZE_SMALL - 1);
+    const u64 pbase = align_down((u64)paddr, VMEM_PAGE_SIZE_SMALL);
+    const u64 total = offset + size;
+    const u64 map_size = align_up(total, VMEM_PAGE_SIZE_SMALL);
+    if (total < size || map_size < total)
+        return nullptr;
+
+    mmio_ensure_slots(mmio);
+
+    const u64 align = mmio_alignment_for(map_size);
+    virtual_heap_block_t* block = mmio_carve(mmio, map_size, align, pbase & (align - 1));
+    if (!block)
+        return nullptr;
+
+    if (!mmio_map_pages((u64)block->start, pbase, map_size, flags)) {
+        virtual_free(mmio, block->start);
+        return nullptr;
+    }
+
+    return (void*)((u64)block->start + offset);
+}
+
+void* virtual_mmio_map(virtual_heap_t* mmio, void* paddr, u64 size) {
+    return virtual_mmio_map_ex(mmio, paddr, size, VMEM_MMIO);
+}
+
+bool virtual_mmio_unmap(virtual_heap_t* mmio, void* ptr) {
+    if (!mmio || !mmio->table || !ptr)
+        return false;
+
+    void* base = (void*)align_down((u64)ptr, VMEM_PAGE_SIZE_SMALL);
+
+    virtual_heap_block_t* block = virtual_find_block(mmio, base);
+    if (!block || HAS_ANY(block->flags, VIRTUAL_HEAP_BLOCK_METADATA | VIRTUAL_HEAP_BLOCK_FREE))
+        return false;
+
+    mmio_unmap_pages((u64)block->start, block->size, block->size);
+    return virtual_free(mmio, base);
+}
+
+bool kmem_bind(void* heap_start, void* heap_limit, u64 start_size) {
+    return virtual_heap_create(heap_start,heap_limit, start_size, &virtual_kernel_heap, VMEM_KERNEL_DATA);
+}
+
+void* kalloc(u64 size) {
+    return virtual_alloc(&virtual_kernel_heap, size);
+}
+
+void kfree(void* ptr) {
+    (void)virtual_free(&virtual_kernel_heap, ptr);
+}
+
+bool kmmio_bind(void* heap_start, void* heap_limit) {
+    return virtual_mmio_create(&virtual_kernel_mmio_heap, heap_start, heap_limit);
+}
+
+void* kmmio_map(void* paddr, u64 size) {
+    return virtual_mmio_map(&virtual_kernel_mmio_heap, paddr, size);
+}
+
+void kmmio_unmap(void* ptr) {
+    virtual_mmio_unmap(&virtual_kernel_mmio_heap, ptr);
 }

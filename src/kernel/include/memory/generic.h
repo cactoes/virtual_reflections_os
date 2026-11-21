@@ -55,6 +55,19 @@ bool virtual_heap_create(void* vaddr_start, void* vaddr_limit, u64 start_size, v
 void* virtual_alloc(virtual_heap_t* virtual_heap, u64 size);
 bool virtual_free(virtual_heap_t* virtual_heap, void* ptr);
 
+bool virtual_mmio_create(virtual_heap_t* mmio, void* vaddr_start, void* vaddr_limit);
+void* virtual_mmio_map_ex(virtual_heap_t* mmio, void* paddr, u64 size, u64 flags);
+void* virtual_mmio_map(virtual_heap_t* mmio, void* paddr, u64 size);
+bool virtual_mmio_unmap(virtual_heap_t* mmio, void* ptr);
+
+bool kmem_bind(void* heap_start, void* heap_limit, u64 start_size);
+void* kalloc(u64 size);
+void kfree(void* ptr);
+
+bool kmmio_bind(void* heap_start, void* heap_limit);
+void* kmmio_map(void* paddr, u64 size);
+void kmmio_unmap(void* ptr);
+
 static inline
 bool is_aligned(u64 addr, u64 align) {
     return (addr & (align - 1)) == 0;
