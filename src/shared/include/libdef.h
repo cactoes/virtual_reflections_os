@@ -29,4 +29,16 @@
 #define HAS_ALL(val, mask)          (((val) & (mask)) == (mask))
 #define HAS_ANY(val, mask)          (((val) & (mask)) != 0)
 
+#define BIT(n)                      (1ull << (n))
+#define SET_BIT(val, bit)           ((val) |= BIT(bit))
+#define CLEAR_BIT(val, bit)         ((val) &= ~BIT(bit))
+#define TOGGLE_BIT(val, bit)        ((val) ^= BIT(bit))
+#define ASSIGN_BIT(val, bit, on)    ((on) ? SET_BIT(val, bit) : CLEAR_BIT(val, bit))
+
+#define HAS_NONE(val, mask)         (((val) & (mask)) == 0)
+#define SET_MASK(val, mask)         ((val) |= (mask))
+#define CLEAR_MASK(val, mask)       ((val) &= ~(mask))
+#define TOGGLE_MASK(val, mask)      ((val) ^= (mask))
+#define KEEP_MASK(val, mask)        ((val) & (mask))
+
 #endif // LIBDEF_H
