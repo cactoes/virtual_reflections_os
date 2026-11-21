@@ -181,6 +181,27 @@ bool amd64_vmm_install_virtual_address(const void* vaddr, const void* paddr, u64
     return vmm_write_mapping(pt, pte, vaddr, paddr, flags, page_size);
 }
 
+static
+bool vmm_table_is_empty(const u64* table) {
+    for (u64 i = 0; i < 512; i++)
+        if (table[i] != 0)
+            return false;
+
+    return true;
+}
+
+static
+bool vmm_release_if_empty(u64* parent, u64 index, const u64* child, const void* vaddr) {
+    if (!vmm_table_is_empty(child))
+        return false;
+
+    const u64 child_paddr = parent[index] & AMD64_PTE_ADDR_MASK_4K;
+    parent[index] = 0;
+    flush_tlb((void*)vaddr);
+    pmm_free_pages((void*)child_paddr, 1);
+    return true;
+}
+
 bool amd64_vmm_remove_mapping(const void* vaddr, u64 page_size, u64* old_paddr) {
     if (page_size != VMEM_PAGE_SIZE_SMALL &&
         page_size != VMEM_PAGE_SIZE_LARGE &&
@@ -206,17 +227,28 @@ bool amd64_vmm_remove_mapping(const void* vaddr, u64 page_size, u64* old_paddr) 
     if (!pd)
         return false;
 
-    if (page_size == VMEM_PAGE_SIZE_LARGE)
-        return vmm_clear_mapping(pd, pde, vaddr, true, VMEM_PAGE_SIZE_LARGE, old_paddr);
+    if (page_size == VMEM_PAGE_SIZE_LARGE) {
+        if (!vmm_clear_mapping(pd, pde, vaddr, true, VMEM_PAGE_SIZE_LARGE, old_paddr))
+            return false;
+
+        vmm_release_if_empty(pdpt, pdpe, pd, vaddr);
+        return true;
+    }
 
     u64* pt = amd64_vmm_get_table(pd, pde, AMD64_GET_PT_VIRT(pml4e, pdpe, pde));
     if (!pt)
         return false;
 
-    return vmm_clear_mapping(pt, pte, vaddr, false, VMEM_PAGE_SIZE_SMALL, old_paddr);
+    if (!vmm_clear_mapping(pt, pte, vaddr, false, VMEM_PAGE_SIZE_SMALL, old_paddr))
+        return false;
+
+    if (vmm_release_if_empty(pd, pde, pt, vaddr))
+        vmm_release_if_empty(pdpt, pdpe, pd, vaddr);
+
+    return true;
 }
 
-bool amd64_vmm_set_use_nx(bool state) {
+void amd64_vmm_set_use_nx(bool state) {
     use_nx = state;
 }
 

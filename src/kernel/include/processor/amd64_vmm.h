@@ -50,7 +50,7 @@ u64 amd64_vmm_flags_to_pte(u64 flags, u64 page_size, bool nx_enabled);
 bool amd64_vmm_page_already_mapped(const void* vaddr, u64 page_size);
 bool amd64_vmm_install_virtual_address(const void* vaddr, const void* paddr, u64 page_size, u64 flags);
 bool amd64_vmm_remove_mapping(const void* vaddr, u64 page_size, u64* old_paddr);
-bool amd64_vmm_set_use_nx(bool state);
+void amd64_vmm_set_use_nx(bool state);
 bool amd64_vmm_get_use_nx();
 
 #endif // AMD64_VMM_H
