@@ -21,6 +21,29 @@
 #define AMD64_IDT_TYPE_INTERRUPT    0xeu
 #define AMD64_IDT_TYPE_TRAP         0xfu
 
+#define AMD64_EXCEPTION_DIVISION_BY_ZERO                  0
+#define AMD64_EXCEPTION_SINGLE_STEP_INTERRUPT             1
+#define AMD64_EXCEPTION_NMI                               2
+#define AMD64_EXCEPTION_BREAKPOINT                        3
+#define AMD64_EXCEPTION_OVERFLOW                          4
+#define AMD64_EXCEPTION_BOUND_RANGE_EXCEEDED              5
+#define AMD64_EXCEPTION_INVALID_OPCODE                    6
+#define AMD64_EXCEPTION_COPROCESSOR_NOT_AVAILABLE         7
+#define AMD64_EXCEPTION_DOUBLE_FAULT                      8
+#define AMD64_EXCEPTION_COPROCESSOR_SEGMENT_OVERRUN       9
+#define AMD64_EXCEPTION_INVALID_TSS                       10
+#define AMD64_EXCEPTION_SEGMENT_NOT_PRESENT               11
+#define AMD64_EXCEPTION_STACK_SEGMENT_FAULT               12
+#define AMD64_EXCEPTION_GENERAL_PROTECTION_FAULT          13
+#define AMD64_EXCEPTION_PAGE_FAULT                        14
+#define AMD64_EXCEPTION_RESERVED                          15
+#define AMD64_EXCEPTION_X87_FLOATING_POINT_EXCEPTION      16
+#define AMD64_EXCEPTION_ALIGNMENT_CHECK                   17
+#define AMD64_EXCEPTION_MACHINE_CHECK                     18
+#define AMD64_EXCEPTION_SIMD_FP_EXCEPTION                 19
+#define AMD64_EXCEPTION_VIRTUALIZATION_EXCEPTION          20
+#define AMD64_EXCEPTION_CONTROL_PROTECTION_EXCEPTION      21
+
 #include "libtype.h"
 #include "libdef.h"
 
@@ -63,5 +86,6 @@ typedef struct __amd64_idt {
 typedef interrupt_frame_t*(*interrupt_stub_t)(interrupt_frame_t* frame);
 
 void amd64_cpu_idt_init();
+const char* amd64_exception_to_text(u64 code);
 
 #endif // AMD64_INTERRUPT_H
