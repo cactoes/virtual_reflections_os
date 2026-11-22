@@ -295,7 +295,7 @@ static
 bool mmio_map_pages(u64 vbase, u64 pbase, u64 total, u64 flags) {
     u64 off = 0;
     while (off < total) {
-        const u64 page = mmio_pick_page_size(vbase + off, total - off);
+        const u64 page = pick_page_size(vbase + off, total - off);
         void* vaddr = (void*)(vbase + off);
         void* paddr = (void*)(pbase + off);
 
