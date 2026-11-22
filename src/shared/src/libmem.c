@@ -5,6 +5,7 @@ void* __memzero_impl(void*, u64);
 void* __memset_impl(void*, u8, u64);
 void* __memcpy_impl(void*, const void*, u64);
 bool __memeq_impl(const void*, const void*, u64);
+void* __memmove_impl(void* dst, const void* src, u64 size);
 
 void* memzero(void* dst, u64 size) {
     return __memzero_impl(dst, size);
@@ -20,4 +21,8 @@ void* memcpy(void* dst, const void* src, u64 size) {
 
 bool memeq(const void* a, const void* b, u64 size) {
     return __memeq_impl(a, b, size);
+}
+
+void* memmove(void* dst, const void* src, u64 size) {
+    return __memmove_impl(dst, src, size);
 }

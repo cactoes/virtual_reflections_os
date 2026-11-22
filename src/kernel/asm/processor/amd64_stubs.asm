@@ -7,6 +7,7 @@
 %define USE_ERMS            1
 %define MEMSET_REP_MIN      256
 %define MEMCPY_REP_MIN      512
+%define MEMMOVE_REP_MIN     512
 
 bits 64
 section .text
@@ -14,11 +15,12 @@ section .text
     global __memset_impl
     global __memcpy_impl
     global __memeq_impl
+    global __memmove_impl
 
-;------------------------------------------
+;==========================================
 ; @function
 ; rdi = dst, rsi = size
-;------------------------------------------
+;==========================================
 align 16
 __memzero_impl:
     mov     rdx, rsi
@@ -26,10 +28,10 @@ __memzero_impl:
     mov     r9, rdi
     jmp     __fill_common
 
-;------------------------------------------
+;==========================================
 ; @function
 ;   rdi = dst, sil = val, rdx = size
-;------------------------------------------
+;==========================================
 align 16
 __memset_impl:
     movzx   esi, sil
@@ -104,10 +106,10 @@ __fill_common:
 %endif
     jmp     .done
 
-;------------------------------------------
+;==========================================
 ; @function
 ;   rdi = dst, rsi = src, rdx = size
-;------------------------------------------
+;==========================================
 align 16
 __memcpy_impl:
     mov     rax, rdi
@@ -200,11 +202,11 @@ __memcpy_impl:
 %endif
     ret
 
-;------------------------------------------
+;==========================================
 ; @function
 ;   rdi = a, rsi = b, rdx = size
 ;   returns 1 (equal) / 0 (different) in eax
-;------------------------------------------
+;==========================================
 align 16
 __memeq_impl:
     cmp     rdx, 16
@@ -297,7 +299,6 @@ __memeq_impl:
     or      r8, r9
     or      rax, r8
 
-; rax == 0 -> equal
 .result:
     test    rax, rax
     sete    al
@@ -307,5 +308,117 @@ __memeq_impl:
 .differ:
     xor     eax, eax
     ret
+
+;==========================================
+; @function
+;   rdi = dst, rsi = src, rdx = size
+;   returns dst in rax
+;==========================================
+align 16
+__memmove_impl:
+    mov     rax, rdi
+.dispatch:
+    cmp     rdx, 16
+    ja      .above16
+    cmp     rdx, 8
+    jae     .m8_16
+    cmp     rdx, 4
+    jae     .m4_7
+    test    rdx, rdx
+    jz      .ret
+    movzx   ecx, byte [rsi]
+    movzx   r8d, byte [rsi + rdx - 1]
+    cmp     rdx, 2
+    jbe     .m1_2
+    movzx   r9d, byte [rsi + 1]
+    mov     [rdi + 1], r9b
+.m1_2:
+    mov     [rdi], cl
+    mov     [rdi + rdx - 1], r8b
+.ret:
+    ret
+ 
+.m4_7:
+    mov     ecx, [rsi]
+    mov     r8d, [rsi + rdx - 4]
+    mov     [rdi], ecx
+    mov     [rdi + rdx - 4], r8d
+    ret
+ 
+.m8_16:
+    mov     rcx, [rsi]
+    mov     r8,  [rsi + rdx - 8]
+    mov     [rdi], rcx
+    mov     [rdi + rdx - 8], r8
+    ret
+ 
+.above16:
+    cmp     rdx, 32
+    ja      .above32
+    mov     rcx, [rsi]
+    mov     r8,  [rsi + 8]
+    mov     r9,  [rsi + rdx - 16]
+    mov     r10, [rsi + rdx - 8]
+    mov     [rdi], rcx
+    mov     [rdi + 8], r8
+    mov     [rdi + rdx - 16], r9
+    mov     [rdi + rdx - 8], r10
+    ret
+ 
+.above32:
+    cmp     rdi, rsi
+    je      .ret
+    mov     rcx, rdi
+    sub     rcx, rsi
+    cmp     rcx, rdx
+    jb      .backward
+ 
+.forward:
+    cmp     rdx, MEMMOVE_REP_MIN
+    jae     .large
+.loop32f:
+    mov     rcx, [rsi]
+    mov     r8,  [rsi + 8]
+    mov     r9,  [rsi + 16]
+    mov     r10, [rsi + 24]
+    mov     [rdi], rcx
+    mov     [rdi + 8], r8
+    mov     [rdi + 16], r9
+    mov     [rdi + 24], r10
+    add     rsi, 32
+    add     rdi, 32
+    sub     rdx, 32
+    cmp     rdx, 32
+    jae     .loop32f
+    jmp     .dispatch
+ 
+.large:
+%if USE_ERMS
+    mov     rcx, rdx
+    rep movsb
+%else
+    mov     r8, [rsi + rdx - 8]
+    lea     r9, [rdi + rdx - 8]
+    mov     rcx, rdx
+    shr     rcx, 3
+    rep movsq
+    mov     [r9], r8
+%endif
+    ret
+ 
+.backward:
+.loop32b:
+    mov     rcx, [rsi + rdx - 8]
+    mov     r8,  [rsi + rdx - 16]
+    mov     r9,  [rsi + rdx - 24]
+    mov     r10, [rsi + rdx - 32]
+    mov     [rdi + rdx - 8], rcx
+    mov     [rdi + rdx - 16], r8
+    mov     [rdi + rdx - 24], r9
+    mov     [rdi + rdx - 32], r10
+    sub     rdx, 32
+    cmp     rdx, 32
+    jae     .loop32b
+    jmp     .dispatch
 
 section .note.GNU-stack noalloc noexec nowrite progbits
