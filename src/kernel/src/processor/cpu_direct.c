@@ -1,4 +1,5 @@
 #include "processor/cpu_direct.h"
+#include "io/debug.h"
 
 #if CPU_ARCHITECTURE == CPU_ARCH_AMD64
 #include "processor/amd64_cpu.h"
@@ -39,6 +40,8 @@ void cpu_init(kboot_info_t* kboot_info) {
     // on x86-64 extra value 0 is the rsdt table point (paddr)
     madt_info_t madt_info;
     amd64_rsdt1_init(kboot_info->extra_values[0], &madt_info);
+
+    kdbg_printf("system cores: %u\n", madt_info.cpu_count);
 
     amd64_apic_init(&madt_info);
 

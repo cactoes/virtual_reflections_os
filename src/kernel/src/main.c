@@ -11,6 +11,8 @@ void virtual_kernel_entry(kboot_info_t kboot_info) {
     u64 extensions = cpu_get_processor_extensions();
     cpu_enable_processor_extensions(extensions);
 
+    kdbg_init();
+
     u64 physical_page_count = kboot_info.memory.size / PMM_PAGE_SIZE;
     pmm_init(physical_page_count);
     pmm_reserve_range(0, kboot_info.kernel_page_count);
@@ -31,12 +33,16 @@ void virtual_kernel_entry(kboot_info_t kboot_info) {
     pmm_reserve_range(framebuffer_start, framebuffer_page_count);
 
     bool kmmio_result = kmmio_bind((void*)KERNEL_MMIO_BASE, (void*)KERNEL_MMIO_END);
+    kdbg_printf("kmmio: %s\n", kmmio_result ? "ok" : "error");
+
     bool kmem_result = kmem_bind((void*)KERNEL_HEAP_BASE, (void*)KERNEL_HEAP_END, VMEM_PAGE_SIZE_LARGE);
+    kdbg_printf("kmem: %s\n", kmem_result ? "ok" : "error");
 
     cpu_init(&kboot_info);
 
-    kdbg_init();
-    kdbg_printf("total memory: %u\n", kboot_info.memory.size);
+    char buffer[16];
+    format_size(buffer, 16, kboot_info.memory.size);
+    kdbg_printf("total memory: %s\n", buffer);
 
     // setup process
     // setup virtual threads

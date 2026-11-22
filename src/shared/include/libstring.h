@@ -21,5 +21,6 @@ u64 strlen(const char* str);
 
 u64 vsprintf(char* buf, u64 size, const char* fmt, va_list ap);
 u64 sprintf(char* buf, u64 size, const char* fmt, ...);
+void format_size(char* buf, u64 buf_size, u64 bytes);
 
 #endif // LIBSTRING_H

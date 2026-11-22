@@ -165,3 +165,22 @@ u64 sprintf(char* buf, u64 size, const char* fmt, ...) {
     va_end(ap);
     return n;
 }
+
+void format_size(char* buf, u64 buf_size, u64 bytes) {
+    static const char* units[] = { "B", "KB", "MB", "GB", "TB" };
+    u32 unit = 0;
+    u64 remainder = 0;
+
+    while (bytes >= 1024 && unit < 4) {
+        remainder = bytes % 1024;
+        bytes /= 1024;
+        unit++;
+    }
+
+    if (unit == 0) {
+        sprintf(buf, buf_size, "%llu B", (unsigned long long)bytes);
+    } else {
+        const u64 tenths = remainder * 10 / 1024;
+        sprintf(buf, buf_size, "%llu.%llu %s", (unsigned long long)bytes, (unsigned long long)tenths, units[unit]);
+    }
+}
