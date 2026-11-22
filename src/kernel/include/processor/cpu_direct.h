@@ -16,6 +16,7 @@
 #define CPU_ARCH_AMD64      1
 
 #include "libtype.h"
+#include "kbootinfo.h"
 
 typedef void(*cpu_interrupt_handler_t)();
 
@@ -28,7 +29,7 @@ typedef struct __cpu {
 
 u64 cpu_get_processor_extensions();
 void cpu_enable_processor_extensions(u64 extensions);
-void cpu_init();
+void cpu_init(kboot_info_t* kboot_info);
 bool cpu_bind_interrupt(u32 line, u32 flags, cpu_interrupt_handler_t handler);
 bool cpu_unbind_interrupt(u32 line);
 cpu_interrupt_handler_t cpu_get_interrupt_handler(u32 line);

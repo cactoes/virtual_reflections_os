@@ -31,7 +31,7 @@ void virtual_kernel_entry(kboot_info_t kboot_info) {
     bool kmmio_result = kmmio_bind((void*)KERNEL_MMIO_BASE, (void*)KERNEL_MMIO_END);
     bool kmem_result = kmem_bind((void*)KERNEL_HEAP_BASE, (void*)KERNEL_HEAP_END, VMEM_PAGE_SIZE_LARGE);
 
-    cpu_init();
+    cpu_init(&kboot_info);
 
     // setup COM ports? or just ports in general for qemu its uart amd_COM1 on 115200 baud
 

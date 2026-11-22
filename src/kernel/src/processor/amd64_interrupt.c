@@ -116,11 +116,3 @@ const char* amd64_exception_to_text(u64 code) {
         default: return "EXCEPTION_UNKNOWN";
     }
 }
-
-u32 amd64_isa_irq_to_line(u32 isa_irq) {
-    // TODO @since 22/11/2026 -- 17:41
-    // replace with acpi madt interrupt source
-
-    // on pc/qemu the pit sits on ioapic 2 not it isa irq 0
-    return (isa_irq == 0) ? 2 : isa_irq;
-}

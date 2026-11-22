@@ -90,6 +90,5 @@ typedef interrupt_frame_t*(*interrupt_stub_t)(interrupt_frame_t* frame);
 
 void amd64_cpu_idt_init();
 const char* amd64_exception_to_text(u64 code);
-u32 amd64_isa_irq_to_line(u32 isa_irq);
 
 #endif // AMD64_INTERRUPT_H

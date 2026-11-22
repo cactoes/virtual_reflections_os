@@ -60,3 +60,14 @@ const multiboot2_tag_cmdline_t* mb2_get_cmdline_tag(multiboot2_info_t* mbi) {
 
     return nullptr;
 }
+
+const multiboot2_tag_acpi_t* mb2_get_apci_tag(multiboot2_info_t* mbi) {
+    for (multiboot2_tag_t* tag = (multiboot2_tag_t*)mbi->tags; tag->type != 0; tag = (multiboot2_tag_t*)((u64)tag + align_up(tag->size, 8))) {
+        if (tag->type != MBTT_ACPI_RSDP1)
+            continue;
+
+        return (const multiboot2_tag_acpi_t*)tag;
+    }
+
+    return nullptr;
+}

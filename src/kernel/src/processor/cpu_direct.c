@@ -7,6 +7,7 @@
 #include "processor/amd64_apic.h"
 #include "processor/amd64_syscall.h"
 #include "processor/amd64_linker.h"
+#include "processor/amd64_rsdt.h"
 #else
 #error "undefined cpu architecture";
 #endif
@@ -29,12 +30,17 @@ void cpu_enable_processor_extensions(u64 extensions) {
 #endif
 }
 
-void cpu_init() {
+void cpu_init(kboot_info_t* kboot_info) {
 #if CPU_ARCHITECTURE == CPU_ARCH_AMD64
     amd64_disable_interrupts();
     amd64_cpu_gdt_init();
     amd64_cpu_idt_init();
-    amd64_apic_init();
+
+    // on x86-64 extra value 0 is the rsdt table point (paddr)
+    madt_info_t madt_info;
+    amd64_rsdt1_init(kboot_info->extra_values[0], &madt_info);
+
+    amd64_apic_init(&madt_info);
 
     current_cpu.kernel_rsp = KERNEL_STACK_TOP;
     current_cpu.id = amd64_lapic_id();

@@ -79,6 +79,11 @@ typedef struct __multiboot2_tag_framebuffer {
     };
 } __packed multiboot2_tag_framebuffer_t;
 
+typedef struct __multiboot2_tag_acpi {
+    u32 type;
+    u32 size;
+} __packed multiboot2_tag_acpi_t;
+
 typedef enum __memory_map_type_t {
     MMT_UNKOWN = 0,
     MMT_USABLE = 1,
@@ -106,11 +111,13 @@ typedef enum __multiboot_tag_type_t {
     MBTT_CMDLINE = 1,
     MBTT_MMAP = 6,
     MBTT_FRAMEBUFFER = 8,
+    MBTT_ACPI_RSDP1 = 14
 } multiboot_tag_type_t;
 
 const multiboot2_mmap_entry_t* mb2_get_first_entry(multiboot2_info_t* mbi);
 const multiboot2_mmap_entry_t* mb2_get_next_entry(multiboot2_info_t* mbi, const multiboot2_mmap_entry_t* prev);
 const multiboot2_tag_framebuffer_t* mb2_get_framebuffer_tag(multiboot2_info_t* mbi);
 const multiboot2_tag_cmdline_t* mb2_get_cmdline_tag(multiboot2_info_t* mbi);
+const multiboot2_tag_acpi_t* mb2_get_apci_tag(multiboot2_info_t* mbi);
 
 #endif // AMD64_MULTIBOOT_H

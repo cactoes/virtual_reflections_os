@@ -11,6 +11,7 @@
 #define MEMORY_TYPE_MASK    0xfffull
 #define MAX_MEMORY_REGIONS  128
 #define BOOT_UUID_MAX       64
+#define MAX_EXTRA_VALUES    1
 
 #include "libtype.h"
 
@@ -61,6 +62,9 @@ typedef struct __kboot_info {
     boot_media_type_t boot_media_type;
 
     u64 kernel_page_count;
+
+    u32 extra_values_written;
+    void* extra_values[MAX_EXTRA_VALUES];
 } kboot_info_t;
 
 #endif // KBOOTINFO_H
