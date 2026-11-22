@@ -5,11 +5,14 @@
 #include "processor/amd64_interrupt.h"
 #include "processor/amd64_gdt.h"
 #include "processor/amd64_apic.h"
+#include "processor/amd64_syscall.h"
+#include "processor/amd64_linker.h"
 #else
 #error "undefined cpu architecture";
 #endif
 
 static cpu_interrupt_handler_t handlers[256];
+static cpu_t current_cpu;
 
 u64 cpu_get_processor_extensions() {
 #if CPU_ARCHITECTURE == CPU_ARCH_AMD64
@@ -32,7 +35,11 @@ void cpu_init() {
     amd64_cpu_gdt_init();
     amd64_cpu_idt_init();
     amd64_apic_init();
-    // todo msr / syscalls
+
+    current_cpu.kernel_rsp = KERNEL_STACK_TOP;
+    current_cpu.id = amd64_lapic_id();
+    current_cpu.self = &current_cpu;
+    amd64_init_syscall(&current_cpu);
     amd64_enable_interrupts();
 #else
 #endif
@@ -73,4 +80,14 @@ bool cpu_unbind_interrupt(u32 line) {
 
 cpu_interrupt_handler_t cpu_get_interrupt_handler(u32 line) {
     return handlers[line];
+}
+
+cpu_t* get_current_cpu() {
+#if CPU_ARCHITECTURE == CPU_ARCH_AMD64
+    cpu_t* cpu;
+    __asm__ volatile ("mov %%gs:16, %0" : "=r"(cpu));
+    return cpu;
+#else
+    return nullptr;
+#endif
 }

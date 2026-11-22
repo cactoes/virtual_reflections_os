@@ -68,6 +68,7 @@ section .boot.text
     ; globals
     global _boot_amd64
     global page_table_l4
+    global stack_top
 
 ;==========================================
 ; @function     _boot_amd64
@@ -80,7 +81,7 @@ _boot_amd64:
     jne .stop
 
     ; setup a stack
-    mov esp,    stack.top
+    mov esp,    stack_top
     and esp,    -16
 
     ; save multiboot structure
@@ -275,7 +276,7 @@ section .boot.bss
 align 16
 stack:
     resb 0x200000 ; 2mb
-.top:
+stack_top:
 
 ; define a basic page table for jumping to 64 bit
 ; we only need to go 3 deep since we are only allocating 2mb pages
@@ -327,7 +328,7 @@ long_mode_jmp:
 
     ; move stack and multiboot pointer into the higher half
     mov     rcx, KERNEL_VIRTUAL_BASE
-    mov     rsp, stack.top
+    mov     rsp, stack_top
     and     rsp, -16
     add     rsp, rcx
     add     rdi, rcx

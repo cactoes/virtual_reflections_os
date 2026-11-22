@@ -19,6 +19,7 @@
 #define LNK_BSS_SIZE                ((u64)__lnk_bss_size)
 #define LNK_KERNEL_END_VIRTUAL      ((u64)__lnk_kernel_end_virtual)
 #define LNK_KERNEL_END_PHYSICAL     ((u64)__lnk_kernel_end_physical)
+#define KERNEL_STACK_TOP            ((u64)stack_top)
 
 #include "libtype.h"
 
@@ -31,6 +32,7 @@ extern char __lnk_bss_end[];
 extern char __lnk_bss_size[];
 extern char __lnk_kernel_end_virtual[];
 extern char __lnk_kernel_end_physical[];
+extern char stack_top[];
 
 extern u64 page_table_l4[];
 

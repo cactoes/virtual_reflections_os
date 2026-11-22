@@ -1,5 +1,6 @@
 #include "libmem.h"
 #include "processor/amd64_gdt.h"
+#include "processor/amd64_linker.h"
 
 static amd64_gdt_t gdt;
 static amd64_gdtr_t gdtr;
@@ -147,6 +148,7 @@ void amd64_cpu_gdt_init() {
     gdt_set_entry(&gdt, &gdt_user_code_entry, GDT_INDEX_USER_CODE);
 
     tss.iopb_offset = sizeof(amd64_tss_t);
+    tss.rsp[0] = KERNEL_STACK_TOP;
     set_tss(&gdt, &tss);
 
     update_gdtr(&gdtr, &gdt);

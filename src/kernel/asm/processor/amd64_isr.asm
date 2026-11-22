@@ -5,7 +5,8 @@
 ;==========================================
 
 bits 64
-extern amd64_interrupt_stub
+    extern amd64_interrupt_stub
+    global isr_stub_table
 
 %macro ISR_NOERR 1
 isr_stub_%+%1:
@@ -24,15 +25,20 @@ section .text
 
 %assign i 0
 %rep 256
-  %if i == 8 || (i >= 10 && i <= 14) || i == 17 || i == 21 || i == 29 || i == 30
-    ISR_ERR i
-  %else
-    ISR_NOERR i
-  %endif
-  %assign i i+1
+    %if i == 8 || (i >= 10 && i <= 14) || i == 17 || i == 21 || i == 29 || i == 30
+        ISR_ERR i
+    %else
+        ISR_NOERR i
+    %endif
+    %assign i i+1
 %endrep
 
 isr_common:
+    test qword [rsp + 24], 3
+    jz   .entry_from_kernel
+    swapgs
+.entry_from_kernel:
+
     push rax
     push rbx
     push rcx
@@ -70,10 +76,14 @@ isr_common:
     pop  rbx
     pop  rax
     add  rsp, 16
+
+    test qword [rsp + 8], 3
+    jz   .exit_to_kernel
+    swapgs
+.exit_to_kernel:
     iretq
 
 section .rodata
-global isr_stub_table
 isr_stub_table:
 %assign i 0
 %rep 256

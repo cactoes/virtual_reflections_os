@@ -28,6 +28,25 @@
 #define AMD64_CPU_EXTENSION_SIMD_BIT    0
 #define AMD64_CPU_EXTENSION_NX_BIT      1
 
+#define AMD64_RFLAGS_CF       (1 << 0)
+#define AMD64_RFLAGS_RES      (1 << 1)
+#define AMD64_RFLAGS_PF       (1 << 2)
+#define AMD64_RFLAGS_AF       (1 << 4)
+#define AMD64_RFLAGS_ZF       (1 << 6)
+#define AMD64_RFLAGS_SF       (1 << 7)
+#define AMD64_RFLAGS_TF       (1 << 8)
+#define AMD64_RFLAGS_IF       (1 << 9)
+#define AMD64_RFLAGS_DF       (1 << 10)
+#define AMD64_RFLAGS_OF       (1 << 11)
+#define AMD64_RFLAGS_IOPL     (3 << 12)
+#define AMD64_RFLAGS_NT       (1 << 14)
+#define AMD64_RFLAGS_RF       (1 << 16)
+#define AMD64_RFLAGS_VM       (1 << 17)
+#define AMD64_RFLAGS_AC       (1 << 18)
+#define AMD64_RFLAGS_VIF      (1 << 19)
+#define AMD64_RFLAGS_VIP      (1 << 20)
+#define AMD64_RFLAGS_ID       (1 << 21)
+
 void amd64_enable_processor_extensions(u64 extensions);
 u64 amd64_get_processor_extensions();
 

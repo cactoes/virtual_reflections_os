@@ -26,4 +26,8 @@ typedef struct __syscall_frame {
     u64 rsp;
 } __align_packed(16) syscall_frame_t;
 
+struct __cpu;
+
+void amd64_init_syscall(struct __cpu* cpu);
+
 #endif // AMD64_SYSCALL_H

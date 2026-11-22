@@ -8,7 +8,6 @@
 #ifndef AMD64_INTERRUPT_H
 #define AMD64_INTERRUPT_H
 
-
 #define AMD64_IDT_ENTRY_COUNT       256
 
 #define AMD64_INT_IRQ_PIT           0x00
