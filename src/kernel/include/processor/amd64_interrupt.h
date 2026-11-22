@@ -21,6 +21,10 @@
 #define AMD64_IDT_TYPE_INTERRUPT    0xeu
 #define AMD64_IDT_TYPE_TRAP         0xfu
 
+#define AMD64_IRQ_VECTOR_BASE       0x20
+#define AMD64_IRQ_VECTOR_END        0xe0
+#define AMD64_IRQ_LINE_LIMIT        (AMD64_IRQ_VECTOR_END - AMD64_IRQ_VECTOR_BASE)
+
 #define AMD64_EXCEPTION_DIVISION_BY_ZERO                  0
 #define AMD64_EXCEPTION_SINGLE_STEP_INTERRUPT             1
 #define AMD64_EXCEPTION_NMI                               2
@@ -87,5 +91,6 @@ typedef interrupt_frame_t*(*interrupt_stub_t)(interrupt_frame_t* frame);
 
 void amd64_cpu_idt_init();
 const char* amd64_exception_to_text(u64 code);
+u32 amd64_isa_irq_to_line(u32 isa_irq);
 
 #endif // AMD64_INTERRUPT_H

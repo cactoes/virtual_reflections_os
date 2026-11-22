@@ -4,9 +4,12 @@
 #include "processor/amd64_cpu.h"
 #include "processor/amd64_interrupt.h"
 #include "processor/amd64_gdt.h"
+#include "processor/amd64_apic.h"
 #else
 #error "undefined cpu architecture";
 #endif
+
+static cpu_interrupt_handler_t handlers[256];
 
 u64 cpu_get_processor_extensions() {
 #if CPU_ARCHITECTURE == CPU_ARCH_AMD64
@@ -28,9 +31,46 @@ void cpu_init() {
     amd64_disable_interrupts();
     amd64_cpu_gdt_init();
     amd64_cpu_idt_init();
-    // msr ?
-    // todo lapic
+    amd64_apic_init();
+    // todo msr / syscalls
     amd64_enable_interrupts();
 #else
 #endif
+}
+
+bool cpu_bind_interrupt(u32 line, u32 flags, cpu_interrupt_handler_t handler) {
+#if CPU_ARCHITECTURE == CPU_ARCH_AMD64
+    if (line >= AMD64_IRQ_LINE_LIMIT)
+        return false;
+
+    u32 hw_flags = 0;
+    if (flags & CPU_IRQ_TRIGGER_LEVEL)
+        hw_flags |= AMD64_IRQ_TRIGGER_LEVEL;
+
+    if (flags & CPU_IRQ_POLARITY_LOW)
+        hw_flags |= AMD64_IRQ_POLARITY_LOW;
+
+    handlers[line] = handler;
+
+    return amd64_ioapic_route(line, AMD64_IRQ_VECTOR_BASE + line, hw_flags);
+#else
+    return false;
+#endif
+}
+
+bool cpu_unbind_interrupt(u32 line) {
+#if CPU_ARCHITECTURE == CPU_ARCH_AMD64
+    if (line >= AMD64_IRQ_LINE_LIMIT)
+        return false;
+
+    handlers[line] = nullptr;
+
+    return amd64_ioapic_mask(line, true);
+#else
+    return false;
+#endif
+}
+
+cpu_interrupt_handler_t cpu_get_interrupt_handler(u32 line) {
+    return handlers[line];
 }

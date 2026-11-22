@@ -1,19 +1,31 @@
 #include "processor/amd64_interrupt.h"
 #include "processor/amd64_gdt.h"
 #include "processor/amd64_port.h"
+#include "processor/amd64_apic.h"
+#include "processor/cpu_direct.h"
 
 extern interrupt_stub_t* const isr_stub_table[AMD64_IDT_ENTRY_COUNT];
 static amd64_idt_t idt;
 static amd64_idtr_t idtr;
 
 interrupt_frame_t* amd64_interrupt_stub(interrupt_frame_t* frame) {
-    if (frame->vector < 32) {
+    const u64 vector = frame->vector;
+
+    if (vector < 32) {
         const char* exception_text = amd64_exception_to_text(frame->vector);
         (void)exception_text;
         while (true)
             __asm__ volatile  ("cli; hlt");
     }
 
+    if (vector == AMD64_LAPIC_SPURIOUS_VECTOR)
+        return frame;
+
+    cpu_interrupt_handler_t handler = cpu_get_interrupt_handler(vector - AMD64_IRQ_VECTOR_BASE);
+    if (handler)
+        handler();
+
+    amd64_lapic_eoi();
     return frame;
 }
 
@@ -56,8 +68,8 @@ void remap_pic() {
     amd64_out_port8(AMD64_INT_PIC2_DATA, 2); amd64_io_wait();
     amd64_out_port8(AMD64_INT_PIC1_DATA, 1); amd64_io_wait();
     amd64_out_port8(AMD64_INT_PIC2_DATA, 1); amd64_io_wait();
-    amd64_out_port8(AMD64_INT_PIC1_DATA, 0xffff); amd64_io_wait();
-    amd64_out_port8(AMD64_INT_PIC2_DATA, 0xffff); amd64_io_wait();
+    amd64_out_port8(AMD64_INT_PIC1_DATA, 0xff); amd64_io_wait();
+    amd64_out_port8(AMD64_INT_PIC2_DATA, 0xff); amd64_io_wait();
 }
 
 static
@@ -103,4 +115,12 @@ const char* amd64_exception_to_text(u64 code) {
         case AMD64_EXCEPTION_CONTROL_PROTECTION_EXCEPTION: return "EXCEPTION_CONTROL_PROTECTION_EXCEPTION";
         default: return "EXCEPTION_UNKNOWN";
     }
+}
+
+u32 amd64_isa_irq_to_line(u32 isa_irq) {
+    // TODO @since 22/11/2026 -- 17:41
+    // replace with acpi madt interrupt source
+
+    // on pc/qemu the pit sits on ioapic 2 not it isa irq 0
+    return (isa_irq == 0) ? 2 : isa_irq;
 }
