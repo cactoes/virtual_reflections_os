@@ -54,6 +54,7 @@ function Start-QEMU {
         "-boot", "d",
         "-machine", "pc",
         "-m", "$($config["qemu_system_memory"])"
+        "-smp", "$($config["qemu_system_cores"])"
     )
 
     # if ($config["qemu_use_uefi"]) {
