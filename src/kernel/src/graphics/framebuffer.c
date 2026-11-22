@@ -274,3 +274,15 @@ void framebuffer_present() {
 
     global_framebuffer.dirty_x0 = global_framebuffer.dirty_y0 = global_framebuffer.dirty_x1 = global_framebuffer.dirty_y1 = 0;
 }
+
+u64 framebuffer_width() {
+    return global_framebuffer.width;
+}
+
+u64 framebuffer_height() {
+    return global_framebuffer.height;
+}
+
+u32 framebuffer_color(u8 r, u8 g, u8 b) {
+    return ((u32)r << global_framebuffer.r_shift) | ((u32)g << global_framebuffer.g_shift) | ((u32)b << global_framebuffer.b_shift) | ((u32)0xff << global_framebuffer.a_shift);
+}

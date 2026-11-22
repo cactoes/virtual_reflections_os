@@ -35,4 +35,8 @@ void framebuffer_draw_bitmap_1bpp(i64 x, i64 y, i64 w, i64 h, const u8* bits, u6
 void framebuffer_invalidate();
 void framebuffer_present();
 
+u64 framebuffer_width();
+u64 framebuffer_height();
+u32 framebuffer_color(u8 r, u8 g, u8 b);
+
 #endif // FRAMEBUFFER_H
