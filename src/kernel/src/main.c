@@ -4,6 +4,8 @@
 #include "kbootinfo.h"
 #include "memory/vmm.h"
 #include "memory/generic.h"
+#include "libstring.h"
+#include "io/debug.h"
 
 void virtual_kernel_entry(kboot_info_t kboot_info) {
     u64 extensions = cpu_get_processor_extensions();
@@ -33,7 +35,8 @@ void virtual_kernel_entry(kboot_info_t kboot_info) {
 
     cpu_init(&kboot_info);
 
-    // setup COM ports? or just ports in general for qemu its uart amd_COM1 on 115200 baud
+    kdbg_init();
+    kdbg_printf("total memory: %u\n", kboot_info.memory.size);
 
     // setup process
     // setup virtual threads

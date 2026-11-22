@@ -28,13 +28,13 @@
 
 #define AMD64_LAPIC_SPURIOUS_VECTOR 0xff
 
+#include "libtype.h"
+#include "amd64_rsdt.h"
+
 typedef struct __irq_route_t {
     u32 gsi;
     u32 flags;
 } irq_route_t;
-
-#include "libtype.h"
-#include "amd64_rsdt.h"
 
 void amd64_apic_init(madt_info_t* madt_info);
 u32 amd64_lapic_id();

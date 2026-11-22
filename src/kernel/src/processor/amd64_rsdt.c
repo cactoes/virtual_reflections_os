@@ -132,5 +132,4 @@ void amd64_rsdt1_init(void* paddr_rsdt, madt_info_t* madt_info) {
         return;
 
     madt_parse((madt_t*)madt, madt_info);
-    return;
 }
