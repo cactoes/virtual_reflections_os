@@ -40,6 +40,14 @@ typedef struct __memory_region {
     u64 size;
 } memory_region_t;
 
+typedef struct __framebuffer {
+    u64 physical_address;
+    u64 width, height;
+    u64 pitch;
+    framebuffer_format_t format;
+    bool valid;
+} framebuffer_t;
+
 typedef struct __kboot_info {
     struct memory_t {
         memory_region_t regions[MAX_MEMORY_REGIONS];
@@ -48,13 +56,7 @@ typedef struct __kboot_info {
         bool region_overflowed;
     } memory;
 
-    struct framebuffer_t {
-        u64 physical_address;
-        u64 width, height;
-        u64 pitch;
-        framebuffer_format_t format;
-        bool valid;
-    } framebuffer;
+    framebuffer_t framebuffer;
 
     char boot_uuid[BOOT_UUID_MAX];
     bool boot_uuid_valid;

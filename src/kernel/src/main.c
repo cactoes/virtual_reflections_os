@@ -6,6 +6,7 @@
 #include "memory/generic.h"
 #include "libstring.h"
 #include "io/debug.h"
+#include "graphics/framebuffer.h"
 
 void virtual_kernel_entry(kboot_info_t kboot_info) {
     u64 extensions = cpu_get_processor_extensions();
@@ -38,11 +39,15 @@ void virtual_kernel_entry(kboot_info_t kboot_info) {
     bool kmem_result = kmem_bind((void*)KERNEL_HEAP_BASE, (void*)KERNEL_HEAP_END, VMEM_PAGE_SIZE_LARGE);
     kdbg_printf("kmem: %s\n", kmem_result ? "ok" : "error");
 
-    cpu_init(&kboot_info);
-
     char buffer[16];
     format_size(buffer, 16, kboot_info.memory.size);
     kdbg_printf("total memory: %s\n", buffer);
+
+    cpu_init(&kboot_info);
+
+    framebuffer_init(&kboot_info.framebuffer, nullptr);
+    framebuffer_clear(0xffffff);
+    framebuffer_present();
 
     // setup process
     // setup virtual threads
