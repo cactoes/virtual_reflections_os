@@ -1,6 +1,7 @@
 #include "processor/amd64_linker.h"
 #include "processor/amd64_cpu.h"
 #include "processor/amd64_vmm.h"
+#include "processor/amd64_msr.h"
 #include "libdef.h"
 
 static
@@ -59,30 +60,6 @@ void enable_simd() {
     write_cr0(new_cr0);
     u64 new_cr4 = read_cr4() | AMD64_CR4_OSFXSR | AMD64_CR4_OSXMMEXCPT;
     write_cr4(new_cr4);
-}
-
-// CLEAN @since 20/11/2026 -- 16:55
-// move these msr functions
-
-#define AMD64_EFER_NXE       (1ull << 11)
-#define AMD64_MSR_EFER       0xc0000080u
-#define AMD64_MSR_PAT        0x277u
-
-static inline
-void amd64_wrmsr(u32 addr, u64 value) {
-    u32 low  = (u32)(value & 0xffffffff);
-    u32 high = (u32)(value >> 32);
-
-    __asm__ volatile ("wrmsr" :: "c"(addr), "a"(low), "d"(high) : "memory");
-}
-
-static inline
-u64 amd64_rdmsr(u32 addr) {
-    u32 low, high;
-
-    __asm__ volatile ("rdmsr" : "=a"(low), "=d"(high) : "c"(addr) : "memory");
-
-    return ((u64)high << 32) | low;
 }
 
 static
