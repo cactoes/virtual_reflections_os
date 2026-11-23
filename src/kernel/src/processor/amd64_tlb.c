@@ -22,7 +22,7 @@ void tlb_fatal(const char* reason, u32 cpu_id) {
     // proper crash handler1
 
     kdbg_printf("tlb shootdown fatal: %s (cpu %u)\n", reason, cpu_id);
-    for (;;)
+    while (true)
         __asm__ volatile ("cli; hlt" ::: "memory");
 }
 

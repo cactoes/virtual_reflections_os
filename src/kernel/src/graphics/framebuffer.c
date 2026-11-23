@@ -137,7 +137,7 @@ void framebuffer_line(i64 x0, i64 y0, i64 x1, i64 y1, u32 color) {
     const i64 sy = y0 < y1 ? 1 : -1;
     i64 err = dx + dy;
 
-    for (;;) {
+    while (true) {
         framebuffer_put_pixel(x0, y0, color);
         if (x0 == x1 && y0 == y1)
             break;
