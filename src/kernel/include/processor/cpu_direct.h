@@ -16,7 +16,7 @@
 #define CPU_ARCH_AMD64          1
 
 #define MAX_CPUS                32
-#define CPU_KERNEL_STACK_SIZE   0x4000 // 16kb
+#define CPU_KERNEL_STACK_SIZE   0x4000 // 16kb, boot cpu has 2mb
 
 #include "libtype.h"
 #include "kbootinfo.h"
@@ -30,9 +30,12 @@ struct __cpu {
     u64 user_rsp;
     struct __cpu* self;
     u32 id;
-    u32 lapic_id;
     u32 online;
+
+#if CPU_ARCHITECTURE == CPU_ARCH_AMD64
+    u32 lapic_id;
     u32 ipi_ping_count;
+#endif
 };
 
 u64 cpu_get_processor_extensions();
