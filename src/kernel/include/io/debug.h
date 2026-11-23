@@ -10,5 +10,6 @@
 
 bool kdbg_init();
 void kdbg_printf(const char* fmt, ...);
+void kdbg_uprintf(const char* fmt, ...);
 
 #endif // DEBUG_H
