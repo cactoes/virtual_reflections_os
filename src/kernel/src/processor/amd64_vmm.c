@@ -8,11 +8,6 @@
 static bool use_nx = false;
 
 static
-void flush_tlb(void* vaddr) {
-    amd64_tlb_invalidate_page(vaddr);
-}
-
-static
 u64* vmm_write_next_table(u64* table, u64 index, u64* next_virt, bool user) {
     const u64 entry = table[index];
 
@@ -31,7 +26,7 @@ u64* vmm_write_next_table(u64* table, u64 index, u64* next_virt, bool user) {
     table[index] = ((u64)page & AMD64_PTE_ADDR_MASK_4K)
                     | AMD64_PTE_PRESENT | AMD64_PTE_WRITE
                     | (user ? AMD64_PTE_USER : 0);
-    flush_tlb(next_virt);
+    amd64_tlb_invalidate_page(next_virt);
     memzero(next_virt, VMEM_PAGE_SIZE_SMALL);
     return next_virt;
 }
@@ -49,7 +44,7 @@ static
 bool vmm_write_mapping(u64* table, u64 index, const void* vaddr, const void* paddr, u64 flags, u64 page_size) {
     u64 mask = amd64_page_addr_mask(page_size);
     table[index] = ((u64)paddr & mask) | flags;
-    flush_tlb((void*)vaddr);
+    amd64_tlb_invalidate_page((void*)vaddr);
     return true;
 }
 
@@ -75,7 +70,7 @@ bool vmm_clear_mapping(u64* table, u64 index, const void* vaddr, bool is_huge, u
         *old_paddr = entry & amd64_page_addr_mask(page_size);
 
     table[index] = 0;
-    flush_tlb((void*)vaddr);
+    amd64_tlb_invalidate_page((void*)vaddr);
     return true;
 }
 
