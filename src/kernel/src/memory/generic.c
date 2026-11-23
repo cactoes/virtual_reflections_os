@@ -3,6 +3,9 @@
 #include "libmem.h"
 #include "libdef.h"
 
+// TODO @since 24/11/2026 -- 00:30
+// spinlocks for heaps
+
 static virtual_heap_t virtual_kernel_heap;
 static virtual_heap_t virtual_kernel_mmio_heap;
 
