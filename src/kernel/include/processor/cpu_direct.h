@@ -13,9 +13,10 @@
 #define CPU_IRQ_EDGE_HIGH       0u
 #define CPU_IRQ_LEVEL_LOW       (CPU_IRQ_TRIGGER_LEVEL | CPU_IRQ_POLARITY_LOW)
 
-#define CPU_ARCH_AMD64      1
+#define CPU_ARCH_AMD64          1
 
-#define MAX_CPUS            32
+#define MAX_CPUS                32
+#define CPU_KERNEL_STACK_SIZE   0x4000 // 16kb
 
 #include "libtype.h"
 #include "kbootinfo.h"

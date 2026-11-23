@@ -83,6 +83,6 @@ typedef struct __amd64_tss {
     u16 iopb_offset;
 } __packed amd64_tss_t;
 
-void amd64_cpu_gdt_init();
+void amd64_cpu_gdt_init(u64 cpu_index, u64 kernel_rsp);
 
 #endif // AMD64_GDT_H

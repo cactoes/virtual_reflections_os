@@ -1,10 +1,11 @@
 #include "libmem.h"
 #include "processor/amd64_gdt.h"
 #include "processor/amd64_linker.h"
+#include "processor/cpu_direct.h"
 
-static amd64_gdt_t gdt;
-static amd64_gdtr_t gdtr;
-static amd64_tss_t tss;
+static amd64_gdt_t gdts[MAX_CPUS];
+static amd64_gdtr_t gdtrs[MAX_CPUS];
+static amd64_tss_t tsses[MAX_CPUS];
 
 static const amd64_gdt_entry_t gdt_zero_entry = {
     .limit_low16 = 0,
@@ -135,24 +136,28 @@ void reload_kernel_segments(u16 data_selector, u16 code_selector) {
     );
 }
 
-void amd64_cpu_gdt_init() {
-    memzero(&gdt, sizeof(amd64_gdt_t));
-    memzero(&gdtr, sizeof(amd64_gdtr_t));
-    memzero(&tss, sizeof(amd64_tss_t));
+void amd64_cpu_gdt_init(u64 cpu_index, u64 kernel_rsp) {
+    amd64_gdt_t* gdt  = &gdts[cpu_index];
+    amd64_gdtr_t* gdtr = &gdtrs[cpu_index];
+    amd64_tss_t* tss  = &tsses[cpu_index];
 
-    gdt_set_entry(&gdt, &gdt_zero_entry, GDT_INDEX_ZERO_ENTRY);
-    gdt_set_entry(&gdt, &gdt_kernel_code_entry, GDT_INDEX_KERNEL_CODE);
-    gdt_set_entry(&gdt, &gdt_kernel_data_entry, GDT_INDEX_KERNEL_DATA);
-    gdt_set_entry(&gdt, &gdt_user_code32_entry, GDT_INDEX_USER_CODE32);
-    gdt_set_entry(&gdt, &gdt_user_data_entry, GDT_INDEX_USER_DATA);
-    gdt_set_entry(&gdt, &gdt_user_code_entry, GDT_INDEX_USER_CODE);
+    memzero(gdt, sizeof(amd64_gdt_t));
+    memzero(gdtr, sizeof(amd64_gdtr_t));
+    memzero(tss, sizeof(amd64_tss_t));
 
-    tss.iopb_offset = sizeof(amd64_tss_t);
-    tss.rsp[0] = KERNEL_STACK_TOP;
-    set_tss(&gdt, &tss);
+    gdt_set_entry(gdt, &gdt_zero_entry, GDT_INDEX_ZERO_ENTRY);
+    gdt_set_entry(gdt, &gdt_kernel_code_entry, GDT_INDEX_KERNEL_CODE);
+    gdt_set_entry(gdt, &gdt_kernel_data_entry, GDT_INDEX_KERNEL_DATA);
+    gdt_set_entry(gdt, &gdt_user_code32_entry, GDT_INDEX_USER_CODE32);
+    gdt_set_entry(gdt, &gdt_user_data_entry, GDT_INDEX_USER_DATA);
+    gdt_set_entry(gdt, &gdt_user_code_entry, GDT_INDEX_USER_CODE);
 
-    update_gdtr(&gdtr, &gdt);
-    install_gdtr(&gdtr);
+    tss->iopb_offset = sizeof(amd64_tss_t);
+    tss->rsp[0] = kernel_rsp;
+    set_tss(gdt, tss);
+
+    update_gdtr(gdtr, gdt);
+    install_gdtr(gdtr);
 
     load_tss(AMD64_GDT_INDEX_TO_SELECTOR(GDT_INDEX_TSS, 0));
     reload_kernel_segments(AMD64_GDT_INDEX_TO_SELECTOR(GDT_INDEX_KERNEL_DATA, 0), AMD64_GDT_INDEX_TO_SELECTOR(GDT_INDEX_KERNEL_CODE, 0));

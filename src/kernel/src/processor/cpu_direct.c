@@ -1,5 +1,6 @@
 #include "processor/cpu_direct.h"
 #include "io/debug.h"
+#include "memory/generic.h"
 
 #if CPU_ARCHITECTURE == CPU_ARCH_AMD64
 #include "processor/amd64_cpu.h"
@@ -34,7 +35,7 @@ void cpu_enable_processor_extensions(u64 extensions) {
 void boot_cpu_init(kboot_info_t* kboot_info) {
 #if CPU_ARCHITECTURE == CPU_ARCH_AMD64
     amd64_disable_interrupts();
-    amd64_cpu_gdt_init();
+    amd64_cpu_gdt_init(0, KERNEL_STACK_TOP);
     amd64_cpu_idt_init();
 
     // on x86-64 extra value 0 is the rsdt table point (paddr)
@@ -43,7 +44,9 @@ void boot_cpu_init(kboot_info_t* kboot_info) {
 
     kdbg_printf("system cores: %u\n", madt_info.cpu_count);
 
-    amd64_apic_init(&madt_info, cpus, MAX_CPUS);
+    u64 cpu_count = madt_info.cpu_count < MAX_CPUS ? madt_info.cpu_count : MAX_CPUS;
+
+    amd64_apic_init(&madt_info, cpus, cpu_count);
 
     cpu_t* base_cpu = &cpus[0];
     base_cpu->id = 0;
@@ -52,6 +55,17 @@ void boot_cpu_init(kboot_info_t* kboot_info) {
     base_cpu->self = base_cpu;
 
     amd64_init_syscall(base_cpu);
+
+    for (u64 i = 1; i < cpu_count; i++) {
+        u64 base = (u64)kalloc(CPU_KERNEL_STACK_SIZE);
+        if (!base) {
+            kdbg_printf("failed to allocate kernel stack: cpu(%u)", i);
+            return;
+        }
+
+        cpus[i].kernel_rsp = align_down(base + KERNEL_STACK_TOP, 16);
+    }
+
     amd64_enable_interrupts();
 #else
 #endif
