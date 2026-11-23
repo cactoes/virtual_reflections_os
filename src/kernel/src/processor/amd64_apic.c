@@ -58,7 +58,7 @@ bool amd64_ioapic_mask(u32 gsi, bool masked) {
     return true;
 }
 
-void amd64_apic_init(madt_info_t* madt_info) {
+void amd64_apic_init(madt_info_t* madt_info, cpu_t* cpus, u64 max_cpus) {
     global_madt_info = *madt_info;
 
     void* ioapic_base = (void*)(u64)global_madt_info.ioapics[0].address;
@@ -84,6 +84,20 @@ void amd64_apic_init(madt_info_t* madt_info) {
     for (u32 gsi = 0; gsi < global_ioapic_gsi_count; gsi++) {
         ioapic_write(global_ioapic, AMD64_IOAPIC_REG_REDIR(gsi) + 1, 0);
         ioapic_write(global_ioapic, AMD64_IOAPIC_REG_REDIR(gsi), AMD64_IOAPIC_MASKED);
+    }
+
+    u32 bsp_id = amd64_lapic_id();
+    u64 next = 1;
+
+    for (u64 i = 0; i < madt_info->cpu_count && i < max_cpus; i++) {
+        u32 apic_id = madt_info->cpu_apic_id[i];
+        if (apic_id == bsp_id)
+            continue;
+
+        cpus[next].id = next;
+        cpus[next].lapic_id = apic_id;
+        cpus[next].self = &cpus[next];
+        next++;
     }
 }
 

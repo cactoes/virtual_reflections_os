@@ -43,7 +43,7 @@ void virtual_kernel_entry(kboot_info_t kboot_info) {
     format_size(buffer, 16, kboot_info.memory.size);
     kdbg_printf("total memory: %s\n", buffer);
 
-    cpu_init(&kboot_info);
+    boot_cpu_init(&kboot_info);
 
     framebuffer_init(&kboot_info.framebuffer, nullptr);
     framebuffer_clear(0xffffff);

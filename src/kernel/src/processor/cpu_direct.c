@@ -14,7 +14,7 @@
 #endif
 
 static cpu_interrupt_handler_t handlers[256];
-static cpu_t current_cpu;
+static cpu_t cpus[MAX_CPUS];
 
 u64 cpu_get_processor_extensions() {
 #if CPU_ARCHITECTURE == CPU_ARCH_AMD64
@@ -31,7 +31,7 @@ void cpu_enable_processor_extensions(u64 extensions) {
 #endif
 }
 
-void cpu_init(kboot_info_t* kboot_info) {
+void boot_cpu_init(kboot_info_t* kboot_info) {
 #if CPU_ARCHITECTURE == CPU_ARCH_AMD64
     amd64_disable_interrupts();
     amd64_cpu_gdt_init();
@@ -43,12 +43,15 @@ void cpu_init(kboot_info_t* kboot_info) {
 
     kdbg_printf("system cores: %u\n", madt_info.cpu_count);
 
-    amd64_apic_init(&madt_info);
+    amd64_apic_init(&madt_info, cpus, MAX_CPUS);
 
-    current_cpu.kernel_rsp = KERNEL_STACK_TOP;
-    current_cpu.id = amd64_lapic_id();
-    current_cpu.self = &current_cpu;
-    amd64_init_syscall(&current_cpu);
+    cpu_t* base_cpu = &cpus[0];
+    base_cpu->id = 0;
+    base_cpu->lapic_id = amd64_lapic_id();
+    base_cpu->kernel_rsp = KERNEL_STACK_TOP;
+    base_cpu->self = base_cpu;
+
+    amd64_init_syscall(base_cpu);
     amd64_enable_interrupts();
 #else
 #endif
