@@ -23,10 +23,6 @@ PS> .\vrtlkt.ps1 -Tool run
 In the `docs/svg` folder there are some diagrams that give a simple overview of the kernel and some subsystems. <br>
 Note: All, except the network diagram, are out of date!
 
-## Current active tasks
-
-## TODO
-
 ## Mapping symbols in debug mode
 ```
 -exec add-symbol-file ./build/{file} {address}
