@@ -89,6 +89,10 @@ void amd64_cpu_idt_init() {
     install_idtr(&idtr);
 }
 
+void amd64_cpu_idt_load() {
+    install_idtr(&idtr);
+}
+
 const char* amd64_exception_to_text(u64 code) {
     switch (code) {
         case AMD64_EXCEPTION_DIVISION_BY_ZERO: return "EXCEPTION_DIVISION_BY_ZERO";

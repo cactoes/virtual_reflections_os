@@ -37,6 +37,7 @@ typedef struct __irq_route_t {
     u32 flags;
 } irq_route_t;
 
+void amd64_lapic_enable_local();
 void amd64_apic_init(madt_info_t* madt_info, cpu_t* cpus, u64 max_cpus);
 u32 amd64_lapic_id();
 void amd64_lapic_eoi();

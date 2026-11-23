@@ -32,10 +32,32 @@ void cpu_enable_processor_extensions(u64 extensions) {
 #endif
 }
 
+#if CPU_ARCHITECTURE == CPU_ARCH_AMD64
+
+void amd64_ap_entry(cpu_t* cpu, u64 extensions) {
+    amd64_disable_interrupts();
+
+    amd64_enable_processor_extensions(extensions);
+    amd64_cpu_gdt_init(cpu->id, cpu->kernel_rsp);
+    amd64_cpu_idt_load();
+    amd64_lapic_enable_local();
+    amd64_init_syscall(cpu);
+
+    // TODO @since 23/11/2026 -- 21:28
+    // atomic exchange
+    cpu->online = 1;
+
+    // park core until ipi/scheduling
+    for (;;)
+        __asm__ volatile ("cli; hlt" ::: "memory");
+}
+
+#endif
+
 void boot_cpu_init(kboot_info_t* kboot_info) {
 #if CPU_ARCHITECTURE == CPU_ARCH_AMD64
     amd64_disable_interrupts();
-    amd64_cpu_gdt_init(0, KERNEL_STACK_TOP);
+    amd64_cpu_gdt_init(0, KERNEL_PHYS_TO_VIRT(KERNEL_STACK_TOP));
     amd64_cpu_idt_init();
 
     // on x86-64 extra value 0 is the rsdt table point (paddr)
@@ -51,8 +73,9 @@ void boot_cpu_init(kboot_info_t* kboot_info) {
     cpu_t* base_cpu = &cpus[0];
     base_cpu->id = 0;
     base_cpu->lapic_id = amd64_lapic_id();
-    base_cpu->kernel_rsp = KERNEL_STACK_TOP;
+    base_cpu->kernel_rsp = KERNEL_PHYS_TO_VIRT(KERNEL_STACK_TOP);
     base_cpu->self = base_cpu;
+    base_cpu->online = 1;
 
     amd64_init_syscall(base_cpu);
 
@@ -63,7 +86,7 @@ void boot_cpu_init(kboot_info_t* kboot_info) {
             return;
         }
 
-        cpus[i].kernel_rsp = align_down(base + KERNEL_STACK_TOP, 16);
+        cpus[i].kernel_rsp = align_down(base + CPU_KERNEL_STACK_SIZE, 16);
     }
 
     amd64_enable_interrupts();

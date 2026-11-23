@@ -89,6 +89,7 @@ typedef struct __amd64_idt {
 typedef interrupt_frame_t*(*interrupt_stub_t)(interrupt_frame_t* frame);
 
 void amd64_cpu_idt_init();
+void amd64_cpu_idt_load();
 const char* amd64_exception_to_text(u64 code);
 
 #endif // AMD64_INTERRUPT_H

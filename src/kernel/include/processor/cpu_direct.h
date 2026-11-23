@@ -29,6 +29,7 @@ typedef struct __cpu {
     struct __cpu* self;
     u32 id;
     u32 lapic_id;
+    u32 online;
 } cpu_t;
 
 u64 cpu_get_processor_extensions();

@@ -533,7 +533,7 @@ bool virtual_mmio_unmap(virtual_heap_t* mmio, void* ptr) {
 }
 
 bool kmem_bind(void* heap_start, void* heap_limit, u64 start_size) {
-    return virtual_heap_create(heap_start,heap_limit, start_size, &virtual_kernel_heap, VMEM_KERNEL_DATA);
+    return virtual_heap_create(heap_start,heap_limit, start_size, &virtual_kernel_heap, VMEM_KERNEL_DATA | VMEM_EXEC);
 }
 
 void* kalloc(u64 size) {

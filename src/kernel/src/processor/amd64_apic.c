@@ -58,6 +58,14 @@ bool amd64_ioapic_mask(u32 gsi, bool masked) {
     return true;
 }
 
+void amd64_lapic_enable_local() {
+    u64 base = amd64_rdmsr(AMD64_MSR_LAPIC_BASE);
+    amd64_wrmsr(AMD64_MSR_LAPIC_BASE, base | AMD64_MSR_LAPIC_ENABLE);
+
+    lapic_write(global_lapic, AMD64_LAPIC_REG_TPR, 0);
+    lapic_write(global_lapic, AMD64_LAPIC_REG_SVR, AMD64_LAPIC_SVR_ENABLE | AMD64_LAPIC_SPURIOUS_VECTOR);
+}
+
 void amd64_apic_init(madt_info_t* madt_info, cpu_t* cpus, u64 max_cpus) {
     global_madt_info = *madt_info;
 
@@ -72,8 +80,7 @@ void amd64_apic_init(madt_info_t* madt_info, cpu_t* cpus, u64 max_cpus) {
     if (!global_lapic)
         return;
 
-    lapic_write(global_lapic, AMD64_LAPIC_REG_TPR, 0);
-    lapic_write(global_lapic, AMD64_LAPIC_REG_SVR, AMD64_LAPIC_SVR_ENABLE | AMD64_LAPIC_SPURIOUS_VECTOR);
+    amd64_lapic_enable_local();
 
     global_ioapic = (volatile u8*)kmmio_map(ioapic_base, 0x1000);
     if (!global_ioapic)
