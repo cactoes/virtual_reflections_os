@@ -29,3 +29,13 @@ u32 __atomic_add32_impl(volatile u32* ptr, u32 value) {
     );
     return value;
 }
+
+u32 __atomic_xchg32_impl(volatile u32* ptr, u32 value) {
+    __asm__ volatile(
+        "xchgl %0, %1"
+        : "+r"(value), "+m"(*ptr)
+        :
+        : "memory"
+    );
+    return value;
+}

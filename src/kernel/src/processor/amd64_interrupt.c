@@ -2,6 +2,7 @@
 #include "processor/amd64_gdt.h"
 #include "processor/amd64_port.h"
 #include "processor/amd64_apic.h"
+#include "processor/amd64_tlb.h"
 #include "processor/cpu_direct.h"
 #include "libatomic.h"
 
@@ -21,6 +22,11 @@ interrupt_frame_t* amd64_interrupt_stub(interrupt_frame_t* frame) {
 
     if (vector == AMD64_LAPIC_SPURIOUS_VECTOR)
         return frame;
+
+    if (vector == AMD64_IPI_TLB_VECTOR) {
+        amd64_tlb_handle_ipi();
+        return frame;
+    }
 
     if (vector == AMD64_IPI_PING_VECTOR) {
         cpu_t* cpu = get_current_cpu();

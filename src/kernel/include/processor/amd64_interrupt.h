@@ -48,6 +48,7 @@
 #define AMD64_EXCEPTION_CONTROL_PROTECTION_EXCEPTION      21
 
 #define AMD64_IPI_PING_VECTOR   0xf0
+#define AMD64_IPI_TLB_VECTOR    0xf1
 
 #include "libtype.h"
 #include "libdef.h"

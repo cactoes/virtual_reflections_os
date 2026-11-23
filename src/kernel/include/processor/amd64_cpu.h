@@ -90,4 +90,61 @@ void amd64_restore_interrupts(u64 flags) {
         amd64_enable_interrupts();
 }
 
+static inline
+u64 amd64_read_cr4() {
+    u64 value;
+    __asm__ volatile (
+        "mov %%cr4, %0"
+        : "=r"(value)
+        :
+        : "memory"
+    );
+    return value;
+}
+
+static inline
+void amd64_write_cr4(u64 value) {
+    __asm__ volatile(
+        "mov %0, %%cr4"
+        :
+        : "r"(value)
+        : "memory"
+    );
+}
+
+static inline
+void amd64_reload_cr3() {
+    u64 cr3;
+    __asm__ volatile (
+        "mov %%cr3, %0\n\t"
+        "mov %0, %%cr3"
+        : "=&r"(cr3)
+        :
+        : "memory"
+    );
+}
+
+static inline
+u64 amd64_read_rflags() {
+    u64 flags;
+    __asm__ volatile(
+        "pushfq\n\t"
+        "popq %0"
+        : "=r"(flags)
+        :
+        : "memory"
+    );
+    return flags;
+}
+
+static inline
+void amd64_pause() {
+    __asm__ volatile ("pause" ::: "memory");
+}
+
+static inline
+void amd64_membarier() {
+    __asm__ volatile ("mfence" ::: "memory");
+}
+
 #endif // AMD64_CPU_H

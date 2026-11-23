@@ -2,18 +2,14 @@
 #include "memory/vmm.h"
 #include "memory/generic.h"
 #include "memory/pmm.h"
+#include "processor/amd64_tlb.h"
 #include "libmem.h"
 
 static bool use_nx = false;
 
 static
 void flush_tlb(void* vaddr) {
-    __asm__ volatile(
-        "invlpg (%0)"
-        :
-        : "r"(vaddr)
-        : "memory"
-    );
+    amd64_tlb_invalidate_page(vaddr);
 }
 
 static
@@ -192,14 +188,13 @@ bool vmm_table_is_empty(const u64* table) {
 }
 
 static
-bool vmm_release_if_empty(u64* parent, u64 index, const u64* child, const void* vaddr) {
+bool vmm_release_if_empty(u64* parent, u64 index, const u64* child) {
     if (!vmm_table_is_empty(child))
         return false;
 
     const u64 child_paddr = parent[index] & AMD64_PTE_ADDR_MASK_4K;
     parent[index] = 0;
-    flush_tlb((void*)child);
-    flush_tlb((void*)vaddr);
+    amd64_tlb_flush_all();
     pmm_free_pages((void*)child_paddr, 1);
     return true;
 }
@@ -233,7 +228,7 @@ bool amd64_vmm_remove_mapping(const void* vaddr, u64 page_size, u64* old_paddr) 
         if (!vmm_clear_mapping(pd, pde, vaddr, true, VMEM_PAGE_SIZE_LARGE, old_paddr))
             return false;
 
-        vmm_release_if_empty(pdpt, pdpe, pd, vaddr);
+        vmm_release_if_empty(pdpt, pdpe, pd);
         return true;
     }
 
@@ -244,8 +239,8 @@ bool amd64_vmm_remove_mapping(const void* vaddr, u64 page_size, u64* old_paddr) 
     if (!vmm_clear_mapping(pt, pte, vaddr, false, VMEM_PAGE_SIZE_SMALL, old_paddr))
         return false;
 
-    if (vmm_release_if_empty(pd, pde, pt, vaddr))
-        vmm_release_if_empty(pdpt, pdpe, pd, vaddr);
+    if (vmm_release_if_empty(pd, pde, pt))
+        vmm_release_if_empty(pdpt, pdpe, pd);
 
     return true;
 }
