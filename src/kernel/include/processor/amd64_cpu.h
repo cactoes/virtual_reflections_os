@@ -113,6 +113,18 @@ void amd64_write_cr4(u64 value) {
 }
 
 static inline
+u64 amd64_read_cr3() {
+    u64 value;
+    __asm__ volatile (
+        "mov %%cr3, %0"
+        : "=r"(value)
+        :
+        : "memory"
+    );
+    return value;
+}
+
+static inline
 void amd64_reload_cr3() {
     u64 cr3;
     __asm__ volatile (

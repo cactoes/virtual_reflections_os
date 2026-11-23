@@ -134,7 +134,7 @@ bool lapic_wait_icr_idle() {
         if (!(lapic_read(global_lapic, 0x300) & (1u << 12)))
             return true;
 
-        __asm__ volatile ("pause");
+        amd64_pause();
     }
 
     return false;

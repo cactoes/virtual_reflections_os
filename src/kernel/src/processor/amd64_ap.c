@@ -37,9 +37,7 @@ bool smp_pit_delay_us(u32 usec) {
                 break;
             }
 
-            // CLEAN @since 23/11/2026 -- 22:34
-            // replace with amd64_pause
-            __asm__ volatile ("pause");
+            amd64_pause();
         }
 
         amd64_out_port8(0x61, saved);
@@ -87,10 +85,7 @@ bool amd64_ap_prepare(kboot_info_t* kboot_info) {
     if (!usable)
         return false;
 
-    u64 kernel_cr3;
-    // CLEAN @since 23/11/2026 -- 22:32
-    // replace with a get_cr3
-    __asm__ volatile ("mov %%cr3, %0" : "=r"(kernel_cr3));
+    u64 kernel_cr3 = amd64_read_cr3();
 
     const u64 kernel_phys = kernel_cr3 & 0x000ffffffffff000ull;
     const u64 boot_phys = (u64)amd64_ap_boot_pml4;
@@ -132,9 +127,7 @@ bool smp_start_one_ap(cpu_t* cpu) {
     ap_boot_data->cpu = (u64)cpu;
     ap_boot_data->stack_top = cpu->kernel_rsp;
 
-    // CLEAN @since 23/11/2026 -- 22:37
-    // replace with proper impl
-    asm volatile ("mfence" ::: "memory");
+    amd64_membarier();
 
     if (!amd64_lapic_send_ipi(cpu->lapic_id, SMP_IPI_INIT_ASSERT))
         return false;
