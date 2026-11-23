@@ -7,7 +7,20 @@
 #include "libstring.h"
 #include "io/debug.h"
 #include "graphics/framebuffer.h"
+#include "libdef.h"
 
+__noreturn
+void virtual_core_entry(cpu_t* core) {
+    (void)core;
+
+    kdbg_printf("[core(%u)]: idle\n", core->id);
+
+    // idle loop for now
+    while (true)
+        __asm__ volatile ("sti; hlt" ::: "memory");
+}
+
+__noreturn
 void virtual_kernel_entry(kboot_info_t kboot_info) {
     u64 extensions = cpu_get_processor_extensions();
     cpu_enable_processor_extensions(extensions);
@@ -44,6 +57,7 @@ void virtual_kernel_entry(kboot_info_t kboot_info) {
     kdbg_printf("total memory: %s\n", buffer);
 
     boot_cpu_init(&kboot_info);
+    cpu_enable_all_cores();
 
     framebuffer_init(&kboot_info.framebuffer, nullptr);
     framebuffer_clear(0xffffff);

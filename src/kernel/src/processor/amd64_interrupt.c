@@ -36,6 +36,14 @@ interrupt_frame_t* amd64_interrupt_stub(interrupt_frame_t* frame) {
         return frame;
     }
 
+    if (vector == AMD64_IPI_START_VECTOR) {
+        cpu_t* cpu = get_current_cpu();
+
+        amd64_lapic_eoi();
+        atomic_store32(&cpu->start, 1);
+        return frame;
+    }
+
     cpu_interrupt_handler_t handler = cpu_get_interrupt_handler(vector - AMD64_IRQ_VECTOR_BASE);
     if (handler)
         handler();

@@ -31,6 +31,7 @@ struct __cpu {
     struct __cpu* self;
     u32 id;
     u32 online;
+    u32 start;
 
 #if CPU_ARCHITECTURE == CPU_ARCH_AMD64
     u32 lapic_id;
@@ -45,5 +46,6 @@ bool cpu_bind_interrupt(u32 line, u32 flags, cpu_interrupt_handler_t handler);
 bool cpu_unbind_interrupt(u32 line);
 cpu_interrupt_handler_t cpu_get_interrupt_handler(u32 line);
 cpu_t* get_current_cpu();
+void cpu_enable_all_cores();
 
 #endif // CPU_DIRECT_H

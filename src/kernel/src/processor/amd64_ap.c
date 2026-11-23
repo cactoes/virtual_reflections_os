@@ -17,6 +17,9 @@
 static ap_boot_data_t* ap_boot_data;
 extern cpu_t cpus[MAX_CPUS];
 
+// forward declare
+void virtual_core_entry(cpu_t* core);
+
 static
 bool smp_pit_delay_us(u32 usec) {
     while (usec != 0) {
@@ -62,9 +65,10 @@ void amd64_ap_entry(cpu_t* cpu, u64 extensions) {
     atomic_store32(&cpu->ipi_ping_count, 0);
     atomic_store32(&cpu->online, 1);
 
-    // park core until ipi/scheduling
-    for (;;)
+    while (!atomic_fetch32(&cpu->start))
         __asm__ volatile ("sti; hlt" ::: "memory");
+
+    virtual_core_entry(cpu);
 }
 
 bool amd64_ap_prepare(kboot_info_t* kboot_info) {
@@ -213,7 +217,6 @@ bool amd64_ap_start_and_ping(u64 cpu_index) {
     return count == 2;
 }
 
-
 void amd64_ap_startup(kboot_info_t* kboot_info, u64 cpu_count) {
     if (!amd64_ap_prepare(kboot_info)) {
         kdbg_printf("failed to prepair ap trampoline");
@@ -236,4 +239,18 @@ void amd64_ap_startup(kboot_info_t* kboot_info, u64 cpu_count) {
 
         kdbg_printf("cpu(%u): online\n", i);
     }
+}
+
+bool amd64_am_send_ipi(u64 cpu_index, u32 vector) {
+    cpu_t* cpu = &cpus[cpu_index];
+    if (!cpu)
+        return false;
+
+    if (!atomic_fetch32(&cpu->online))
+        return false;
+
+    if (!amd64_lapic_send_ipi(cpu->lapic_id, vector))
+        return false;
+
+    return true;
 }

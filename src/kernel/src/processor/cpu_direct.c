@@ -22,6 +22,7 @@
 
 static cpu_interrupt_handler_t handlers[256];
 cpu_t cpus[MAX_CPUS];
+u64 cpu_count;
 
 u64 cpu_get_processor_extensions() {
 #if CPU_ARCHITECTURE == CPU_ARCH_AMD64
@@ -50,7 +51,7 @@ void boot_cpu_init(kboot_info_t* kboot_info) {
 
     kdbg_printf("system cores: %u\n", madt_info.cpu_count);
 
-    u64 cpu_count = madt_info.cpu_count < MAX_CPUS ? madt_info.cpu_count : MAX_CPUS;
+    cpu_count = madt_info.cpu_count < MAX_CPUS ? madt_info.cpu_count : MAX_CPUS;
 
     amd64_apic_init(&madt_info, cpus, cpu_count);
 
@@ -119,5 +120,13 @@ cpu_t* get_current_cpu() {
     return cpu;
 #else
     return nullptr;
+#endif
+}
+
+void cpu_enable_all_cores() {
+#if CPU_ARCHITECTURE == CPU_ARCH_AMD64
+    for (u64 i = 1; i < cpu_count; i++)
+        amd64_am_send_ipi(i, AMD64_IPI_START_VECTOR);
+#else
 #endif
 }
