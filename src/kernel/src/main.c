@@ -57,6 +57,9 @@ void virtual_kernel_entry(kboot_info_t kboot_info) {
     kdbg_printf("total memory: %s\n", buffer);
 
     boot_cpu_init(&kboot_info);
+
+    // setup scheduler before enabeling other cores for work
+
     cpu_enable_all_cores();
 
     framebuffer_init(&kboot_info.framebuffer, nullptr);
