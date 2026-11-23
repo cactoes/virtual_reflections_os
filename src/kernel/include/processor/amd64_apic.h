@@ -41,6 +41,7 @@ void amd64_lapic_enable_local();
 void amd64_apic_init(madt_info_t* madt_info, cpu_t* cpus, u64 max_cpus);
 u32 amd64_lapic_id();
 void amd64_lapic_eoi();
+bool amd64_lapic_send_ipi(u32 target_apic_id, u32 command);
 
 bool amd64_ioapic_route(u32 gsi, u8 vector, u32 flags);
 bool amd64_ioapic_mask(u32 gsi, bool masked);

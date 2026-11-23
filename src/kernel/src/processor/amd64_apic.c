@@ -1,6 +1,7 @@
 #include "processor/amd64_apic.h"
 #include "processor/amd64_msr.h"
 #include "memory/generic.h"
+#include "processor/amd64_cpu.h"
 
 static volatile u8* global_lapic;
 static volatile u8* global_ioapic;
@@ -125,4 +126,36 @@ irq_route_t amd64_isa_irq_route(u32 isa_irq) {
     }
 
     return (irq_route_t){ isa_irq, AMD64_IRQ_EDGE_HIGH };
+}
+
+static
+bool lapic_wait_icr_idle() {
+    for (u32 i = 0; i < 1000000u; i++) {
+        if (!(lapic_read(global_lapic, 0x300) & (1u << 12)))
+            return true;
+
+        __asm__ volatile ("pause");
+    }
+
+    return false;
+}
+
+bool amd64_lapic_send_ipi(u32 target_apic_id, u32 command) {
+    if (!global_lapic || target_apic_id > 255u)
+        return false;
+
+    if (amd64_rdmsr(AMD64_MSR_LAPIC_BASE) & (1ull << 10))
+        return false;
+
+    u64 flags = amd64_save_interrupts();
+    bool ok = lapic_wait_icr_idle();
+
+    if (ok) {
+        lapic_write(global_lapic, 0x310, target_apic_id << 24);
+        lapic_write(global_lapic, 0x300, command);
+        ok = lapic_wait_icr_idle();
+    }
+
+    amd64_restore_interrupts(flags);
+    return ok;
 }

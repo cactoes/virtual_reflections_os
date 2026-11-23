@@ -27,8 +27,10 @@
 #define AMD64_KPAGING_GET_ENTRY(table, entry)         ((u64*)(((u64*)(table))[((u64)(entry))] & ~0xfff))
 #define AMD64_KPAGING_CHECK_ENTRY(table, entry)       ((((u64*)(table))[((u64)(entry))]) & 1)
 
-#define AMD64_RECURSIVE_SLOT 511ull
-#define AMD64_SIGN_EXT 0xffff000000000000ull
+#define AMD64_RECURSIVE_SLOT        511ull
+#define AMD64_PML4_KERNEL_INDEX     ((KERNEL_VIRTUAL_BASE >> 39) & 0x1ffull)
+#define AMD64_SIGN_EXT              0xffff000000000000ull
+
 #define AMD64_GET_PML4_VIRT()                                     ((u64*)(AMD64_SIGN_EXT | (AMD64_RECURSIVE_SLOT << 39) | (AMD64_RECURSIVE_SLOT << 30) | (AMD64_RECURSIVE_SLOT << 21) | (AMD64_RECURSIVE_SLOT << 12)))
 #define AMD64_GET_PDPT_VIRT(pml4_index)                           ((u64*)(AMD64_SIGN_EXT | (AMD64_RECURSIVE_SLOT << 39) | (AMD64_RECURSIVE_SLOT << 30) | (AMD64_RECURSIVE_SLOT << 21) | ((u64)(pml4_index) << 12)))
 #define AMD64_GET_PDT_VIRT(pml4_index, pdpt_index)                ((u64*)(AMD64_SIGN_EXT | (AMD64_RECURSIVE_SLOT << 39) | (AMD64_RECURSIVE_SLOT << 30) | ((u64)(pml4_index) << 21) | ((u64)(pdpt_index) << 12)))

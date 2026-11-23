@@ -23,14 +23,17 @@
 
 typedef void(*cpu_interrupt_handler_t)();
 
-typedef struct __cpu {
+typedef struct __cpu cpu_t;
+
+struct __cpu {
     u64 kernel_rsp;
     u64 user_rsp;
     struct __cpu* self;
     u32 id;
     u32 lapic_id;
     u32 online;
-} cpu_t;
+    u32 ipi_ping_count;
+};
 
 u64 cpu_get_processor_extensions();
 void cpu_enable_processor_extensions(u64 extensions);

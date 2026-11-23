@@ -47,6 +47,8 @@
 #define AMD64_EXCEPTION_VIRTUALIZATION_EXCEPTION          20
 #define AMD64_EXCEPTION_CONTROL_PROTECTION_EXCEPTION      21
 
+#define AMD64_IPI_PING_VECTOR   0xf0
+
 #include "libtype.h"
 #include "libdef.h"
 

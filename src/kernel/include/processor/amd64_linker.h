@@ -36,4 +36,8 @@ extern char stack_top[];
 
 extern u64 page_table_l4[];
 
+extern char amd64_ap_trampoline_start[];
+extern char amd64_ap_trampoline_end[];
+extern u64 amd64_ap_boot_pml4[];
+
 #endif // LINKER_H

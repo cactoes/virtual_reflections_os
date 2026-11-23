@@ -3,6 +3,7 @@
 #include "processor/amd64_port.h"
 #include "processor/amd64_apic.h"
 #include "processor/cpu_direct.h"
+#include "libatomic.h"
 
 extern interrupt_stub_t* const isr_stub_table[AMD64_IDT_ENTRY_COUNT];
 static amd64_idt_t idt;
@@ -20,6 +21,14 @@ interrupt_frame_t* amd64_interrupt_stub(interrupt_frame_t* frame) {
 
     if (vector == AMD64_LAPIC_SPURIOUS_VECTOR)
         return frame;
+
+    if (vector == AMD64_IPI_PING_VECTOR) {
+        cpu_t* cpu = get_current_cpu();
+
+        amd64_lapic_eoi();
+        atomic_add32(&cpu->ipi_ping_count, 1);
+        return frame;
+    }
 
     cpu_interrupt_handler_t handler = cpu_get_interrupt_handler(vector - AMD64_IRQ_VECTOR_BASE);
     if (handler)
