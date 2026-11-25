@@ -21,7 +21,7 @@ void tlb_fatal(const char* reason, u32 cpu_id) {
     // TODO @since 23/11/2026 -- 23:38
     // proper crash handler1
 
-    kdbg_printf("tlb shootdown fatal: %s (cpu %u)\n", reason, cpu_id);
+    kdbg_uprintf("tlb shootdown fatal: %s (cpu %u)\n", reason, cpu_id);
     while (true)
         __asm__ volatile ("cli; hlt" ::: "memory");
 }
