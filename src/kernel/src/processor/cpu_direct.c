@@ -130,3 +130,27 @@ void cpu_enable_all_cores() {
 #else
 #endif
 }
+
+void cpu_kill_all_cores_except(u64 core) {
+#if CPU_ARCHITECTURE == CPU_ARCH_AMD64
+    for (u64 i = 0; i < cpu_count; i++) {
+        if (i == core)
+            continue;
+
+        amd64_ap_send_ipi(i, AMD64_IPI_KILL_VECTOR);
+    }
+#else
+#endif
+}
+
+__noreturn
+void cpu_hang() {
+#if CPU_ARCHITECTURE == CPU_ARCH_AMD64
+    amd64_disable_interrupts();
+    while (true)
+        amd64_halt();
+#else
+#endif
+    while (true)
+        ;
+}

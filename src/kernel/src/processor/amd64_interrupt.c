@@ -4,6 +4,7 @@
 #include "processor/amd64_apic.h"
 #include "processor/amd64_tlb.h"
 #include "processor/cpu_direct.h"
+#include "crash_handler.h"
 #include "libatomic.h"
 
 extern interrupt_stub_t* const isr_stub_table[AMD64_IDT_ENTRY_COUNT];
@@ -15,9 +16,8 @@ interrupt_frame_t* amd64_interrupt_stub(interrupt_frame_t* frame) {
 
     if (vector < 32) {
         const char* exception_text = amd64_exception_to_text(frame->vector);
-        (void)exception_text;
-        while (true)
-            __asm__ volatile  ("cli; hlt");
+        cpu_t* cpu = get_current_cpu();
+        crash_handler_entry((void*)frame, exception_text, cpu->id);
     }
 
     if (vector == AMD64_LAPIC_SPURIOUS_VECTOR)
@@ -42,6 +42,14 @@ interrupt_frame_t* amd64_interrupt_stub(interrupt_frame_t* frame) {
         amd64_lapic_eoi();
         atomic_store32(&cpu->start, 1);
         return frame;
+    }
+
+    if (vector == AMD64_IPI_KILL_VECTOR) {
+        cpu_t* cpu = get_current_cpu();
+
+        amd64_lapic_eoi();
+        atomic_store32(&cpu->online, 0);
+        cpu_hang();
     }
 
     cpu_interrupt_handler_t handler = cpu_get_interrupt_handler(vector - AMD64_IRQ_VECTOR_BASE);

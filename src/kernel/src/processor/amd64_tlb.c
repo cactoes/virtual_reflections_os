@@ -6,6 +6,8 @@
 #include "io/debug.h"
 #include "libatomic.h"
 #include "libdef.h"
+#include "processor/amd64_crash_handler.h"
+#include "crash_handler.h"
 
 extern cpu_t cpus[MAX_CPUS];
 
@@ -18,12 +20,9 @@ static bool tlb_request_full;
 __noreturn
 static
 void tlb_fatal(const char* reason, u32 cpu_id) {
-    // TODO @since 23/11/2026 -- 23:38
-    // proper crash handler1
-
-    kdbg_uprintf("tlb shootdown fatal: %s (cpu %u)\n", reason, cpu_id);
-    while (true)
-        __asm__ volatile ("cli; hlt" ::: "memory");
+    amd64_crash_capture();
+    interrupt_frame_t frame = amd64_get_frame();
+    crash_handler_entry(&frame, reason, cpu_id);
 }
 
 static

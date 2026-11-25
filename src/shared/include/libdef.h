@@ -24,6 +24,7 @@
 #define __section_boot_bss_4k           __attribute__((section(".boot.bss"), aligned(4096)))
 #define __align_packed(n)               __attribute__((aligned(n), packed))
 #define __packed                        __attribute__((packed))
+#define __naked_cleanup                 __attribute__((naked, noinline))
 
 #define HAS_BIT(val, bit)           (((val) & (1ull << (bit))) != 0)
 #define HAS_ALL(val, mask)          (((val) & (mask)) == (mask))

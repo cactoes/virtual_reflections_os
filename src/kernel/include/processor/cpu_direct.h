@@ -19,6 +19,7 @@
 #define CPU_KERNEL_STACK_SIZE   0x4000 // 16kb, boot cpu has 2mb
 
 #include "libtype.h"
+#include "libdef.h"
 #include "kbootinfo.h"
 
 typedef void(*cpu_interrupt_handler_t)();
@@ -47,5 +48,9 @@ bool cpu_unbind_interrupt(u32 line);
 cpu_interrupt_handler_t cpu_get_interrupt_handler(u32 line);
 cpu_t* get_current_cpu();
 void cpu_enable_all_cores();
+void cpu_kill_all_cores_except(u64 core);
+
+__noreturn
+void cpu_hang();
 
 #endif // CPU_DIRECT_H

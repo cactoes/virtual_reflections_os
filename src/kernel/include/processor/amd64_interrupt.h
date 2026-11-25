@@ -50,6 +50,7 @@
 #define AMD64_IPI_PING_VECTOR   0xf0
 #define AMD64_IPI_TLB_VECTOR    0xf1
 #define AMD64_IPI_START_VECTOR  0xf2
+#define AMD64_IPI_KILL_VECTOR   0xf3
 
 #include "libtype.h"
 #include "libdef.h"

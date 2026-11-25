@@ -47,6 +47,8 @@
 #define AMD64_RFLAGS_VIP      (1 << 20)
 #define AMD64_RFLAGS_ID       (1 << 21)
 
+#include "libtype.h"
+
 void amd64_enable_processor_extensions(u64 extensions);
 u64 amd64_get_processor_extensions();
 
@@ -157,6 +159,11 @@ void amd64_pause() {
 static inline
 void amd64_membarier() {
     __asm__ volatile ("mfence" ::: "memory");
+}
+
+static
+void amd64_halt() {
+    __asm__ volatile ("hlt" ::: "memory");
 }
 
 #endif // AMD64_CPU_H
