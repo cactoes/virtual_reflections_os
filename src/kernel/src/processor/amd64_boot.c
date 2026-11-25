@@ -5,20 +5,10 @@
 #include "processor/amd64_multiboot.h"
 #include "libstring.h"
 #include "processor/amd64_cpu.h"
+#include "libmem.h"
 
 // in main.c
 void virtual_kernel_entry(kboot_info_t kboot_info);
-
-static
-__section_text
-void __memzero(void* dst, u64 size) {
-    __asm__ volatile (
-        "rep stosb"
-        : "+D"(dst), "+c"(size)
-        : "a"(0)
-        : "memory"
-    );
-}
 
 static
 __section_text
@@ -109,39 +99,17 @@ bool parse_framebuffer(multiboot2_info_t* multiboot2, kboot_info_t* kboot_info) 
 
 static
 __section_text
-bool parse_boot_uuid(multiboot2_info_t* multiboot2, kboot_info_t* kboot_info) {
-    static const char root_text[] = "root=";
-    const u64 root_len = sizeof(root_text) - 1;
-
+bool parse_cmdline(multiboot2_info_t* multiboot2, kboot_info_t* kboot_info) {
     const multiboot2_tag_cmdline_t* tag = mb2_get_cmdline_tag(multiboot2);
     if (!tag)
         return false;
 
     const char* cmdline = tag->string;
     u64 len = strlen(cmdline);
+    if (len >= CMDLINE_MAX)
+        len = CMDLINE_MAX - 1;
 
-    for (u64 i = 0; i + root_len < len; i++) {
-        if (i != 0 && cmdline[i - 1] != ' ')
-            continue;
-
-        u64 k = 0;
-        while (k < root_len && cmdline[i + k] == root_text[k])
-            k++;
-        if (k != root_len)
-            continue;
-
-        const char* value = &cmdline[i + root_len];
-
-        u64 n = 0;
-        while (n < BOOT_UUID_MAX && value[n] != '\0' && value[n] != ' ') {
-            kboot_info->boot_uuid[n] = value[n];
-            n++;
-        }
-
-        kboot_info->boot_uuid[n] = '\0';
-        return n > 0;
-    }
-
+    memcpy(kboot_info->cmdline, cmdline, len);
     return true;
 }
 
@@ -190,15 +158,17 @@ bool parse_rsdp(multiboot2_info_t* multiboot2, kboot_info_t* kboot_info) {
 
 __noreturn __section_text
 void amd64_entry(multiboot2_info_t* multiboot2) {
-    __memzero((void*)LNK_BSS_START, LNK_BSS_SIZE);
+    memzero((void*)LNK_BSS_START, LNK_BSS_SIZE);
 
     ((u64*)KERNEL_PHYS_TO_VIRT(page_table_l4))[0] = 0;
     amd64_reload_cr3();
 
     kboot_info_t kboot_info;
+    memzero(&kboot_info, sizeof(kboot_info_t));
+
     kboot_info.memory.region_overflowed = !parse_memory(multiboot2, &kboot_info);
     kboot_info.framebuffer.valid = parse_framebuffer(multiboot2, &kboot_info);
-    kboot_info.boot_uuid_valid = parse_boot_uuid(multiboot2, &kboot_info);
+    kboot_info.cmdline_valid = parse_cmdline(multiboot2, &kboot_info);
     kboot_info.boot_media_type = MEDIA_TYPE_LIVE; // hardcoded for now
     (void)parse_rsdp(multiboot2, &kboot_info);
 

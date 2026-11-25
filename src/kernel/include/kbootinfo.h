@@ -10,8 +10,8 @@
 
 #define MEMORY_TYPE_MASK    0xfffull
 #define MAX_MEMORY_REGIONS  128
-#define BOOT_UUID_MAX       64
 #define MAX_EXTRA_VALUES    1
+#define CMDLINE_MAX         256
 
 #include "libtype.h"
 
@@ -58,13 +58,14 @@ typedef struct __kboot_info {
 
     framebuffer_t framebuffer;
 
-    char boot_uuid[BOOT_UUID_MAX];
-    bool boot_uuid_valid;
-
     boot_media_type_t boot_media_type;
+
+    char cmdline[CMDLINE_MAX];
+    bool cmdline_valid;
 
     u64 kernel_page_count;
 
+    // architecture specific values for later use
     u32 extra_values_written;
     void* extra_values[MAX_EXTRA_VALUES];
 } kboot_info_t;
