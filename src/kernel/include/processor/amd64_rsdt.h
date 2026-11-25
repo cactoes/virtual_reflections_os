@@ -103,6 +103,6 @@ typedef struct __madt_info {
     } overrides[AMD64_MADT_MAX_OVERRIDES];
 } madt_info_t;
 
-void amd64_rsdt1_init(void* paddr_rsdt, madt_info_t* madt_info);
+bool amd64_acpi_init(void* root_paddr, madt_info_t* madt_info);
 
 #endif // AMD64_RSDT_H

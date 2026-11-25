@@ -151,7 +151,42 @@ typedef struct __rsdpv1 {
     char oem_id[6];
     u8 revision;
     u32 rsdt_address;
-} __packed rsdpv1_t;
+    // ~~~ v2 
+    u32 length;
+    u64 xsdt_address;
+    u8 ext_checksum;
+    u8 reserved[3];
+} __packed rsdp_t;
+
+static
+__section_text
+bool parse_rsdp(multiboot2_info_t* multiboot2, kboot_info_t* kboot_info) {
+    if (!multiboot2 || !kboot_info )
+        return false;
+
+    u64 root_paddr = 0;
+    const multiboot2_tag_acpi_t* tag = mb2_get_apci_tag(multiboot2, MBTT_ACPI_RSDP2);
+
+    if (tag && tag->size >= sizeof(*tag) + sizeof(rsdp_t)) {
+        const rsdp_t* rsdp = (const rsdp_t*)((const u8*)tag + sizeof(*tag));
+        if (rsdp->revision >= 2)
+            root_paddr = rsdp->xsdt_address ? rsdp->xsdt_address : rsdp->rsdt_address;
+    }
+
+    if (!root_paddr) {
+        tag = mb2_get_apci_tag(multiboot2, MBTT_ACPI_RSDP1);
+        if (tag && tag->size >= sizeof(*tag) + 20u) {
+            const rsdp_t* rsdp = (const rsdp_t*)((const u8*)tag + sizeof(*tag));
+            root_paddr = rsdp->rsdt_address;
+        }
+    }
+
+    if (!root_paddr)
+        return false;
+
+    kboot_info->extra_values[kboot_info->extra_values_written++] = (void*)root_paddr;
+    return true;
+}
 
 __noreturn __section_text
 void amd64_entry(multiboot2_info_t* multiboot2) {
@@ -165,10 +200,7 @@ void amd64_entry(multiboot2_info_t* multiboot2) {
     kboot_info.framebuffer.valid = parse_framebuffer(multiboot2, &kboot_info);
     kboot_info.boot_uuid_valid = parse_boot_uuid(multiboot2, &kboot_info);
     kboot_info.boot_media_type = MEDIA_TYPE_LIVE; // hardcoded for now
-
-    const multiboot2_tag_acpi_t* tag = mb2_get_apci_tag(multiboot2);
-    const rsdpv1_t* rsdpv1 = (rsdpv1_t*)((u64)tag + 8);
-    kboot_info.extra_values[kboot_info.extra_values_written++] = (void*)(u64)rsdpv1->rsdt_address;
+    (void)parse_rsdp(multiboot2, &kboot_info);
 
     // VMEM_PAGE_SIZE_SMALL
     kboot_info.kernel_page_count = (LNK_KERNEL_END_PHYSICAL + 0x1000 - 1) >> 12;

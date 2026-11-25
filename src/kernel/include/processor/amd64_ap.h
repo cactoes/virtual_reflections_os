@@ -38,6 +38,6 @@ void amd64_ap_entry(struct __cpu* cpu, u64 extensions);
 bool amd64_ap_prepare(kboot_info_t* kboot_info);
 bool amd64_ap_start_and_ping(u64 cpu_index);
 void amd64_ap_startup(kboot_info_t* kboot_info, u64 cpu_count);
-bool amd64_am_send_ipi(u64 cpu_index, u32 vector);
+bool amd64_ap_send_ipi(u64 cpu_index, u32 vector);
 
 #endif // AMD64_AP_H

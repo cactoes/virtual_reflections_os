@@ -47,7 +47,7 @@ void boot_cpu_init(kboot_info_t* kboot_info) {
 
     // on x86-64 extra value 0 is the rsdt table point (paddr)
     madt_info_t madt_info;
-    amd64_rsdt1_init(kboot_info->extra_values[0], &madt_info);
+    (void)amd64_acpi_init(kboot_info->extra_values[0], &madt_info);
 
     kdbg_printf("system cores: %u\n", madt_info.cpu_count);
 
@@ -126,7 +126,7 @@ cpu_t* get_current_cpu() {
 void cpu_enable_all_cores() {
 #if CPU_ARCHITECTURE == CPU_ARCH_AMD64
     for (u64 i = 1; i < cpu_count; i++)
-        amd64_am_send_ipi(i, AMD64_IPI_START_VECTOR);
+        amd64_ap_send_ipi(i, AMD64_IPI_START_VECTOR);
 #else
 #endif
 }

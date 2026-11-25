@@ -241,7 +241,7 @@ void amd64_ap_startup(kboot_info_t* kboot_info, u64 cpu_count) {
     }
 }
 
-bool amd64_am_send_ipi(u64 cpu_index, u32 vector) {
+bool amd64_ap_send_ipi(u64 cpu_index, u32 vector) {
     cpu_t* cpu = &cpus[cpu_index];
     if (!cpu)
         return false;
