@@ -1,6 +1,7 @@
 #include "graphics/framebuffer.h"
 #include "memory/generic.h"
 #include "libmem.h"
+#include "graphics/font.h"
 
 static framebuffer_state_t global_framebuffer;
 
@@ -252,6 +253,26 @@ void framebuffer_draw_bitmap_1bpp(i64 x, i64 y, i64 w, i64 h, const u8* bits, u6
     mark_dirty(x, y, w, h);
 }
 
+void framebuffer_draw_text8x16(i64 x, i64 y, const char* text, u32 fg, u32 bg, bool opaque_bg) {
+    const i64 start_x = x;
+
+    while (*text) {
+        u8 c = (u8)*text++;
+
+        if (c == '\n') {
+            x = start_x;
+            y += 16;
+            continue;
+        }
+
+        if (c < 32 || c > 126)
+            c = '?';
+
+        framebuffer_draw_bitmap_1bpp(x, y, 8, 16, font8x16[c - 32], 1, fg, bg, opaque_bg);
+        x += 8;
+    }
+}
+
 void framebuffer_invalidate() {
     if (!global_framebuffer.buffered)
         return;
@@ -285,4 +306,8 @@ u64 framebuffer_height() {
 
 u32 framebuffer_color(u8 r, u8 g, u8 b) {
     return ((u32)r << global_framebuffer.r_shift) | ((u32)g << global_framebuffer.g_shift) | ((u32)b << global_framebuffer.b_shift) | ((u32)0xff << global_framebuffer.a_shift);
+}
+
+bool framebuffer_is_ready() {
+    return global_framebuffer.front != nullptr;
 }
