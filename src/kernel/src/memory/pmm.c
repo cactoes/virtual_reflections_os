@@ -1,5 +1,5 @@
 #include "memory/pmm.h"
-#include "libarray.h"
+#include "libmap.h"
 #include "sync/spinlock.h"
 
 static u64 bitmap[BITMAP_WORDS(PMM_MAX_PAGES)];

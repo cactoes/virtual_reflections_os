@@ -5,27 +5,12 @@
 void* __malloc_impl(u64 size);
 void __free_impl(void* ptr);
 
-bool bitmap_get(const u64* bitmap, u64 index) {
-    return (bitmap[index / 64] >> (index % 64)) & 1;
-}
-
-void bitmap_set(u64* bitmap, u64 index, bool value) {
-    if (value)
-        bitmap[index / 64] |= (1ull << (index % 64));
-    else
-        bitmap[index / 64] &= ~(1ull << (index % 64));
-}
-
-void bitmap_fill(u64* bitmap, u64 words, bool value) {
-    for (u64 i = 0; i < words; i++)
-        bitmap[i] = value ? ~0ull : 0ull;
-}
-
 bool static_array_init(static_array_t* array, u64 capacity, u64 element_size) {
     if (!array || capacity == 0 || element_size == 0)
         return false;
 
     array->capacity = capacity;
+    array->element_size = element_size;
     array->data = __malloc_impl(capacity * element_size);
     if (!array->data)
         return false;
@@ -55,13 +40,8 @@ bool static_array_remove(static_array_t* array, u64 index) {
     if (!array || index >= array->capacity)
         return false;
 
-    void* dst = (u8*)array->data + (index * array->element_size);
-    void* src = (u8*)array->data + ((index + 1) * array->element_size);
-    u64 bytes_to_move = (array->capacity - index - 1) * array->element_size;
-
-    if (bytes_to_move > 0)
-        memcpy(dst, src, bytes_to_move);
-
+    void* slot = (u8*)array->data + index * array->element_size;
+    memzero(slot, array->element_size);
     return true;
 }
 
@@ -230,7 +210,7 @@ bool dynamic_array_remove(dynamic_array_t* array, u64 index) {
 }
 
 bool dynamic_array_resize(dynamic_array_t* array, u64 new_capacity) {
-    if (!array || new_capacity == 0)
+    if (!array || new_capacity == 0 || array->capacity >= new_capacity)
         return false;
 
     void* new_data = __malloc_impl(new_capacity * array->element_size);
@@ -296,6 +276,9 @@ bool ring_buffer_insert(ring_buffer_t* buffer, const void* element) {
 
 bool ring_buffer_peek(const ring_buffer_t* buffer, void* element) {
     if (!buffer || !element)
+        return false;
+
+    if (buffer->head == buffer->tail)
         return false;
 
     void* src = (u8*)buffer->data + (buffer->tail * buffer->element_size);

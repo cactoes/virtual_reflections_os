@@ -8,8 +8,6 @@
 #ifndef LIBARRAY_H
 #define LIBARRAY_H
 
-#define BITMAP_WORDS(bits)  (((bits) + 63) / 64)
-
 #include "libtype.h"
 
 typedef struct __linked_list {
@@ -44,10 +42,6 @@ typedef struct __ring_buffer {
     u64 tail;
     void* data;
 } ring_buffer_t;
-
-bool bitmap_get(const u64* bitmap, u64 index);
-void bitmap_set(u64* bitmap, u64 index, bool value);
-void bitmap_fill(u64* bitmap, u64 words, bool value);
 
 bool static_array_init(static_array_t* array, u64 capacity, u64 element_size);
 void static_array_free(static_array_t* array);
