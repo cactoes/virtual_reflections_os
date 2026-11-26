@@ -12,8 +12,53 @@
 
 #include "libtype.h"
 
+typedef struct __linked_list {
+    void* data;
+    struct __linked_list* next;
+    struct __linked_list* prev;
+} linked_list_t;
+
+typedef struct __linked_list_head {
+    linked_list_t* head;
+    linked_list_t* tail;
+    u64 size;
+} linked_list_head_t;
+
+typedef struct __static_array {
+    u64 capacity;
+    u64 element_size;
+    void* data;
+} static_array_t;
+
+typedef struct __dynamic_array {
+    u64 size;
+    u64 capacity;
+    u64 element_size;
+    void* data;
+} dynamic_array_t;
+
 bool bitmap_get(const u64* bitmap, u64 index);
 void bitmap_set(u64* bitmap, u64 index, bool value);
 void bitmap_fill(u64* bitmap, u64 words, bool value);
+
+bool static_array_init(static_array_t* array, u64 capacity, u64 element_size);
+void static_array_free(static_array_t* array);
+bool static_array_insert_at(static_array_t* array, u64 index, const void* element);
+bool static_array_remove(static_array_t* array, u64 index);
+void* static_array_get(const static_array_t* array, u64 index);
+
+bool linked_list_init(linked_list_head_t* list);
+void linked_list_free(linked_list_head_t* list);
+bool linked_list_insert_back(linked_list_head_t* list, void* data);
+bool linked_list_remove(linked_list_head_t* list, u64 index);
+void* linked_list_get(const linked_list_head_t* list, u64 index);
+
+bool dynamic_array_init(dynamic_array_t* array, u64 capacity, u64 element_size);
+void dynamic_array_free(dynamic_array_t* array);
+bool dynamic_array_insert_back(dynamic_array_t* array, const void* element);
+bool dynamic_array_insert_at(dynamic_array_t* array, u64 index, const void* element);
+bool dynamic_array_remove(dynamic_array_t* array, u64 index);
+bool dynamic_array_resize(dynamic_array_t* array, u64 new_capacity);
+void* dynamic_array_get(const dynamic_array_t* array, u64 index);
 
 #endif // LIBARRAY_H
