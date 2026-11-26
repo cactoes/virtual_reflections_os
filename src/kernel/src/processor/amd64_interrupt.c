@@ -159,8 +159,13 @@ const char* amd64_exception_to_text(u64 code) {
 }
 
 u64* amd64_insert_kernel_trap_frame(u64* stack_top, void* entry) {
-    *(--stack_top) = 0;
+    u64 thread_rsp = (u64)stack_top;
 
+    *(--stack_top) = 0;
+    thread_rsp = (u64)stack_top;
+
+    *(--stack_top) = AMD64_GDT_INDEX_TO_SELECTOR(GDT_INDEX_KERNEL_DATA, 0);
+    *(--stack_top) = thread_rsp;
     *(--stack_top) = AMD64_RFLAGS_IF | AMD64_RFLAGS_RES;
     *(--stack_top) = AMD64_GDT_INDEX_TO_SELECTOR(GDT_INDEX_KERNEL_CODE, 0);
     *(--stack_top) = (u64)entry;
