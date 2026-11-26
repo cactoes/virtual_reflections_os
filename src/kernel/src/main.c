@@ -14,7 +14,7 @@
 __noreturn
 void idle_thread_entry() {
     while (true)
-        __asm__ volatile ("hlt" ::: "memory");
+        cpu_idle();
 }
 
 __noreturn
@@ -29,7 +29,21 @@ void virtual_core_entry(cpu_t* core) {
 
     // idle loop for now
     while (true)
-        __asm__ volatile ("hlt" ::: "memory");
+        cpu_idle();
+}
+
+extern const u64 splash_width;
+extern const u64 splash_height;
+extern const u8 splash_rgb[];
+
+static void draw_splash(i64 x0, i64 y0) {
+    for (u64 y = 0; y < splash_height; y++) {
+        for (u64 x = 0; x < splash_width; x++) {
+            u64 i = (y * splash_height + x) * 3;
+            u32 color = framebuffer_color(splash_rgb[i], splash_rgb[i + 1], splash_rgb[i + 2]);
+            framebuffer_put_pixel(x0 + x, y0 + y, color);
+        }
+    }
 }
 
 __noreturn
@@ -73,16 +87,24 @@ void virtual_kernel_entry(kboot_info_t kboot_info) {
 
     cpu_enable_all_cores();
 
-    framebuffer_init(&kboot_info.framebuffer, nullptr);
-    framebuffer_clear(0x000000);
-    framebuffer_present();
-
-    // setup process
-    // setup virtual threads
+    // setup (usermode) processes
     // setup virtual filsystem
     // setup pcie
-    // (bind interrupts)
     // setup drivers: networking, storage, i/o
     // setup other more software related code: nic, i/o etc
-    while (true);
+
+    framebuffer_init(&kboot_info.framebuffer, nullptr);
+    framebuffer_clear(0x000000);
+    const i64 x = ((i64)framebuffer_width() - (i64)splash_width) / 2;
+    const i64 y = ((i64)framebuffer_height() - (i64)splash_height) / 2;
+    draw_splash(x, y);
+    const char title[] = "Virtual Reflections OS";
+    const i64 title_width = (sizeof(title) - 1) * 8;
+    const i64 title_x = x + ((i64)splash_width - title_width) / 2;
+    const i64 title_y = y + (i64)splash_height + 12;
+    framebuffer_draw_text8x16(title_x, title_y, title, 0xffffff, 0x000000, false);
+    framebuffer_present();
+
+    while (true)
+        cpu_idle();
 }

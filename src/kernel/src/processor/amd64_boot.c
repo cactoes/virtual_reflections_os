@@ -176,5 +176,4 @@ void amd64_entry(multiboot2_info_t* multiboot2) {
     kboot_info.kernel_page_count = (LNK_KERNEL_END_PHYSICAL + 0x1000 - 1) >> 12;
 
     virtual_kernel_entry(kboot_info);
-    while (true);
 }
