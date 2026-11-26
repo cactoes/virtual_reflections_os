@@ -37,6 +37,14 @@ typedef struct __dynamic_array {
     void* data;
 } dynamic_array_t;
 
+typedef struct __ring_buffer {
+    u64 capacity;
+    u64 element_size;
+    u64 head;
+    u64 tail;
+    void* data;
+} ring_buffer_t;
+
 bool bitmap_get(const u64* bitmap, u64 index);
 void bitmap_set(u64* bitmap, u64 index, bool value);
 void bitmap_fill(u64* bitmap, u64 words, bool value);
@@ -60,5 +68,13 @@ bool dynamic_array_insert_at(dynamic_array_t* array, u64 index, const void* elem
 bool dynamic_array_remove(dynamic_array_t* array, u64 index);
 bool dynamic_array_resize(dynamic_array_t* array, u64 new_capacity);
 void* dynamic_array_get(const dynamic_array_t* array, u64 index);
+
+bool ring_buffer_init(ring_buffer_t* buffer, u64 capacity, u64 element_size);
+void ring_buffer_free(ring_buffer_t* buffer);
+bool ring_buffer_insert(ring_buffer_t* buffer, const void* element);
+bool ring_buffer_peek(const ring_buffer_t* buffer, void* element);
+bool ring_buffer_pop(ring_buffer_t* buffer, void* element);
+bool ring_buffer_empty(const ring_buffer_t* buffer);
+bool ring_buffer_full(const ring_buffer_t* buffer);
 
 #endif // LIBARRAY_H

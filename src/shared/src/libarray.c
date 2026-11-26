@@ -253,3 +253,73 @@ void* dynamic_array_get(const dynamic_array_t* array, u64 index) {
 
     return (u8*)array->data + (index * array->element_size);
 }
+
+bool ring_buffer_init(ring_buffer_t* buffer, u64 capacity, u64 element_size) {
+    if (!buffer || capacity == 0 || element_size == 0)
+        return false;
+    
+    buffer->capacity = capacity;
+    buffer->element_size = element_size;
+    buffer->data = __malloc_impl(capacity * element_size);
+    if (!buffer->data)
+        return false;
+
+    buffer->head = 0;
+    buffer->tail = 0;
+    return true;
+}
+
+void ring_buffer_free(ring_buffer_t* buffer) {
+    if (buffer && buffer->data) {
+        __free_impl(buffer->data);
+        buffer->data = nullptr;
+        buffer->capacity = 0;
+        buffer->element_size = 0;
+        buffer->head = 0;
+        buffer->tail = 0;
+    }
+}
+
+bool ring_buffer_insert(ring_buffer_t* buffer, const void* element) {
+    if (!buffer || !element)
+        return false;
+    
+    u64 next = (buffer->head + 1) % buffer->capacity;
+    if (next == buffer->tail)
+        return false;
+
+    void* dst = (u8*)buffer->data + (buffer->head * buffer->element_size);
+    memcpy(dst, element, buffer->element_size);
+    buffer->head = next;
+    return true;
+}
+
+bool ring_buffer_peek(const ring_buffer_t* buffer, void* element) {
+    if (!buffer || !element)
+        return false;
+
+    void* src = (u8*)buffer->data + (buffer->tail * buffer->element_size);
+    memcpy(element, src, buffer->element_size);
+    return true;
+}
+
+bool ring_buffer_pop(ring_buffer_t* buffer, void* element) {
+    if (!buffer || !element)
+        return false;
+
+    if (buffer->head == buffer->tail)
+        return false;
+
+    void* src = (u8*)buffer->data + (buffer->tail * buffer->element_size);
+    memcpy(element, src, buffer->element_size);
+    buffer->tail = (buffer->tail + 1) % buffer->capacity;
+    return true;
+}
+
+bool ring_buffer_empty(const ring_buffer_t* buffer) {
+    return buffer->head == buffer->tail;
+}
+
+bool ring_buffer_full(const ring_buffer_t* buffer) {
+    return (buffer->head + 1) % buffer->capacity == buffer->tail;
+}
