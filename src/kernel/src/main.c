@@ -16,23 +16,13 @@ void idle_thread_loop() {
         __asm__ volatile ("hlt" ::: "memory");
 }
 
-void test_remote_thread() {
-    while (true)
-        __asm__ volatile ("hlt" ::: "memory");
-}
-
 __noreturn
 void virtual_core_entry(cpu_t* core) {
     vthread_t idle_thread;
     vthread_create(nullptr, idle_thread_loop, &idle_thread);
 
-    vthread_t asd;
-    vthread_create(nullptr, test_remote_thread, &asd);
-
     vthread_t boot_thread;
     vthread_scheduler_init_local(&boot_thread, &idle_thread);
-
-    vthread_enqueue(&asd);
 
     kdbg_printf("[core(%u)]: idle\n", core->id);
 
