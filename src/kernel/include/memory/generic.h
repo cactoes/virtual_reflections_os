@@ -22,6 +22,7 @@
 
 #include "libtype.h"
 #include "memory/vmm.h" // for the VMEM_* defines
+#include "sync/spinlock.h"
 
 typedef struct __virtual_heap_block virtual_heap_block_t;
 typedef struct __virtual_heap_block_table virtual_heap_block_table_t;
@@ -47,6 +48,7 @@ typedef struct __virtual_heap {
     u64 heap_edge;
     u64 heap_size_current;
     virtual_heap_block_table_t* table;
+    spinlock_t lock;
 } virtual_heap_t;
 
 typedef bool(*heap_block_filter_t)(const virtual_heap_block_t* block, const void* arg);

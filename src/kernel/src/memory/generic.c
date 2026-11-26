@@ -9,10 +9,6 @@
 static virtual_heap_t virtual_kernel_heap;
 static virtual_heap_t virtual_kernel_mmio_heap;
 
-#include "sync/spinlock.h"
-
-static spinlock_t global_lock;
-
 static
 u64 pick_page_size(u64 vaddr, u64 remaining) {
     if (is_aligned(vaddr, VMEM_PAGE_SIZE_HUGE) && remaining >= VMEM_PAGE_SIZE_HUGE)
@@ -223,6 +219,8 @@ void* virtual_alloc_aligned(virtual_heap_t* virtual_heap, u64 size, u64 alignmen
     if (allocation_size < size)
         return nullptr;
 
+    spinlock_lock(&virtual_heap->lock);
+
     virtual_heap_block_t* spare[2];
     const u64 spare_count = virtual_alloc_collect_unused(virtual_heap, spare, 2);
 
@@ -269,6 +267,7 @@ void* virtual_alloc_aligned(virtual_heap_t* virtual_heap, u64 size, u64 alignmen
     if (!donor) {
         // TODO @since 21/11/2026 -- 02:14
         // grow heap
+        spinlock_unlock(&virtual_heap->lock);
         return nullptr;
     }
 
@@ -297,6 +296,7 @@ void* virtual_alloc_aligned(virtual_heap_t* virtual_heap, u64 size, u64 alignmen
         virtual_alloc_link_after(allocated_block, tail_block);
     }
 
+    spinlock_unlock(&virtual_heap->lock);
     return (void*)allocation_start;
 }
 
@@ -330,15 +330,23 @@ bool virtual_free(virtual_heap_t* virtual_heap, void* ptr) {
     if (!ptr)
         return false;
 
+    spinlock_lock(&virtual_heap->lock);
+
     virtual_heap_block_t* block = virtual_find_block(virtual_heap, ptr);
-    if (!block)
+    if (!block) {
+        spinlock_unlock(&virtual_heap->lock);
         return false;
+    }
 
-    if (HAS_ANY(block->flags, VIRTUAL_HEAP_BLOCK_METADATA))
+    if (HAS_ANY(block->flags, VIRTUAL_HEAP_BLOCK_METADATA)) {
+        spinlock_unlock(&virtual_heap->lock);
         return false;
+    }
 
-    if (HAS_ANY(block->flags, VIRTUAL_HEAP_BLOCK_FREE))
+    if (HAS_ANY(block->flags, VIRTUAL_HEAP_BLOCK_FREE)) {
+        spinlock_unlock(&virtual_heap->lock);
         return false;
+    }
 
     SET_MASK(block->flags, VIRTUAL_HEAP_BLOCK_FREE);
 
@@ -349,6 +357,7 @@ bool virtual_free(virtual_heap_t* virtual_heap, void* ptr) {
     if (block_is_free(prev) && blocks_adjacent(prev, block))
         block_absorb_next(prev);
 
+    spinlock_unlock(&virtual_heap->lock);
     return true;
 }
 
@@ -626,17 +635,11 @@ bool kmem_bind(void* heap_start, void* heap_limit, u64 start_size) {
 }
 
 void* kalloc(u64 size) {
-    const u64 flags = spinlock_lock_irqsave(&global_lock);
-    void* r = virtual_alloc(&virtual_kernel_heap, size);
-    spinlock_unlock_irqrestore(&global_lock, flags);
-    return r;
+    return virtual_alloc(&virtual_kernel_heap, size);
 }
 
 void* kalloc_aligned(u64 size, u64 align) {
-    const u64 flags = spinlock_lock_irqsave(&global_lock);
-    void* r = virtual_alloc_aligned(&virtual_kernel_heap, size, align);
-    spinlock_unlock_irqrestore(&global_lock, flags);
-    return r;
+    return virtual_alloc_aligned(&virtual_kernel_heap, size, align);
 }
 
 void kfree(void* ptr) {
