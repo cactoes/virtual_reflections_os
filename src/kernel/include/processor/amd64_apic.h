@@ -14,6 +14,15 @@
 #define AMD64_LAPIC_REG_SVR           0x0f0
 #define AMD64_LAPIC_SVR_ENABLE        (1u << 8)
 
+#define AMD64_LAPIC_REG_TIMER_LVT          0x320
+#define AMD64_LAPIC_REG_TIMER_INITIAL      0x380
+#define AMD64_LAPIC_REG_TIMER_CURRENT      0x390
+#define AMD64_LAPIC_REG_TIMER_DIVIDE       0x3e0
+#define AMD64_LAPIC_TIMER_PERIODIC         (1u << 17)
+#define AMD64_LAPIC_TIMER_MASKED           (1u << 16)
+#define AMD64_LAPIC_TIMER_DIVIDE_BY_16     0x3
+#define AMD64_LAPIC_TIMER_CALIBRATION_US  10000u
+
 #define AMD64_IOAPIC_REGSEL           0x00
 #define AMD64_IOAPIC_WIN              0x10
 #define AMD64_IOAPIC_REG_VER          0x01
@@ -25,8 +34,6 @@
 #define AMD64_IRQ_TRIGGER_LEVEL  (1u << 15)
 #define AMD64_IRQ_EDGE_HIGH      0u
 #define AMD64_IRQ_LEVEL_LOW      (AMD64_IRQ_TRIGGER_LEVEL | AMD64_IRQ_POLARITY_LOW)
-
-#define AMD64_LAPIC_SPURIOUS_VECTOR 0xff
 
 #include "libtype.h"
 #include "amd64_rsdt.h"
@@ -47,5 +54,10 @@ bool amd64_ioapic_route(u32 gsi, u8 vector, u32 flags);
 bool amd64_ioapic_mask(u32 gsi, bool masked);
 
 irq_route_t amd64_isa_irq_route(u32 isa_irq);
+
+bool amd64_lapic_timer_init(u32 hz);
+bool amd64_lapic_timer_start_local();
+void amd64_lapic_timer_handle_interrupt();
+u64 amd64_lapic_timer_get_ticks();
 
 #endif // AMD64_APIC_H

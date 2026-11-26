@@ -9,6 +9,7 @@
 #include "processor/amd64_interrupt.h"
 #include "processor/amd64_syscall.h"
 #include "processor/amd64_cpu.h"
+#include "processor/amd64_pit.h"
 #include "memory/generic.h"
 #include "io/debug.h"
 #include "libatomic.h"
@@ -20,39 +21,6 @@ extern cpu_t cpus[MAX_CPUS];
 // forward declare
 void virtual_core_entry(cpu_t* core);
 
-static
-bool smp_pit_delay_us(u32 usec) {
-    while (usec != 0) {
-        const u32 chunk = usec > 50000u ? 50000u : usec;
-        const u32 ticks = (u32)(((u64)chunk * SMP_PIT_HZ + 999999ull) / 1000000ull);
-        const u8 saved = amd64_in_port8(0x61);
-
-        amd64_out_port8(0x61, (u8)(saved & ~3u));
-        amd64_out_port8(0x43, 0xb0);
-        amd64_out_port8(0x42, (u8)ticks);
-        amd64_out_port8(0x42, (u8)(ticks >> 8));
-        amd64_out_port8(0x61, (u8)((saved & ~2u) | 1u));
-
-        bool elapsed = false;
-        for (u32 poll = 0; poll < SMP_PIT_POLL_LIMIT; poll++) {
-            if (amd64_in_port8(0x61) & (1u << 5)) {
-                elapsed = true;
-                break;
-            }
-
-            amd64_pause();
-        }
-
-        amd64_out_port8(0x61, saved);
-        if (!elapsed)
-            return false;
-
-        usec -= chunk;
-    }
-
-    return true;
-}
-
 void amd64_ap_entry(cpu_t* cpu, u64 extensions) {
     amd64_disable_interrupts();
 
@@ -61,6 +29,7 @@ void amd64_ap_entry(cpu_t* cpu, u64 extensions) {
     amd64_cpu_idt_load();
     amd64_lapic_enable_local();
     amd64_init_syscall(cpu);
+    amd64_lapic_timer_start_local();
 
     atomic_store32(&cpu->ipi_ping_count, 0);
     atomic_store32(&cpu->online, 1);
@@ -136,7 +105,7 @@ bool smp_start_one_ap(cpu_t* cpu) {
     if (!amd64_lapic_send_ipi(cpu->lapic_id, SMP_IPI_INIT_ASSERT))
         return false;
 
-    if (!smp_pit_delay_us(10000u))
+    if (!pit_delay_us(10000u))
         return false;
 
     if (!amd64_lapic_send_ipi(cpu->lapic_id, SMP_IPI_INIT_DEASSERT))
@@ -145,20 +114,20 @@ bool smp_start_one_ap(cpu_t* cpu) {
     if (!amd64_lapic_send_ipi(cpu->lapic_id, SMP_IPI_STARTUP | vector))
         return false;
 
-    if (!smp_pit_delay_us(200u))
+    if (!pit_delay_us(200u))
         return false;
 
     if (!amd64_lapic_send_ipi(cpu->lapic_id, SMP_IPI_STARTUP | vector))
         return false;
 
-    if (!smp_pit_delay_us(200u))
+    if (!pit_delay_us(200u))
         return false;
 
     for (u32 ms = 0; ms < SMP_AP_TIMEOUT_MS; ms++) {
         if (atomic_fetch32(&cpu->online))
             return true;
 
-        if (!smp_pit_delay_us(1000u))
+        if (!pit_delay_us(1000u))
             return false;
     }
 
@@ -186,7 +155,7 @@ bool ping_ap(u64 cpu_index) {
             break;
         }
 
-        if (!smp_pit_delay_us(1000u))
+        if (!pit_delay_us(1000u))
             return false;
     }
 

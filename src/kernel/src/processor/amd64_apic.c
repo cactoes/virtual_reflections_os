@@ -2,11 +2,18 @@
 #include "processor/amd64_msr.h"
 #include "memory/generic.h"
 #include "processor/amd64_cpu.h"
+#include "processor/amd64_interrupt.h"
+#include "processor/amd64_pit.h"
 
 static volatile u8* global_lapic;
 static volatile u8* global_ioapic;
 static u32 global_ioapic_gsi_count;
 static madt_info_t global_madt_info;
+
+static u32 global_lapic_timer_initial_count;
+static volatile u64 global_lapic_timer_ticks[MAX_CPUS];
+
+extern u64 cpu_count;
 
 static
 u32 lapic_read(volatile u8* lapic, u32 reg) {
@@ -158,4 +165,70 @@ bool amd64_lapic_send_ipi(u32 target_apic_id, u32 command) {
 
     amd64_restore_interrupts(flags);
     return ok;
+}
+
+bool amd64_lapic_timer_init(u32 hz) {
+    if (!global_lapic || hz == 0)
+        return false;
+
+    global_lapic_timer_initial_count = 0;
+
+    lapic_write(global_lapic, AMD64_LAPIC_REG_TIMER_LVT, AMD64_LAPIC_TIMER_VECTOR | AMD64_LAPIC_TIMER_MASKED);
+    lapic_write(global_lapic, AMD64_LAPIC_REG_TIMER_DIVIDE, AMD64_LAPIC_TIMER_DIVIDE_BY_16);
+    lapic_write(global_lapic, AMD64_LAPIC_REG_TIMER_INITIAL, 0xffffffffu);
+
+    if (!pit_delay_us(AMD64_LAPIC_TIMER_CALIBRATION_US)) {
+        lapic_write(global_lapic, AMD64_LAPIC_REG_TIMER_INITIAL, 0);
+        return false;
+    }
+
+    const u32 remaining = lapic_read(global_lapic, AMD64_LAPIC_REG_TIMER_CURRENT);
+    const u32 elapsed = 0xffffffffu - remaining;
+    lapic_write(global_lapic, AMD64_LAPIC_REG_TIMER_INITIAL, 0);
+
+    if (elapsed == 0)
+        return false;
+
+    const u64 denominator = (u64)AMD64_LAPIC_TIMER_CALIBRATION_US * hz;
+    const u64 numerator = (u64)elapsed * 1000000ull;
+    const u64 count = (numerator + denominator / 2) / denominator;
+
+    if (count == 0 || count > 0xffffffffull)
+        return false;
+
+    global_lapic_timer_initial_count = (u32)count;
+    return amd64_lapic_timer_start_local();
+}
+
+bool amd64_lapic_timer_start_local() {
+    if (!global_lapic || global_lapic_timer_initial_count == 0)
+        return false;
+
+    cpu_t* cpu = get_current_cpu();
+    if (!cpu || cpu->id >= cpu_count)
+        return false;
+
+    lapic_write(global_lapic, AMD64_LAPIC_REG_TIMER_LVT, AMD64_LAPIC_TIMER_VECTOR | AMD64_LAPIC_TIMER_PERIODIC | AMD64_LAPIC_TIMER_MASKED);
+    lapic_write(global_lapic, AMD64_LAPIC_REG_TIMER_DIVIDE, AMD64_LAPIC_TIMER_DIVIDE_BY_16);
+    lapic_write(global_lapic, AMD64_LAPIC_REG_TIMER_INITIAL, global_lapic_timer_initial_count);
+    global_lapic_timer_ticks[cpu->id] = 0;
+
+    lapic_write(global_lapic, AMD64_LAPIC_REG_TIMER_LVT, AMD64_LAPIC_TIMER_VECTOR | AMD64_LAPIC_TIMER_PERIODIC);
+    return true;
+}
+
+void amd64_lapic_timer_handle_interrupt() {
+    cpu_t* cpu = get_current_cpu();
+    if (cpu && cpu->id < cpu_count)
+        global_lapic_timer_ticks[cpu->id]++;
+
+    amd64_lapic_eoi();
+}
+
+u64 amd64_lapic_timer_get_ticks() {
+    cpu_t* cpu = get_current_cpu();
+    if (!cpu || cpu->id >= MAX_CPUS)
+        return 0;
+
+    return global_lapic_timer_ticks[cpu->id];
 }

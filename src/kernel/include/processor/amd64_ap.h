@@ -12,8 +12,6 @@
 #define AP_DATA_OFFSET     0x300ull
 #define AP_PAGE_SIZE       0x1000ull
 
-#define SMP_PIT_HZ             1193182ull
-#define SMP_PIT_POLL_LIMIT     1000000u
 #define SMP_AP_TIMEOUT_MS      1000u
 #define SMP_IPI_INIT_ASSERT    ((5u << 8) | (1u << 14) | (1u << 15))
 #define SMP_IPI_INIT_DEASSERT  ((5u << 8) | (1u << 15))

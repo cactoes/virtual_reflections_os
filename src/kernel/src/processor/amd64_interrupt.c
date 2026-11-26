@@ -28,6 +28,11 @@ interrupt_frame_t* amd64_interrupt_stub(interrupt_frame_t* frame) {
         return frame;
     }
 
+    if (vector == AMD64_LAPIC_TIMER_VECTOR) {
+        amd64_lapic_timer_handle_interrupt();
+        return frame;
+    }
+
     if (vector == AMD64_IPI_PING_VECTOR) {
         cpu_t* cpu = get_current_cpu();
 

@@ -65,13 +65,13 @@ void boot_cpu_init(kboot_info_t* kboot_info) {
     amd64_init_syscall(base_cpu);
 
     amd64_tlb_init();
+
+    amd64_lapic_timer_init(1000); // 1000hz = 1ms
+
     amd64_enable_interrupts();
 
     if (cpu_count > 1)
         amd64_ap_startup(kboot_info, cpu_count);
-
-    amd64_tlb_invalidate_page(base_cpu);
-    amd64_tlb_flush_all();
 #else
 #endif
 }
