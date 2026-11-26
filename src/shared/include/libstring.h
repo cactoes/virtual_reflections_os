@@ -17,10 +17,17 @@ typedef struct __fmt_out {
     u64 pos;
 } fmt_out_t;
 
+typedef struct __time_unit {
+    u64 seconds;
+    const char* suffix;
+} time_unit_t;
+
 u64 strlen(const char* str);
 
 u64 vsprintf(char* buf, u64 size, const char* fmt, va_list ap);
 u64 sprintf(char* buf, u64 size, const char* fmt, ...);
+
 void format_size(char* buf, u64 buf_size, u64 bytes);
+void format_duration(char* buf, u64 buf_size, u64 ms);
 
 #endif // LIBSTRING_H

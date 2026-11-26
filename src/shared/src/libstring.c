@@ -167,7 +167,7 @@ u64 sprintf(char* buf, u64 size, const char* fmt, ...) {
 }
 
 void format_size(char* buf, u64 buf_size, u64 bytes) {
-    static const char* units[] = { "B", "KB", "MB", "GB", "TB" };
+    static const char* units[] = { "b", "kb", "mb", "gb", "tb" };
     u32 unit = 0;
     u64 remainder = 0;
 
@@ -178,9 +178,48 @@ void format_size(char* buf, u64 buf_size, u64 bytes) {
     }
 
     if (unit == 0) {
-        sprintf(buf, buf_size, "%llu B", (unsigned long long)bytes);
+        sprintf(buf, buf_size, "%llub", (unsigned long long)bytes);
     } else {
         const u64 tenths = remainder * 10 / 1024;
-        sprintf(buf, buf_size, "%llu.%llu %s", (unsigned long long)bytes, (unsigned long long)tenths, units[unit]);
+        sprintf(buf, buf_size, "%llu.%llu%s", bytes, tenths, units[unit]);
+    }
+}
+
+void format_duration(char* buf, u64 buf_size, u64 ms) {
+    static const time_unit_t units[] = {
+        { 604800, "w"},
+        { 86400, "d" },
+        { 3600, "h" },
+        { 60, "m" },
+        { 1, "s" }
+    };
+
+    if (!buf || buf_size == 0)
+        return;
+
+    if (ms < 1000) {
+        sprintf(buf, buf_size, "%llu ms", (unsigned long long)ms);
+        return;
+    }
+
+    u64 seconds = ms / 1000;
+    u64 used = 0;
+    bool started = false;
+
+    for (u32 i = 0; i < sizeof(units) / sizeof(units[0]); i++) {
+        const u64 value = seconds / units[i].seconds;
+        seconds %= units[i].seconds;
+
+        if (value == 0)
+            continue;
+
+        const u64 remaining = buf_size - used;
+        const u64 written = sprintf(buf + used, remaining, "%s%llu%s", started ? " " : "", value, units[i].suffix);
+
+        if (written >= remaining)
+            return;
+
+        used += written;
+        started = true;
     }
 }

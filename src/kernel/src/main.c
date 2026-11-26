@@ -66,8 +66,6 @@ void virtual_kernel_entry(kboot_info_t kboot_info) {
     framebuffer_clear(0xffffff);
     framebuffer_present();
 
-    __asm__ volatile ("int3");
-
     // setup process
     // setup virtual threads
     // setup virtual filsystem
