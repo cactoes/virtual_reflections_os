@@ -52,5 +52,6 @@ void cpu_kill_all_cores_except(u64 core);
 
 __noreturn
 void cpu_hang();
+void cpu_idle();
 
 #endif // CPU_DIRECT_H

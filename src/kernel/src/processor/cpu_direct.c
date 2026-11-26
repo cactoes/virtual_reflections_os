@@ -154,3 +154,10 @@ void cpu_hang() {
     while (true)
         ;
 }
+
+void cpu_idle() {
+#if CPU_ARCHITECTURE == CPU_ARCH_AMD64
+    amd64_halt();
+#else
+#endif
+}
