@@ -11,7 +11,8 @@
 #include "thread.h"
 #include "libmem.h"
 
-void idle_thread_loop() {
+__noreturn
+void idle_thread_entry() {
     while (true)
         __asm__ volatile ("hlt" ::: "memory");
 }
@@ -19,7 +20,7 @@ void idle_thread_loop() {
 __noreturn
 void virtual_core_entry(cpu_t* core) {
     vthread_t idle_thread;
-    vthread_create(nullptr, idle_thread_loop, &idle_thread);
+    vthread_create(nullptr, idle_thread_entry, &idle_thread);
 
     vthread_t boot_thread;
     vthread_scheduler_init_local(&boot_thread, &idle_thread);
@@ -65,7 +66,7 @@ void virtual_kernel_entry(kboot_info_t kboot_info) {
     vthread_scheduler_init();
 
     vthread_t idle_thread;
-    vthread_create(nullptr, idle_thread_loop, &idle_thread);
+    vthread_create(nullptr, idle_thread_entry, &idle_thread);
 
     vthread_t boot_thread;
     vthread_scheduler_init_local(&boot_thread, &idle_thread);
@@ -73,7 +74,7 @@ void virtual_kernel_entry(kboot_info_t kboot_info) {
     cpu_enable_all_cores();
 
     framebuffer_init(&kboot_info.framebuffer, nullptr);
-    framebuffer_clear(0xffffff);
+    framebuffer_clear(0x000000);
     framebuffer_present();
 
     // setup process
