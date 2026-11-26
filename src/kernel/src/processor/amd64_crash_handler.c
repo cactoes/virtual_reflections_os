@@ -1,5 +1,7 @@
 #include "processor/amd64_crash_handler.h"
+#include "crash_handler.h"
 #include "libdef.h"
+#include "libarray.h"
 #include "processor/amd64_interrupt.h"
 
 volatile interrupt_frame_t crash_frame;
@@ -52,4 +54,33 @@ void amd64_crash_capture() {
         "popfq\n\t"
         "ret\n\t"
     );
+}
+
+static_array_t amd64_get_crash_registers(const void* frame) {
+    static_array_t registers;
+    static_array_init(&registers, 22, sizeof(crash_register_entry_t));
+
+    if (!frame)
+        return registers;
+
+    const interrupt_frame_t* f = (const interrupt_frame_t*)frame;
+
+    crash_register_entry_t entries[] = {
+        { "r15", f->r15 }, { "r14", f->r14 },
+        { "r13", f->r13 }, { "r12", f->r12 },
+        { "r11", f->r11 }, { "r10", f->r10 },
+        { "r9",  f->r9  }, { "r8",  f->r8  },
+        { "rbp", f->rbp }, { "rdi", f->rdi },
+        { "rsi", f->rsi }, { "rdx", f->rdx },
+        { "rcx", f->rcx }, { "rbx", f->rbx },
+        { "rax", f->rax }, { "vector", f->vector },
+        { "code", f->code }, { "rip", f->rip },
+        { "cs", f->cs }, { "rflags", f->rflags },
+        { "rsp", f->rsp }, { "ss", f->ss }
+    };
+
+    for (u64 i = 0; i < sizeof(entries) / sizeof(entries[0]); i++)
+        static_array_insert_at(&registers, i, &entries[i]);
+
+    return registers;
 }

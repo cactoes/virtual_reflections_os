@@ -11,6 +11,11 @@
 #include "libtype.h"
 #include "libdef.h"
 
+typedef struct __crash_register_entry {
+    const char* name;
+    u64 value;
+} crash_register_entry_t;
+
 __noreturn
 void crash_handler_entry(void* frame, const char* message, u64 core);
 

@@ -3,9 +3,11 @@
 #include "processor/cpu_direct.h"
 #include "graphics/framebuffer.h"
 #include "libstring.h"
+#include "libarray.h"
 
-// TODO @since 25/11/2026 -- 20:59
-// abstract & refactor
+#if CPU_ARCHITECTURE == CPU_ARCH_AMD64
+#include "processor/amd64_crash_handler.h"
+#endif
 
 static
 void crash_draw_centered(u64 screen_width, i64 y, const char* text, u32 color) {
@@ -28,62 +30,26 @@ void crash_draw_centered_lines(u64 screen_width, i64 y, const char* const* lines
         framebuffer_draw_text8x16(x, y + (i * 16), lines[i], color, 0, false);
 }
 
-#include "processor/amd64_interrupt.h"
-typedef struct __crash_register_entry {
-    const char* name;
-    u64 value;
-} crash_register_entry_t;
-
 static
-void crash_format_register(char output[26], const char* name, u64 value) {
-    static const char hex[] = "0123456789abcdef";
-    u64 i = 0;
-
-    while (name[i] && i < 6) {
-        output[i] = name[i];
-        i++;
-    }
-
-    output[i++] = '=';
-    output[i++] = '0';
-    output[i++] = 'x';
-
-    for (u32 digit = 0; digit < 16; digit++)
-        output[i++] = hex[(value >> ((15 - digit) * 4)) & 0xf];
-
-    output[i] = '\0';
-}
-
-static
-void crash_draw_register_dump(const interrupt_frame_t* frame,
-                              u64 screen_width, i64 y, u32 color) {
+void crash_draw_register_dump(const void* frame, u64 screen_width, i64 y, u32 color) {
     if (!frame) {
         crash_draw_centered(screen_width, y, "Register context unavailable.", color);
         return;
     }
 
-    const crash_register_entry_t registers[] = {
-        { "r15", frame->r15 }, { "r14", frame->r14 },
-        { "r13", frame->r13 }, { "r12", frame->r12 },
-        { "r11", frame->r11 }, { "r10", frame->r10 },
-        { "r9",  frame->r9  }, { "r8",  frame->r8  },
-        { "rbp", frame->rbp }, { "rdi", frame->rdi },
-        { "rsi", frame->rsi }, { "rdx", frame->rdx },
-        { "rcx", frame->rcx }, { "rbx", frame->rbx },
-        { "rax", frame->rax }, { "vector", frame->vector },
-        { "code", frame->code }, { "rip", frame->rip },
-        { "cs", frame->cs }, { "rflags", frame->rflags },
-        { "rsp", frame->rsp }, { "ss", frame->ss }
-    };
+#if CPU_ARCHITECTURE == CPU_ARCH_AMD64
+    static_array_t registers = amd64_get_crash_registers(frame);
+#else
+    static_array_t registers;
+    static_array_init(&registers, 0, sizeof(crash_register_entry_t));
+#endif
 
-    const u64 count = sizeof(registers) / sizeof(registers[0]);
+    const u64 count = registers.capacity;
     const u64 rows_per_column = (count + 1) / 2;
     const i64 column_width = 25 * 8;
     const i64 column_gap = 16;
     const i64 block_width = column_width * 2 + column_gap;
-    const i64 start_x = screen_width > (u64)block_width
-        ? (i64)((screen_width - (u64)block_width) / 2)
-        : 0;
+    const i64 start_x = screen_width > (u64)block_width ? (i64)((screen_width - (u64)block_width) / 2) : 0;
 
     for (u64 i = 0; i < count; i++) {
         const u64 column = i / rows_per_column;
@@ -91,10 +57,12 @@ void crash_draw_register_dump(const interrupt_frame_t* frame,
         const i64 x = start_x + (i64)column * (column_width + column_gap);
         char line[26];
 
-        crash_format_register(line, registers[i].name, registers[i].value);
-        framebuffer_draw_text8x16(x, y + (i64)row * 16,
-                                  line, color, 0, false);
+        crash_register_entry_t* entry = static_array_get(&registers, i);
+        sprintf(line, sizeof(line), "%s=%llx", entry->name, entry->value);
+        framebuffer_draw_text8x16(x, y + (i64)row * 16, line, color, 0, false);
     }
+
+    static_array_free(&registers);
 }
 
 __noreturn
@@ -134,7 +102,7 @@ void crash_handler_entry(void* frame, const char* message, u64 core) {
 
     crash_draw_centered_lines(screen_width, top + (16 * 3), recovery_lines, 4, white);
 
-    crash_draw_register_dump((const interrupt_frame_t*)frame, screen_width, top + 152, dim);
+    crash_draw_register_dump(frame, screen_width, top + 152, dim);
 
     framebuffer_present();
 

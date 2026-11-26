@@ -558,3 +558,11 @@ void* kmmio_map(void* paddr, u64 size) {
 void kmmio_unmap(void* ptr) {
     virtual_mmio_unmap(&virtual_kernel_mmio_heap, ptr);
 }
+
+void* __malloc_impl(u64 size) {
+    return kalloc(size);
+}
+
+void __free_impl(void* ptr) {
+    kfree(ptr);
+}
