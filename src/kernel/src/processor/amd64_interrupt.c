@@ -3,6 +3,8 @@
 #include "processor/amd64_port.h"
 #include "processor/amd64_apic.h"
 #include "processor/amd64_tlb.h"
+#include "processor/amd64_cpu.h"
+#include "thread.h"
 #include "processor/cpu_direct.h"
 #include "crash_handler.h"
 #include "libatomic.h"
@@ -23,38 +25,37 @@ interrupt_frame_t* amd64_interrupt_stub(interrupt_frame_t* frame) {
     if (vector == AMD64_LAPIC_SPURIOUS_VECTOR)
         return frame;
 
-    if (vector == AMD64_IPI_TLB_VECTOR) {
-        amd64_tlb_handle_ipi();
-        return frame;
-    }
+    switch (vector) {
+        case AMD64_LAPIC_TIMER_VECTOR: {
+            amd64_lapic_timer_handle_interrupt();
+            return vthread_schedule(frame);
+        }
+        case AMD64_IPI_TLB_VECTOR: {
+            amd64_tlb_handle_ipi();
+            return frame;
+        }
+        case AMD64_IPI_PING_VECTOR: {
+            cpu_t* cpu = get_current_cpu();
 
-    if (vector == AMD64_LAPIC_TIMER_VECTOR) {
-        amd64_lapic_timer_handle_interrupt();
-        return frame;
-    }
+            amd64_lapic_eoi();
+            atomic_add32(&cpu->ipi_ping_count, 1);
+            return frame;
+        }
+        case AMD64_IPI_START_VECTOR: {
+            cpu_t* cpu = get_current_cpu();
 
-    if (vector == AMD64_IPI_PING_VECTOR) {
-        cpu_t* cpu = get_current_cpu();
+            amd64_lapic_eoi();
+            atomic_store32(&cpu->start, 1);
+            return frame;
+        }
+        case AMD64_IPI_KILL_VECTOR: {
+            cpu_t* cpu = get_current_cpu();
 
-        amd64_lapic_eoi();
-        atomic_add32(&cpu->ipi_ping_count, 1);
-        return frame;
-    }
-
-    if (vector == AMD64_IPI_START_VECTOR) {
-        cpu_t* cpu = get_current_cpu();
-
-        amd64_lapic_eoi();
-        atomic_store32(&cpu->start, 1);
-        return frame;
-    }
-
-    if (vector == AMD64_IPI_KILL_VECTOR) {
-        cpu_t* cpu = get_current_cpu();
-
-        amd64_lapic_eoi();
-        atomic_store32(&cpu->online, 0);
-        cpu_hang();
+            amd64_lapic_eoi();
+            atomic_store32(&cpu->online, 0);
+            cpu_hang();
+            return frame;
+        }
     }
 
     cpu_interrupt_handler_t handler = cpu_get_interrupt_handler(vector - AMD64_IRQ_VECTOR_BASE);
@@ -155,4 +156,20 @@ const char* amd64_exception_to_text(u64 code) {
         case AMD64_EXCEPTION_CONTROL_PROTECTION_EXCEPTION: return "EXCEPTION_CONTROL_PROTECTION_EXCEPTION";
         default: return "EXCEPTION_UNKNOWN";
     }
+}
+
+u64* amd64_insert_kernel_trap_frame(u64* stack_top, void* entry) {
+    *(--stack_top) = 0;
+
+    *(--stack_top) = AMD64_RFLAGS_IF | AMD64_RFLAGS_RES;
+    *(--stack_top) = AMD64_GDT_INDEX_TO_SELECTOR(GDT_INDEX_KERNEL_CODE, 0);
+    *(--stack_top) = (u64)entry;
+
+    *(--stack_top) = 0;
+    *(--stack_top) = 0;
+
+    for (u32 i = 0; i < 15; i++)
+        *(--stack_top) = 0;
+
+    return stack_top;
 }

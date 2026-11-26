@@ -101,4 +101,6 @@ void amd64_cpu_idt_init();
 void amd64_cpu_idt_load();
 const char* amd64_exception_to_text(u64 code);
 
+u64* amd64_insert_kernel_trap_frame(u64* stack_top, void* entry);
+
 #endif // AMD64_INTERRUPT_H

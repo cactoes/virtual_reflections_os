@@ -52,6 +52,7 @@ typedef struct __virtual_heap {
 typedef bool(*heap_block_filter_t)(const virtual_heap_block_t* block, const void* arg);
 
 bool virtual_heap_create(void* vaddr_start, void* vaddr_limit, u64 start_size, virtual_heap_t* virtual_heap, u64 flags);
+void* virtual_alloc_aligned(virtual_heap_t* virtual_heap, u64 size, u64 alignment);
 void* virtual_alloc(virtual_heap_t* virtual_heap, u64 size);
 bool virtual_free(virtual_heap_t* virtual_heap, void* ptr);
 
@@ -62,6 +63,7 @@ bool virtual_mmio_unmap(virtual_heap_t* mmio, void* ptr);
 
 bool kmem_bind(void* heap_start, void* heap_limit, u64 start_size);
 void* kalloc(u64 size);
+void* kalloc_aligned(u64 size, u64 align);
 void kfree(void* ptr);
 
 bool kmmio_bind(void* heap_start, void* heap_limit);

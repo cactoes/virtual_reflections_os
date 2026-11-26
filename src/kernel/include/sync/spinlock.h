@@ -17,4 +17,7 @@ typedef struct __spinlock {
 void spinlock_lock(spinlock_t* lock);
 void spinlock_unlock(spinlock_t* lock);
 
+u64 spinlock_lock_irqsave(spinlock_t* lock);
+void spinlock_unlock_irqrestore(spinlock_t* lock, u64 flags);
+
 #endif // SPINLOCK_H

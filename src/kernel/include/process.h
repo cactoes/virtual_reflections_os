@@ -10,4 +10,9 @@
 
 #include "libtype.h"
 
+typedef struct __process {
+    u64 id;
+    void* page_table;
+} process_t;
+
 #endif // PROCESS_H

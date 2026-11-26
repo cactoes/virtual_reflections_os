@@ -8,16 +8,37 @@
 #include "io/debug.h"
 #include "graphics/framebuffer.h"
 #include "libdef.h"
+#include "thread.h"
+#include "libmem.h"
+
+void idle_thread_loop() {
+    while (true)
+        __asm__ volatile ("hlt" ::: "memory");
+}
+
+void test_remote_thread() {
+    while (true)
+        __asm__ volatile ("hlt" ::: "memory");
+}
 
 __noreturn
 void virtual_core_entry(cpu_t* core) {
-    (void)core;
+    vthread_t idle_thread;
+    vthread_create(nullptr, idle_thread_loop, &idle_thread);
+
+    vthread_t asd;
+    vthread_create(nullptr, test_remote_thread, &asd);
+
+    vthread_t boot_thread;
+    vthread_scheduler_init_local(&boot_thread, &idle_thread);
+
+    vthread_enqueue(&asd);
 
     kdbg_printf("[core(%u)]: idle\n", core->id);
 
     // idle loop for now
     while (true)
-        __asm__ volatile ("sti; hlt" ::: "memory");
+        __asm__ volatile ("hlt" ::: "memory");
 }
 
 __noreturn
@@ -46,19 +67,18 @@ void virtual_kernel_entry(kboot_info_t kboot_info) {
     void* framebuffer_start = (void*)(kboot_info.framebuffer.physical_address & ~(PMM_PAGE_SIZE - 1));
     pmm_reserve_range(framebuffer_start, framebuffer_page_count);
 
-    bool kmmio_result = kmmio_bind((void*)KERNEL_MMIO_BASE, (void*)KERNEL_MMIO_END);
-    kdbg_printf("kmmio: %s\n", kmmio_result ? "ok" : "error");
-
-    bool kmem_result = kmem_bind((void*)KERNEL_HEAP_BASE, (void*)KERNEL_HEAP_END, VMEM_PAGE_SIZE_LARGE);
-    kdbg_printf("kmem: %s\n", kmem_result ? "ok" : "error");
-
-    char buffer[16];
-    format_size(buffer, 16, kboot_info.memory.size);
-    kdbg_printf("total memory: %s\n", buffer);
+    kmmio_bind((void*)KERNEL_MMIO_BASE, (void*)KERNEL_MMIO_END);
+    kmem_bind((void*)KERNEL_HEAP_BASE, (void*)KERNEL_HEAP_END, VMEM_PAGE_SIZE_LARGE);
 
     boot_cpu_init(&kboot_info);
 
-    // setup scheduler before enabeling other cores for work
+    vthread_scheduler_init();
+
+    vthread_t idle_thread;
+    vthread_create(nullptr, idle_thread_loop, &idle_thread);
+
+    vthread_t boot_thread;
+    vthread_scheduler_init_local(&boot_thread, &idle_thread);
 
     cpu_enable_all_cores();
 

@@ -9,6 +9,10 @@
 static virtual_heap_t virtual_kernel_heap;
 static virtual_heap_t virtual_kernel_mmio_heap;
 
+#include "sync/spinlock.h"
+
+static spinlock_t global_lock;
+
 static
 u64 pick_page_size(u64 vaddr, u64 remaining) {
     if (is_aligned(vaddr, VMEM_PAGE_SIZE_HUGE) && remaining >= VMEM_PAGE_SIZE_HUGE)
@@ -172,50 +176,132 @@ bool filter_heap_blocks(virtual_heap_t* heap, void* arg, heap_block_filter_t cal
     return remaining == 0;
 }
 
-void* virtual_alloc(virtual_heap_t* virtual_heap, u64 size) {
-    if (size == 0)
+static
+u64 virtual_alloc_collect_unused(virtual_heap_t* heap, virtual_heap_block_t* out[], u64 capacity) {
+    if (!heap || !heap->table || !out || capacity == 0)
+        return 0;
+
+    for (u64 i = 0; i < capacity; i++)
+        out[i] = nullptr;
+
+    u64 count = 0;
+    for (virtual_heap_block_table_t* table = heap->table;
+         table && count < capacity;
+         table = table->next) {
+        const u64 slot_count = sizeof(table->blocks) / sizeof(table->blocks[0]);
+
+        for (u64 i = 0; i < slot_count && count < capacity; i++) {
+            virtual_heap_block_t* block = &table->blocks[i];
+
+            if (HAS_ANY(block->flags, VIRTUAL_HEAP_BLOCK_METADATA |
+                                      VIRTUAL_HEAP_BLOCK_ACCESSED))
+                continue;
+
+            out[count++] = block;
+        }
+    }
+
+    return count;
+}
+
+static
+void virtual_alloc_link_after(virtual_heap_block_t* previous, virtual_heap_block_t* node) {
+    node->prev = previous;
+    node->next = previous->next;
+
+    if (previous->next)
+        previous->next->prev = node;
+
+    previous->next = node;
+}
+
+void* virtual_alloc_aligned(virtual_heap_t* virtual_heap, u64 size, u64 alignment) {
+    if (!virtual_heap || !virtual_heap->table || size == 0 || alignment == 0 || (alignment & (alignment - 1)) != 0)
         return nullptr;
 
-    const u64 aligned = align_up(size, 16);
-    if (aligned < size)
+    const u64 allocation_size = align_up(size, 16);
+    if (allocation_size < size)
         return nullptr;
 
-    size = aligned;
+    virtual_heap_block_t* spare[2];
+    const u64 spare_count = virtual_alloc_collect_unused(virtual_heap, spare, 2);
 
-    heap_block_filter_t filters[] = { donor_block_filter, unused_block_filter };
-    virtual_heap_block_t* blocks[] = { nullptr, nullptr };
-    filter_heap_blocks(virtual_heap, &size, filters, 2, blocks, 2);
+    virtual_heap_block_t* donor = nullptr;
+    u64 allocation_start = 0;
+    u64 allocation_end = 0;
+    u64 head_size = 0;
+    u64 tail_size = 0;
 
-    virtual_heap_block_t* donor_block = blocks[0];
-    if (!donor_block)
+    for (virtual_heap_block_t* block = &virtual_heap->table->blocks[0]; block; block = block->next) {
+        if (!HAS_ALL(block->flags, VIRTUAL_HEAP_BLOCK_ACCESSED | VIRTUAL_HEAP_BLOCK_FREE) || HAS_ANY(block->flags, VIRTUAL_HEAP_BLOCK_METADATA))
+            continue;
+
+        const u64 block_start = (u64)block->start;
+        if (block->size > (~(u64)0) - block_start)
+            continue;
+
+        const u64 block_end = block_start + block->size;
+        const u64 aligned_start = align_up(block_start, alignment);
+        if (aligned_start < block_start || aligned_start > block_end)
+            continue;
+
+        if (allocation_size > block_end - aligned_start)
+            continue;
+
+        const u64 aligned_end = aligned_start + allocation_size;
+        const u64 candidate_head = aligned_start - block_start;
+        const u64 candidate_tail = block_end - aligned_end;
+        const u64 descriptors_needed =
+            (candidate_head != 0 ? 1 : 0) +
+            (candidate_tail != 0 ? 1 : 0);
+
+        if (descriptors_needed > spare_count)
+            continue;
+
+        donor = block;
+        allocation_start = aligned_start;
+        allocation_end = aligned_end;
+        head_size = candidate_head;
+        tail_size = candidate_tail;
+        break;
+    }
+
+    if (!donor) {
         // TODO @since 21/11/2026 -- 02:14
         // grow heap
         return nullptr;
-
-    if (donor_block->size == size) {
-        CLEAR_MASK(donor_block->flags, VIRTUAL_HEAP_BLOCK_FREE);
-        return donor_block->start;
     }
 
-    virtual_heap_block_t* unused_block = blocks[1];
-    if (!unused_block)
-        // TODO @since 21/11/2026 -- 02:14
-        // grow table
-        return nullptr;
+    u64 spare_index = 0;
+    virtual_heap_block_t* allocated_block;
 
-    donor_block->size -= size;
+    if (head_size == 0) {
+        allocated_block = donor;
+        allocated_block->size = allocation_size;
+        CLEAR_MASK(allocated_block->flags, VIRTUAL_HEAP_BLOCK_FREE);
+    } else {
+        donor->size = head_size;
 
-    unused_block->start = (void*)((u64)donor_block->start + donor_block->size);
-    unused_block->size  = size;
-    unused_block->flags = VIRTUAL_HEAP_BLOCK_ACCESSED;
+        allocated_block = spare[spare_index++];
+        allocated_block->start = (void*)allocation_start;
+        allocated_block->size = allocation_size;
+        allocated_block->flags = VIRTUAL_HEAP_BLOCK_ACCESSED;
+        virtual_alloc_link_after(donor, allocated_block);
+    }
 
-    unused_block->prev = donor_block;
-    unused_block->next = donor_block->next;
-    if (donor_block->next)
-        donor_block->next->prev = unused_block;
-    donor_block->next = unused_block;
+    if (tail_size != 0) {
+        virtual_heap_block_t* tail_block = spare[spare_index++];
+        tail_block->start = (void*)allocation_end;
+        tail_block->size = tail_size;
+        tail_block->flags = VIRTUAL_HEAP_BLOCK_ACCESSED | VIRTUAL_HEAP_BLOCK_FREE;
+        virtual_alloc_link_after(allocated_block, tail_block);
+    }
 
-    return unused_block->start;
+    return (void*)allocation_start;
+}
+
+void* virtual_alloc(virtual_heap_t* virtual_heap, u64 size) {
+    return virtual_alloc_aligned(virtual_heap, size, 16);
 }
 
 static
@@ -540,7 +626,17 @@ bool kmem_bind(void* heap_start, void* heap_limit, u64 start_size) {
 }
 
 void* kalloc(u64 size) {
-    return virtual_alloc(&virtual_kernel_heap, size);
+    const u64 flags = spinlock_lock_irqsave(&global_lock);
+    void* r = virtual_alloc(&virtual_kernel_heap, size);
+    spinlock_unlock_irqrestore(&global_lock, flags);
+    return r;
+}
+
+void* kalloc_aligned(u64 size, u64 align) {
+    const u64 flags = spinlock_lock_irqsave(&global_lock);
+    void* r = virtual_alloc_aligned(&virtual_kernel_heap, size, align);
+    spinlock_unlock_irqrestore(&global_lock, flags);
+    return r;
 }
 
 void kfree(void* ptr) {
