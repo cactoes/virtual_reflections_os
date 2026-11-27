@@ -29,6 +29,11 @@ EFI_DIR             := $(ISO_BUILD_DIR)/EFI/BOOT
 EFI_FILE            := $(EFI_DIR)/BOOTX64.EFI
 GRUB_CFG            := $(ISO_SRC_DIR)/boot/grub/grub.cfg
 
+USER_BUILD_DIR      := $(BUILD_PATH)/user
+INITRAMFS_SRC       := $(ROOT_PATH)/initramfs
+INITRAMFS_DIR       := $(BUILD_PATH)/initramfs
+INITRAMFS_CPIO      := $(BUILD_PATH)/initramfs.cpio
+
 # toolchain
 CC                  := x86_64-elf-gcc
 AS                  := nasm
@@ -77,7 +82,9 @@ Q := @
 endif
 
 # targets
-.PHONY: build clean rebuild
+.PHONY: build clean rebuild FORCE
+
+FORCE:
 
 build: $(ISO_IMAGE)
 
@@ -91,11 +98,20 @@ $(EFI_FILE): $(GRUB_CFG)
 > @mkdir -p $(EFI_DIR)
 > $(Q)$(GRUB_MKSTANDALONE) -O x86_64-efi -o $@ "boot/grub/grub.cfg=$(GRUB_CFG)"
 
-$(ISO_IMAGE): $(KERNEL_BIN) $(EFI_FILE)
+$(INITRAMFS_CPIO): FORCE
+> @echo "creating initramfs.cpio"
+> @rm -rf $(INITRAMFS_DIR)
+> @mkdir -p $(INITRAMFS_DIR)/bin
+> @if [ -d $(INITRAMFS_SRC) ]; then cp -r $(INITRAMFS_SRC)/. $(INITRAMFS_DIR)/; fi
+> @if [ -d $(USER_BUILD_DIR) ]; then cp -r $(USER_BUILD_DIR)/. $(INITRAMFS_DIR)/bin/; fi
+> $(Q)cd $(INITRAMFS_DIR) && find . -mindepth 1 | cpio -o -H newc --quiet > $(abspath $@)
+
+$(ISO_IMAGE): $(KERNEL_BIN) $(EFI_FILE) $(INITRAMFS_CPIO)
 > @echo "creating iso image"
 > @mkdir -p $(ISO_BUILD_DIR)/boot
 > @cp -r $(ISO_SRC_DIR)/. $(ISO_BUILD_DIR)/
 > @cp $(KERNEL_BIN) $(ISO_BUILD_DIR)/boot/$(TARGET_NAME).bin
+> @cp $(INITRAMFS_CPIO) $(ISO_BUILD_DIR)/boot/initramfs.cpio
 > $(Q)$(GRUB_MKRESCUE) -o $@ $(ISO_BUILD_DIR)
 
 $(OBJ_DIR)/%.o: $(SRC_DIR)/%.c

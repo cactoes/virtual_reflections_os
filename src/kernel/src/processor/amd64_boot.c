@@ -157,6 +157,29 @@ bool parse_rsdp(multiboot2_info_t* multiboot2, kboot_info_t* kboot_info) {
     return true;
 }
 
+static
+__section_text
+bool parse_modules(multiboot2_info_t* multiboot2, kboot_info_t* kboot_info) {
+    // for now just parse only the first module
+
+    const multiboot2_module_tag_t* module = mb2_get_first_module(multiboot2);
+    if (!module)
+        return false;
+
+    memory_module_t* target_module = &kboot_info->modules[0];
+    target_module->pstart = module->mod_start;
+    target_module->pend = module->mod_end;
+    u64 len = strlen(module->string);
+    if (len >= MODULE_STRING_MAX)
+        len = MODULE_STRING_MAX - 1;
+
+    memcpy(target_module->string, module->string, len);
+
+    kboot_info->module_count = 1;
+
+    return true;
+}
+
 __noreturn __section_text
 void amd64_entry(multiboot2_info_t* multiboot2) {
     memzero((void*)LNK_BSS_START, LNK_BSS_SIZE);
@@ -172,6 +195,7 @@ void amd64_entry(multiboot2_info_t* multiboot2) {
     kboot_info.cmdline_valid = parse_cmdline(multiboot2, &kboot_info);
     kboot_info.boot_media_type = MEDIA_TYPE_LIVE; // hardcoded for now
     (void)parse_rsdp(multiboot2, &kboot_info);
+    (void)parse_modules(multiboot2, &kboot_info);
 
     // VMEM_PAGE_SIZE_SMALL
     kboot_info.kernel_page_count = (LNK_KERNEL_END_PHYSICAL + 0x1000 - 1) >> 12;

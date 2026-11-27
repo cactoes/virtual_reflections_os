@@ -12,6 +12,8 @@
 #define MAX_MEMORY_REGIONS  128
 #define MAX_EXTRA_VALUES    1
 #define CMDLINE_MAX         256
+#define MAX_MODULES         1
+#define MODULE_STRING_MAX   256
 
 #include "libtype.h"
 
@@ -48,6 +50,12 @@ typedef struct __framebuffer {
     bool valid;
 } framebuffer_t;
 
+typedef struct __memory_module {
+    u64 pstart;
+    u64 pend;
+    char string[MODULE_STRING_MAX];
+} memory_module_t;
+
 typedef struct __kboot_info {
     struct memory_t {
         memory_region_t regions[MAX_MEMORY_REGIONS];
@@ -68,6 +76,9 @@ typedef struct __kboot_info {
     // architecture specific values for later use
     u32 extra_values_written;
     void* extra_values[MAX_EXTRA_VALUES];
+
+    memory_module_t modules[MAX_MODULES];
+    u64 module_count;
 } kboot_info_t;
 
 #endif // KBOOTINFO_H
