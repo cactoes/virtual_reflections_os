@@ -14,17 +14,84 @@
 #include "filesystem/vfs.h"
 #include "filesystem/initramfs.h"
 
-extern const u64 splash_width;
-extern const u64 splash_height;
-extern const u8 splash_rgb[];
+typedef struct __splash_image {
+    u64 width, height;
+    u8* data;
+} splash_image_t;
 
-static void draw_splash(i64 x0, i64 y0) {
-    for (u64 y = 0; y < splash_height; y++) {
-        for (u64 x = 0; x < splash_width; x++) {
-            u64 i = (y * splash_height + x) * 3;
-            u32 color = framebuffer_color(splash_rgb[i], splash_rgb[i + 1], splash_rgb[i + 2]);
-            framebuffer_put_pixel(x0 + x, y0 + y, color);
-        }
+static
+bool load_splash(const char* path, splash_image_t* splash_image) {
+    vfs_file_t* pfile;
+    if (!vfs_open(path, VFS_OP_READ, &pfile))
+        return false;
+    
+    if (vfs_read(pfile, &splash_image->width, sizeof(u64)) != sizeof(u64)) {
+        vfs_close(pfile);
+        return false;
+    }
+
+    if (vfs_read(pfile, &splash_image->height, sizeof(u64)) != sizeof(u64)) {
+        vfs_close(pfile);
+        return false;
+    }
+
+    u64 file_size = vfs_get_size(pfile);
+    u64 image_data_size = splash_image->width * splash_image->height * 3;
+    if (image_data_size > file_size) {
+        vfs_close(pfile);
+        return false;
+    }
+
+    splash_image->data = kalloc(image_data_size);
+    if (!splash_image->data) {
+        vfs_close(pfile);
+        return false;
+    }
+
+    if (vfs_read(pfile, splash_image->data, image_data_size) != image_data_size) {
+        vfs_close(pfile);
+        kfree(splash_image->data);
+        return false;
+    }
+
+    vfs_close(pfile);
+    return true;
+}
+
+static
+void start_render_splash_loop(splash_image_t* splash_image) {
+    const i64 x = ((i64)framebuffer_width() - (i64)splash_image->width) / 2;
+    const i64 y = ((i64)framebuffer_height() - (i64)splash_image->height) / 2;
+
+    const char title[] = "Virtual Reflections OS";
+    const i64 title_width = (sizeof(title) - 1) * 8;
+    const i64 title_x = x + ((i64)splash_image->width - title_width) / 2;
+    const i64 title_y = y + (i64)splash_image->height + 12;
+
+    char booting[] = "Booting...";
+    const i64 booting_width = (sizeof(booting) - 1) * 8;
+    const i64 booting_x = x + ((i64)splash_image->width - booting_width) / 2;
+    const i64 booting_y = title_y + 20;
+
+    framebuffer_draw_image(x, y, splash_image->width, splash_image->height, splash_image->data);
+    framebuffer_draw_text8x16(title_x, title_y, title, 0xffffff, 0x000000, false);
+    framebuffer_present();
+
+    u32 dot_count = 0;
+    u64 last_update = get_local_timer_ticks();
+
+    while (true) {
+        for (u32 i = 0; i < 3; i++)
+            booting[7 + i] = (i < dot_count) ? '.' : ' ';
+
+        framebuffer_draw_text8x16(booting_x, booting_y, booting, 0x808080, 0x000000, true);
+        framebuffer_present();
+
+        while (get_local_timer_ticks() - last_update < 300)
+            cpu_idle();
+
+        last_update = get_local_timer_ticks();
+        dot_count = (dot_count + 1) % 4;
     }
 }
 
@@ -128,6 +195,10 @@ void virtual_kernel_entry(kboot_info_t kboot_info) {
     framebuffer_clear(0x000000);
     framebuffer_present();
 
+    kterminal_t kterm;
+    kterm_init(&kterm);
+    kterm_bind(&kterm);
+
     cpu_enable_all_cores();
 
     // setup (usermode) processes
@@ -136,11 +207,7 @@ void virtual_kernel_entry(kboot_info_t kboot_info) {
     // setup drivers: networking, storage, i/o
     // setup other more software related code: nic, i/o etc
 
-    kterminal_t kterm;
-    kterm_init(&kterm);
-    kterm_bind(&kterm);
-
-    kterm_printf("[\x1b[90msystem\x1b[0m]: initramfs -> loaded\n");
+    kterm_printf("[\x1b[90msystem\x1b[0m]: initramfs ready\n");
     kterm_printf("[\x1b[90msystem\x1b[0m]: cores -> %llu\n", get_cpu_count());
 
     char buffer[256];
@@ -148,36 +215,15 @@ void virtual_kernel_entry(kboot_info_t kboot_info) {
 
     kterm_printf("[\x1b[90msystem\x1b[0m]: memory -> %s\n", buffer);
 
-    const i64 x = ((i64)framebuffer_width() - (i64)splash_width) / 2;
-    const i64 y = ((i64)framebuffer_height() - (i64)splash_height) / 2;
+    splash_image_t splash_image;
+    if (load_splash("/etc/splash.bin", &splash_image))
+        start_render_splash_loop(&splash_image);
 
-    const char title[] = "Virtual Reflections OS";
-    const i64 title_width = (sizeof(title) - 1) * 8;
-    const i64 title_x = x + ((i64)splash_width - title_width) / 2;
-    const i64 title_y = y + (i64)splash_height + 12;
+    kterm_printf("[\x1b[90msystem\x1b[0m]: failed to load splash\n", buffer);
 
-    char booting[] = "Booting...";
-    const i64 booting_width = (sizeof(booting) - 1) * 8;
-    const i64 booting_x = x + ((i64)splash_width - booting_width) / 2;
-    const i64 booting_y = title_y + 20;
-
-    u32 dot_count = 0;
-    u64 last_update = get_local_timer_ticks();
-
-    draw_splash(x, y);
-    framebuffer_draw_text8x16(title_x, title_y, title, 0xffffff, 0x000000, false);
-
-    while (true) {
-        for (u32 i = 0; i < 3; i++)
-            booting[7 + i] = (i < dot_count) ? '.' : ' ';
-
-        framebuffer_draw_text8x16(booting_x, booting_y, booting, 0x808080, 0x000000, true);
-        framebuffer_present();
-
-        while (get_local_timer_ticks() - last_update < 300)
-            cpu_idle();
-
-        last_update = get_local_timer_ticks();
-        dot_count = (dot_count + 1) % 4;
-    }
+    // [incase the splash image doesnt work, it should to basically the same]
+    // fallback to here since we need some variables n stuff from it
+    // its also the entrypoint for the boot thread, so just idle if we get to this point
+    while (true)
+        cpu_idle();
 }
