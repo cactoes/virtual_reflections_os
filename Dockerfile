@@ -11,6 +11,7 @@ RUN apt-get update \
         mtools \
         nasm \
         xorriso \
+        cpio \
     && rm -rf /var/lib/apt/lists/*
 
 # linking build scripts
