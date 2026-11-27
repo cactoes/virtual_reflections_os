@@ -54,4 +54,6 @@ __noreturn
 void cpu_hang();
 void cpu_idle();
 
+u64 get_cpu_count();
+
 #endif // CPU_DIRECT_H

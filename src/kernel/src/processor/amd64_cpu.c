@@ -101,15 +101,5 @@ u64 amd64_get_processor_extensions() {
             extensions |= (1ull << AMD64_CPU_EXTENSION_NX_BIT);
     }
 
-// /* Enables NX if the CPU supports it. Without this, bit 63 is a reserved bit
-//  * and every page with NX gives a page fault. Run on every core. */
-// void amd64_nx_init(void) {
-//     unsigned int a, b, c, d;
-//     if (__get_cpuid(0x80000001, &a, &b, &c, &d) && (d & AMD64_CPUID_EXT_NX)) {
-//         amd64_wrmsr(AMD64_MSR_EFER, amd64_rdmsr(AMD64_MSR_EFER) | AMD64_EFER_NXE);
-//         g_nx_enabled = true;
-//     }
-// }
-
     return extensions;
 }

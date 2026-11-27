@@ -8,6 +8,7 @@
 #include "libmem.h"
 
 // in main.c
+__noreturn
 void virtual_kernel_entry(kboot_info_t kboot_info);
 
 static

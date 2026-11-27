@@ -205,8 +205,6 @@ void amd64_ap_startup(kboot_info_t* kboot_info, u64 cpu_count) {
             kdbg_printf("failed to start: cpu(%u)\n", i);
             continue;
         }
-
-        kdbg_printf("cpu(%u): online\n", i);
     }
 }
 

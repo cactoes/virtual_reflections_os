@@ -4,6 +4,7 @@
 #include "processor/amd64_cpu.h"
 #include "processor/amd64_interrupt.h"
 #include "processor/amd64_pit.h"
+#include "processor/cpu_direct.h"
 
 static volatile u8* global_lapic;
 static volatile u8* global_ioapic;
@@ -12,8 +13,6 @@ static madt_info_t global_madt_info;
 
 static u32 global_lapic_timer_initial_count;
 static volatile u64 global_lapic_timer_ticks[MAX_CPUS];
-
-extern u64 cpu_count;
 
 static
 u32 lapic_read(volatile u8* lapic, u32 reg) {
@@ -205,7 +204,7 @@ bool amd64_lapic_timer_start_local() {
         return false;
 
     cpu_t* cpu = get_current_cpu();
-    if (!cpu || cpu->id >= cpu_count)
+    if (!cpu || cpu->id >= get_cpu_count())
         return false;
 
     lapic_write(global_lapic, AMD64_LAPIC_REG_TIMER_LVT, AMD64_LAPIC_TIMER_VECTOR | AMD64_LAPIC_TIMER_PERIODIC | AMD64_LAPIC_TIMER_MASKED);
@@ -219,7 +218,7 @@ bool amd64_lapic_timer_start_local() {
 
 void amd64_lapic_timer_handle_interrupt() {
     cpu_t* cpu = get_current_cpu();
-    if (cpu && cpu->id < cpu_count)
+    if (cpu && cpu->id < get_cpu_count())
         global_lapic_timer_ticks[cpu->id]++;
 
     amd64_lapic_eoi();

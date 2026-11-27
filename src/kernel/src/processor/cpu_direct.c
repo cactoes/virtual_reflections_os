@@ -49,8 +49,6 @@ void boot_cpu_init(kboot_info_t* kboot_info) {
     madt_info_t madt_info;
     (void)amd64_acpi_init(kboot_info->extra_values[0], &madt_info);
 
-    kdbg_printf("system cores: %u\n", madt_info.cpu_count);
-
     cpu_count = madt_info.cpu_count < MAX_CPUS ? madt_info.cpu_count : MAX_CPUS;
 
     amd64_apic_init(&madt_info, cpus, cpu_count);
@@ -160,4 +158,8 @@ void cpu_idle() {
     amd64_halt();
 #else
 #endif
+}
+
+u64 get_cpu_count() {
+    return cpu_count;
 }
