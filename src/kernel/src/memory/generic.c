@@ -620,7 +620,14 @@ virtual_heap_block_t* mmio_carve(virtual_heap_t* mmio, u64 size, u64 align, u64 
             HAS_ANY(b->flags, VIRTUAL_HEAP_BLOCK_METADATA))
             continue;
 
-        if (mmio_find_placement((u64)b->start, (u64)b->start + b->size, size, align, phase, &a)) {
+        const u64 block_start = (u64)b->start;
+
+        if (block_start < mmio->heap_start || block_start >= mmio->heap_limit || b->size > mmio->heap_limit - block_start)
+            continue;
+
+        const u64 block_end = block_start + b->size;
+
+        if (mmio_find_placement(block_start, block_end, size, align, phase, &a)) {
             donor = b;
             break;
         }
@@ -668,9 +675,6 @@ virtual_heap_block_t* mmio_carve(virtual_heap_t* mmio, u64 size, u64 align, u64 
 
 static
 bool mmio_grow(virtual_heap_t* mmio) {
-    // TODO @since 28/11/2026 -- 00:04
-    // check if we keep in bounds of the mmio virtual range
-
     virtual_heap_block_t* block = mmio_carve(mmio, VMEM_PAGE_SIZE_SMALL, VMEM_PAGE_SIZE_SMALL, 0);
     if (!block)
         return false;
