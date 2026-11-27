@@ -253,6 +253,16 @@ void framebuffer_draw_bitmap_1bpp(i64 x, i64 y, i64 w, i64 h, const u8* bits, u6
     mark_dirty(x, y, w, h);
 }
 
+void framebuffer_draw_image(i64 x0, i64 y0, i64 w, i64 h, const u8* data) {
+    for (u64 y = 0; y < h; y++) {
+        for (u64 x = 0; x < w; x++) {
+            u64 i = (y * h + x) * 3;
+            u32 color = framebuffer_color(data[i], data[i + 1], data[i + 2]);
+            framebuffer_put_pixel(x0 + x, y0 + y, color);
+        }
+    }
+}
+
 void framebuffer_draw_text8x16(i64 x, i64 y, const char* text, u32 fg, u32 bg, bool opaque_bg) {
     const i64 start_x = x;
 

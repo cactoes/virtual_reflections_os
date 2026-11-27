@@ -31,7 +31,7 @@ void framebuffer_fill_rect(i64 x, i64 y, i64 w, i64 h, u32 color);
 void framebuffer_blit(i64 x, i64 y, i64 w, i64 h, const u32* src, u64 src_stride);
 bool framebuffer_copy_rect(i64 sx, i64 sy, i64 w, i64 h, i64 dx, i64 dy);
 void framebuffer_draw_bitmap_1bpp(i64 x, i64 y, i64 w, i64 h, const u8* bits, u64 stride_bytes, u32 fg, u32 bg, bool opaque_bg);
-
+void framebuffer_draw_image(i64 x0, i64 y0, i64 w, i64 h, const u8* data);
 void framebuffer_draw_text8x16(i64 x, i64 y, const char* text, u32 fg, u32 bg, bool opaque_bg);
 
 void framebuffer_invalidate();
