@@ -9,7 +9,7 @@
 #include "graphics/framebuffer.h"
 #include "libdef.h"
 #include "thread.h"
-#include "libmem.h"
+#include "timer.h"
 #include "io/kterminal.h"
 
 extern const u64 splash_width;
@@ -107,16 +107,36 @@ void virtual_kernel_entry(kboot_info_t kboot_info) {
 
     kterm_printf("[\x1b[90msystem\x1b[0m]: memory -> %s\n", buffer);
 
+    const i64 x = ((i64)framebuffer_width() - (i64)splash_width) / 2;
+    const i64 y = ((i64)framebuffer_height() - (i64)splash_height) / 2;
+
+    const char title[] = "Virtual Reflections OS";
+    const i64 title_width = (sizeof(title) - 1) * 8;
+    const i64 title_x = x + ((i64)splash_width - title_width) / 2;
+    const i64 title_y = y + (i64)splash_height + 12;
+
+    char booting[] = "Booting...";
+    const i64 booting_width = (sizeof(booting) - 1) * 8;
+    const i64 booting_x = x + ((i64)splash_width - booting_width) / 2;
+    const i64 booting_y = title_y + 20;
+
+    u32 dot_count = 0;
+    u64 last_update = get_local_timer_ticks();
+
+    draw_splash(x, y);
+    framebuffer_draw_text8x16(title_x, title_y, title, 0xffffff, 0x000000, false);
+
     while (true) {
-        const i64 x = ((i64)framebuffer_width() - (i64)splash_width) / 2;
-        const i64 y = ((i64)framebuffer_height() - (i64)splash_height) / 2;
-        draw_splash(x, y);
-        const char title[] = "Virtual Reflections OS";
-        const i64 title_width = (sizeof(title) - 1) * 8;
-        const i64 title_x = x + ((i64)splash_width - title_width) / 2;
-        const i64 title_y = y + (i64)splash_height + 12;
-        framebuffer_draw_text8x16(title_x, title_y, title, 0xffffff, 0x000000, false);
+        for (u32 i = 0; i < 3; i++)
+            booting[7 + i] = (i < dot_count) ? '.' : ' ';
+
+        framebuffer_draw_text8x16(booting_x, booting_y, booting, 0x808080, 0x000000, true);
         framebuffer_present();
-        cpu_idle();
+
+        while (get_local_timer_ticks() - last_update < 300)
+            cpu_idle();
+
+        last_update = get_local_timer_ticks();
+        dot_count = (dot_count + 1) % 4;
     }
 }
