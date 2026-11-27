@@ -11,6 +11,8 @@
 #include "thread.h"
 #include "timer.h"
 #include "io/kterminal.h"
+#include "filesystem/vfs.h"
+#include "filesystem/initramfs.h"
 
 extern const u64 splash_width;
 extern const u64 splash_height;
@@ -24,6 +26,35 @@ static void draw_splash(i64 x0, i64 y0) {
             framebuffer_put_pixel(x0 + x, y0 + y, color);
         }
     }
+}
+
+bool load_ramfs(kboot_info_t* kboot_info) {
+    void* initramfs_start = nullptr;
+    u64 initramfs_size = 0;
+        
+    for (u64 i = 0; i < kboot_info->module_count; i++) {
+        memory_module_t* module = &kboot_info->modules[i];
+        if (!streq(module->string, "initramfs"))
+            continue;
+
+        u64 size = module->pend - module->pstart;
+        void* vaddr = kmmio_map((void*)module->pstart, size);
+        if (!vaddr)
+            return false;
+
+        initramfs_start = vaddr;
+        initramfs_size = size;
+        break;
+    }
+
+    if (!initramfs_start)
+        return false;
+
+    vfs_superblock_t* initramfs_sb = nullptr;
+    if (!initramfs_create(initramfs_start, initramfs_size, &initramfs_sb))
+        return false;
+
+    return vfs_mount_root(initramfs_sb);
 }
 
 __noreturn
@@ -91,22 +122,25 @@ void virtual_kernel_entry(kboot_info_t kboot_info) {
     vthread_t boot_thread;
     vthread_scheduler_init_local(&boot_thread, &idle_thread);
 
-    cpu_enable_all_cores();
-
-    // setup (usermode) processes
-    // setup virtual filsystem
-    // setup pcie
-    // setup drivers: networking, storage, i/o
-    // setup other more software related code: nic, i/o etc
+    (void*)load_ramfs(&kboot_info);
 
     framebuffer_init(&kboot_info.framebuffer, nullptr);
     framebuffer_clear(0x000000);
     framebuffer_present();
 
+    cpu_enable_all_cores();
+
+    // setup (usermode) processes
+    // setup other filsystems / block device drivers
+    // setup pcie
+    // setup drivers: networking, storage, i/o
+    // setup other more software related code: nic, i/o etc
+
     kterminal_t kterm;
     kterm_init(&kterm);
     kterm_bind(&kterm);
 
+    kterm_printf("[\x1b[90msystem\x1b[0m]: initramfs -> loaded\n");
     kterm_printf("[\x1b[90msystem\x1b[0m]: cores -> %llu\n", get_cpu_count());
 
     char buffer[256];
