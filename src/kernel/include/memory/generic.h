@@ -48,8 +48,15 @@ typedef struct __virtual_heap {
     u64 heap_edge;
     u64 heap_size_current;
     virtual_heap_block_table_t* table;
+    u64 mapping_flags;
     spinlock_t lock;
 } virtual_heap_t;
+
+typedef enum heap_map_result {
+    HEAP_MAP_OK,
+    HEAP_MAP_FAILED,
+    HEAP_MAP_ROLLBACK_FAILED
+} heap_map_result_t;
 
 typedef bool(*heap_block_filter_t)(const virtual_heap_block_t* block, const void* arg);
 
