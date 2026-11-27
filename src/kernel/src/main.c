@@ -199,14 +199,6 @@ void virtual_kernel_entry(kboot_info_t kboot_info) {
     kterm_init(&kterm);
     kterm_bind(&kterm);
 
-    cpu_enable_all_cores();
-
-    // setup (usermode) processes
-    // setup other filsystems / block device drivers
-    // setup pcie
-    // setup drivers: networking, storage, i/o
-    // setup other more software related code: nic, i/o etc
-
     kterm_printf("[\x1b[90msystem\x1b[0m]: initramfs ready\n");
     kterm_printf("[\x1b[90msystem\x1b[0m]: cores -> %llu\n", get_cpu_count());
 
@@ -214,6 +206,16 @@ void virtual_kernel_entry(kboot_info_t kboot_info) {
     format_size(buffer, sizeof(buffer), kboot_info.memory.size);
 
     kterm_printf("[\x1b[90msystem\x1b[0m]: memory -> %s\n", buffer);
+
+    // initial setup is done so we can kickoff the other cores if we have them
+    cpu_enable_all_cores();
+
+    // TODO @since 27/11/2026 -- 23:55
+    // setup (usermode) processes
+    // setup other filsystems / block device drivers
+    // setup pcie
+    // setup drivers: networking, storage, i/o
+    // setup other more software related code: nic, i/o etc
 
     splash_image_t splash_image;
     if (load_splash("/etc/splash.bin", &splash_image))
