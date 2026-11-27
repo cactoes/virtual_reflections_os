@@ -8,6 +8,15 @@ u64 strlen(const char* str) {
     return (u64)(p - str);
 }
 
+bool streq(const char* a, const char* b) {
+    while (*a && *a == *b) {
+        a++;
+        b++;
+    }
+
+    return *a == *b;
+}
+
 static void out_char(fmt_out_t* o, char c) {
     if (o->pos + 1 < o->size)
         o->buf[o->pos] = c;

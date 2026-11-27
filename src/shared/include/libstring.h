@@ -23,6 +23,7 @@ typedef struct __time_unit {
 } time_unit_t;
 
 u64 strlen(const char* str);
+bool streq(const char* a, const char* b);
 
 u64 vsprintf(char* buf, u64 size, const char* fmt, va_list ap);
 u64 sprintf(char* buf, u64 size, const char* fmt, ...);
