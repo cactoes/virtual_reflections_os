@@ -36,7 +36,7 @@ typedef struct __vfs_inode_vtable {
     vfs_inode_t*(*find)(vfs_inode_t* dir, const char* name);
 
     u64(*read)(vfs_inode_t* inode, u64 offset, void* buffer, u64 size);
-    bool(*write)(vfs_inode_t* inode, u64 offset, const void* buffer, u64 size);
+    u64(*write)(vfs_inode_t* inode, u64 offset, const void* buffer, u64 size);
 
     bool(*readdir)(vfs_inode_t* dir, u64 index, vfs_dirent_t* out);
 } vfs_inode_vtable_t;
@@ -78,6 +78,7 @@ bool vfs_mount(const char* path, vfs_superblock_t* sb);
 
 bool vfs_open(const char* path, u32 flags, vfs_file_t** out);
 u64 vfs_read(vfs_file_t* file, void* buffer, u64 size);
+u64 vfs_write(vfs_file_t* file, const void* buffer, u64 size);
 void vfs_close(vfs_file_t* file);
 
 #endif // VFS_HP
