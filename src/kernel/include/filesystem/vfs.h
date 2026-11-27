@@ -10,8 +10,8 @@
 
 #define VFS_MAX_NAME    256
 
-#define VFS_O_READ      (1u << 0)
-#define VFS_O_WRITE     (1u << 1)
+#define VFS_OP_READ      (1u << 0)
+#define VFS_OP_WRITE     (1u << 1)
 
 #include "libtype.h"
 
@@ -79,6 +79,7 @@ bool vfs_mount(const char* path, vfs_superblock_t* sb);
 bool vfs_open(const char* path, u32 flags, vfs_file_t** out);
 u64 vfs_read(vfs_file_t* file, void* buffer, u64 size);
 u64 vfs_write(vfs_file_t* file, const void* buffer, u64 size);
+u64 vfs_get_size(vfs_file_t* file);
 void vfs_close(vfs_file_t* file);
 
 #endif // VFS_HP

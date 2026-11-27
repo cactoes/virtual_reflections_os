@@ -162,7 +162,7 @@ u64 vfs_read(vfs_file_t* file, void* buffer, u64 size) {
     if (!file || (!buffer && size != 0))
         return 0;
 
-    if (!(file->flags & VFS_O_READ))
+    if (!(file->flags & VFS_OP_READ))
         return 0;
 
     vfs_inode_t* inode = file->dentry->inode;
@@ -183,7 +183,7 @@ u64 vfs_write(vfs_file_t* file, const void* buffer, u64 size) {
     if (!file || (!buffer && size != 0))
         return 0;
 
-    if (!(file->flags & VFS_O_WRITE))
+    if (!(file->flags & VFS_OP_WRITE))
         return 0;
 
     vfs_inode_t* inode = file->dentry->inode;
@@ -198,6 +198,17 @@ u64 vfs_write(vfs_file_t* file, const void* buffer, u64 size) {
         file->offset += (u64)count;
 
     return count;
+}
+
+u64 vfs_get_size(vfs_file_t* file) {
+    const vfs_inode_t* inode = file->dentry->inode;
+    if (inode->type == VFS_TYPE_DIR)
+        return false;
+
+    if (inode->type != VFS_TYPE_FILE)
+        return false;
+
+    return inode->size;
 }
 
 void vfs_close(vfs_file_t* file) {
